@@ -7,14 +7,39 @@ defmodule ObanPowertools.Application do
 
   @impl true
   def start(_type, _args) do
-    children = [
-      # Starts a worker by calling: ObanPowertools.Worker.start_link(arg)
-      # {ObanPowertools.Worker, arg}
-    ]
+    children =
+      []
+      |> maybe_add_pubsub()
+      |> maybe_add_workflow_coordinator()
+      |> maybe_add_heartbeat_writer()
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: ObanPowertools.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  defp maybe_add_pubsub(children) do
+    if Code.ensure_loaded?(Phoenix.PubSub) do
+      children ++ [{Phoenix.PubSub, name: ObanPowertools.PubSub}]
+    else
+      children
+    end
+  end
+
+  defp maybe_add_workflow_coordinator(children) do
+    if Code.ensure_loaded?(ObanPowertools.Workflow.Coordinator) do
+      children ++ [ObanPowertools.Workflow.Coordinator]
+    else
+      children
+    end
+  end
+
+  defp maybe_add_heartbeat_writer(children) do
+    if Code.ensure_loaded?(ObanPowertools.Lifeline.HeartbeatWriter) do
+      children ++ [ObanPowertools.Lifeline.HeartbeatWriter]
+    else
+      children
+    end
   end
 end

@@ -1,10 +1,10 @@
 # Project Roadmap
 
 ## Phases
-- [ ] **Phase 0: Foundation & Bridge** - Establish base schemas, Igniter installers, ecosystem integration, and the hybrid Web UI shell.
-- [ ] **Phase 1: Worker Ergonomics & Idempotency** - Introduce typed args validation and durable idempotency receipts.
-- [ ] **Phase 2: Smart Engine Limits & Cron** - Implement atomic global limiters, explainable blocks, and dynamic scheduling.
-- [ ] **Phase 3: Workflows (DAGs) & Signaling** - Deliver explicit persisted DAGs with PubSub-driven rapid step progression.
+- [x] **Phase 0: Foundation & Bridge** - Establish base schemas, Igniter installers, ecosystem integration, and the hybrid Web UI shell.
+- [x] **Phase 1: Worker Ergonomics & Idempotency** - Introduce typed args validation and durable idempotency receipts.
+- [x] **Phase 2: Smart Engine Limits & Cron** - Implement atomic global limiters, explainable blocks, and dynamic scheduling.
+- [x] **Phase 3: Workflows (DAGs) & Signaling** - Deliver explicit persisted DAGs with PubSub-driven rapid step progression.
 - [ ] **Phase 4: Lifeline & Repair Center** - Deliver heartbeat monitoring and an auditable dry-run repair UI for Day-2 Ops.
 
 ## Phase Details
@@ -18,7 +18,7 @@
   2. Powertools Native Shell routes render successfully and encapsulate the standard Oban Web viewer.
   3. The Shell is secured via Sigra and emits baseline low-cardinality metrics via Parapet.
 **Plans**: 1 plan
-- [ ] 0-PLAN.md — Initialize project, core contracts, and Igniter installer
+- [x] 0-PLAN.md — Initialize project, core contracts, and Igniter installer
 **UI hint**: yes
 
 ### Phase 1: Worker Ergonomics & Idempotency
@@ -30,7 +30,7 @@
   2. Attempting to enqueue a job with invalid parameters synchronously yields an Ecto changeset error.
   3. A duplicate enqueue operation returns `{:conflict, existing_job}` and respects durable Idempotency Receipts across worker crashes.
 **Plans**:
-- [ ] 1-PLAN.md — Worker Ergonomics & Idempotency implementation
+- [x] 1-PLAN.md — Worker Ergonomics & Idempotency implementation
 
 ### Phase 2: Smart Engine Limits & Cron
 **Goal**: Operations are safely throttled and scheduled without deadlocking or spamming external APIs.
@@ -40,7 +40,12 @@
   1. A partitioned rate limiter enforces strict token bucket constraints (e.g., max 100 jobs/min per user_id).
   2. The UI explicitly visualizes the reason a job is blocked using the `explain/1` output.
   3. A dynamic cron job honors explicit overlap policies instead of spamming duplicates during slow executions.
-**Plans**: TBD
+**Plans**:
+- [x] 2-01-PLAN.md — Smart-engine persistence contracts
+- [x] 2-02-PLAN.md — Worker limits DSL and limiter reservation engine
+- [x] 2-03-PLAN.md — Explain contract, telemetry, and audit normalization
+- [x] 2-04-PLAN.md — Dynamic cron engine and slot-ledger policies
+- [x] 2-05-PLAN.md — Native operator UI, auth gating, and preview-first actions
 **UI hint**: yes
 
 ### Phase 3: Workflows (DAGs) & Signaling
@@ -51,7 +56,12 @@
   1. A workflow definition correctly inserts normalized nodes and edges into `oban_powertools_workflows`.
   2. Completing a parent step unblocks child steps almost instantaneously via Phoenix PubSub signaling.
   3. Operators can visually identify the exact blocked step in a nested workflow via the Web UI.
-**Plans**: TBD
+**Plans**:
+- [x] 3-01-PLAN.md — Workflow persistence contracts
+- [x] 3-02-PLAN.md — Builder API and normalized insert path
+- [x] 3-03-PLAN.md — Runtime completion, results, and blocker explanations
+- [x] 3-04-PLAN.md — Coordinator signaling, telemetry, and audit hooks
+- [x] 3-05-PLAN.md — Native workflow routes and read-only LiveView
 **UI hint**: yes
 
 ### Phase 4: Lifeline & Repair Center
@@ -63,7 +73,12 @@
   2. SREs can execute a "Dry-Run" on a stuck workflow to preview state changes before committing.
   3. Any manual intervention via the UI immediately writes an immutable record to the Threadline audit events table.
   4. The database is kept lean via an automated pruner that archives data before deletion.
-**Plans**: TBD
+**Plans**:
+- [x] 4-01-PLAN.md — Phase 4 persistence contracts
+- [x] 4-02-PLAN.md — Heartbeat writer and incident projection backend
+- [x] 4-03-PLAN.md — Repair preview, execute, and audit backend
+- [x] 4-04-PLAN.md — Archive/prune retention backend
+- [ ] 4-05-PLAN.md — Native Lifeline route and LiveView UI
 **UI hint**: yes
 
 ## Progress
@@ -71,7 +86,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 0. Foundation & Bridge | 1/1 | Completed | 2026-05-18 |
-| 1. Worker Ergonomics & Idempotency | 0/1 | Not started | - |
-| 2. Smart Engine Limits & Cron | 0/0 | Not started | - |
-| 3. Workflows (DAGs) & Signaling | 0/0 | Not started | - |
-| 4. Lifeline & Repair Center | 0/0 | Not started | - |
+| 1. Worker Ergonomics & Idempotency | 1/1 | Completed | 2026-05-19 |
+| 2. Smart Engine Limits & Cron | 5/5 | Completed | 2026-05-19 |
+| 3. Workflows (DAGs) & Signaling | 5/5 | Completed | 2026-05-19 |
+| 4. Lifeline & Repair Center | 4/5 | In progress | - |
