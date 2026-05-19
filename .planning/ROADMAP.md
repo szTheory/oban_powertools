@@ -29,7 +29,8 @@
   1. Compiling a worker with invalid schema definitions raises explicit compile-time errors.
   2. Attempting to enqueue a job with invalid parameters synchronously yields an Ecto changeset error.
   3. A duplicate enqueue operation returns `{:conflict, existing_job}` and respects durable Idempotency Receipts across worker crashes.
-**Plans**: TBD
+**Plans**:
+- [ ] 1-PLAN.md — Worker Ergonomics & Idempotency implementation
 
 ### Phase 2: Smart Engine Limits & Cron
 **Goal**: Operations are safely throttled and scheduled without deadlocking or spamming external APIs.
@@ -70,7 +71,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 0. Foundation & Bridge | 1/1 | Completed | 2026-05-18 |
-| 1. Worker Ergonomics & Idempotency | 0/0 | Not started | - |
+| 1. Worker Ergonomics & Idempotency | 0/1 | Not started | - |
 | 2. Smart Engine Limits & Cron | 0/0 | Not started | - |
 | 3. Workflows (DAGs) & Signaling | 0/0 | Not started | - |
 | 4. Lifeline & Repair Center | 0/0 | Not started | - |
