@@ -110,8 +110,17 @@ defmodule ObanPowertools.Web.CronLiveTest do
     assert html =~ "disabled"
     assert html =~ "You do not have permission to pause cron entries."
 
+    html =
+      render_click(view, "preview", %{
+        "action" => "pause_cron_entry",
+        "entry" => "unauthorized-preview"
+      })
+
+    assert html =~ "You do not have permission to pause cron entries."
     refute has_element?(view, "h2", "Preview Action")
     refute_receive {:telemetry_event, [:oban_powertools, :operator_action, :previewed], _, _}
+    refute_receive {:telemetry_event, [:oban_powertools, :operator_action, :complete], _, _}
+    assert Audit.list(%{type: :cron_entry, id: "unauthorized-preview"}, repo: TestRepo) == []
   end
 
   test "renders disabled cron actions with inline permission explanations for viewers", %{
