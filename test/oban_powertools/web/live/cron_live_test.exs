@@ -90,4 +90,30 @@ defmodule ObanPowertools.Web.CronLiveTest do
 
     assert html =~ "not authorized to perform this action"
   end
+
+  test "blocks unauthorized cron preview before preview state or telemetry", %{conn: conn} do
+    {:ok, _} =
+      Cron.sync_entry(TestRepo, %{
+        name: "unauthorized-preview",
+        source: "runtime",
+        worker: "DemoWorker",
+        queue: "default",
+        expression: "* * * * *"
+      })
+
+    conn =
+      Plug.Test.init_test_session(conn, current_actor: %{id: "ops-4", permissions: [:view_cron]})
+
+    {:ok, view, _html} = live(conn, "/ops/jobs/cron")
+
+    html =
+      view
+      |> element("button[phx-value-action='pause_cron_entry']")
+      |> render_click()
+
+    refute html =~ "Preview Action"
+    assert html =~ "You do not have permission to pause cron entries."
+
+    refute_receive {:telemetry_event, [:oban_powertools, :operator_action, :previewed], _, _}
+  end
 end
