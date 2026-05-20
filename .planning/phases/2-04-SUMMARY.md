@@ -1,3 +1,19 @@
+---
+phase: 2
+plan: 04
+subsystem: cron
+tags: [cron, overlap, catch-up, audit]
+requires:
+  - phase: 2
+    provides: durable cron entry and slot persistence
+provides:
+  - durable cron slot claiming and overlap handling
+  - audited pause, resume, and run-now flows
+requirements-completed: []
+retrospective-proof-added-in: Phase 5
+completed: 2026-05-19
+---
+
 # Phase 2 Plan 04 Summary
 
 ## Outcome
@@ -12,3 +28,7 @@ Implemented the durable cron engine on top of the Phase 2 persistence tables.
 ## Verification
 - `mix test test/oban_powertools/cron_test.exs`
 - Included in the final combined Phase 2 verification run on 2026-05-19.
+
+## Retrospective Traceability Note
+
+The durable cron engine exists and is tested, but `ENG-03` remains deferred because the native preview flow still exposes preview-state behavior before authorization is enforced.

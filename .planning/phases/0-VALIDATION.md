@@ -29,3 +29,6 @@ The following test files provide complete coverage for the defined must-haves an
 - `test/oban_powertools/telemetry_test.exs`
 - `test/oban_powertools/auth_test.exs`
 - `test/oban_powertools/web/router_test.exs`
+
+## Deferred Gaps
+- `FND-01` and `FND-02` still require runtime wiring hardening in Phase 6, so Phase 0 verification records those requirements as deferred even though the underlying tests pass.

@@ -28,7 +28,7 @@ key-decisions:
   - "Phase 4 storage stays explicit and Postgres-native before any runtime or UI behavior lands."
 patterns-established:
   - "Installer migration contract and repo-backed test migration stay in lockstep."
-requirements-completed: [LIF-01, LIF-02, LIF-03, LIF-04]
+requirements-completed: []
 duration: checkpoint
 completed: 2026-05-19
 ---

@@ -23,7 +23,7 @@ key-decisions:
   - "Heartbeat samples are pruned directly; only manual repair evidence is archived."
 patterns-established:
   - "Retention runs persist a run record and fail closed when archive persistence breaks."
-requirements-completed: [LIF-03, LIF-04]
+requirements-completed: [LIF-04]
 duration: checkpoint
 completed: 2026-05-19
 ---

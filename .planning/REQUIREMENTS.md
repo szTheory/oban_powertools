@@ -30,21 +30,26 @@
 
 ## Traceability
 
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| FND-01      | Phase 6 | Pending |
-| FND-02      | Phase 6 | Pending |
-| FND-03      | Phase 5 | Pending |
-| WRK-01      | Phase 5 | Pending |
-| WRK-02      | Phase 5 | Pending |
-| WRK-03      | Phase 5 | Pending |
-| ENG-01      | Phase 5 | Pending |
-| ENG-02      | Phase 5 | Pending |
-| ENG-03      | Phase 6 | Pending |
-| WF-01       | Phase 5 | Pending |
-| WF-02       | Phase 5 | Pending |
-| WF-03       | Phase 5 | Pending |
-| LIF-01      | Phase 5 | Pending |
-| LIF-02      | Phase 7 | Pending |
-| LIF-03      | Phase 5 | Pending |
-| LIF-04      | Phase 5 | Pending |
+Evidence contract:
+- `Implementation Owner` preserves the phase that originally delivered the behavior.
+- `Evidence Closure Phase` identifies the phase responsible for closing the repo-local proof chain.
+- `Proof Status` is one of `closed`, `deferred`, or `open_gap`.
+
+| Requirement | Implementation Owner | Evidence Closure Phase | Proof Status | Summary Evidence | Verification Evidence | Notes |
+|-------------|----------------------|------------------------|--------------|------------------|-----------------------|-------|
+| FND-01 | Phase 0 | Phase 6 | deferred | `0-01-SUMMARY.md` | `0-VERIFICATION.md` | Installer/runtime wiring gap remains open for Phase 6. |
+| FND-02 | Phase 0 | Phase 6 | deferred | `0-01-SUMMARY.md` | `0-VERIFICATION.md` | Runtime auth/telemetry wiring gap remains open for Phase 6. |
+| FND-03 | Phase 0 | Phase 5 | closed | `0-01-SUMMARY.md` | `0-VERIFICATION.md` | Native shell strategy is implemented and now evidence-backed. |
+| WRK-01 | Phase 1 | Phase 5 | closed | `1-01-SUMMARY.md` | `1-VERIFICATION.md` | Compile-time worker arg validation is proven by current tests. |
+| WRK-02 | Phase 1 | Phase 5 | closed | `1-01-SUMMARY.md` | `1-VERIFICATION.md` | Synchronous enqueue validation is proven by current tests. |
+| WRK-03 | Phase 1 | Phase 5 | closed | `1-01-SUMMARY.md` | `1-VERIFICATION.md` | Durable idempotency receipts are proven by current tests. |
+| ENG-01 | Phase 2 | Phase 5 | closed | `2-01-SUMMARY.md`, `2-02-SUMMARY.md` | `2-VERIFICATION.md` | Durable limiter persistence and reservation behavior are evidence-closed. |
+| ENG-02 | Phase 2 | Phase 5 | closed | `2-03-SUMMARY.md`, `2-05-SUMMARY.md` | `2-VERIFICATION.md` | Explain contract and native operator visibility are evidence-closed. |
+| ENG-03 | Phase 2 | Phase 6 | deferred | `2-04-SUMMARY.md` | `2-VERIFICATION.md` | Cron auth-ordering defect remains open for Phase 6. |
+| WF-01 | Phase 3 | Phase 5 | closed | `3-01-SUMMARY.md`, `3-02-SUMMARY.md` | `3-VERIFICATION.md` | Durable workflow persistence and builder insertion are evidence-closed. |
+| WF-02 | Phase 3 | Phase 5 | closed | `3-03-SUMMARY.md`, `3-04-SUMMARY.md` | `3-VERIFICATION.md` | Runtime reconciliation and coordinator signaling are evidence-closed. |
+| WF-03 | Phase 3 | Phase 5 | closed | `3-05-SUMMARY.md` | `3-VERIFICATION.md` | Native workflow inspection UI is evidence-closed. |
+| LIF-01 | Phase 4 | Phase 5 | closed | `4-02-SUMMARY.md` | `4-VERIFICATION.md` | Durable heartbeat and incident projection are evidence-closed. |
+| LIF-02 | Phase 4 | Phase 7 | open_gap | `4-03-SUMMARY.md`, `4-05-SUMMARY.md` | `4-VERIFICATION.md` | Repair execution still fails to retire active incidents; tracked for Phase 7. |
+| LIF-03 | Phase 4 | Phase 5 | closed | `4-03-SUMMARY.md`, `4-05-SUMMARY.md` | `4-VERIFICATION.md` | Manual repair audit evidence is current and verified. |
+| LIF-04 | Phase 4 | Phase 5 | closed | `4-04-SUMMARY.md`, `4-05-SUMMARY.md` | `4-VERIFICATION.md` | Archive-before-delete retention is current and verified. |

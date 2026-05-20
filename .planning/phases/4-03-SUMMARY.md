@@ -24,7 +24,7 @@ key-decisions:
   - "Execute rechecks plan hash drift and consumes previews once."
 patterns-established:
   - "Manual mutation, preview consumption, and audit insert happen in one transaction."
-requirements-completed: [LIF-02, LIF-03]
+requirements-completed: [LIF-03]
 duration: checkpoint
 completed: 2026-05-19
 ---

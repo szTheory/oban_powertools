@@ -93,7 +93,12 @@
   1. Each completed phase has the required verification and validation artifacts, and missing Phase 2/3 summary outputs/frontmatter are restored.
   2. `REQUIREMENTS.md` matches the restored summary and verification evidence for every requirement assigned to this phase.
   3. Re-running the milestone audit no longer reports orphaned requirements for these requirements.
-**Plans**: None yet
+**Plans**:
+- [x] 5-01-PLAN.md — Traceability contract and Phase 0 evidence repair
+- [x] 5-02-PLAN.md — Phase 1 worker evidence restoration
+- [x] 5-03-PLAN.md — Phase 2 summary and smart-engine evidence restoration
+- [x] 5-04-PLAN.md — Phase 3 workflow evidence normalization
+- [x] 5-05-PLAN.md — Phase 4 evidence repair and milestone audit rerun
 
 ### Phase 6: Runtime Config & Authorization Hardening
 **Goal**: Close the shared foundational safety gaps in installer/runtime wiring and cron authorization ordering.
@@ -126,6 +131,6 @@
 | 2. Smart Engine Limits & Cron | 5/5 | Completed | 2026-05-19 |
 | 3. Workflows (DAGs) & Signaling | 5/5 | Completed | 2026-05-19 |
 | 4. Lifeline & Repair Center | 5/5 | Completed | 2026-05-19 |
-| 5. Milestone Evidence & Traceability Closure | 0/0 | Planned | — |
+| 5. Milestone Evidence & Traceability Closure | 5/5 | Completed | 2026-05-20 |
 | 6. Runtime Config & Authorization Hardening | 0/0 | Planned | — |
 | 7. Lifeline Incident Closure Integrity | 0/0 | Planned | — |

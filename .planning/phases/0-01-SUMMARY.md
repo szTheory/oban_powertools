@@ -1,13 +1,13 @@
 ---
 phase: 0
 plan: 01
-subsystem: Core
+subsystem: core
 tags: [igniter, ecto, auth, telemetry]
 requires: []
 provides: [oban_powertools.install, ObanPowertools.Auth, ObanPowertools.Telemetry, ObanPowertools.Web.Router]
 affects: [mix.exs, lib/mix/tasks/oban_powertools.install.ex, lib/oban_powertools/auth.ex, lib/oban_powertools/telemetry.ex, lib/oban_powertools/web/router.ex]
 tech_stack_added: [igniter, telemetry, jason, oban_web]
-tech_stack_patterns: [Host-Owned, Ecto-Native]
+tech_stack_patterns: [host-owned, ecto-native]
 key_files_created:
   - lib/mix/tasks/oban_powertools.install.ex
   - lib/oban_powertools.ex
@@ -20,6 +20,8 @@ key_decisions:
   - "Used Igniter.Mix.Task to build the setup task and inject configuration into the host app."
   - "Defined strict `ObanPowertools.Auth` behaviour."
   - "Telemetry wrapped to enforce low-cardinality metadata tags."
+requirements-completed: [FND-03]
+retrospective-proof-added-in: Phase 5
 metrics:
   duration_minutes: 15
   completed_date: "2026-05-18"
@@ -34,6 +36,12 @@ Implement Oban Powertools core contracts and Igniter installation task.
 - Task 1: Project Initialization (ced2a92)
 - Task 2: Core Contracts (Auth, Telemetry, Router) (21a9e54, fe8ab1e)
 - Task 3: Igniter Installer (b64758a)
+
+## Retrospective Traceability Note
+
+Phase 5 normalized this summary so the evidence chain stays historically honest:
+- `FND-03` is closed by current router verification and this summary metadata.
+- `FND-01` and `FND-02` remain deferred because the installer/runtime wiring gaps are still open and are tracked in Phase 6.
 
 ## Deviations from Plan
 

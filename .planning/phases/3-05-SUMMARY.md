@@ -1,3 +1,19 @@
+---
+phase: 3
+plan: 05
+subsystem: web
+tags: [workflow, liveview, ui, ops]
+requires:
+  - phase: 3
+    provides: workflow runtime and blocker explanation contracts
+provides:
+  - native `/ops/jobs/workflows` UI
+  - blocked-step and dependency inspection flows
+requirements-completed: [WF-03]
+retrospective-proof-added-in: Phase 5
+completed: 2026-05-19
+---
+
 # Phase 3 Plan 05 Summary
 
 ## Completed

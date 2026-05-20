@@ -29,7 +29,7 @@ key-decisions:
   - "Archive activity is visible in the UI, but retention policy editing remains out of scope for Phase 4."
 patterns-established:
   - "Lifeline repair flows reuse the existing page auth and compact LiveView shell patterns from prior native operator pages."
-requirements-completed: [LIF-02, LIF-03, LIF-04]
+requirements-completed: [LIF-03, LIF-04]
 duration: checkpoint
 completed: 2026-05-19
 ---
@@ -64,3 +64,7 @@ None.
 
 ## Next Phase Readiness
 Phase 4 now has its native Lifeline operator surface on top of the completed backend contracts.
+
+## Retrospective Traceability Note
+
+The page and repair workflow are implemented, but `LIF-02` remains open until the repaired incident is actually retired from the active incident projection flow in Phase 7.

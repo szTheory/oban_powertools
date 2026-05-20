@@ -1,3 +1,20 @@
+---
+phase: 2
+plan: 05
+subsystem: web
+tags: [liveview, cron, limiters, audit, ops]
+requires:
+  - phase: 2
+    provides: explain contract and durable cron engine
+provides:
+  - native `/ops/jobs` smart-engine pages
+  - explanation-first limiter detail UI
+  - preview-first cron actions with audit visibility
+requirements-completed: [ENG-02]
+retrospective-proof-added-in: Phase 5
+completed: 2026-05-19
+---
+
 # Phase 2 Plan 05 Summary
 
 ## Outcome

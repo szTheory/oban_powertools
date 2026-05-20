@@ -35,3 +35,6 @@ The following test files are expected to prove the phase must-haves and success 
 - `test/oban_powertools/web/live/cron_live_test.exs`
 - `test/oban_powertools/web/live/audit_live_test.exs`
 - `test/oban_powertools/telemetry_test.exs`
+
+## Deferred Gap
+- `ENG-03` is only partially satisfied by the current codebase because cron preview authorization still needs Phase 6 hardening; Phase 2 verification records that requirement as deferred even though the durable cron engine itself is implemented.
