@@ -89,13 +89,7 @@ defmodule ObanPowertools.Web.CronLiveTest do
     assert html =~ "disabled"
     assert html =~ "You do not have permission to pause cron entries."
 
-    html =
-      view
-      |> element("button[phx-value-action='pause_cron_entry']")
-      |> render_click()
-
-    refute html =~ "Preview Action"
-    assert html =~ "You do not have permission to pause cron entries."
+    refute has_element?(view, "h2", "Preview Action")
   end
 
   test "blocks unauthorized cron preview before preview state or telemetry", %{conn: conn} do
@@ -116,14 +110,7 @@ defmodule ObanPowertools.Web.CronLiveTest do
     assert html =~ "disabled"
     assert html =~ "You do not have permission to pause cron entries."
 
-    html =
-      view
-      |> element("button[phx-value-action='pause_cron_entry']")
-      |> render_click()
-
-    refute html =~ "Preview Action"
-    assert html =~ "You do not have permission to pause cron entries."
-
+    refute has_element?(view, "h2", "Preview Action")
     refute_receive {:telemetry_event, [:oban_powertools, :operator_action, :previewed], _, _}
   end
 

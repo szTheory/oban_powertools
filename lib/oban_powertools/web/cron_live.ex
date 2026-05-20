@@ -123,36 +123,22 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 </td>
                 <td class="px-4 py-3"><%= if entry.paused_at, do: "Paused", else: "Runnable" %></td>
                 <td class="px-4 py-3">
-                  <div class="flex flex-wrap gap-2">
-                    <button
-                      :if={is_nil(entry.paused_at)}
-                      type="button"
-                      phx-click="preview"
-                      phx-value-action="pause_cron_entry"
-                      phx-value-entry={entry.name}
-                      class="rounded border px-3 py-2"
-                    >
-                      Pause Cron Entry
-                    </button>
-                    <button
-                      :if={not is_nil(entry.paused_at)}
-                      type="button"
-                      phx-click="preview"
-                      phx-value-action="resume_cron_entry"
-                      phx-value-entry={entry.name}
-                      class="rounded border px-3 py-2"
-                    >
-                      Resume Cron Entry
-                    </button>
-                    <button
-                      type="button"
-                      phx-click="preview"
-                      phx-value-action="run_cron_entry"
-                      phx-value-entry={entry.name}
-                      class="rounded bg-indigo-600 px-3 py-2 text-white"
-                    >
-                      Run Now
-                    </button>
+                  <div class="space-y-3">
+                    <div :for={action <- entry_actions(entry, @current_actor)} class="space-y-1">
+                      <button
+                        type="button"
+                        phx-click="preview"
+                        phx-value-action={action.action}
+                        phx-value-entry={entry.name}
+                        disabled={not action.enabled?}
+                        class={action_button_class(action)}
+                      >
+                        <%= action.label %>
+                      </button>
+                      <p :if={not action.enabled?} class="text-xs text-zinc-500">
+                        <%= action.disabled_reason %>
+                      </p>
+                    </div>
                   </div>
                 </td>
               </tr>
@@ -226,6 +212,49 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp preview_copy("run_cron_entry", entry),
       do: "Run #{entry.name} now. This may enqueue work immediately based on overlap policy."
+
+    defp entry_actions(entry, actor) do
+      entry
+      |> base_actions()
+      |> Enum.map(fn action ->
+        Map.put(
+          action,
+          :enabled?,
+          Auth.authorize(actor, auth_action(action.action), %{type: :cron_entry, id: entry.name})
+        )
+      end)
+      |> Enum.map(fn action ->
+        Map.put(action, :disabled_reason, disabled_reason(action))
+      end)
+    end
+
+    defp base_actions(%{paused_at: nil}) do
+      [
+        %{action: "pause_cron_entry", label: "Pause Cron Entry", emphasis: :secondary},
+        %{action: "run_cron_entry", label: "Run Now", emphasis: :primary}
+      ]
+    end
+
+    defp base_actions(_entry) do
+      [
+        %{action: "resume_cron_entry", label: "Resume Cron Entry", emphasis: :secondary},
+        %{action: "run_cron_entry", label: "Run Now", emphasis: :primary}
+      ]
+    end
+
+    defp disabled_reason(%{enabled?: true}), do: nil
+    defp disabled_reason(%{action: "pause_cron_entry"}), do: unauthorized_preview_message("pause_cron_entry")
+    defp disabled_reason(%{action: "resume_cron_entry"}), do: unauthorized_preview_message("resume_cron_entry")
+    defp disabled_reason(%{action: "run_cron_entry"}), do: unauthorized_preview_message("run_cron_entry")
+
+    defp action_button_class(%{enabled?: true, emphasis: :primary}),
+      do: "rounded bg-indigo-600 px-3 py-2 text-white"
+
+    defp action_button_class(%{enabled?: true}),
+      do: "rounded border px-3 py-2"
+
+    defp action_button_class(_action),
+      do: "cursor-not-allowed rounded border border-zinc-200 px-3 py-2 text-zinc-400"
 
     defp unauthorized_preview_message("pause_cron_entry"),
       do: "You do not have permission to pause cron entries."
