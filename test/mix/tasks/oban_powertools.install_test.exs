@@ -101,4 +101,14 @@ defmodule Mix.Tasks.ObanPowertools.InstallTest do
     assert source =~ "create table(:oban_powertools_repair_archives, primary_key: false)"
     assert source =~ "add :archived_at, :utc_datetime_usec, null: false"
   end
+
+  test "installer emits explicit runtime wiring for repo and auth module" do
+    source =
+      "lib/mix/tasks/oban_powertools.install.ex"
+      |> File.read!()
+
+    assert source =~ "config :oban_powertools"
+    assert source =~ "repo:"
+    assert source =~ "auth_module:"
+  end
 end
