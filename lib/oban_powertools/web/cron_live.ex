@@ -25,13 +25,29 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     @impl true
     def handle_event("preview", %{"action" => action, "entry" => entry_name}, socket) do
       entry = find_entry!(entry_name)
+      resource = %{type: :cron_entry, id: entry.name}
 
-      Telemetry.execute_operator_action(:previewed, %{count: 1}, %{
-        action: action,
-        source: entry.source
-      })
+      with :ok <-
+             LiveAuth.authorize_action(socket, auth_action(action), resource,
+               message: unauthorized_preview_message(action)
+             ) do
+        Telemetry.execute_operator_action(:previewed, %{count: 1}, %{
+          action: action,
+          source: entry.source
+        })
 
-      {:noreply, assign(socket, :preview, %{action: action, entry: entry})}
+        {:noreply,
+         socket
+         |> assign(:preview, %{action: action, entry: entry})
+         |> assign(:error_message, nil)}
+      else
+        {:error, message} ->
+          {:noreply,
+           socket
+           |> assign(:preview, nil)
+           |> assign(:reason, "")
+           |> assign(:error_message, message)}
+      end
     end
 
     def handle_event("reason", %{"reason" => reason}, socket) do
@@ -79,6 +95,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             Code and Runtime ownership stay visible. Mutations stay preview-first.
           </p>
         </div>
+
+        <p :if={@error_message} class="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <%= @error_message %>
+        </p>
 
         <div class="overflow-hidden rounded-lg border bg-white">
           <table class="min-w-full divide-y">
@@ -206,6 +226,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp preview_copy("run_cron_entry", entry),
       do: "Run #{entry.name} now. This may enqueue work immediately based on overlap policy."
+
+    defp unauthorized_preview_message("pause_cron_entry"),
+      do: "You do not have permission to pause cron entries."
+
+    defp unauthorized_preview_message("resume_cron_entry"),
+      do: "You do not have permission to resume cron entries."
+
+    defp unauthorized_preview_message("run_cron_entry"),
+      do: "You do not have permission to run cron entries now."
 
     defp recent_audit(entries) do
       entry_names = MapSet.new(Enum.map(entries, &"cron_entry:#{&1.name}"))

@@ -71,7 +71,7 @@ defmodule ObanPowertools.Web.CronLiveTest do
     assert event.metadata["reason"] == "maintenance"
   end
 
-  test "blocks unauthorized cron mutation at confirm time", %{conn: conn} do
+  test "blocks unauthorized cron mutation before preview state", %{conn: conn} do
     {:ok, _} =
       Cron.sync_entry(TestRepo, %{
         name: "runtime-sync",
@@ -85,10 +85,14 @@ defmodule ObanPowertools.Web.CronLiveTest do
       Plug.Test.init_test_session(conn, current_actor: %{id: "ops-2", permissions: [:view_cron]})
 
     {:ok, view, _html} = live(conn, "/ops/jobs/cron")
-    render_click(element(view, "button[phx-value-action='pause_cron_entry']"))
-    html = render_click(view, "confirm", %{})
 
-    assert html =~ "not authorized to perform this action"
+    html =
+      view
+      |> element("button[phx-value-action='pause_cron_entry']")
+      |> render_click()
+
+    refute html =~ "Preview Action"
+    assert html =~ "You do not have permission to pause cron entries."
   end
 
   test "blocks unauthorized cron preview before preview state or telemetry", %{conn: conn} do

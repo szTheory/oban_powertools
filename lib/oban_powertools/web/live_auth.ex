@@ -20,11 +20,11 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       end
     end
 
-    def authorize_action(socket, action, resource) do
+    def authorize_action(socket, action, resource, opts \\ []) do
       if Auth.authorize(Map.get(socket.assigns, :current_actor), action, resource) do
         :ok
       else
-        {:error, "You are not authorized to perform this action."}
+        {:error, Keyword.get(opts, :message, "You are not authorized to perform this action.")}
       end
     end
   end
