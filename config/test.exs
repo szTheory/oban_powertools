@@ -8,7 +8,17 @@ config :oban_powertools, ObanPowertools.TestRepo,
 
 config :oban_powertools,
   ecto_repos: [ObanPowertools.TestRepo],
-  repo: ObanPowertools.TestRepo
+  repo: ObanPowertools.TestRepo,
+  auth_module: ObanPowertools.TestAuth
+
+config :oban_powertools, ObanPowertools.TestEndpoint,
+  url: [host: "localhost"],
+  secret_key_base: String.duplicate("a", 64),
+  server: false,
+  live_view: [signing_salt: "oban-powertools-live"],
+  pubsub_server: ObanPowertools.PubSub
+
+config :phoenix, :json_library, Jason
 
 config :oban,
   repo: ObanPowertools.TestRepo,

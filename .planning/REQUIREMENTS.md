@@ -32,19 +32,19 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FND-01      | Phase 0 | Complete |
-| FND-02      | Phase 0 | Complete |
-| FND-03      | Phase 0 | Complete |
-| WRK-01      | Phase 1 | Pending |
-| WRK-02      | Phase 1 | Pending |
-| WRK-03      | Phase 1 | Pending |
-| ENG-01      | Phase 2 | Pending |
-| ENG-02      | Phase 2 | Pending |
-| ENG-03      | Phase 2 | Pending |
-| WF-01       | Phase 3 | Pending |
-| WF-02       | Phase 3 | Pending |
-| WF-03       | Phase 3 | Pending |
-| LIF-01      | Phase 4 | Pending |
-| LIF-02      | Phase 4 | Pending |
-| LIF-03      | Phase 4 | Pending |
-| LIF-04      | Phase 4 | Pending |
+| FND-01      | Phase 6 | Pending |
+| FND-02      | Phase 6 | Pending |
+| FND-03      | Phase 5 | Pending |
+| WRK-01      | Phase 5 | Pending |
+| WRK-02      | Phase 5 | Pending |
+| WRK-03      | Phase 5 | Pending |
+| ENG-01      | Phase 5 | Pending |
+| ENG-02      | Phase 5 | Pending |
+| ENG-03      | Phase 6 | Pending |
+| WF-01       | Phase 5 | Pending |
+| WF-02       | Phase 5 | Pending |
+| WF-03       | Phase 5 | Pending |
+| LIF-01      | Phase 5 | Pending |
+| LIF-02      | Phase 7 | Pending |
+| LIF-03      | Phase 5 | Pending |
+| LIF-04      | Phase 5 | Pending |

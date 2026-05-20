@@ -5,7 +5,10 @@
 - [x] **Phase 1: Worker Ergonomics & Idempotency** - Introduce typed args validation and durable idempotency receipts.
 - [x] **Phase 2: Smart Engine Limits & Cron** - Implement atomic global limiters, explainable blocks, and dynamic scheduling.
 - [x] **Phase 3: Workflows (DAGs) & Signaling** - Deliver explicit persisted DAGs with PubSub-driven rapid step progression.
-- [ ] **Phase 4: Lifeline & Repair Center** - Deliver heartbeat monitoring and an auditable dry-run repair UI for Day-2 Ops.
+- [x] **Phase 4: Lifeline & Repair Center** - Deliver heartbeat monitoring and an auditable dry-run repair UI for Day-2 Ops.
+- [ ] **Phase 5: Milestone Evidence & Traceability Closure** - Restore verification artifacts, missing summaries, and requirement traceability needed to close the audit.
+- [ ] **Phase 6: Runtime Config & Authorization Hardening** - Fix installer/runtime wiring gaps and enforce authorization before cron preview behavior.
+- [ ] **Phase 7: Lifeline Incident Closure Integrity** - Ensure repairs retire active incidents and the full incident closure flow stays consistent.
 
 ## Phase Details
 
@@ -78,8 +81,41 @@
 - [x] 4-02-PLAN.md — Heartbeat writer and incident projection backend
 - [x] 4-03-PLAN.md — Repair preview, execute, and audit backend
 - [x] 4-04-PLAN.md — Archive/prune retention backend
-- [ ] 4-05-PLAN.md — Native Lifeline route and LiveView UI
+- [x] 4-05-PLAN.md — Native Lifeline route and LiveView UI
 **UI hint**: yes
+
+### Phase 5: Milestone Evidence & Traceability Closure
+**Goal**: Restore audit-grade verification artifacts, missing summaries, and traceability so completed milestone work can be formally proven complete.
+**Depends on**: Phase 4
+**Requirements**: FND-03, WRK-01, WRK-02, WRK-03, ENG-01, ENG-02, WF-01, WF-02, WF-03, LIF-01, LIF-03, LIF-04
+**Gap Closure**: Closes orphaned requirement evidence, missing Phase 2/3 summary artifacts, and stale traceability from the v1 milestone audit.
+**Success Criteria**:
+  1. Each completed phase has the required verification and validation artifacts, and missing Phase 2/3 summary outputs/frontmatter are restored.
+  2. `REQUIREMENTS.md` matches the restored summary and verification evidence for every requirement assigned to this phase.
+  3. Re-running the milestone audit no longer reports orphaned requirements for these requirements.
+**Plans**: None yet
+
+### Phase 6: Runtime Config & Authorization Hardening
+**Goal**: Close the shared foundational safety gaps in installer/runtime wiring and cron authorization ordering.
+**Depends on**: Phase 4
+**Requirements**: FND-01, FND-02, ENG-03
+**Gap Closure**: Closes the installer runtime config gap and the cron preview authorization gap from the v1 milestone audit.
+**Success Criteria**:
+  1. Installer output wires the required repo and auth runtime dependencies without relying on test-only configuration.
+  2. Cron preview and related mutation surfaces enforce authorization before preview-state behavior is exposed.
+  3. Verification proves the runtime wiring and authorization flow in host-app-like conditions.
+**Plans**: None yet
+
+### Phase 7: Lifeline Incident Closure Integrity
+**Goal**: Ensure repair execution fully resolves the active incident lifecycle and preserves a clean end-to-end repair flow.
+**Depends on**: Phase 4
+**Requirements**: LIF-02
+**Gap Closure**: Closes the broken post-repair incident retirement flow identified by the v1 milestone audit.
+**Success Criteria**:
+  1. Successful repair execution retires or resolves the acted-on incident record.
+  2. Refreshing the Lifeline UI after repair does not re-project the repaired incident as active.
+  3. Verification covers the full heartbeat -> projection -> repair -> closure flow.
+**Plans**: None yet
 
 ## Progress
 
@@ -89,4 +125,7 @@
 | 1. Worker Ergonomics & Idempotency | 1/1 | Completed | 2026-05-19 |
 | 2. Smart Engine Limits & Cron | 5/5 | Completed | 2026-05-19 |
 | 3. Workflows (DAGs) & Signaling | 5/5 | Completed | 2026-05-19 |
-| 4. Lifeline & Repair Center | 4/5 | In progress | - |
+| 4. Lifeline & Repair Center | 5/5 | Completed | 2026-05-19 |
+| 5. Milestone Evidence & Traceability Closure | 0/0 | Planned | — |
+| 6. Runtime Config & Authorization Hardening | 0/0 | Planned | — |
+| 7. Lifeline Incident Closure Integrity | 0/0 | Planned | — |

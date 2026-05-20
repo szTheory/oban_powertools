@@ -20,12 +20,19 @@ defmodule ObanPowertools.IdempotencyTest do
   test "enqueue/2 returns conflict on duplicate" do
     assert {:ok, job1} = MockWorker.enqueue(%{id: 456})
     assert {:conflict, job2} = MockWorker.enqueue(%{id: 456})
-    
+
     assert job1.id == job2.id
   end
 
   test "enqueue/2 returns error on invalid args" do
     assert {:error, %Ecto.Changeset{}} = MockWorker.enqueue(%{id: "not-int"})
+  end
+
+  test "fingerprints are stable across map key ordering" do
+    assert {:ok, job1} = MockWorker.enqueue(%{id: 789})
+    assert {:conflict, job2} = Idempotency.transaction(MockWorker, %{id: 789})
+
+    assert job1.id == job2.id
   end
 
   defp repo, do: ObanPowertools.TestRepo

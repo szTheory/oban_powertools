@@ -32,7 +32,8 @@ defmodule ObanPowertools.MixProject do
       {:oban, "~> 2.18"},
       {:ecto_sql, "~> 3.10"},
       {:postgrex, "~> 0.17"},
-      {:oban_web, "~> 2.10", optional: true}
+      {:oban_web, "~> 2.10", optional: true},
+      {:lazy_html, ">= 0.1.0", only: :test}
     ]
   end
 end
