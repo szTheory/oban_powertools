@@ -37,15 +37,15 @@ Evidence contract:
 
 | Requirement | Implementation Owner | Evidence Closure Phase | Proof Status | Summary Evidence | Verification Evidence | Notes |
 |-------------|----------------------|------------------------|--------------|------------------|-----------------------|-------|
-| FND-01 | Phase 0 | Phase 6 | deferred | `0-01-SUMMARY.md` | `0-VERIFICATION.md` | Installer/runtime wiring gap remains open for Phase 6. |
-| FND-02 | Phase 0 | Phase 6 | deferred | `0-01-SUMMARY.md` | `0-VERIFICATION.md` | Runtime auth/telemetry wiring gap remains open for Phase 6. |
+| FND-01 | Phase 0 | Phase 6 | closed | `0-01-SUMMARY.md`, `6-01-SUMMARY.md` | `0-VERIFICATION.md`, `6-VERIFICATION.md` | Phase 6 adds explicit installer/runtime wiring and host-like verification for the repo contract. |
+| FND-02 | Phase 0 | Phase 6 | closed | `0-01-SUMMARY.md`, `6-01-SUMMARY.md`, `6-02-SUMMARY.md` | `0-VERIFICATION.md`, `6-VERIFICATION.md` | Phase 6 closes the runtime auth wiring and auth-before-preview web behavior gaps. |
 | FND-03 | Phase 0 | Phase 5 | closed | `0-01-SUMMARY.md` | `0-VERIFICATION.md` | Native shell strategy is implemented and now evidence-backed. |
 | WRK-01 | Phase 1 | Phase 5 | closed | `1-01-SUMMARY.md` | `1-VERIFICATION.md` | Compile-time worker arg validation is proven by current tests. |
 | WRK-02 | Phase 1 | Phase 5 | closed | `1-01-SUMMARY.md` | `1-VERIFICATION.md` | Synchronous enqueue validation is proven by current tests. |
 | WRK-03 | Phase 1 | Phase 5 | closed | `1-01-SUMMARY.md` | `1-VERIFICATION.md` | Durable idempotency receipts are proven by current tests. |
 | ENG-01 | Phase 2 | Phase 5 | closed | `2-01-SUMMARY.md`, `2-02-SUMMARY.md` | `2-VERIFICATION.md` | Durable limiter persistence and reservation behavior are evidence-closed. |
 | ENG-02 | Phase 2 | Phase 5 | closed | `2-03-SUMMARY.md`, `2-05-SUMMARY.md` | `2-VERIFICATION.md` | Explain contract and native operator visibility are evidence-closed. |
-| ENG-03 | Phase 2 | Phase 6 | deferred | `2-04-SUMMARY.md` | `2-VERIFICATION.md` | Cron auth-ordering defect remains open for Phase 6. |
+| ENG-03 | Phase 2 | Phase 6 | closed | `2-04-SUMMARY.md`, `6-02-SUMMARY.md` | `2-VERIFICATION.md`, `6-VERIFICATION.md` | Phase 6 proves cron mutations preserve durable behavior while blocking unauthorized preview entry. |
 | WF-01 | Phase 3 | Phase 5 | closed | `3-01-SUMMARY.md`, `3-02-SUMMARY.md` | `3-VERIFICATION.md` | Durable workflow persistence and builder insertion are evidence-closed. |
 | WF-02 | Phase 3 | Phase 5 | closed | `3-03-SUMMARY.md`, `3-04-SUMMARY.md` | `3-VERIFICATION.md` | Runtime reconciliation and coordinator signaling are evidence-closed. |
 | WF-03 | Phase 3 | Phase 5 | closed | `3-05-SUMMARY.md` | `3-VERIFICATION.md` | Native workflow inspection UI is evidence-closed. |
