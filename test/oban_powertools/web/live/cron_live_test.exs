@@ -84,7 +84,10 @@ defmodule ObanPowertools.Web.CronLiveTest do
     conn =
       Plug.Test.init_test_session(conn, current_actor: %{id: "ops-2", permissions: [:view_cron]})
 
-    {:ok, view, _html} = live(conn, "/ops/jobs/cron")
+    {:ok, view, html} = live(conn, "/ops/jobs/cron")
+
+    assert html =~ "disabled"
+    assert html =~ "You do not have permission to pause cron entries."
 
     html =
       view
@@ -108,7 +111,10 @@ defmodule ObanPowertools.Web.CronLiveTest do
     conn =
       Plug.Test.init_test_session(conn, current_actor: %{id: "ops-4", permissions: [:view_cron]})
 
-    {:ok, view, _html} = live(conn, "/ops/jobs/cron")
+    {:ok, view, html} = live(conn, "/ops/jobs/cron")
+
+    assert html =~ "disabled"
+    assert html =~ "You do not have permission to pause cron entries."
 
     html =
       view
@@ -119,5 +125,43 @@ defmodule ObanPowertools.Web.CronLiveTest do
     assert html =~ "You do not have permission to pause cron entries."
 
     refute_receive {:telemetry_event, [:oban_powertools, :operator_action, :previewed], _, _}
+  end
+
+  test "renders disabled cron actions with inline permission explanations for viewers", %{
+    conn: conn
+  } do
+    {:ok, runnable_entry} =
+      Cron.sync_entry(TestRepo, %{
+        name: "viewer-runnable",
+        source: "runtime",
+        worker: "DemoWorker",
+        queue: "default",
+        expression: "* * * * *"
+      })
+
+    {:ok, paused_entry} =
+      Cron.sync_entry(TestRepo, %{
+        name: "viewer-paused",
+        source: "runtime",
+        worker: "DemoWorker",
+        queue: "default",
+        expression: "* * * * *"
+      })
+
+    {:ok, _paused_entry} = Cron.pause_entry(TestRepo, paused_entry, "ops-seed", reason: "seed")
+
+    conn =
+      Plug.Test.init_test_session(conn, current_actor: %{id: "ops-5", permissions: [:view_cron]})
+
+    {:ok, view, html} = live(conn, "/ops/jobs/cron")
+
+    assert has_element?(view, "button[phx-value-entry='#{runnable_entry.name}'][phx-value-action='pause_cron_entry'][disabled]")
+    assert has_element?(view, "button[phx-value-entry='#{runnable_entry.name}'][phx-value-action='run_cron_entry'][disabled]")
+    assert has_element?(view, "button[phx-value-entry='#{paused_entry.name}'][phx-value-action='resume_cron_entry'][disabled]")
+    assert has_element?(view, "button[phx-value-entry='#{paused_entry.name}'][phx-value-action='run_cron_entry'][disabled]")
+
+    assert html =~ "You do not have permission to pause cron entries."
+    assert html =~ "You do not have permission to resume cron entries."
+    assert html =~ "You do not have permission to run cron entries now."
   end
 end
