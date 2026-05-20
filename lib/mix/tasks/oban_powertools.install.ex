@@ -13,6 +13,7 @@ defmodule Mix.Tasks.ObanPowertools.Install do
   def igniter(igniter) do
     igniter
     |> setup_auth_module()
+    |> setup_runtime_config()
     |> setup_router_scope()
     |> setup_migration()
     |> setup_smart_engine_migrations()
@@ -43,6 +44,30 @@ defmodule Mix.Tasks.ObanPowertools.Install do
     """
 
     Igniter.Project.Module.create_module(igniter, auth_module_name, contents)
+  end
+
+  defp setup_runtime_config(igniter) do
+    app_module = Igniter.Project.Module.module_name_prefix(igniter)
+    web_module = Igniter.Libs.Phoenix.web_module(igniter)
+    auth_module_name = Module.concat(web_module, "ObanPowertoolsAuth")
+
+    Igniter.Project.Config.configure_group(
+      igniter,
+      "config.exs",
+      :oban_powertools,
+      [],
+      [
+        {[:repo], {:code, Macro.escape(Module.concat(app_module, "Repo"))}},
+        {[:auth_module], {:code, Macro.escape(auth_module_name)}}
+      ],
+      comment: """
+      Explicit Powertools host wiring:
+
+      config :oban_powertools,
+        repo: MyApp.Repo,
+        auth_module: MyAppWeb.ObanPowertoolsAuth
+      """
+    )
   end
 
   defp setup_router_scope(igniter) do
