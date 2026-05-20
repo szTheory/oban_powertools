@@ -3,6 +3,8 @@ defmodule ObanPowertools.Auth do
   Defines the strict Auth behaviour for Oban Powertools.
   """
 
+  alias ObanPowertools.RuntimeConfig
+
   @doc """
   Returns the current actor from the connection or socket.
   """
@@ -16,29 +18,23 @@ defmodule ObanPowertools.Auth do
   @doc """
   Returns the configured host auth module, if any.
   """
-  def auth_module do
-    Application.get_env(:oban_powertools, :auth_module)
-  end
+  def auth_module(opts \\ []), do: RuntimeConfig.auth_module(opts)
 
   @doc """
   Resolves the current actor through the configured host auth module.
   """
   def current_actor(conn_or_socket_or_session) do
-    case auth_module() do
-      module when is_atom(module) -> module.current_actor(conn_or_socket_or_session)
-      _ -> nil
-    end
+    auth_module!().current_actor(conn_or_socket_or_session)
   end
 
   @doc """
   Delegates authorization to the configured host auth module.
   """
   def authorize(actor, action, resource) do
-    case auth_module() do
-      module when is_atom(module) -> module.can_perform_action?(actor, action, resource)
-      _ -> false
-    end
+    auth_module!().can_perform_action?(actor, action, resource)
   end
+
+  def auth_module!(opts \\ []), do: RuntimeConfig.auth_module!(opts)
 
   @doc """
   Normalizes an actor identifier for audit writes.
