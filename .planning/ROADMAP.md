@@ -33,6 +33,12 @@ Plans:
 
 **Goal:** Unify permission, read-only, preview, reason, and audit behavior across the Powertools shell and bridge surfaces.
 **Depends on:** Phase 9
+**Plans:** 3
+
+Plans:
+- [x] `10-01-PLAN.md` — Generalize the durable preview contract so cron and lifeline share one native mutation-safety model
+- [x] `10-02-PLAN.md` — Apply one operator vocabulary and read-only/audit posture across native Powertools pages
+- [x] `10-03-PLAN.md` — Lock the optional bridge to explicit read-only support-truth and shared policy semantics
 
 ### Phase 11: Docs, Example App, Compatibility & Contract Proof
 
@@ -44,4 +50,4 @@ Plans:
 | Milestone | Phases | Plans | Status | Shipped |
 |-----------|--------|-------|--------|---------|
 | v1 | 0-7 | 28/28 | Shipped | 2026-05-21 |
-| v1.1 | 8-11 | 2/4 | Active | — |
+| v1.1 | 8-11 | 3/4 | Active | — |

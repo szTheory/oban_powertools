@@ -20,7 +20,7 @@
 ### Host Topology & UX
 
 - [x] **HST-01**: A host app can mount the Powertools shell and bridge routes with clear, documented ownership boundaries between library code and host router/supervision/config.
-- [ ] **HST-02**: An operator sees consistent permission, read-only, preview, reason, and audit behavior across the Powertools shell and any bridged operator flows.
+- [x] **HST-02**: An operator sees consistent permission, read-only, preview, reason, and audit behavior across the Powertools shell and any bridged operator flows.
 - [ ] **HST-03**: A host app can understand support-truth boundaries for what Powertools guarantees versus what remains host-owned or intentionally unsupported.
 
 ### Docs & Example-Proof
