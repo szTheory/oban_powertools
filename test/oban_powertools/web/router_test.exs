@@ -1,6 +1,7 @@
 defmodule ObanPowertools.Web.RouterTest do
   use ExUnit.Case, async: true
 
+  alias ObanPowertools.Web.ObanWebBridge
   alias ObanPowertools.TestRouter
 
   test "oban_powertools_routes is available as a macro" do
@@ -77,5 +78,25 @@ defmodule ObanPowertools.Web.RouterTest do
                id == {Oban.Web.Authentication, :default}
              end)
     end
+  end
+
+  test "the optional oban_web bridge stays a read-only inspection surface behind the shared powertools auth seam" do
+    if Code.ensure_loaded?(Oban.Web.Router) do
+      assert ObanWebBridge.resolve_access(%{id: "ops-1", permissions: [:view_oban_web]}) == :read_only
+
+      assert ObanWebBridge.resolve_access(%{id: "ops-2", permissions: []}) ==
+               {:forbidden, "/ops/jobs"}
+    end
+  end
+
+  test "bridge docs state the phase 10 support truth" do
+    assert moduledoc(ObanWebBridge) =~ "read-only"
+    assert moduledoc(ObanWebBridge) =~ "native Powertools pages"
+    assert moduledoc(ObanPowertools.Web.Router) =~ "audited mutations"
+  end
+
+  defp moduledoc(module) do
+    {:docs_v1, _, _, _, %{"en" => moduledoc}, _, _} = Code.fetch_docs(module)
+    moduledoc
   end
 end
