@@ -50,7 +50,7 @@ defmodule ObanPowertools.Web.RouterTest do
     assert :error = Phoenix.Router.route_info(TestRouter, "GET", "/oban", "localhost")
   end
 
-  test "the optional oban_web bridge mounts under /ops/jobs/oban with shared live auth only" do
+  test "the optional oban_web bridge mounts under /ops/jobs/oban with the bounded powertools bridge contract" do
     if Code.ensure_loaded?(Oban.Web.Router) do
       assert %{
                plug: Phoenix.LiveView.Plug,
@@ -61,15 +61,21 @@ defmodule ObanPowertools.Web.RouterTest do
 
       assert %{
                extra: %{
+                 session:
+                   {Oban.Web.Router, :__session__, ["/ops/jobs/oban", nil, resolver, _, _, _, _]},
                  on_mount: on_mount_hooks
                }
              } = metadata
+
+      assert resolver == ObanPowertools.Web.ObanWebBridge
 
       assert Enum.any?(on_mount_hooks, fn %{id: id} ->
                id == {ObanPowertools.Web.LiveAuth, :default}
              end)
 
-      refute File.read!("lib/oban_powertools/web/router.ex") =~ "resolver:"
+      assert Enum.any?(on_mount_hooks, fn %{id: id} ->
+               id == {Oban.Web.Authentication, :default}
+             end)
     end
   end
 end

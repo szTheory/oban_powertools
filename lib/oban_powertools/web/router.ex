@@ -10,7 +10,7 @@ defmodule ObanPowertools.Web.Router do
   @doc """
   Mounts the native Powertools route tree inside a host-owned browser scope.
 
-  The public contract for Phase 8 is:
+  The public contract for the optional bridge is:
 
   - the host router owns the outer `"/ops/jobs"` scope
   - the host router owns `pipe_through(:browser)` for that outer scope
@@ -18,12 +18,12 @@ defmodule ObanPowertools.Web.Router do
     beneath that host-owned scope
   - when `Oban.Web.Router` is available, the optional bridge path is `"/oban"`
     beneath the same host-owned outer scope
-  - the optional bridge stays limited to `on_mount: [ObanPowertools.Web.LiveAuth]`
-    in this phase
+  - the optional bridge reuses `ObanPowertools.Web.LiveAuth` plus a Powertools-
+    owned resolver adapter over documented `Oban.Web.Resolver` hooks
 
-  Resolver, redaction, formatter, and broader policy seams are not introduced
-  here. That Phase 9 work remains intentionally out of scope for this mount
-  contract.
+  The optional bridge contract stays thin. Powertools owns only the nested
+  mount, actor handoff, access mapping, and shared display formatting hooks. It
+  does not become a shadow dashboard or generic Oban Web plugin surface.
   """
   defmacro oban_powertools_routes(path) do
     if Code.ensure_loaded?(Phoenix.LiveView.Router) do
@@ -45,7 +45,10 @@ defmodule ObanPowertools.Web.Router do
         if Code.ensure_loaded?(Oban.Web.Router) do
           import Oban.Web.Router, only: [oban_dashboard: 2]
 
-          oban_dashboard(unquote(path), on_mount: [ObanPowertools.Web.LiveAuth])
+          oban_dashboard(unquote(path),
+            resolver: ObanPowertools.Web.ObanWebBridge,
+            on_mount: [ObanPowertools.Web.LiveAuth]
+          )
         end
       end
     else
