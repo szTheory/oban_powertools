@@ -2,12 +2,12 @@
 
 ## Project Reference
 **Core Value:** Oban Powertools provides an "Ultimate Batteries-Included" background job operations layer for Phoenix applications in the szTheory ecosystem. It guarantees Ecto-native safety, transparent observability, and durable idempotency while rejecting per-worker limits and implicit magic.
-**Current Focus:** Phase 7 complete for Lifeline Incident Closure Integrity, including atomic incident retirement, stale active-row reconciliation, resolved-view LiveView continuity, and fresh closure evidence that closes `LIF-02`.
+**Current Focus:** Milestone `v1` shipped with all 16 requirements evidence-closed and archive artifacts prepared for the next milestone reset.
 
 ## Current Position
-- **Phase:** 7
-- **Plan:** 03
-- **Status:** Complete
+- **Phase:** Milestone Close
+- **Plan:** v1
+- **Status:** Shipped
 - **Progress:** `[====================]` (8/8 phases complete)
 
 ## Performance Metrics
@@ -36,5 +36,5 @@
 - **Blockers:** None
 
 ## Session Continuity
-- **Last Action:** Executed Phase 7 Plans 01-03, reran the backend plus LiveView regression command, and closed `LIF-02` in the requirements ledger with fresh Phase 7 verification evidence.
-- **Next Action:** Prepare the milestone wrap-up or downstream release work now that all eight planned phases are complete.
+- **Last Action:** Archived milestone `v1`, recorded the shipped roadmap/requirements/audit artifacts, and reset the active planning surface for the next milestone.
+- **Next Action:** Run `$gsd-new-milestone` to define fresh requirements and the next roadmap slice.

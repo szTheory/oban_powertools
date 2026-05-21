@@ -31,7 +31,7 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 
 ### Active
 
-- [ ] Define the next milestone scope after the v1 ship review.
+- [ ] Define the next milestone scope and fresh requirements after the v1 ship review.
 
 ### Out of Scope
 
@@ -58,7 +58,7 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 ## Current State
 
-Version `v1` is complete and ready for archival. All 16 v1 requirements are evidence-closed, and the final open audit gap (`LIF-02`) was closed by Phase 7 on 2026-05-21.
+Version `v1` shipped on 2026-05-21. All 16 v1 requirements are evidence-closed, and the final open audit gap (`LIF-02`) was closed by Phase 7 before archival.
 
 ## Next Milestone Goals
 

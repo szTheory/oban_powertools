@@ -1,3 +1,16 @@
+# Milestone v1 Requirements Archive
+
+**Archived:** 2026-05-21
+**Status:** ✅ All 16 v1 requirements evidence-closed
+
+## Outcome Summary
+
+- `FND-01`, `FND-02`, and `ENG-03` were closed by Phase 6 runtime-config and authorization hardening.
+- `LIF-02` was closed by Phase 7 incident retirement and resolved-view continuity work.
+- All other v1 requirements remained closed under their original implementation ownership with restored or refreshed proof artifacts.
+
+---
+
 # Requirements
 
 ## v1 Requirements
