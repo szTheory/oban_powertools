@@ -5,6 +5,8 @@ defmodule ObanPowertools.Application do
 
   use Application
 
+  alias ObanPowertools.RuntimeConfig
+
   @impl true
   def start(_type, _args) do
     children =
@@ -36,7 +38,7 @@ defmodule ObanPowertools.Application do
   end
 
   defp maybe_add_heartbeat_writer(children) do
-    if Code.ensure_loaded?(ObanPowertools.Lifeline.HeartbeatWriter) do
+    if Code.ensure_loaded?(ObanPowertools.Lifeline.HeartbeatWriter) && RuntimeConfig.repo() do
       children ++ [ObanPowertools.Lifeline.HeartbeatWriter]
     else
       children

@@ -6,6 +6,7 @@ defmodule ObanPowertools.Lifeline.HeartbeatWriter do
   use GenServer
 
   alias ObanPowertools.Lifeline
+  alias ObanPowertools.RuntimeConfig
 
   @default_interval_ms 15_000
 
@@ -16,7 +17,7 @@ defmodule ObanPowertools.Lifeline.HeartbeatWriter do
   @impl true
   def init(opts) do
     state = %{
-      repo: Keyword.get(opts, :repo, Application.fetch_env!(:oban_powertools, :repo)),
+      repo: RuntimeConfig.repo!(opts),
       interval_ms:
         Keyword.get(
           opts,
