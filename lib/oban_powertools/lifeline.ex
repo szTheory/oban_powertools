@@ -7,7 +7,7 @@ defmodule ObanPowertools.Lifeline do
 
   alias Ecto.Multi
   alias ObanPowertools.{Audit, Auth}
-  alias ObanPowertools.Lifeline.{ArchiveRun, Heartbeat, Incident}
+  alias ObanPowertools.Lifeline.{ArchiveRun, Heartbeat, Incident, RepairPreview}
   alias ObanPowertools.Telemetry
   alias ObanPowertools.Workflow.Step
 
@@ -151,24 +151,19 @@ defmodule ObanPowertools.Lifeline do
          {:ok, preview_attrs} <- build_preview(repo, attrs, now) do
       existing =
         repo.one(
-          from(preview in ObanPowertools.Lifeline.RepairPreview,
+          from(preview in RepairPreview,
             where:
               preview.incident_fingerprint == ^preview_attrs.incident_fingerprint and
                 preview.plan_hash == ^preview_attrs.plan_hash and preview.action == ^preview_attrs.action and
                 preview.target_type == ^preview_attrs.target_type and
-                preview.target_id == ^preview_attrs.target_id and preview.status == "pending",
+                preview.target_id == ^preview_attrs.target_id and preview.status == "ready",
             limit: 1
           )
         )
 
       preview =
         existing ||
-          repo.insert!(
-            ObanPowertools.Lifeline.RepairPreview.changeset(
-              %ObanPowertools.Lifeline.RepairPreview{},
-              preview_attrs
-            )
-          )
+          repo.insert!(RepairPreview.changeset(%RepairPreview{}, preview_attrs))
 
       Telemetry.execute_lifeline_event(:repair_previewed, %{count: 1}, %{
         action: preview.action,
@@ -183,11 +178,10 @@ defmodule ObanPowertools.Lifeline do
   def execute_repair(repo, actor, preview_token, reason, opts \\ []) do
     now = Keyword.get(opts, :now, DateTime.utc_now())
 
-    with %ObanPowertools.Lifeline.RepairPreview{} = preview <-
-           repo.get_by(ObanPowertools.Lifeline.RepairPreview, preview_token: preview_token),
+    with %RepairPreview{} = preview <- repo.get_by(RepairPreview, preview_token: preview_token),
          :ok <- authorize(actor, :execute_repair, %{preview_token: preview.preview_token}),
-         :ok <- validate_reason(reason),
-         :ok <- ensure_preview_available(preview),
+         :ok <- ensure_preview_available(repo, preview, now),
+         :ok <- validate_reason(reason, preview.reason_required),
          {:ok, current_hash} <- recompute_plan_hash(repo, preview),
          :ok <- ensure_not_drifted(repo, preview, current_hash, now),
          {:ok, result} <- apply_repair(repo, preview, actor, reason, now) do
@@ -312,7 +306,7 @@ defmodule ObanPowertools.Lifeline do
       heartbeat_samples: repo.aggregate(Heartbeat, :count, :id),
       pending_previews:
         repo.aggregate(
-          from(preview in ObanPowertools.Lifeline.RepairPreview, where: preview.status == "pending"),
+          from(preview in RepairPreview, where: preview.status in ["ready", "drifted"]),
           :count,
           :id
         ),
@@ -616,14 +610,18 @@ defmodule ObanPowertools.Lifeline do
            target_type: "job",
            target_id: to_string(target_id),
            health_state: health_state,
-           status: "pending",
+           status: "ready",
            affected_counts: %{"jobs" => 1, "workflow_steps" => 0},
            before_snapshot: before_state,
            after_snapshot: after_state,
            evidence: %{"previewed_at" => now},
            reason_required: true,
            expires_at: DateTime.add(now, 7 * 24 * 60 * 60, :second),
-           metadata: %{}
+           metadata: %{
+             "summary" => repair_summary(action, "job", target_id),
+             "risk" => "high",
+             "resource" => %{"type" => "job", "id" => to_string(target_id)}
+           }
          }}
     end
   end
@@ -645,14 +643,18 @@ defmodule ObanPowertools.Lifeline do
        target_type: "workflow_step",
        target_id: to_string(target_id),
        health_state: incident && incident.health_state,
-       status: "pending",
+       status: "ready",
        affected_counts: %{"jobs" => 0, "workflow_steps" => 1},
        before_snapshot: before_state,
        after_snapshot: after_state,
        evidence: %{"previewed_at" => now},
        reason_required: true,
        expires_at: DateTime.add(now, 7 * 24 * 60 * 60, :second),
-       metadata: %{}
+       metadata: %{
+         "summary" => repair_summary(action, "workflow_step", target_id),
+         "risk" => "high",
+         "resource" => %{"type" => "workflow_step", "id" => to_string(target_id)}
+       }
      }}
   end
 
@@ -695,7 +697,11 @@ defmodule ObanPowertools.Lifeline do
     |> Base.encode16(case: :lower)
   end
 
-  defp validate_reason(reason) when is_binary(reason) do
+  defp validate_reason(reason, false) when is_binary(reason), do: :ok
+  defp validate_reason(nil, false), do: :ok
+  defp validate_reason(_reason, false), do: :ok
+
+  defp validate_reason(reason, true) when is_binary(reason) do
     trimmed = String.trim(reason)
 
     cond do
@@ -705,13 +711,24 @@ defmodule ObanPowertools.Lifeline do
     end
   end
 
-  defp validate_reason(_reason), do: {:error, :reason_required}
+  defp validate_reason(_reason, true), do: {:error, :reason_required}
 
-  defp ensure_preview_available(%{consumed_at: consumed_at}) when not is_nil(consumed_at),
-    do: {:error, :preview_consumed}
+  defp ensure_preview_available(repo, %RepairPreview{} = preview, now) do
+    case RepairPreview.execute_status(preview, now) do
+      :ok ->
+        :ok
 
-  defp ensure_preview_available(%{status: "drifted"}), do: {:error, :preview_drifted}
-  defp ensure_preview_available(_preview), do: :ok
+      {:error, :preview_expired} ->
+        preview
+        |> RepairPreview.changeset(%{status: "expired"})
+        |> repo.update!()
+
+        {:error, :preview_expired}
+
+      other ->
+        other
+    end
+  end
 
   defp recompute_plan_hash(repo, preview) do
     case preview.target_type do
@@ -732,7 +749,14 @@ defmodule ObanPowertools.Lifeline do
       :ok
     else
       preview
-      |> ObanPowertools.Lifeline.RepairPreview.changeset(%{status: "drifted", metadata: %{"drifted_at" => now}})
+      |> RepairPreview.changeset(%{
+        status: "drifted",
+        metadata:
+          preview.metadata
+          |> Kernel.||(%{})
+          |> Map.put("drift_reason", "Target state changed after preview generation.")
+          |> Map.put("drifted_at", DateTime.to_iso8601(now))
+      })
       |> repo.update!()
 
       {:error, :preview_drifted}
@@ -745,8 +769,8 @@ defmodule ObanPowertools.Lifeline do
     |> Multi.run(:incident, fn repo, _changes -> resolve_incident_after_repair(repo, preview, now) end)
     |> Multi.update(
       :preview,
-      ObanPowertools.Lifeline.RepairPreview.changeset(preview, %{
-        status: "executed",
+      RepairPreview.changeset(preview, %{
+        status: "consumed",
         executed_at: now,
         consumed_at: now,
         metadata: Map.put(preview.metadata || %{}, "reason", String.trim(reason))
@@ -864,6 +888,21 @@ defmodule ObanPowertools.Lifeline do
          )}
     end
   end
+
+  defp repair_summary("job_rescue", "job", target_id),
+    do: "Return job #{target_id} to available state."
+
+  defp repair_summary("job_retry", "job", target_id),
+    do: "Retry job #{target_id} from the native repair flow."
+
+  defp repair_summary("job_cancel", "job", target_id),
+    do: "Cancel job #{target_id} from the native repair flow."
+
+  defp repair_summary("workflow_step_retry", "workflow_step", target_id),
+    do: "Retry workflow step #{target_id} from the native repair flow."
+
+  defp repair_summary("workflow_step_cancel", "workflow_step", target_id),
+    do: "Cancel workflow step #{target_id} from the native repair flow."
 
   defp fetch_value!(attrs, key) do
     Map.get(attrs, key) || Map.get(attrs, Atom.to_string(key)) ||

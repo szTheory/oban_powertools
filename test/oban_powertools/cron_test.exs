@@ -3,6 +3,7 @@ defmodule ObanPowertools.CronTest do
 
   alias ObanPowertools.Cron
   alias ObanPowertools.Cron.{Entry, Slot}
+  alias ObanPowertools.Lifeline.RepairPreview
 
   test "sync_entry persists code and runtime entries through one path" do
     assert {:ok, %Entry{} = entry} =
@@ -95,17 +96,71 @@ defmodule ObanPowertools.CronTest do
     assert [_, _, _] = Cron.due_slots(repo(), all_entry, now)
   end
 
+  test "cron previews persist durable preview rows and reuse them for the same action and entry" do
+    {:ok, entry} = runtime_entry(name: "previewable", overlap_policy: "allow")
+
+    assert {:ok, first_preview} = Cron.preview_entry_action(repo(), "pause_cron_entry", entry)
+    assert {:ok, second_preview} = Cron.preview_entry_action(repo(), "pause_cron_entry", entry)
+
+    assert first_preview.id == second_preview.id
+    assert first_preview.status == "ready"
+    assert first_preview.reason_required == false
+    assert first_preview.metadata["summary"] =~ entry.name
+    assert first_preview.metadata["risk"] == "low"
+    assert first_preview.metadata["resource"]["id"] == entry.name
+  end
+
+  test "pause, resume, and run_now reject invalid preview states before mutation writes" do
+    {:ok, entry} = runtime_entry(name: "stateful", overlap_policy: "allow")
+    now = truncate_minute(DateTime.utc_now())
+
+    assert {:ok, paused_preview} = Cron.preview_entry_action(repo(), "pause_cron_entry", entry, now: now)
+    assert {:ok, paused} = Cron.pause_cron_entry(repo(), paused_preview.preview_token, "operator-1")
+    assert paused.paused_at
+
+    assert {:error, :preview_consumed} =
+             Cron.pause_cron_entry(repo(), paused_preview.preview_token, "operator-1")
+
+    assert {:ok, resume_preview} =
+             Cron.preview_entry_action(repo(), "resume_cron_entry", paused, now: now)
+
+    resume_preview
+    |> RepairPreview.changeset(%{status: "expired"})
+    |> repo().update!()
+
+    assert {:error, :preview_expired} =
+             Cron.resume_cron_entry(repo(), resume_preview.preview_token, "operator-1")
+
+    assert {:ok, run_preview} =
+             Cron.preview_entry_action(repo(), "run_cron_entry", paused, now: now)
+
+    run_preview
+    |> RepairPreview.changeset(%{status: "drifted", metadata: %{"drift_reason" => "entry changed"}})
+    |> repo().update!()
+
+    assert {:error, :preview_drifted} =
+             Cron.run_cron_entry(repo(), run_preview.preview_token, "operator-1")
+
+    unchanged_entry = repo().get!(Entry, entry.id)
+    assert unchanged_entry.paused_at
+    assert repo().aggregate(Slot, :count, :id) == 0
+  end
+
   test "pause, resume, and run_now are audited and telemetry-visible through durable writes" do
     {:ok, entry} = runtime_entry(name: "manual", overlap_policy: "allow")
 
-    assert {:ok, paused} = Cron.pause_entry(repo(), entry, "operator-1")
+    assert {:ok, pause_preview} = Cron.preview_entry_action(repo(), "pause_cron_entry", entry)
+    assert {:ok, paused} = Cron.pause_cron_entry(repo(), pause_preview.preview_token, "operator-1")
     assert paused.paused_at
 
-    assert {:ok, resumed} = Cron.resume_entry(repo(), paused, "operator-1")
+    assert {:ok, resume_preview} = Cron.preview_entry_action(repo(), "resume_cron_entry", paused)
+    assert {:ok, resumed} = Cron.resume_cron_entry(repo(), resume_preview.preview_token, "operator-1")
     refute resumed.paused_at
 
+    assert {:ok, run_preview} = Cron.preview_entry_action(repo(), "run_cron_entry", resumed)
+
     assert {:ok, %{slot: %Slot{}, decision: %{decision: "allow"}}} =
-             Cron.run_now(repo(), resumed, "operator-1")
+             Cron.run_cron_entry(repo(), run_preview.preview_token, "operator-1")
 
     actions =
       Cron.latest_audit(repo(), entry.name)

@@ -185,6 +185,11 @@ defmodule ObanPowertools.LifelineTest do
 
     assert first_preview.id == second_preview.id
     assert repo().aggregate(ObanPowertools.Lifeline.RepairPreview, :count, :id) == 1
+    assert first_preview.status == "ready"
+    assert first_preview.reason_required == true
+    assert first_preview.metadata["summary"] =~ "job"
+    assert first_preview.metadata["risk"] == "high"
+    assert first_preview.metadata["resource"]["type"] == "job"
   end
 
   test "preview_repair rejects late incidents and unsupported targets" do
@@ -238,6 +243,7 @@ defmodule ObanPowertools.LifelineTest do
 
     assert repaired_job.state == "available"
     assert executed_preview.consumed_at
+    assert executed_preview.status == "consumed"
 
     resolved_incident = repo().get!(Incident, incident.id)
     assert resolved_incident.status == "resolved"
@@ -322,6 +328,12 @@ defmodule ObanPowertools.LifelineTest do
                preview.preview_token,
                "State drifted before I could retry the step"
              )
+
+    drifted_preview =
+      repo().get_by!(ObanPowertools.Lifeline.RepairPreview, preview_token: preview.preview_token)
+
+    assert drifted_preview.status == "drifted"
+    assert drifted_preview.metadata["drift_reason"]
 
     drifted_incident = repo().get!(Incident, workflow_incident.id)
     assert drifted_incident.status == "active"
