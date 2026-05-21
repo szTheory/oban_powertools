@@ -101,7 +101,10 @@ defmodule ObanPowertools.Lifeline do
     dead_executor_incidents =
       Enum.flat_map(health_rows, fn row ->
         if row.health_state == "missing" do
-          [upsert_dead_executor_incident(repo, row.heartbeat, now)]
+          case upsert_dead_executor_incident(repo, row.heartbeat, now) do
+            nil -> []
+            incident -> [incident]
+          end
         else
           []
         end
@@ -112,13 +115,17 @@ defmodule ObanPowertools.Lifeline do
       |> Enum.filter(&workflow_stuck?/1)
       |> Enum.map(&upsert_workflow_stuck_incident(repo, &1, now))
 
+    active_incidents = dead_executor_incidents ++ workflow_stuck_incidents
+
+    reconcile_inactive_incidents(repo, active_incidents, now)
+
     Telemetry.execute_lifeline_event(
       :incident_projection,
-      %{count: length(dead_executor_incidents) + length(workflow_stuck_incidents)},
+      %{count: length(active_incidents)},
       %{action: "incident_projection"}
     )
 
-    dead_executor_incidents ++ workflow_stuck_incidents
+    active_incidents
   end
 
   def classify_heartbeat(%Heartbeat{} = heartbeat, now \\ DateTime.utc_now()) do
@@ -351,49 +358,37 @@ defmodule ObanPowertools.Lifeline do
   end
 
   defp upsert_dead_executor_incident(repo, heartbeat, now) do
-    jobs =
-      repo.all(
-        from(job in Oban.Job,
-          where:
-            job.state in ["executing", "available", "retryable"] and
-              fragment("?->>'executor_id' = ?", job.meta, ^heartbeat.executor_id)
-        )
-      )
+    %{jobs: jobs, workflow_steps: workflow_steps} = dead_executor_evidence(repo, heartbeat.executor_id)
 
-    workflow_steps =
-      repo.all(
-        from(step in Step,
-          where:
-            step.state in ["available", "pending", "executing", "retryable"] and
-              fragment("?->>'executor_id' = ?", step.context, ^heartbeat.executor_id)
-        )
-      )
-
-    attrs = %{
-      incident_class: "dead_executor",
-      status: "active",
-      executor_id: heartbeat.executor_id,
-      incident_fingerprint: "dead_executor:#{heartbeat.executor_id}",
-      health_state: "missing",
-      summary: "#{health_label("missing")} for #{heartbeat.executor_id}",
-      affected_counts: %{
-        "jobs" => length(jobs),
-        "workflow_steps" => length(workflow_steps)
-      },
-      evidence: %{
-        "last_heartbeat_at" => heartbeat.last_heartbeat_at,
-        "job_ids" => Enum.map(jobs, & &1.id),
-        "workflow_step_ids" => Enum.map(workflow_steps, & &1.id)
-      },
-      first_detected_at: now,
-      last_detected_at: now,
-      metadata: %{
-        "queue" => heartbeat.queue,
-        "producer_scope" => heartbeat.producer_scope
+    if jobs == [] and workflow_steps == [] do
+      nil
+    else
+      attrs = %{
+        incident_class: "dead_executor",
+        status: "active",
+        executor_id: heartbeat.executor_id,
+        incident_fingerprint: "dead_executor:#{heartbeat.executor_id}",
+        health_state: "missing",
+        summary: "#{health_label("missing")} for #{heartbeat.executor_id}",
+        affected_counts: %{
+          "jobs" => length(jobs),
+          "workflow_steps" => length(workflow_steps)
+        },
+        evidence: %{
+          "last_heartbeat_at" => heartbeat.last_heartbeat_at,
+          "job_ids" => Enum.map(jobs, & &1.id),
+          "workflow_step_ids" => Enum.map(workflow_steps, & &1.id)
+        },
+        first_detected_at: now,
+        last_detected_at: now,
+        metadata: %{
+          "queue" => heartbeat.queue,
+          "producer_scope" => heartbeat.producer_scope
+        }
       }
-    }
 
-    upsert_incident(repo, attrs)
+      upsert_incident(repo, attrs)
+    end
   end
 
   defp upsert_workflow_stuck_incident(repo, step, now) do
@@ -426,6 +421,11 @@ defmodule ObanPowertools.Lifeline do
   end
 
   defp upsert_incident(repo, attrs) do
+    attrs =
+      attrs
+      |> Map.put(:status, "active")
+      |> Map.put(:resolved_at, nil)
+
     case repo.get_by(Incident, incident_fingerprint: attrs.incident_fingerprint) do
       nil ->
         {:ok, incident} =
@@ -443,6 +443,51 @@ defmodule ObanPowertools.Lifeline do
 
         updated
     end
+  end
+
+  defp reconcile_inactive_incidents(repo, active_incidents, now) do
+    active_fingerprints =
+      active_incidents
+      |> Enum.map(& &1.incident_fingerprint)
+      |> MapSet.new()
+
+    repo.all(from(incident in Incident, where: incident.status == "active"))
+    |> Enum.reject(&MapSet.member?(active_fingerprints, &1.incident_fingerprint))
+    |> Enum.each(&resolve_incident_row(repo, &1, now))
+  end
+
+  defp resolve_incident_row(repo, incident, now) do
+    {:ok, resolved} =
+      incident
+      |> Incident.changeset(%{
+        status: "resolved",
+        resolved_at: now,
+        last_detected_at: now
+      })
+      |> repo.update()
+
+    resolved
+  end
+
+  defp dead_executor_evidence(repo, executor_id) do
+    %{
+      jobs:
+        repo.all(
+          from(job in Oban.Job,
+            where:
+              job.state == "executing" and
+                fragment("?->>'executor_id' = ?", job.meta, ^executor_id)
+          )
+        ),
+      workflow_steps:
+        repo.all(
+          from(step in Step,
+            where:
+              step.state == "executing" and
+                fragment("?->>'executor_id' = ?", step.context, ^executor_id)
+          )
+        )
+    }
   end
 
   defp workflow_stuck?(%Step{state: state, blocker_codes: blocker_codes})
@@ -697,6 +742,7 @@ defmodule ObanPowertools.Lifeline do
   defp apply_repair(repo, preview, actor, reason, now) do
     Multi.new()
     |> Multi.run(:target, fn repo, _changes -> mutate_target(repo, preview, now) end)
+    |> Multi.run(:incident, fn repo, _changes -> resolve_incident_after_repair(repo, preview, now) end)
     |> Multi.update(
       :preview,
       ObanPowertools.Lifeline.RepairPreview.changeset(preview, %{
@@ -740,6 +786,44 @@ defmodule ObanPowertools.Lifeline do
         {:error, reason}
     end
   end
+
+  defp resolve_incident_after_repair(repo, preview, now) do
+    case resolve_incident(repo, %{incident_id: preview.incident_id, incident_fingerprint: preview.incident_fingerprint}) do
+      nil ->
+        {:ok, nil}
+
+      incident ->
+        if incident_still_active?(repo, incident, preview) do
+          {:error, :incident_still_active}
+        else
+          {:ok, resolve_incident_row(repo, incident, now)}
+        end
+    end
+  end
+
+  defp incident_still_active?(repo, %Incident{incident_class: "dead_executor"} = incident, preview) do
+    executor_id = incident.executor_id || get_in(preview.before_snapshot || %{}, ["executor_id"])
+
+    case executor_id do
+      nil ->
+        true
+
+      executor_id ->
+        %{jobs: jobs, workflow_steps: workflow_steps} = dead_executor_evidence(repo, executor_id)
+        jobs != [] or workflow_steps != []
+    end
+  end
+
+  defp incident_still_active?(repo, %Incident{incident_class: "workflow_stuck"} = incident, preview) do
+    step_id = incident.workflow_step_id || preview.target_id
+
+    case repo.get(Step, step_id) do
+      nil -> false
+      step -> workflow_stuck?(step)
+    end
+  end
+
+  defp incident_still_active?(_repo, _incident, _preview), do: true
 
   defp mutate_target(repo, preview, now) do
     case {preview.target_type, preview.action} do

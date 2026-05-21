@@ -7,8 +7,8 @@
 - [x] **Phase 3: Workflows (DAGs) & Signaling** - Deliver explicit persisted DAGs with PubSub-driven rapid step progression.
 - [x] **Phase 4: Lifeline & Repair Center** - Deliver heartbeat monitoring and an auditable dry-run repair UI for Day-2 Ops.
 - [ ] **Phase 5: Milestone Evidence & Traceability Closure** - Restore verification artifacts, missing summaries, and requirement traceability needed to close the audit.
-- [ ] **Phase 6: Runtime Config & Authorization Hardening** - Fix installer/runtime wiring gaps and enforce authorization before cron preview behavior.
-- [ ] **Phase 7: Lifeline Incident Closure Integrity** - Ensure repairs retire active incidents and the full incident closure flow stays consistent.
+- [x] **Phase 6: Runtime Config & Authorization Hardening** - Fix installer/runtime wiring gaps and enforce authorization before cron preview behavior.
+- [x] **Phase 7: Lifeline Incident Closure Integrity** - Ensure repairs retire active incidents and the full incident closure flow stays consistent.
 
 ## Phase Details
 
@@ -120,7 +120,10 @@
   1. Successful repair execution retires or resolves the acted-on incident record.
   2. Refreshing the Lifeline UI after repair does not re-project the repaired incident as active.
   3. Verification covers the full heartbeat -> projection -> repair -> closure flow.
-**Plans**: None yet
+**Plans**: 3 plans
+- [x] 7-01-PLAN.md — Backend incident reconciliation and atomic retirement
+- [x] 7-02-PLAN.md — Lifeline LiveView active/resolved continuity and remount proof
+- [x] 7-03-PLAN.md — Phase 7 verification artifact and LIF-02 traceability closure
 
 ## Progress
 
@@ -132,5 +135,5 @@
 | 3. Workflows (DAGs) & Signaling | 5/5 | Completed | 2026-05-19 |
 | 4. Lifeline & Repair Center | 5/5 | Completed | 2026-05-19 |
 | 5. Milestone Evidence & Traceability Closure | 5/5 | Completed | 2026-05-20 |
-| 6. Runtime Config & Authorization Hardening | 0/0 | Planned | — |
-| 7. Lifeline Incident Closure Integrity | 0/0 | Planned | — |
+| 6. Runtime Config & Authorization Hardening | 3/3 | Completed | 2026-05-20 |
+| 7. Lifeline Incident Closure Integrity | 3/3 | Completed | 2026-05-21 |

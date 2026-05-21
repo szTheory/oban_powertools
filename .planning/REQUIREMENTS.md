@@ -50,6 +50,6 @@ Evidence contract:
 | WF-02 | Phase 3 | Phase 5 | closed | `3-03-SUMMARY.md`, `3-04-SUMMARY.md` | `3-VERIFICATION.md` | Runtime reconciliation and coordinator signaling are evidence-closed. |
 | WF-03 | Phase 3 | Phase 5 | closed | `3-05-SUMMARY.md` | `3-VERIFICATION.md` | Native workflow inspection UI is evidence-closed. |
 | LIF-01 | Phase 4 | Phase 5 | closed | `4-02-SUMMARY.md` | `4-VERIFICATION.md` | Durable heartbeat and incident projection are evidence-closed. |
-| LIF-02 | Phase 4 | Phase 7 | open_gap | `4-03-SUMMARY.md`, `4-05-SUMMARY.md` | `4-VERIFICATION.md` | Repair execution still fails to retire active incidents; tracked for Phase 7. |
+| LIF-02 | Phase 4 | Phase 7 | closed | `4-03-SUMMARY.md`, `4-05-SUMMARY.md`, `7-01-SUMMARY.md`, `7-02-SUMMARY.md`, `7-03-SUMMARY.md` | `4-VERIFICATION.md`, `7-VERIFICATION.md` | Phase 7 closes active incident retirement, stale reprojection prevention, and LiveView closure continuity without changing Phase 4 implementation ownership. |
 | LIF-03 | Phase 4 | Phase 5 | closed | `4-03-SUMMARY.md`, `4-05-SUMMARY.md` | `4-VERIFICATION.md` | Manual repair audit evidence is current and verified. |
 | LIF-04 | Phase 4 | Phase 5 | closed | `4-04-SUMMARY.md`, `4-05-SUMMARY.md` | `4-VERIFICATION.md` | Archive-before-delete retention is current and verified. |

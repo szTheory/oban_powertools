@@ -1,53 +1,37 @@
 ---
 milestone: v1
-audited: 2026-05-20T23:20:00+02:00
-status: gaps_found
+audited: 2026-05-21T10:48:18+02:00
+status: passed
 scores:
-  requirements: 15/16
-  phases: 6/6
-  integration: 0/1
-  flows: 3/4
+  requirements: 16/16
+  phases: 8/8
+  integration: 1/1
+  flows: 4/4
 gaps:
-  requirements:
-    - id: "LIF-02"
-      status: "open_gap"
-      phase: "Phase 4"
-      claimed_by_plans: ["4-01-PLAN.md", "4-03-PLAN.md", "4-05-PLAN.md"]
-      completed_by_plans: []
-      verification_status: "open_gap"
-      evidence: "Repair preview and execute flow is green, but acted-on incidents are not retired from active projection after success."
-  integration:
-    - severity: "high"
-      phase: "Phase 4"
-      requirements: ["LIF-02"]
-      evidence: "Successful repairs do not resolve or retire active incidents; repaired jobs can be re-projected as active incidents on refresh."
-  flows:
-    - flow: "Heartbeat -> incident projection -> repair -> incident closure"
-      severity: "high"
-      requirements: ["LIF-02"]
-      evidence: "Execution and audit complete, but post-repair incident closure is not enforced."
+  requirements: []
+  integration: []
+  flows: []
 nyquist:
-  compliant_phases: ["Phase 0", "Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 6"]
+  compliant_phases: ["Phase 0", "Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 6", "Phase 7"]
   partial_phases: []
   missing_phases: []
-  overall: "mostly_compliant"
+  overall: "compliant"
 ---
 
 # Milestone v1 Audit
 
 ## Verdict
 
-**Status:** `gaps_found`
+**Status:** `passed`
 
-Phase 6 closes the three previously deferred milestone gaps:
+The v1 milestone is ready to archive. Phase 6 closes the three previously deferred
+foundational gaps, and Phase 7 closes the remaining `LIF-02` incident-retirement
+integrity gap.
 
 - `FND-01` is now closed by explicit installer/runtime wiring and fresh host-like verification.
 - `FND-02` is now closed by explicit auth wiring plus auth-before-preview cron enforcement.
 - `ENG-03` is now closed by preserving durable cron behavior while suppressing unauthorized preview state, telemetry, and audit side effects.
-
-The milestone still cannot be archived as fully complete because one real implementation gap remains open:
-
-- `LIF-02`
+- `LIF-02` is now closed by durable repair-time incident resolution, stale active-row reconciliation during projection, and resolved-view Lifeline continuity on fresh mounts.
 
 ## Local Verification Signals
 
@@ -57,6 +41,7 @@ Commands run during this audit refresh:
 - `mix test test/oban_powertools/auth_test.exs test/oban_powertools/web/live/cron_live_test.exs` -> passed (`8 tests, 0 failures`)
 - `mix test test/oban_powertools/cron_test.exs test/oban_powertools/web/live/cron_live_test.exs` -> passed (`12 tests, 0 failures`)
 - `mix test test/oban_powertools/auth_test.exs test/oban_powertools/cron_test.exs test/oban_powertools/web/live/cron_live_test.exs` -> passed (`16 tests, 0 failures`)
+- `mix test test/oban_powertools/lifeline_test.exs test/oban_powertools/web/live/lifeline_live_test.exs` -> passed (`21 tests, 0 failures`)
 
 ## Requirement Coverage
 
@@ -75,17 +60,15 @@ Commands run during this audit refresh:
 | WF-02 | Phase 3 | summaries + verification present | closed |
 | WF-03 | Phase 3 | summary + verification present | closed |
 | LIF-01 | Phase 4 | summary + verification present | closed |
-| LIF-02 | Phase 4 | verification present | open gap for Phase 7 |
+| LIF-02 | Phase 4 | Phase 4 + Phase 7 summaries and verification present | closed via Phase 7 |
 | LIF-03 | Phase 4 | summaries + verification present | closed |
 | LIF-04 | Phase 4 | summaries + verification present | closed |
 
 ## Cross-Phase Integration
 
-The milestone wiring is healthy across installer/runtime, cron UI, workflow, and lifeline surfaces. The only remaining integration finding is:
-
-1. **High**: Lifeline repair execution does not retire the active incident it acted on. Affected requirement: `LIF-02`.
-
-The former installer/runtime wiring and cron preview-ordering findings are now closed by Phase 6.
+The milestone wiring is healthy across installer/runtime, cron UI, workflow, and lifeline surfaces.
+Phase 7 resolves the former active-incident retirement defect, so there are no remaining
+cross-phase integration findings for the v1 scope.
 
 ## E2E Flow Check
 
@@ -94,8 +77,9 @@ The former installer/runtime wiring and cron preview-ordering findings are now c
 | Installer -> base schemas/auth/router | install, auth, router, and Phase 6 runtime-config verification | Pass |
 | Worker enqueue -> idempotency -> limiter/cron state | worker, idempotency, limits, cron tests | Pass |
 | Workflow insert -> runtime completion -> PubSub/UI inspection | workflow, runtime, coordinator, LiveView tests | Pass |
-| Incident detection -> repair preview/execute -> incident closure | lifeline + audit + lifeline LiveView tests | Gap: repair does not retire the acted-on incident |
+| Incident detection -> repair preview/execute -> incident closure | lifeline + Phase 7 verification + lifeline LiveView tests | Pass |
 
-## Next Work
+## Conclusion
 
-1. Execute Phase 7 to close `LIF-02`.
+1. Archive milestone `v1`.
+2. Start the next milestone from a fresh `REQUIREMENTS.md`.

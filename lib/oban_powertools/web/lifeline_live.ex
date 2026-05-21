@@ -21,6 +21,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
          |> assign(:reason, "")
          |> assign(:error_message, nil)
          |> assign(:success_message, nil)
+         |> assign(:current_view, "active")
          |> assign(:preview, nil)
          |> assign(:preview_state, :idle)
          |> load_data(nil)}
@@ -34,11 +35,21 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       {:noreply,
        socket
        |> assign(:success_message, nil)
-       |> load_data(row_id)}
+       |> load_data(%{row_id: row_id})}
+    end
+
+    def handle_event("toggle_view", %{"view" => view}, socket) do
+      {:noreply,
+       socket
+       |> assign(:success_message, nil)
+       |> load_data(%{
+         view: view,
+         incident_fingerprint: selected_fingerprint(socket.assigns.selected_row)
+       })}
     end
 
     def handle_event("preview", %{"row-id" => row_id}, socket) do
-      row = find_row!(socket.assigns.incident_rows, row_id)
+      row = find_row!(socket.assigns.visible_incident_rows, row_id)
 
       with :ok <- ensure_previewable(row),
            :ok <- LiveAuth.authorize_action(socket, :preview_repair, row.resource),
@@ -101,14 +112,17 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                preview.preview_token,
                socket.assigns.reason
              ) do
-        {:noreply,
+         {:noreply,
          socket
          |> assign(:reason, "")
          |> assign(:error_message, nil)
          |> assign(:success_message, "Repair executed and audit evidence was written.")
          |> assign(:preview, nil)
          |> assign(:preview_state, :idle)
-         |> load_data(row.id)}
+         |> load_data(%{
+           view: "resolved",
+           incident_fingerprint: preview.incident_fingerprint
+         })}
       else
         {:error, :preview_drifted} ->
           drifted_preview = repo().get_by!(RepairPreview, preview_token: preview.preview_token)
@@ -118,7 +132,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
            |> assign(:preview, drifted_preview)
            |> assign(:preview_state, :drifted)
            |> assign(:error_message, "Preview Drifted. Generate a fresh preview before executing.")
-           |> load_data(row.id)}
+           |> load_data(%{
+             view: socket.assigns.current_view,
+             row_id: row.id
+           })}
 
         {:error, :reason_required} ->
           {:noreply, assign(socket, :error_message, "Enter a specific reason before executing the repair.")} 
@@ -149,28 +166,59 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         </div>
 
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <.metric_card label="Needs Review" value={length(@incident_rows)} />
+          <.metric_card label="Needs Review" value={length(@active_incident_rows)} />
           <.metric_card label="Healthy Executors" value={length(@healthy_executors)} />
           <.metric_card label="Pending Repair Previews" value={@retention.pending_previews} />
           <.metric_card label="Archived Repairs" value={@retention.archived_repairs} />
         </div>
 
-        <div :if={@incident_rows == []} class="rounded-lg border bg-white p-6">
+        <div
+          :if={@active_incident_rows == [] and @resolved_incident_rows == []}
+          class="rounded-lg border bg-white p-6"
+        >
           <h2 class="text-base font-semibold">No lifeline incidents need review</h2>
           <p class="mt-2 text-sm text-zinc-600">
             All tracked executors are heartbeating and no orphan candidates are waiting for repair. Review archive activity below if you need retention evidence.
           </p>
         </div>
 
-        <div :if={@incident_rows != []} class="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <div
+          :if={@active_incident_rows != [] or @resolved_incident_rows != []}
+          class="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]"
+        >
           <div class="overflow-hidden rounded-lg border bg-white">
             <div class="border-b bg-slate-50 px-4 py-3">
-              <h2 class="text-base font-semibold">Needs Review</h2>
-              <p class="mt-1 text-sm text-zinc-600">
-                Active incidents are sorted by severity, then most recent detection time.
-              </p>
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 class="text-base font-semibold"><%= incident_view_heading(@current_view) %></h2>
+                  <p class="mt-1 text-sm text-zinc-600">
+                    <%= incident_view_copy(@current_view) %>
+                  </p>
+                </div>
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    phx-click="toggle_view"
+                    phx-value-view="active"
+                    class={view_toggle_class(@current_view == "active")}
+                  >
+                    Needs Review (<%= length(@active_incident_rows) %>)
+                  </button>
+                  <button
+                    type="button"
+                    phx-click="toggle_view"
+                    phx-value-view="resolved"
+                    class={view_toggle_class(@current_view == "resolved")}
+                  >
+                    Resolved (<%= length(@resolved_incident_rows) %>)
+                  </button>
+                </div>
+              </div>
             </div>
-            <table class="min-w-full divide-y">
+            <div :if={@visible_incident_rows == []} class="p-4 text-sm text-zinc-600">
+              <%= empty_view_copy(@current_view) %>
+            </div>
+            <table :if={@visible_incident_rows != []} class="min-w-full divide-y">
               <thead class="bg-slate-50 text-left text-sm">
                 <tr>
                   <th class="px-4 py-3 font-medium">Incident</th>
@@ -181,7 +229,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               </thead>
               <tbody class="divide-y text-sm">
                 <tr
-                  :for={row <- @incident_rows}
+                  :for={row <- @visible_incident_rows}
                   class={["align-top", if(@selected_row && @selected_row.id == row.id, do: "bg-indigo-50", else: "bg-white")]}
                 >
                   <td class="px-4 py-3">
@@ -199,7 +247,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                     </button>
                   </td>
                   <td class="px-4 py-3">
-                    <span class={badge_class(row.incident.health_state)}>
+                    <span class={badge_class(row.incident.health_state, row.incident.status)}>
                       <%= row.incident.health_state |> health_label() %>
                     </span>
                   </td>
@@ -209,6 +257,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                   </td>
                   <td class="px-4 py-3">
                     <button
+                      :if={@current_view == "active"}
                       type="button"
                       phx-click="preview"
                       phx-value-row-id={row.id}
@@ -220,6 +269,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                     >
                       Preview Repair Plan
                     </button>
+                    <span :if={@current_view == "resolved"} class="text-zinc-500">Resolved</span>
                   </td>
                 </tr>
               </tbody>
@@ -245,6 +295,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                     <p><strong>Last heartbeat:</strong> <%= heartbeat_copy(@selected_row.incident) %></p>
                     <p class="mt-1"><strong>Detection basis:</strong> <%= detection_basis(@selected_row.incident) %></p>
                     <p class="mt-1"><strong>Last detected:</strong> <%= timestamp_copy(@selected_row.incident.last_detected_at) %></p>
+                    <p :if={@selected_row.incident.status == "resolved"} class="mt-1">
+                      <strong>Resolved at:</strong> <%= timestamp_copy(@selected_row.incident.resolved_at) %>
+                    </p>
                   </div>
                 </section>
 
@@ -280,10 +333,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 </section>
               </div>
 
-              <div class="mt-4 space-y-3">
-                <label class="block text-sm font-medium">
-                  Reason
-                  <input
+                <div :if={@current_view == "active"} class="mt-4 space-y-3">
+                  <label class="block text-sm font-medium">
+                    Reason
+                    <input
                     type="text"
                     name="reason"
                     value={@reason}
@@ -398,19 +451,44 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       """
     end
 
-    defp load_data(socket, selected_row_id) do
+    defp load_data(socket, selection) do
       repo = repo()
       Lifeline.project_incidents(repo)
 
-      incidents = Lifeline.list_incidents(repo, status: "active")
-      incident_rows = expand_rows(repo, incidents)
-      selected_row = pick_selected_row(incident_rows, selected_row_id)
-      preview = selected_row && find_pending_preview(repo, selected_row)
+      active_incident_rows =
+        repo
+        |> Lifeline.list_incidents(status: "active")
+        |> then(&expand_rows(repo, &1))
+
+      resolved_incident_rows =
+        repo
+        |> Lifeline.list_incidents(status: "resolved")
+        |> then(&expand_rows(repo, &1))
+
+      {current_view, selected_row} =
+        pick_view_and_row(
+          active_incident_rows,
+          resolved_incident_rows,
+          selection,
+          socket.assigns[:current_view] || "active"
+        )
+
+      visible_incident_rows =
+        if current_view == "resolved", do: resolved_incident_rows, else: active_incident_rows
+
+      preview =
+        if current_view == "active" and selected_row do
+          find_pending_preview(repo, selected_row)
+        end
+
       preview_state = preview && preview_state(preview) || :idle
       retention = Lifeline.retention_status(repo)
 
       socket
-      |> assign(:incident_rows, incident_rows)
+      |> assign(:active_incident_rows, active_incident_rows)
+      |> assign(:resolved_incident_rows, resolved_incident_rows)
+      |> assign(:visible_incident_rows, visible_incident_rows)
+      |> assign(:current_view, current_view)
       |> assign(:healthy_executors, healthy_executors(repo))
       |> assign(:selected_row, selected_row)
       |> assign(:preview, preview)
@@ -483,10 +561,62 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       ]
     end
 
-    defp pick_selected_row([], _selected_row_id), do: nil
+    defp pick_view_and_row(active_rows, resolved_rows, nil, current_view) do
+      default_view = if current_view == "resolved" and resolved_rows != [], do: "resolved", else: "active"
+      rows = rows_for_view(default_view, active_rows, resolved_rows)
+      {default_view, List.first(rows)}
+    end
 
-    defp pick_selected_row(rows, selected_row_id) do
-      Enum.find(rows, &(&1.id == selected_row_id)) || List.first(rows)
+    defp pick_view_and_row(active_rows, resolved_rows, selection, current_view) do
+      view = Map.get(selection, :view) || current_view
+      row_id = Map.get(selection, :row_id)
+      incident_fingerprint = Map.get(selection, :incident_fingerprint)
+
+      case locate_selected_row(active_rows, resolved_rows, view, row_id, incident_fingerprint) do
+        {selected_view, nil} ->
+          rows = rows_for_view(selected_view, active_rows, resolved_rows)
+          {selected_view, List.first(rows)}
+
+        {selected_view, row} ->
+          {selected_view, row}
+      end
+    end
+
+    defp locate_selected_row(active_rows, resolved_rows, view, row_id, incident_fingerprint) do
+      rows = rows_for_view(view, active_rows, resolved_rows)
+
+      row =
+        find_row_by_id(rows, row_id) ||
+          find_row_by_fingerprint(rows, incident_fingerprint)
+
+      cond do
+        row ->
+          {view, row}
+
+        row = find_row_by_id(active_rows, row_id) ->
+          {"active", row}
+
+        row = find_row_by_id(resolved_rows, row_id) ->
+          {"resolved", row}
+
+        view == "resolved" and resolved_rows != [] ->
+          {"resolved", find_row_by_fingerprint(resolved_rows, incident_fingerprint)}
+
+        true ->
+          {"active", find_row_by_fingerprint(active_rows, incident_fingerprint)}
+      end
+    end
+
+    defp rows_for_view("resolved", _active_rows, resolved_rows), do: resolved_rows
+    defp rows_for_view(_, active_rows, _resolved_rows), do: active_rows
+
+    defp find_row_by_id(_rows, nil), do: nil
+    defp find_row_by_id(rows, row_id), do: Enum.find(rows, &(&1.id == row_id))
+
+    defp find_row_by_fingerprint(_rows, nil), do: nil
+
+    defp find_row_by_fingerprint(rows, incident_fingerprint) do
+      Enum.find(rows, &(&1.incident.incident_fingerprint == incident_fingerprint))
     end
 
     defp find_pending_preview(repo, row) do
@@ -525,6 +655,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp find_row!(rows, row_id), do: Enum.find(rows, &(&1.id == row_id)) || raise("incident row not found")
 
+    defp selected_fingerprint(nil), do: nil
+    defp selected_fingerprint(row), do: row.incident.incident_fingerprint
+
     defp execute_enabled?(nil, _reason), do: false
     defp execute_enabled?(%RepairPreview{status: "drifted"}, _reason), do: false
     defp execute_enabled?(preview, reason), do: preview.status == "pending" and String.trim(reason) |> String.length() >= 8
@@ -545,9 +678,28 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp health_label(nil), do: "Needs Review"
     defp health_label(state), do: Lifeline.health_label(state)
 
-    defp badge_class("missing"), do: "rounded border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700"
-    defp badge_class("late"), do: "rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700"
-    defp badge_class(_), do: "rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700"
+    defp badge_class(_health_state, "resolved"), do: "rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700"
+    defp badge_class("missing", _status), do: "rounded border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700"
+    defp badge_class("late", _status), do: "rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700"
+    defp badge_class(_health_state, _status), do: "rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700"
+
+    defp incident_view_heading("resolved"), do: "Resolved Incidents"
+    defp incident_view_heading(_view), do: "Needs Review"
+
+    defp incident_view_copy("resolved"),
+      do: "Resolved incidents preserve repair outcomes and inline audit evidence after execution."
+
+    defp incident_view_copy(_view),
+      do: "Active incidents are sorted by severity, then most recent detection time."
+
+    defp empty_view_copy("resolved"), do: "No resolved incidents are available yet."
+    defp empty_view_copy(_view), do: "No active incidents need review right now."
+
+    defp view_toggle_class(true),
+      do: "rounded border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700"
+
+    defp view_toggle_class(false),
+      do: "rounded border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600"
 
     defp detection_basis(%Incident{incident_class: "dead_executor"}), do: "Executor heartbeat evidence"
     defp detection_basis(%Incident{incident_class: "workflow_stuck"}), do: "Workflow blocker evidence"
@@ -651,6 +803,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp error_message(:preview_not_found), do: "The repair preview no longer exists."
     defp error_message(:preview_drifted), do: "Preview Drifted. Generate a fresh preview before executing."
+    defp error_message(:incident_still_active), do: "The repair target changed, but the incident still has live evidence. Refresh and review the remaining active records."
     defp error_message(:unauthorized), do: "You are not authorized to perform this action."
     defp error_message(reason), do: inspect(reason)
 

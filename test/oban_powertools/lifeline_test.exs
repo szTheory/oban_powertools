@@ -60,6 +60,37 @@ defmodule ObanPowertools.LifelineTest do
              Enum.find(incidents, &(&1.executor_id == "executor-missing" and &1.incident_class == "dead_executor"))
   end
 
+  test "project_incidents resolves repaired dead executor incidents on reprojection and reuses the same row on reopen" do
+    now = DateTime.utc_now()
+    insert_heartbeat!("executor-missing", DateTime.add(now, -180, :second))
+    job = insert_executing_job!("executor-missing")
+
+    [incident] =
+      Lifeline.project_incidents(repo(), now: now)
+      |> Enum.filter(&(&1.incident_class == "dead_executor"))
+
+    repo().update!(Ecto.Changeset.change(job, state: "available"))
+
+    refute Enum.any?(
+             Lifeline.project_incidents(repo(), now: DateTime.add(now, 5, :second)),
+             &(&1.incident_fingerprint == incident.incident_fingerprint)
+           )
+
+    resolved = repo().get!(Incident, incident.id)
+    assert resolved.status == "resolved"
+    assert resolved.resolved_at
+
+    insert_executing_job!("executor-missing")
+
+    [reopened] =
+      Lifeline.project_incidents(repo(), now: DateTime.add(now, 10, :second))
+      |> Enum.filter(&(&1.incident_class == "dead_executor"))
+
+    assert reopened.id == incident.id
+    assert reopened.first_detected_at == incident.first_detected_at
+    assert is_nil(reopened.resolved_at)
+  end
+
   test "dead executor incidents carry affected job counts from persisted evidence" do
     now = DateTime.utc_now()
     insert_heartbeat!("executor-missing", DateTime.add(now, -180, :second))
@@ -94,6 +125,41 @@ defmodule ObanPowertools.LifelineTest do
     assert %Incident{incident_class: "workflow_stuck"} = incident
     assert incident.workflow_step_id == step.id
     assert incident.evidence["step_name"] == "notify"
+  end
+
+  test "workflow stuck incidents resolve when the current step no longer qualifies as blocked" do
+    {:ok, workflow} = WorkflowFixtures.workflow_fixture(name: "stuck-flow") |> Workflow.insert(repo())
+    step = repo().get_by!(Step, workflow_id: workflow.id, step_name: "notify")
+
+    {:ok, _step} =
+      step
+      |> Step.changeset(%{
+        state: "pending",
+        blocker_codes: ["waiting_on_retryable_dependency"],
+        blocker_details: %{"reason" => "upstream still running"}
+      })
+      |> repo().update()
+
+    [incident] =
+      Lifeline.project_incidents(repo())
+      |> Enum.filter(&(&1.workflow_step_id == step.id))
+
+    step = repo().get!(Step, step.id)
+
+    {:ok, _step} =
+      step
+      |> Step.changeset(%{
+        state: "available",
+        blocker_codes: [],
+        blocker_details: %{}
+      })
+      |> repo().update()
+
+    refute Enum.any?(Lifeline.project_incidents(repo()), &(&1.id == incident.id))
+
+    resolved = repo().get!(Incident, incident.id)
+    assert resolved.status == "resolved"
+    assert resolved.resolved_at
   end
 
   test "preview_repair persists a durable preview and is idempotent for the same input" do
@@ -140,6 +206,10 @@ defmodule ObanPowertools.LifelineTest do
                target_type: "workflow",
                target_id: "1"
              })
+
+    unchanged_incident = repo().get!(Incident, late_incident.id)
+    assert unchanged_incident.status == "active"
+    assert is_nil(unchanged_incident.resolved_at)
   end
 
   test "execute_repair requires a reason, enforces single-use, and writes immutable audit evidence for jobs" do
@@ -169,6 +239,10 @@ defmodule ObanPowertools.LifelineTest do
     assert repaired_job.state == "available"
     assert executed_preview.consumed_at
 
+    resolved_incident = repo().get!(Incident, incident.id)
+    assert resolved_incident.status == "resolved"
+    assert resolved_incident.resolved_at
+
     [audit_event] = Audit.list(%{type: :job, id: Integer.to_string(job.id)}, repo: repo())
     assert audit_event.action == "lifeline.repair_executed"
     assert audit_event.metadata["reason"] =~ "orphaned job"
@@ -182,13 +256,52 @@ defmodule ObanPowertools.LifelineTest do
              )
   end
 
+  test "execute_repair leaves the incident active for unauthorized execution attempts" do
+    incident = insert_dead_executor_incident!("executor-missing")
+    job = insert_executing_job!("executor-missing")
+
+    {:ok, preview} =
+      Lifeline.preview_repair(repo(), %{id: "operator-1", permissions: [:preview_repair]}, %{
+        incident_fingerprint: incident.incident_fingerprint,
+        action: "job_rescue",
+        target_type: "job",
+        target_id: job.id
+      })
+
+    assert {:error, :unauthorized} =
+             Lifeline.execute_repair(
+               repo(),
+               %{id: "operator-2", permissions: []},
+               preview.preview_token,
+               "Unauthorized operator should not retire the incident"
+             )
+
+    unchanged_incident = repo().get!(Incident, incident.id)
+    assert unchanged_incident.status == "active"
+    assert is_nil(unchanged_incident.resolved_at)
+  end
+
   test "execute_repair rejects drifted previews and supports workflow-step repair" do
     {:ok, workflow} = WorkflowFixtures.workflow_fixture(name: "repair-flow") |> Workflow.insert(repo())
     step = repo().get_by!(Step, workflow_id: workflow.id, step_name: "notify")
     actor = %{id: "operator-1", permissions: [:preview_repair, :execute_repair]}
 
+    {:ok, _step} =
+      step
+      |> Step.changeset(%{
+        state: "pending",
+        blocker_codes: ["waiting_on_retryable_dependency"],
+        blocker_details: %{"reason" => "blocked before repair"}
+      })
+      |> repo().update()
+
+    workflow_incident =
+      Lifeline.project_incidents(repo())
+      |> Enum.find(&(&1.workflow_step_id == step.id))
+
     {:ok, preview} =
       Lifeline.preview_repair(repo(), actor, %{
+        incident_fingerprint: workflow_incident.incident_fingerprint,
         action: "workflow_step_retry",
         target_type: "workflow_step",
         target_id: step.id
@@ -210,10 +323,15 @@ defmodule ObanPowertools.LifelineTest do
                "State drifted before I could retry the step"
              )
 
+    drifted_incident = repo().get!(Incident, workflow_incident.id)
+    assert drifted_incident.status == "active"
+    assert is_nil(drifted_incident.resolved_at)
+
     fresh_step = repo().get!(Step, step.id)
 
     {:ok, fresh_preview} =
       Lifeline.preview_repair(repo(), actor, %{
+        incident_fingerprint: workflow_incident.incident_fingerprint,
         action: "workflow_step_cancel",
         target_type: "workflow_step",
         target_id: fresh_step.id
@@ -228,6 +346,10 @@ defmodule ObanPowertools.LifelineTest do
              )
 
     assert cancelled_step.state == "cancelled"
+
+    resolved_incident = repo().get!(Incident, workflow_incident.id)
+    assert resolved_incident.status == "resolved"
+    assert resolved_incident.resolved_at
   end
 
   test "run_archive_prune archives manual repair evidence before deleting old audit rows" do
