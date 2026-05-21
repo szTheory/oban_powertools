@@ -110,5 +110,19 @@ defmodule Mix.Tasks.ObanPowertools.InstallTest do
     assert source =~ "config :oban_powertools"
     assert source =~ "repo:"
     assert source =~ "auth_module:"
+    assert source =~ "ObanPowertools.Application"
+    assert source =~ "ObanPowertools.Lifeline.HeartbeatWriter"
+    assert source =~ "only starts ObanPowertools.Lifeline.HeartbeatWriter after repo wiring exists"
+  end
+
+  test "installer keeps the deterministic migration pipeline contract" do
+    source =
+      "lib/mix/tasks/oban_powertools.install.ex"
+      |> File.read!()
+
+    assert source =~ "|> setup_migration()"
+    assert source =~ "|> setup_smart_engine_migrations()"
+    assert source =~ "|> setup_workflow_migrations()"
+    assert source =~ "|> setup_phase_4_migrations()"
   end
 end
