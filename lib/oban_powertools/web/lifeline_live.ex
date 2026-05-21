@@ -6,7 +6,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     import Ecto.Query
 
-    alias ObanPowertools.{Audit, Lifeline}
+    alias ObanPowertools.{Audit, DisplayPolicy, Lifeline}
     alias ObanPowertools.Lifeline.{ArchiveRun, Incident, RepairPreview}
     alias ObanPowertools.Web.LiveAuth
     alias ObanPowertools.Workflow.Step
@@ -15,6 +15,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     def mount(_params, %{"oban_dashboard_path" => dashboard_path}, socket) do
       with {:ok, socket} <-
              LiveAuth.authorize_page(socket, :view_lifeline, %{type: :page, id: "lifeline"}) do
+        :ok = DisplayPolicy.assert_configured!()
+
         {:ok,
          socket
          |> assign(:oban_dashboard_path, dashboard_path)
@@ -326,10 +328,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 <section>
                   <h3 class="text-sm font-medium">Audit Record to be Written</h3>
                   <div class="mt-2 rounded border bg-slate-50 p-3 text-sm">
-                    <p><strong>Actor:</strong> <%= actor_copy(@current_actor) %></p>
+                    <p><strong>Actor:</strong> <%= preview_actor_label(@current_actor) %></p>
                     <p class="mt-1"><strong>Action:</strong> <%= @selected_row.action %></p>
                     <p class="mt-1"><strong>Resource:</strong> <%= resource_copy(@selected_row) %></p>
-                    <p class="mt-1"><strong>Reason:</strong> <%= audit_reason_copy(@reason) %></p>
+                    <p class="mt-1"><strong>Reason:</strong> <%= preview_reason(@reason) %></p>
                     <p class="mt-1"><strong>Preview Token:</strong> <%= if @preview, do: @preview.preview_token, else: "Generate preview first" %></p>
                   </div>
                 </section>
@@ -385,10 +387,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               <% else %>
                 <div class="mt-3 space-y-3">
                   <div :for={event <- @audit_events} class="rounded border bg-slate-50 p-3 text-sm">
-                    <div><strong>Actor:</strong> <%= event.actor_id || "system" %></div>
+                    <div><strong>Actor:</strong> <%= event_actor_label(event) %></div>
                     <div class="mt-1"><strong>Action:</strong> <%= event.action %></div>
                     <div class="mt-1"><strong>Resource:</strong> <%= event.resource %></div>
-                    <div class="mt-1"><strong>Reason:</strong> <%= event.metadata["reason"] || "No reason recorded" %></div>
+                    <div class="mt-1"><strong>Reason:</strong> <%= event_reason(event) %></div>
                     <div class="mt-1"><strong>Event Time:</strong> <%= timestamp_copy(event.inserted_at) %></div>
                   </div>
                 </div>
@@ -753,17 +755,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp state_copy(snapshot) when is_map(snapshot), do: inspect(snapshot)
 
-    defp actor_copy(nil), do: "unknown"
-    defp actor_copy(actor), do: Map.get(actor, :id, Map.get(actor, "id", inspect(actor)))
-
     defp resource_copy(row), do: "#{row.target_type}:#{row.target_id}"
-
-    defp audit_reason_copy(reason) do
-      case String.trim(reason || "") do
-        "" -> "Reason required before execution"
-        trimmed -> trimmed
-      end
-    end
 
     defp count_label(counts, key), do: "#{Map.get(counts || %{}, key, 0)} #{Phoenix.Naming.humanize(key)}"
 
@@ -802,6 +794,32 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp timestamp_copy(_timestamp), do: "Unknown"
 
     defp build_job_path(base, job_id), do: Path.join([base, "jobs", to_string(job_id)])
+
+    defp preview_actor_label(actor) do
+      case ObanPowertools.Auth.audit_principal(actor) do
+        {:ok, principal} ->
+          DisplayPolicy.actor_label(principal, %{surface: :lifeline, section: :preview})
+
+        {:error, _reason} ->
+          "Audit principal unavailable"
+      end
+    end
+
+    defp preview_reason(reason) do
+      DisplayPolicy.reason(reason, %{surface: :lifeline, section: :preview})
+    end
+
+    defp event_actor_label(event) do
+      event
+      |> Audit.event_principal()
+      |> DisplayPolicy.actor_label(%{surface: :lifeline, section: :audit_history, event: event.action})
+    end
+
+    defp event_reason(event) do
+      event
+      |> Audit.event_reason()
+      |> DisplayPolicy.reason(%{surface: :lifeline, section: :audit_history, event: event.action})
+    end
 
     defp error_message(:preview_not_found), do: "The repair preview no longer exists."
     defp error_message(:preview_drifted), do: "Preview Drifted. Generate a fresh preview before executing."

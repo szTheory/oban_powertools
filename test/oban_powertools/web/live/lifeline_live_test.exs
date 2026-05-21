@@ -1,3 +1,20 @@
+defmodule ObanPowertools.Web.LifelineLiveTestDisplayPolicy do
+  def display(:actor_label, principal, _context) do
+    label =
+      Map.get(principal, :label) ||
+        Map.get(principal, "label") ||
+        Map.get(principal, :id) ||
+        Map.get(principal, "id") ||
+        "system"
+
+    "policy actor: #{label}"
+  end
+
+  def display(:reason, nil, _context), do: "policy reason: none provided"
+  def display(:reason, "", _context), do: "policy reason: none provided"
+  def display(:reason, reason, _context), do: "policy reason: #{String.upcase(to_string(reason))}"
+end
+
 defmodule ObanPowertools.Web.LifelineLiveTest do
   use ObanPowertools.LiveCase, async: false
 
@@ -7,6 +24,22 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
   alias ObanPowertools.Workflow
   alias ObanPowertools.Workflow.Step
   alias ObanPowertools.WorkflowFixtures
+
+  setup do
+    original_display_policy = Application.get_env(:oban_powertools, :display_policy)
+
+    Application.put_env(
+      :oban_powertools,
+      :display_policy,
+      ObanPowertools.Web.LifelineLiveTestDisplayPolicy
+    )
+
+    on_exit(fn ->
+      Application.put_env(:oban_powertools, :display_policy, original_display_policy)
+    end)
+
+    :ok
+  end
 
   test "redirects unauthorized viewers", %{conn: conn} do
     conn = Plug.Test.init_test_session(conn, current_actor: %{id: "ops-3", permissions: []})
@@ -54,6 +87,8 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
 
     assert html =~ "Preview Ready"
     assert html =~ "Audit Record to be Written"
+    assert html =~ "policy actor: operator:ops-1"
+    assert html =~ "policy reason: none provided"
     assert html =~ "Open Generic Job Inspection in Oban Web"
     assert html =~ "/oban/jobs/#{job.id}"
     assert has_element?(view, "button[phx-click='execute'][disabled]")
@@ -61,6 +96,7 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     assert [%{status: "pending"}] = TestRepo.all(ObanPowertools.Lifeline.RepairPreview)
 
     render_change(view, "reason", %{"reason" => "reviewed"})
+    assert render(view) =~ "policy reason: REVIEWED"
     refute has_element?(view, "button[phx-click='execute'][disabled]")
   end
 
@@ -118,7 +154,7 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     assert html =~ "Repair executed and audit evidence was written."
     assert html =~ "Resolved Incidents"
     assert html =~ "Manual Intervention History"
-    assert html =~ "Rescuing orphaned job after node loss"
+    assert html =~ "policy reason: RESCUING ORPHANED JOB AFTER NODE LOSS"
     refute html =~ "Preview Repair Plan"
     refute has_element?(view, "button[phx-value-row-id$=':job:#{job.id}'][phx-click='preview']")
 
@@ -139,7 +175,7 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
       |> render_click()
 
     assert resolved_html =~ "Resolved Incidents"
-    assert resolved_html =~ "Rescuing orphaned job after node loss"
+    assert resolved_html =~ "policy reason: RESCUING ORPHANED JOB AFTER NODE LOSS"
     assert resolved_html =~ "Manual Intervention History"
 
     [event] = Audit.list(%{type: :job, id: Integer.to_string(job.id)}, repo: TestRepo)

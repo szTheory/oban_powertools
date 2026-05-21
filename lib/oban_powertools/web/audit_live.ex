@@ -4,13 +4,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     use Phoenix.LiveView
 
-    alias ObanPowertools.{Audit, Lifeline}
+    alias ObanPowertools.{Audit, DisplayPolicy, Lifeline}
     alias ObanPowertools.Web.LiveAuth
 
     @impl true
     def mount(_params, _session, socket) do
       with {:ok, socket} <-
              LiveAuth.authorize_page(socket, :view_audit, %{type: :page, id: "audit"}) do
+        :ok = DisplayPolicy.assert_configured!()
+
         {:ok,
          socket
          |> assign(:events, Audit.list_all(repo: repo()))
@@ -68,8 +70,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               <tr :for={event <- @events}>
                 <td class="px-4 py-3 font-medium"><%= event.action %></td>
                 <td class="px-4 py-3"><%= event.resource %></td>
-                <td class="px-4 py-3"><%= event.actor_id || "system" %></td>
-                <td class="px-4 py-3"><%= event.metadata["reason"] || "No reason recorded" %></td>
+                <td class="px-4 py-3"><%= actor_label(event) %></td>
+                <td class="px-4 py-3"><%= reason_label(event) %></td>
                 <td class="px-4 py-3">
                   <div><%= relative_time(event.inserted_at) %></div>
                   <div class="text-zinc-500"><%= format_timestamp(event.inserted_at) %></div>
@@ -117,6 +119,18 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp format_timestamp(%DateTime{} = timestamp) do
       Calendar.strftime(timestamp, "%Y-%m-%d %H:%M:%S UTC")
+    end
+
+    defp actor_label(event) do
+      event
+      |> Audit.event_principal()
+      |> DisplayPolicy.actor_label(%{surface: :audit, section: :table, event: event.action})
+    end
+
+    defp reason_label(event) do
+      event
+      |> Audit.event_reason()
+      |> DisplayPolicy.reason(%{surface: :audit, section: :table, event: event.action})
     end
 
     defp repo, do: Application.fetch_env!(:oban_powertools, :repo)

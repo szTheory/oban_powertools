@@ -4,13 +4,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     use Phoenix.LiveView
 
-    alias ObanPowertools.{Audit, Cron, Telemetry}
+    alias ObanPowertools.{Audit, Cron, DisplayPolicy, Telemetry}
     alias ObanPowertools.Web.LiveAuth
 
     @impl true
     def mount(_params, _session, socket) do
       with {:ok, socket} <-
              LiveAuth.authorize_page(socket, :view_cron, %{type: :page, id: "cron"}) do
+        :ok = DisplayPolicy.assert_configured!()
+
         {:ok,
          socket
          |> assign(:entries, Cron.list_entries(repo()))
@@ -154,6 +156,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           <p class="mt-2 text-sm text-zinc-600">
             This action will be written to the Powertools audit trail with the acting operator and reason.
           </p>
+          <p class="mt-2 text-sm">
+            <strong>Actor:</strong> <%= preview_actor_label(@current_actor) %>
+          </p>
           <label class="mt-4 block text-sm font-medium">
             Reason
             <input
@@ -164,6 +169,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               class="mt-2 w-full rounded border px-3 py-2"
             />
           </label>
+          <p class="mt-2 text-sm">
+            <strong>Rendered Reason:</strong> <%= preview_reason(@reason) %>
+          </p>
           <p :if={@error_message} class="mt-3 text-sm text-red-700"><%= @error_message %></p>
           <div class="mt-4 flex gap-3">
             <button type="button" phx-click="confirm" class="rounded bg-indigo-600 px-3 py-2 text-white">
@@ -268,6 +276,20 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp unauthorized_preview_message("run_cron_entry"),
       do: "You do not have permission to run cron entries now."
+
+    defp preview_actor_label(actor) do
+      case ObanPowertools.Auth.audit_principal(actor) do
+        {:ok, principal} ->
+          DisplayPolicy.actor_label(principal, %{surface: :cron, section: :preview})
+
+        {:error, _reason} ->
+          "Audit principal unavailable"
+      end
+    end
+
+    defp preview_reason(reason) do
+      DisplayPolicy.reason(reason, %{surface: :cron, section: :preview})
+    end
 
     defp recent_audit(entries) do
       entry_names = MapSet.new(Enum.map(entries, &"cron_entry:#{&1.name}"))

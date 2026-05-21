@@ -1,9 +1,34 @@
+defmodule ObanPowertools.Web.CronLiveTestDisplayPolicy do
+  def display(:actor_label, principal, _context) do
+    label =
+      Map.get(principal, :label) ||
+        Map.get(principal, "label") ||
+        Map.get(principal, :id) ||
+        Map.get(principal, "id") ||
+        "system"
+
+    "policy actor: #{label}"
+  end
+
+  def display(:reason, nil, _context), do: "policy reason: none provided"
+  def display(:reason, "", _context), do: "policy reason: none provided"
+  def display(:reason, reason, _context), do: "policy reason: #{String.upcase(to_string(reason))}"
+end
+
 defmodule ObanPowertools.Web.CronLiveTest do
   use ObanPowertools.LiveCase, async: false
 
   alias ObanPowertools.{Audit, Cron}
 
   setup do
+    original_display_policy = Application.get_env(:oban_powertools, :display_policy)
+
+    Application.put_env(
+      :oban_powertools,
+      :display_policy,
+      ObanPowertools.Web.CronLiveTestDisplayPolicy
+    )
+
     test_pid = self()
 
     :telemetry.attach_many(
@@ -20,7 +45,11 @@ defmodule ObanPowertools.Web.CronLiveTest do
       nil
     )
 
-    on_exit(fn -> :telemetry.detach("cron-live-test") end)
+    on_exit(fn ->
+      :telemetry.detach("cron-live-test")
+      Application.put_env(:oban_powertools, :display_policy, original_display_policy)
+    end)
+
     :ok
   end
 
@@ -52,11 +81,14 @@ defmodule ObanPowertools.Web.CronLiveTest do
       |> render_click()
 
     assert html =~ "Preview Action"
+    assert html =~ "policy actor: operator:ops-1"
+    assert html =~ "policy reason: none provided"
 
     assert_receive {:telemetry_event, [:oban_powertools, :operator_action, :previewed],
                     %{count: 1}, %{action: "pause_cron_entry", source: "code"}}
 
     render_change(view, "reason", %{"reason" => "maintenance"})
+    assert render(view) =~ "policy reason: MAINTENANCE"
     html = render_click(view, "confirm", %{})
 
     assert html =~ "Paused"

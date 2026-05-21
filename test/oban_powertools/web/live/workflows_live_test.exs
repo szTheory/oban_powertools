@@ -1,9 +1,43 @@
+defmodule ObanPowertools.Web.WorkflowsLiveTestDisplayPolicy do
+  def display(:workflow_result, result, _context) do
+    payload = result["payload"] || %{}
+    hidden? = result["redacted"] or Map.has_key?(payload, "secret")
+
+    %{
+      summary: "policy summary: #{result["summary"] || "none"}",
+      payload:
+        if(hidden?,
+          do: "policy payload: hidden",
+          else: "policy payload: #{inspect(payload)}"
+        ),
+      redacted?: hidden?
+    }
+  end
+end
+
 defmodule ObanPowertools.Web.WorkflowsLiveTest do
   use ObanPowertools.LiveCase, async: false
 
   alias ObanPowertools.Workflow
+  alias ObanPowertools.Workflow.Result
   alias ObanPowertools.Workflow.Step
   alias ObanPowertools.WorkflowFixtures
+
+  setup do
+    original_display_policy = Application.get_env(:oban_powertools, :display_policy)
+
+    Application.put_env(
+      :oban_powertools,
+      :display_policy,
+      ObanPowertools.Web.WorkflowsLiveTestDisplayPolicy
+    )
+
+    on_exit(fn ->
+      Application.put_env(:oban_powertools, :display_policy, original_display_policy)
+    end)
+
+    :ok
+  end
 
   test "renders blocked workflows and selected-node detail", %{conn: conn} do
     {:ok, workflow} = WorkflowFixtures.workflow_fixture() |> Workflow.insert(TestRepo)
@@ -28,6 +62,33 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
 
     assert html =~ "notify"
     assert html =~ "Dependencies"
+  end
+
+  test "renders workflow result details through the shared display policy seam", %{conn: conn} do
+    {:ok, workflow} = WorkflowFixtures.workflow_fixture(name: "policy-workflow") |> Workflow.insert(TestRepo)
+
+    assert {:ok, _step} =
+             Workflow.complete_step(TestRepo, workflow.id, :fetch_customer,
+               status: :completed,
+               summary: "fetched customer record",
+               payload: %{customer_id: 1, secret: "token-123"}
+             )
+
+    fetch_customer = TestRepo.get_by!(Step, workflow_id: workflow.id, step_name: "fetch_customer")
+    result = TestRepo.get_by!(Result, workflow_id: workflow.id, step_id: fetch_customer.id)
+    assert result.payload["secret"] == "token-123"
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_workflows]}
+      )
+
+    {:ok, _view, html} = live(conn, "/ops/jobs/workflows/#{workflow.id}?step=fetch_customer")
+
+    assert html =~ "Result available:"
+    assert html =~ "policy summary: fetched customer record"
+    assert html =~ "policy payload: hidden"
+    assert html =~ "Redaction outcome: hidden by display policy."
   end
 
   test "preserves selected node across workflow refresh", %{conn: conn} do

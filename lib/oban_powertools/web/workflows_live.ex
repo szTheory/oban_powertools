@@ -6,6 +6,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     import Ecto.Query
 
+    alias ObanPowertools.DisplayPolicy
     alias ObanPowertools.Workflow.{Edge, Result, Step, Workflow}
     alias ObanPowertools.Web.LiveAuth
 
@@ -13,6 +14,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     def mount(_params, %{"oban_dashboard_path" => dashboard_path}, socket) do
       with {:ok, socket} <-
              LiveAuth.authorize_page(socket, :view_workflows, %{type: :page, id: "workflows"}) do
+        :ok = DisplayPolicy.assert_configured!()
+
         if connected?(socket) and Code.ensure_loaded?(Phoenix.PubSub) do
           Phoenix.PubSub.subscribe(ObanPowertools.PubSub, ObanPowertools.Workflow.Signal.topic())
         end
@@ -140,15 +143,25 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         </div>
 
         <div :if={@selected_step} class="rounded-lg border bg-white p-4">
+          <% result_display = workflow_result_display(@selected_step, @results, @workflow) %>
           <h2 class="text-base font-semibold"><%= @selected_step.step_name %></h2>
           <p class="mt-2 text-sm text-zinc-600">Worker: <%= @selected_step.worker %></p>
           <p class="mt-1 text-sm text-zinc-600">State: <%= @selected_step.state %></p>
           <p class="mt-1 text-sm text-zinc-600">
             Result available:
-            <%= if Map.has_key?(@results, @selected_step.id), do: "yes", else: "no" %>
+            <%= if result_display.available?, do: "yes", else: "no" %>
           </p>
 
           <div class="mt-4 space-y-3">
+            <div :if={result_display.available?}>
+              <h3 class="text-sm font-medium">Result Summary</h3>
+              <p class="mt-2 text-sm"><%= result_display.summary %></p>
+              <p class="mt-2 text-sm"><strong>Payload:</strong> <%= result_display.payload %></p>
+              <p :if={result_display.redacted?} class="mt-2 text-xs text-amber-700">
+                Redaction outcome: hidden by display policy.
+              </p>
+            </div>
+
             <div>
               <h3 class="text-sm font-medium">Dependency Reasons</h3>
               <%= if @selected_step.blocker_codes == [] do %>
@@ -230,6 +243,17 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               %{"step_name" => name, "state" => "pending", "policy" => "cancel"}
           end)
       end
+    end
+
+    defp workflow_result_display(step, results, workflow) do
+      results
+      |> Map.get(step.id)
+      |> Result.display_input()
+      |> DisplayPolicy.workflow_result(%{
+        surface: :workflows,
+        workflow_id: workflow && workflow.id,
+        step_name: step.step_name
+      })
     end
 
     defp highlight_class(step, nil), do: if(step.blocker_codes != [], do: "border-amber-400 bg-amber-50", else: "")
