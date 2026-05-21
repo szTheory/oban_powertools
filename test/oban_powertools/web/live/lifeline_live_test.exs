@@ -63,7 +63,8 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     assert html =~ "Needs Review"
     assert html =~ "Preview Repair Plan"
     assert html =~ "Archive Activity"
-    assert html =~ "read-only here"
+    assert html =~ "Permission: read-only."
+    assert html =~ "Archive and prune visibility is read-only here."
     refute has_element?(view, "button[phx-click='execute']")
   end
 
@@ -86,7 +87,10 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
       |> render_click()
 
     assert html =~ "Preview Ready"
+    assert html =~ "Preview Status"
     assert html =~ "Audit Record to be Written"
+    assert html =~ "Audit Consequence"
+    assert html =~ "One immutable operator event will be written."
     assert html =~ "policy actor: operator:ops-1"
     assert html =~ "policy reason: none provided"
     assert html =~ "Open Generic Job Inspection in Oban Web"
@@ -98,7 +102,9 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     assert render(view) =~ "policy reason: REVIEWED"
   end
 
-  test "shows Preview Drifted when target state changes after preview", %{conn: conn} do
+  test "shows shared preview_drifted wording when target state changes after preview", %{
+    conn: conn
+  } do
     {:ok, workflow} = WorkflowFixtures.workflow_fixture(name: "repair-flow") |> Workflow.insert(TestRepo)
     step = TestRepo.get_by!(Step, workflow_id: workflow.id, step_name: "notify")
     _incident = insert_workflow_incident!(workflow.id, step.id)
@@ -125,7 +131,7 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     render_change(view, "reason", %{"reason" => "operator reviewed drift"})
     html = render_click(view, "execute", %{})
 
-    assert html =~ "Preview Drifted"
+    assert html =~ "preview_drifted"
     assert has_element?(view, "button[phx-click='execute'][disabled]")
   end
 
@@ -200,7 +206,9 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     render_change(view, "reason", %{"reason" => "Operator can preview but cannot execute"})
     html = render_click(view, "execute", %{})
 
-    assert html =~ "You are not authorized to perform this action."
+    assert html =~ "Permission: read-only."
+    assert html =~
+             "Permission: read-only. You can inspect this preview, but you do not have permission to execute this repair."
     assert html =~ "Needs Review"
 
     resolved_html =
@@ -210,6 +218,28 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
 
     refute resolved_html =~ "Rescuing orphaned job after node loss"
     refute resolved_html =~ "Repair executed and audit evidence was written."
+  end
+
+  test "renders page-level read-only framing and disabled preview explanation for viewers", %{
+    conn: conn
+  } do
+    insert_missing_heartbeat!("viewer-missing")
+    incident = insert_dead_executor_incident!("viewer-missing")
+    job = insert_executing_job!("viewer-missing")
+    update_incident_job_ids!(incident, [job.id])
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-viewer", permissions: [:view_lifeline]}
+      )
+
+    {:ok, view, html} = live(conn, "/ops/jobs/lifeline")
+
+    assert html =~ "Permission: read-only."
+    assert has_element?(view, "button[phx-value-row-id$=':job:#{job.id}'][phx-click='preview'][disabled]")
+
+    assert html =~
+             "Permission: read-only. You can inspect this incident, but you do not have permission to preview this repair."
   end
 
   test "authorized but unattributable operators cannot create durable preview or execute writes", %{

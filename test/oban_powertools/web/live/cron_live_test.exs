@@ -84,6 +84,8 @@ defmodule ObanPowertools.Web.CronLiveTest do
     assert html =~ "Preview Action"
     assert html =~ "Preview Status"
     assert html =~ "Preview Token"
+    assert html =~ "Audit Consequence"
+    assert html =~ "One immutable operator event will be written."
     assert html =~ "policy actor: operator:ops-1"
     assert html =~ "policy reason: none provided"
 
@@ -126,8 +128,10 @@ defmodule ObanPowertools.Web.CronLiveTest do
 
     {:ok, view, html} = live(conn, "/ops/jobs/cron")
 
+    assert html =~ "Permission: read-only."
     assert html =~ "disabled"
-    assert html =~ "You do not have permission to pause cron entries."
+    assert html =~
+             "Permission: read-only. You can inspect this cron entry, but you do not have permission to preview or execute pause mutations."
 
     refute has_element?(view, "h2", "Preview Action")
   end
@@ -147,8 +151,10 @@ defmodule ObanPowertools.Web.CronLiveTest do
 
     {:ok, view, html} = live(conn, "/ops/jobs/cron")
 
+    assert html =~ "Permission: read-only."
     assert html =~ "disabled"
-    assert html =~ "You do not have permission to pause cron entries."
+    assert html =~
+             "Permission: read-only. You can inspect this cron entry, but you do not have permission to preview or execute pause mutations."
 
     html =
       render_click(view, "preview", %{
@@ -156,7 +162,8 @@ defmodule ObanPowertools.Web.CronLiveTest do
         "entry" => "unauthorized-preview"
       })
 
-    assert html =~ "You do not have permission to pause cron entries."
+    assert html =~
+             "Permission: read-only. You can inspect this cron entry, but you do not have permission to preview or execute pause mutations."
     refute has_element?(view, "h2", "Preview Action")
     refute_receive {:telemetry_event, [:oban_powertools, :operator_action, :previewed], _, _}
     refute_receive {:telemetry_event, [:oban_powertools, :operator_action, :complete], _, _}
@@ -191,14 +198,21 @@ defmodule ObanPowertools.Web.CronLiveTest do
 
     {:ok, view, html} = live(conn, "/ops/jobs/cron")
 
+    assert html =~ "Permission: read-only."
+
     assert has_element?(view, "button[phx-value-entry='#{runnable_entry.name}'][phx-value-action='pause_cron_entry'][disabled]")
     assert has_element?(view, "button[phx-value-entry='#{runnable_entry.name}'][phx-value-action='run_cron_entry'][disabled]")
     assert has_element?(view, "button[phx-value-entry='#{paused_entry.name}'][phx-value-action='resume_cron_entry'][disabled]")
     assert has_element?(view, "button[phx-value-entry='#{paused_entry.name}'][phx-value-action='run_cron_entry'][disabled]")
 
-    assert html =~ "You do not have permission to pause cron entries."
-    assert html =~ "You do not have permission to resume cron entries."
-    assert html =~ "You do not have permission to run cron entries now."
+    assert html =~
+             "Permission: read-only. You can inspect this cron entry, but you do not have permission to preview or execute pause mutations."
+
+    assert html =~
+             "Permission: read-only. You can inspect this cron entry, but you do not have permission to preview or execute resume mutations."
+
+    assert html =~
+             "Permission: read-only. You can inspect this cron entry, but you do not have permission to preview or execute run-now mutations."
   end
 
   test "fails explicitly when an authorized cron operator has no durable audit principal", %{
