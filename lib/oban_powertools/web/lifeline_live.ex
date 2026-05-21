@@ -54,7 +54,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       row = find_row!(socket.assigns.visible_incident_rows, row_id)
 
       with :ok <- ensure_previewable(row),
-           :ok <- LiveAuth.authorize_action(socket, :preview_repair, row.resource),
+           :ok <-
+             LiveAuth.authorize_action(socket, :preview_repair, row.resource,
+               message: LiveAuth.permission_message(:preview_repair)
+             ),
            {:ok, _principal} <- LiveAuth.principal_for_action(socket),
            {:ok, preview} <-
              Lifeline.preview_repair(
@@ -79,16 +82,17 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
          |> assign(:target_detail, load_target_detail(row))}
       else
         {:error, :preview_not_available} ->
-          {:noreply, assign(socket, :error_message, "This incident has no repairable target yet.")}
+          {:noreply, assign(socket, :error_message, LiveAuth.mutation_error(:preview_not_available))}
 
         {:error, :heartbeat_late} ->
-          {:noreply, assign(socket, :error_message, "Heartbeat Late incidents cannot be previewed for repair.")}
+          {:noreply, assign(socket, :error_message, LiveAuth.mutation_error(:preview_not_available))}
 
         {:error, :repair_requires_missing_executor} ->
-          {:noreply, assign(socket, :error_message, "Only Executor Missing incidents can preview a rescue repair.")}
+          {:noreply, assign(socket, :error_message, LiveAuth.mutation_error(:preview_not_available))}
 
         {:error, :unauthorized} ->
-          {:noreply, assign(socket, :error_message, "You are not authorized to preview this repair.")}
+          {:noreply,
+           assign(socket, :error_message, LiveAuth.permission_message(:preview_repair))}
 
         {:error, reason} ->
           {:noreply, assign(socket, :error_message, error_message(reason))}
@@ -107,7 +111,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       preview = socket.assigns.preview
       row = socket.assigns.selected_row
 
-      with :ok <- LiveAuth.authorize_action(socket, :execute_repair, row.resource),
+      with :ok <-
+             LiveAuth.authorize_action(socket, :execute_repair, row.resource,
+               message: LiveAuth.permission_message(:execute_repair)
+             ),
            {:ok, _principal} <- LiveAuth.principal_for_action(socket),
            {:ok, _result} <-
              Lifeline.execute_repair(
@@ -135,23 +142,24 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
            socket
            |> assign(:preview, drifted_preview)
            |> assign(:preview_state, :drifted)
-           |> assign(:error_message, "Preview Drifted. Generate a fresh preview before executing.")
+           |> assign(:error_message, LiveAuth.mutation_error(:preview_drifted))
            |> load_data(%{
              view: socket.assigns.current_view,
              row_id: row.id
            })}
 
         {:error, :reason_required} ->
-          {:noreply, assign(socket, :error_message, "Enter a specific reason before executing the repair.")} 
+          {:noreply, assign(socket, :error_message, LiveAuth.mutation_error(:reason_required))}
 
         {:error, :reason_too_short} ->
-          {:noreply, assign(socket, :error_message, "Enter at least 8 characters so the audit trail is operator-readable.")} 
+          {:noreply, assign(socket, :error_message, LiveAuth.mutation_error(:reason_too_short))}
 
         {:error, :preview_consumed} ->
-          {:noreply, assign(socket, :error_message, "This preview was already consumed. Generate a fresh preview.")} 
+          {:noreply, assign(socket, :error_message, LiveAuth.mutation_error(:preview_consumed))}
 
         {:error, :unauthorized} ->
-          {:noreply, assign(socket, :error_message, "You are not authorized to execute this repair.")} 
+          {:noreply,
+           assign(socket, :error_message, LiveAuth.permission_message(:execute_repair))}
 
         {:error, reason} ->
           {:noreply, assign(socket, :error_message, error_message(reason))}
@@ -165,9 +173,13 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         <div>
           <h1 class="text-2xl font-semibold">Lifeline</h1>
           <p class="text-sm text-zinc-600">
-            Incident-first review stays here. Generic job internals still deep-link into Oban Web.
+            Incident review, preview, reason, and audit stay aligned here. Generic job internals still deep-link into Oban Web.
           </p>
         </div>
+
+        <p :if={@read_only?} class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <%= LiveAuth.page_read_only_banner(:lifeline) %>
+        </p>
 
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <.metric_card label="Needs Review" value={length(@active_incident_rows)} />
@@ -260,19 +272,23 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                     <div class="text-zinc-500"><%= count_label(row.incident.affected_counts, "workflow_steps") %></div>
                   </td>
                   <td class="px-4 py-3">
+                    <% action = preview_action(row, @current_actor) %>
                     <button
                       :if={@current_view == "active"}
                       type="button"
                       phx-click="preview"
                       phx-value-row-id={row.id}
-                      disabled={not row.previewable?}
+                      disabled={not action.enabled?}
                       class={[
                         "rounded px-3 py-2",
-                        if(row.previewable?, do: "bg-indigo-600 text-white", else: "cursor-not-allowed border text-zinc-400")
+                        if(action.enabled?, do: "bg-indigo-600 text-white", else: "cursor-not-allowed border text-zinc-400")
                       ]}
                     >
                       Preview Repair Plan
                     </button>
+                    <p :if={@current_view == "active" and not is_nil(action.disabled_reason)} class="mt-1 text-xs text-zinc-500">
+                      <%= action.disabled_reason %>
+                    </p>
                     <span :if={@current_view == "resolved"} class="text-zinc-500">Resolved</span>
                   </td>
                 </tr>
@@ -332,6 +348,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                     <p class="mt-1"><strong>Action:</strong> <%= @selected_row.action %></p>
                     <p class="mt-1"><strong>Resource:</strong> <%= resource_copy(@selected_row) %></p>
                     <p class="mt-1"><strong>Reason:</strong> <%= preview_reason(@reason) %></p>
+                    <p class="mt-1"><strong>Audit Consequence:</strong> <%= LiveAuth.audit_consequence_copy() %></p>
+                    <p class="mt-1"><strong>Preview Status:</strong> <%= preview_status_copy(@preview) %></p>
                     <p class="mt-1"><strong>Preview Token:</strong> <%= if @preview, do: @preview.preview_token, else: "Generate preview first" %></p>
                   </div>
                 </section>
@@ -348,18 +366,19 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                     class="mt-2 w-full rounded border px-3 py-2"
                   />
                 </label>
+                <% execute_action = execute_action(@preview, @reason, @current_actor, @selected_row) %>
                 <p class="text-xs text-zinc-500">
-                  Execute Repair Plan: This will change job or workflow state immediately and write an immutable audit event. Enter a reason before continuing.
+                  Execute Repair Plan: This will change job or workflow state immediately and write one immutable operator event. Enter a reason before continuing.
                 </p>
                 <div class="flex flex-wrap gap-3">
                   <button
                     :if={@preview}
                     type="button"
                     phx-click="execute"
-                    disabled={not execute_enabled?(@preview, @reason)}
+                    disabled={not execute_action.enabled?}
                     class={[
                       "rounded px-3 py-2",
-                      if(execute_enabled?(@preview, @reason),
+                      if(execute_action.enabled?,
                         do: "bg-red-600 text-white",
                         else: "cursor-not-allowed border text-zinc-400"
                       )
@@ -375,6 +394,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                     Open Generic Job Inspection in Oban Web
                   </a>
                 </div>
+                <p :if={not is_nil(@preview) and not is_nil(execute_action.disabled_reason)} class="text-xs text-zinc-500">
+                  <%= execute_action.disabled_reason %>
+                </p>
               </div>
             </div>
 
@@ -497,6 +519,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> assign(:selected_row, selected_row)
       |> assign(:preview, preview)
       |> assign(:preview_state, preview_state)
+      |> assign(:read_only?, read_only_page?(socket.assigns.current_actor, visible_incident_rows))
       |> assign(:audit_events, selected_row && audit_events_for_row(selected_row) || [])
       |> assign(:target_detail, selected_row && load_target_detail(selected_row) || %{job_id: nil})
       |> assign(:retention, retention)
@@ -662,9 +685,49 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp selected_fingerprint(nil), do: nil
     defp selected_fingerprint(row), do: row.incident.incident_fingerprint
 
-    defp execute_enabled?(nil, _reason), do: false
-    defp execute_enabled?(%RepairPreview{status: "drifted"}, _reason), do: false
-    defp execute_enabled?(preview, reason), do: preview.status == "pending" and String.trim(reason) |> String.length() >= 8
+    defp preview_action(row, actor) do
+      cond do
+        not row.previewable? ->
+          %{enabled?: false, disabled_reason: LiveAuth.mutation_error(:preview_not_available)}
+
+        LiveAuth.authorized?(actor, :preview_repair, row.resource) ->
+          %{enabled?: true, disabled_reason: nil}
+
+        true ->
+          %{enabled?: false, disabled_reason: LiveAuth.permission_message(:preview_repair)}
+      end
+    end
+
+    defp execute_action(nil, _reason, _actor, _row),
+      do: %{enabled?: false, disabled_reason: LiveAuth.mutation_error(:preview_not_available)}
+
+    defp execute_action(%RepairPreview{status: "drifted"}, _reason, _actor, _row),
+      do: %{enabled?: false, disabled_reason: LiveAuth.mutation_error(:preview_drifted)}
+
+    defp execute_action(%RepairPreview{status: "expired"}, _reason, _actor, _row),
+      do: %{enabled?: false, disabled_reason: LiveAuth.mutation_error(:preview_expired)}
+
+    defp execute_action(%RepairPreview{status: "consumed"}, _reason, _actor, _row),
+      do: %{enabled?: false, disabled_reason: LiveAuth.mutation_error(:preview_consumed)}
+
+    defp execute_action(preview, reason, actor, row) do
+      cond do
+        not LiveAuth.authorized?(actor, :execute_repair, row.resource) ->
+          %{enabled?: false, disabled_reason: LiveAuth.permission_message(:execute_repair)}
+
+        preview.status != "pending" ->
+          %{enabled?: false, disabled_reason: LiveAuth.mutation_error(:mutation_conflict)}
+
+        String.trim(reason) == "" ->
+          %{enabled?: false, disabled_reason: LiveAuth.mutation_error(:reason_required)}
+
+        String.trim(reason) |> String.length() < 8 ->
+          %{enabled?: false, disabled_reason: LiveAuth.mutation_error(:reason_too_short)}
+
+        true ->
+          %{enabled?: true, disabled_reason: nil}
+      end
+    end
 
     defp preview_state(%RepairPreview{status: "drifted"}), do: :drifted
     defp preview_state(%RepairPreview{}), do: :ready
@@ -694,7 +757,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       do: "Resolved incidents preserve repair outcomes and inline audit evidence after execution."
 
     defp incident_view_copy(_view),
-      do: "Active incidents are sorted by severity, then most recent detection time."
+      do: "Active incidents keep preview, reason, and audit evidence close to the affected resource."
 
     defp empty_view_copy("resolved"), do: "No resolved incidents are available yet."
     defp empty_view_copy(_view), do: "No active incidents need review right now."
@@ -809,6 +872,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       DisplayPolicy.reason(reason, %{surface: :lifeline, section: :preview})
     end
 
+    defp preview_status_copy(nil), do: "preview_not_available"
+    defp preview_status_copy(%RepairPreview{status: "pending"}), do: "ready"
+    defp preview_status_copy(%RepairPreview{status: status}), do: status
+
     defp event_actor_label(event) do
       event
       |> Audit.event_principal()
@@ -821,11 +888,28 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> DisplayPolicy.reason(%{surface: :lifeline, section: :audit_history, event: event.action})
     end
 
-    defp error_message(:preview_not_found), do: "The repair preview no longer exists."
-    defp error_message(:preview_drifted), do: "Preview Drifted. Generate a fresh preview before executing."
+    defp error_message(:preview_not_found), do: LiveAuth.mutation_error(:preview_not_available)
+    defp error_message(:preview_not_available), do: LiveAuth.mutation_error(:preview_not_available)
+    defp error_message(:preview_drifted), do: LiveAuth.mutation_error(:preview_drifted)
+    defp error_message(:preview_expired), do: LiveAuth.mutation_error(:preview_expired)
+    defp error_message(:preview_consumed), do: LiveAuth.mutation_error(:preview_consumed)
+    defp error_message(:reason_required), do: LiveAuth.mutation_error(:reason_required)
+    defp error_message(:reason_too_short), do: LiveAuth.mutation_error(:reason_too_short)
     defp error_message(:incident_still_active), do: "The repair target changed, but the incident still has live evidence. Refresh and review the remaining active records."
-    defp error_message(:unauthorized), do: "You are not authorized to perform this action."
+    defp error_message(:unauthorized), do: LiveAuth.mutation_error(:unauthorized)
     defp error_message(reason), do: inspect(reason)
+
+    defp read_only_page?(actor, rows) do
+      checks =
+        Enum.flat_map(rows, fn row ->
+          [
+            {:preview_repair, row.resource},
+            {:execute_repair, row.resource}
+          ]
+        end)
+
+      rows != [] and not LiveAuth.any_authorized?(actor, checks)
+    end
 
     defp repo, do: Application.fetch_env!(:oban_powertools, :repo)
   end

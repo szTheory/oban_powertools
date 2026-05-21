@@ -8,6 +8,40 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     alias ObanPowertools.Auth
 
     @missing_principal_message "Oban Powertools could not derive a durable audit principal for this action."
+    @audit_consequence "One immutable operator event will be written."
+    @mutation_errors %{
+      preview_not_found: "preview_not_available",
+      preview_not_available: "preview_not_available",
+      preview_drifted: "preview_drifted",
+      preview_expired: "preview_expired",
+      preview_consumed: "preview_consumed",
+      reason_required: "reason_required",
+      reason_too_short: "reason_too_short",
+      mutation_conflict: "mutation_conflict",
+      unauthorized: "unauthorized"
+    }
+    @permission_messages %{
+      pause_cron_entry:
+        "Permission: read-only. You can inspect this cron entry, but you do not have permission to preview or execute pause mutations.",
+      resume_cron_entry:
+        "Permission: read-only. You can inspect this cron entry, but you do not have permission to preview or execute resume mutations.",
+      run_cron_entry:
+        "Permission: read-only. You can inspect this cron entry, but you do not have permission to preview or execute run-now mutations.",
+      preview_repair:
+        "Permission: read-only. You can inspect this incident, but you do not have permission to preview this repair.",
+      execute_repair:
+        "Permission: read-only. You can inspect this preview, but you do not have permission to execute this repair."
+    }
+    @page_read_only_banners %{
+      cron:
+        "Permission: read-only. You can inspect cron state, but preview, reason, and audited mutations stay disabled until you receive broader permission.",
+      lifeline:
+        "Permission: read-only. You can inspect incident evidence, but preview, reason, and audited repairs stay disabled until you receive broader permission.",
+      audit:
+        "Permission: read-only. This page is the cross-surface audit destination. Native pages keep preview, reason, and local audit evidence close to the acted-on resource.",
+      workflows:
+        "Permission: read-only. Diagnose workflow causality here, but use Powertools-native pages for preview, reason, and audited mutations."
+    }
 
     def on_mount(:default, _params, session, socket) do
       actor = Auth.current_actor(session)
@@ -30,7 +64,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           :ok
 
         {:error, _reason} ->
-          {:error, Keyword.get(opts, :message, "You are not authorized to perform this action.")}
+          {:error, Keyword.get(opts, :message, permission_message(action))}
       end
     end
 
@@ -42,6 +76,28 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         {:error, _reason} ->
           {:error, Keyword.get(opts, :message, @missing_principal_message)}
       end
+    end
+
+    def authorized?(actor, action, resource) do
+      Auth.authorization_outcome(actor, action, resource) == :ok
+    end
+
+    def any_authorized?(actor, checks) do
+      Enum.any?(checks, fn {action, resource} -> authorized?(actor, action, resource) end)
+    end
+
+    def permission_message(action) do
+      Map.get(@permission_messages, action, @mutation_errors[:unauthorized])
+    end
+
+    def mutation_error(reason) do
+      Map.get(@mutation_errors, reason, inspect(reason))
+    end
+
+    def audit_consequence_copy, do: @audit_consequence
+
+    def page_read_only_banner(surface) do
+      Map.fetch!(@page_read_only_banners, surface)
     end
   end
 end

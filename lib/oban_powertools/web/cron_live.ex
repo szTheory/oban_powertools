@@ -16,7 +16,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
         {:ok,
          socket
-         |> assign(:entries, Cron.list_entries(repo()))
+         |> assign_entries(Cron.list_entries(repo()))
          |> assign(:preview, nil)
          |> assign(:reason, "")
          |> assign(:error_message, nil)}
@@ -88,7 +88,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
          |> assign(:preview, nil)
          |> assign(:reason, "")
          |> assign(:error_message, nil)
-         |> assign(:entries, Cron.list_entries(repo()))}
+         |> assign_entries(Cron.list_entries(repo()))}
       else
         {:error, message} when is_binary(message) ->
           {:noreply, assign(socket, :error_message, message)}
@@ -108,9 +108,13 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         <div>
           <h1 class="text-2xl font-semibold">Cron</h1>
           <p class="text-sm text-zinc-600">
-            Code and Runtime ownership stay visible. Mutations stay preview-first.
+            Preview, reason, and audit stay aligned here for every cron entry mutation.
           </p>
         </div>
+
+        <p :if={@read_only?} class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <%= LiveAuth.page_read_only_banner(:cron) %>
+        </p>
 
         <p :if={@error_message} class="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           <%= @error_message %>
@@ -181,7 +185,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <strong>Intended Effect:</strong> <%= preview_effect(@preview) %>
           </p>
           <p class="mt-2 text-sm">
-            <strong>Audit Consequence:</strong> One immutable operator event will be written.
+            <strong>Audit Consequence:</strong> <%= LiveAuth.audit_consequence_copy() %>
           </p>
           <p class="mt-2 text-sm">
             <strong>Preview Status:</strong> <%= @preview.status %>
@@ -237,6 +241,11 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp perform_action(%RepairPreview{action: "run_cron_entry"} = preview, principal, reason),
       do: Cron.run_cron_entry(repo(), preview.preview_token, principal.id, reason: blank_to_nil(reason))
 
+    defp assign_entries(socket, entries) do
+      assign(socket, :entries, entries)
+      |> assign(:read_only?, read_only_page?(entries, socket.assigns.current_actor))
+    end
+
     defp maybe_reload_preview(socket, preview_token) do
       assign(socket, :preview, repo().get_by(RepairPreview, preview_token: preview_token))
     end
@@ -270,11 +279,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         Map.put(
           action,
           :enabled?,
-          ObanPowertools.Auth.authorization_outcome(
-            actor,
-            auth_action(action.action),
-            %{type: :cron_entry, id: entry.name}
-          ) == :ok
+          LiveAuth.authorized?(actor, auth_action(action.action), %{type: :cron_entry, id: entry.name})
         )
       end)
       |> Enum.map(fn action ->
@@ -311,13 +316,13 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       do: "cursor-not-allowed rounded border border-zinc-200 px-3 py-2 text-zinc-400"
 
     defp unauthorized_preview_message("pause_cron_entry"),
-      do: "You do not have permission to pause cron entries."
+      do: LiveAuth.permission_message(:pause_cron_entry)
 
     defp unauthorized_preview_message("resume_cron_entry"),
-      do: "You do not have permission to resume cron entries."
+      do: LiveAuth.permission_message(:resume_cron_entry)
 
     defp unauthorized_preview_message("run_cron_entry"),
-      do: "You do not have permission to run cron entries now."
+      do: LiveAuth.permission_message(:run_cron_entry)
 
     defp preview_actor_label(actor) do
       case ObanPowertools.Auth.audit_principal(actor) do
@@ -341,15 +346,17 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> Enum.take(5)
     end
 
-    defp error_message(:preview_not_found), do: "preview_not_available"
-    defp error_message(:preview_not_available), do: "preview_not_available"
-    defp error_message(:preview_drifted), do: "preview_drifted"
-    defp error_message(:preview_expired), do: "preview_expired"
-    defp error_message(:preview_consumed), do: "preview_consumed"
-    defp error_message(:reason_required), do: "reason_required"
-    defp error_message(:reason_too_short), do: "reason_too_short"
-    defp error_message(:unauthorized), do: "unauthorized"
-    defp error_message(other), do: inspect(other)
+    defp read_only_page?(entries, actor) do
+      checks =
+        for entry <- entries,
+            action <- base_actions(entry) do
+          {auth_action(action.action), %{type: :cron_entry, id: entry.name}}
+        end
+
+      entries != [] and not LiveAuth.any_authorized?(actor, checks)
+    end
+
+    defp error_message(reason), do: LiveAuth.mutation_error(reason)
 
     defp source_label("code"), do: "Code"
     defp source_label(_), do: "Runtime"

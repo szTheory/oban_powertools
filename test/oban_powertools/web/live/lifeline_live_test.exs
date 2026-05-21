@@ -63,7 +63,6 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     assert html =~ "Needs Review"
     assert html =~ "Preview Repair Plan"
     assert html =~ "Archive Activity"
-    assert html =~ "Permission: read-only."
     assert html =~ "Archive and prune visibility is read-only here."
     refute has_element?(view, "button[phx-click='execute']")
   end
