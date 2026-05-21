@@ -1,7 +1,45 @@
 defmodule ObanPowertools.Telemetry do
   @moduledoc """
-  Provides safe, low-cardinality telemetry execution for Oban Powertools operator actions.
+  Public telemetry contract for Oban Powertools.
+
+  Phase 8 freezes five event families under the `[:oban_powertools, family, event_suffix]`
+  prefix:
+
+  - `:operator_action`
+  - `:limiter`
+  - `:cron`
+  - `:workflow`
+  - `:lifeline`
+
+  The public measurement key is `:count`.
+
+  Allowed low-cardinality metadata keys per family:
+
+  - `:operator_action` -> `[:action, :source]`
+  - `:limiter` -> `[:action, :blocker_code, :resource, :scope]`
+  - `:cron` -> `[:action, :source, :overlap_policy, :catch_up_policy]`
+  - `:workflow` -> `[:status, :state]`
+  - `:lifeline` -> `[:action, :incident_class, :target_type, :outcome, :archived_count, :pruned_count]`
+
+  IDs, job args, preview tokens, and free-form reasons are intentionally excluded from this
+  public API.
   """
+
+  @contract %{
+    measurement_keys: [:count],
+    families: %{
+      operator_action: [:action, :source],
+      limiter: [:action, :blocker_code, :resource, :scope],
+      cron: [:action, :source, :overlap_policy, :catch_up_policy],
+      workflow: [:status, :state],
+      lifeline: [:action, :incident_class, :target_type, :outcome, :archived_count, :pruned_count]
+    }
+  }
+
+  @doc """
+  Returns the public telemetry contract for event families, measurements, and metadata keys.
+  """
+  def contract, do: @contract
 
   @doc """
   Executes a telemetry event for an operator action.
