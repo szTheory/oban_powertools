@@ -1,10 +1,29 @@
 defmodule ObanPowertools.Web.Router do
   @moduledoc """
   Provides routing helpers to inject the Oban Powertools Web interface.
+
+  Host applications own the outer `"/ops/jobs"` scope and browser pipeline. This
+  module owns only the native Powertools route tree mounted inside that host-owned
+  shell.
   """
 
   @doc """
-  Mounts the Oban Powertools Web interface at the given path.
+  Mounts the native Powertools route tree inside a host-owned browser scope.
+
+  The public contract for Phase 8 is:
+
+  - the host router owns the outer `"/ops/jobs"` scope
+  - the host router owns `pipe_through(:browser)` for that outer scope
+  - `oban_powertools_routes("/oban")` owns only the inner native LiveView routes
+    beneath that host-owned scope
+  - when `Oban.Web.Router` is available, the optional bridge path is `"/oban"`
+    beneath the same host-owned outer scope
+  - the optional bridge stays limited to `on_mount: [ObanPowertools.Web.LiveAuth]`
+    in this phase
+
+  Resolver, redaction, formatter, and broader policy seams are not introduced
+  here. That Phase 9 work remains intentionally out of scope for this mount
+  contract.
   """
   defmacro oban_powertools_routes(path) do
     if Code.ensure_loaded?(Phoenix.LiveView.Router) do
