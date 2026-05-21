@@ -178,6 +178,42 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     refute resolved_html =~ "Repair executed and audit evidence was written."
   end
 
+  test "authorized but unattributable operators cannot create durable preview or execute writes", %{
+    conn: conn
+  } do
+    insert_missing_heartbeat!("executor-missing")
+    incident = insert_dead_executor_incident!("executor-missing")
+    job = insert_executing_job!("executor-missing")
+    update_incident_job_ids!(incident, [job.id])
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{
+          id: "ops-7",
+          permissions: [:view_lifeline, :preview_repair, :execute_repair],
+          audit_principal: nil
+        }
+      )
+
+    {:ok, view, _html} = live(conn, "/ops/jobs/lifeline")
+
+    preview_html =
+      view
+      |> element("button[phx-value-row-id$=':job:#{job.id}'][phx-click='preview']")
+      |> render_click()
+
+    assert preview_html =~ "Oban Powertools could not derive a durable audit principal for this action."
+    refute preview_html =~ "Preview Ready"
+    assert TestRepo.all(ObanPowertools.Lifeline.RepairPreview) == []
+
+    render_change(view, "reason", %{"reason" => "Rescuing orphaned job after node loss"})
+    execute_html = render_click(view, "execute", %{})
+
+    assert execute_html =~ "Oban Powertools could not derive a durable audit principal for this action."
+    refute execute_html =~ "Repair executed and audit evidence was written."
+    assert Audit.list(%{type: :job, id: Integer.to_string(job.id)}, repo: TestRepo) == []
+  end
+
   defp insert_dead_executor_incident!(executor_id, health_state \\ "missing") do
     %Incident{}
     |> Incident.changeset(%{

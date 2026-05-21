@@ -53,6 +53,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
       with :ok <- ensure_previewable(row),
            :ok <- LiveAuth.authorize_action(socket, :preview_repair, row.resource),
+           {:ok, _principal} <- LiveAuth.principal_for_action(socket),
            {:ok, preview} <-
              Lifeline.preview_repair(
                repo(),
@@ -105,6 +106,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       row = socket.assigns.selected_row
 
       with :ok <- LiveAuth.authorize_action(socket, :execute_repair, row.resource),
+           {:ok, _principal} <- LiveAuth.principal_for_action(socket),
            {:ok, _result} <-
              Lifeline.execute_repair(
                repo(),

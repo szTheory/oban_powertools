@@ -4,7 +4,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     use Phoenix.LiveView
 
-    alias ObanPowertools.{Audit, Auth, Cron, Telemetry}
+    alias ObanPowertools.{Audit, Cron, Telemetry}
     alias ObanPowertools.Web.LiveAuth
 
     @impl true
@@ -68,8 +68,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       resource = %{type: :cron_entry, id: entry.name}
 
       with :ok <- LiveAuth.authorize_action(socket, auth_action(action), resource),
-           {:ok, _result} <-
-             perform_action(action, entry, socket.assigns.current_actor, socket.assigns.reason) do
+           {:ok, principal} <- LiveAuth.principal_for_action(socket),
+           {:ok, _result} <- perform_action(action, entry, principal, socket.assigns.reason) do
         {:noreply,
          socket
          |> assign(:preview, nil)
@@ -187,14 +187,14 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       """
     end
 
-    defp perform_action("pause_cron_entry", entry, actor, reason),
-      do: Cron.pause_entry(repo(), entry, Auth.actor_id(actor), reason: blank_to_nil(reason))
+    defp perform_action("pause_cron_entry", entry, principal, reason),
+      do: Cron.pause_entry(repo(), entry, principal.id, reason: blank_to_nil(reason))
 
-    defp perform_action("resume_cron_entry", entry, actor, reason),
-      do: Cron.resume_entry(repo(), entry, Auth.actor_id(actor), reason: blank_to_nil(reason))
+    defp perform_action("resume_cron_entry", entry, principal, reason),
+      do: Cron.resume_entry(repo(), entry, principal.id, reason: blank_to_nil(reason))
 
-    defp perform_action("run_cron_entry", entry, actor, reason),
-      do: Cron.run_now(repo(), entry, Auth.actor_id(actor), reason: blank_to_nil(reason))
+    defp perform_action("run_cron_entry", entry, principal, reason),
+      do: Cron.run_now(repo(), entry, principal.id, reason: blank_to_nil(reason))
 
     defp find_entry!(entry_name) do
       Enum.find(Cron.list_entries(repo()), &(&1.name == entry_name)) || raise "entry not found"
@@ -220,7 +220,11 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         Map.put(
           action,
           :enabled?,
-          Auth.authorize(actor, auth_action(action.action), %{type: :cron_entry, id: entry.name})
+          ObanPowertools.Auth.authorization_outcome(
+            actor,
+            auth_action(action.action),
+            %{type: :cron_entry, id: entry.name}
+          ) == :ok
         )
       end)
       |> Enum.map(fn action ->

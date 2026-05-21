@@ -160,4 +160,44 @@ defmodule ObanPowertools.Web.CronLiveTest do
     assert html =~ "You do not have permission to resume cron entries."
     assert html =~ "You do not have permission to run cron entries now."
   end
+
+  test "fails explicitly when an authorized cron operator has no durable audit principal", %{
+    conn: conn
+  } do
+    {:ok, _} =
+      Cron.sync_entry(TestRepo, %{
+        name: "missing-principal",
+        source: "runtime",
+        worker: "DemoWorker",
+        queue: "default",
+        expression: "* * * * *"
+      })
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{
+          id: "ops-6",
+          permissions: [:view_cron, :pause_cron_entry],
+          audit_principal: nil
+        }
+      )
+
+    {:ok, view, _html} = live(conn, "/ops/jobs/cron")
+
+    view
+    |> element("button[phx-value-action='pause_cron_entry'][phx-value-entry='missing-principal']")
+    |> render_click()
+
+    render_change(view, "reason", %{"reason" => "missing principal"})
+    html = render_click(view, "confirm", %{})
+
+    assert html =~ "Oban Powertools could not derive a durable audit principal for this action."
+    refute html =~ "Paused"
+    refute_receive {:telemetry_event, [:oban_powertools, :cron, :paused], _, _}
+    refute_receive {:telemetry_event, [:oban_powertools, :operator_action, :complete], _, _}
+    assert Audit.list(%{type: :cron_entry, id: "missing-principal"}, repo: TestRepo) == []
+
+    entry = Enum.find(Cron.list_entries(TestRepo), &(&1.name == "missing-principal"))
+    assert is_nil(entry.paused_at)
+  end
 end
