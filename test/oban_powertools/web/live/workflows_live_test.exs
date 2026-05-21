@@ -52,6 +52,9 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
 
     {:ok, view, html} = live(conn, "/ops/jobs/workflows/#{workflow.id}?step=sync_billing")
     assert html =~ "Workflows"
+    assert html =~ "Permission: read-only."
+    assert html =~ "Powertools-native pages"
+    assert html =~ "Open generic job inspection in Oban Web"
     assert html =~ "sync_billing"
     assert html =~ "waiting_on_dependencies"
 

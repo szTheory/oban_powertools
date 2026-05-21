@@ -59,6 +59,9 @@ defmodule ObanPowertools.Web.AuditLiveTest do
     assert html =~ "policy reason: MAINTENANCE WINDOW RESCUE"
     assert html =~ "Archive Activity"
     assert html =~ "Event Time"
+    assert html =~ "Permission: read-only."
+    assert html =~ "cross-surface audit destination"
+    assert html =~ "Native pages keep preview, reason, and local audit evidence close to the acted-on resource."
   end
 
   test "redirects unauthorized viewers", %{conn: conn} do
