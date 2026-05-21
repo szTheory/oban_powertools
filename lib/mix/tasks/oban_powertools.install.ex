@@ -66,6 +66,11 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       config :oban_powertools,
         repo: MyApp.Repo,
         auth_module: MyAppWeb.ObanPowertoolsAuth
+
+      Host-owned contract:
+      - The host sets config :oban_powertools, repo: ..., auth_module: ...
+      - ObanPowertools.Application owns internal supervision
+      - ObanPowertools.Application only starts ObanPowertools.Lifeline.HeartbeatWriter after repo wiring exists
       """
     )
   end
