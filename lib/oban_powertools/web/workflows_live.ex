@@ -72,9 +72,13 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         <div>
           <h1 class="text-2xl font-semibold">Workflows</h1>
           <p class="text-sm text-zinc-600">
-            Diagnose workflow causality here. Generic job internals still live in Oban Web.
+            Diagnose workflow causality here. Powertools-native pages own preview, reason, and audited mutations.
           </p>
         </div>
+
+        <p class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <%= LiveAuth.page_read_only_banner(:workflows) %>
+        </p>
 
         <div :if={@workflows == []} class="rounded-lg border bg-white p-6">
           <h2 class="text-base font-semibold">No workflows yet</h2>

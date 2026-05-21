@@ -29,9 +29,13 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         <div>
           <h1 class="text-2xl font-semibold">Audit</h1>
           <p class="text-sm text-zinc-600">
-            Limiter, cron, workflow, and lifeline interventions converge into one operator trail here.
+            Read-only audit evidence converges here across limiter, cron, workflow, and lifeline surfaces.
           </p>
         </div>
+
+        <p class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <%= LiveAuth.page_read_only_banner(:audit) %>
+        </p>
 
         <div class="rounded-lg border bg-slate-50 p-4">
           <h2 class="text-base font-semibold">Archive Activity</h2>
