@@ -4,7 +4,8 @@ defmodule ObanPowertools.Web.Router do
 
   Host applications own the outer `"/ops/jobs"` scope and browser pipeline. This
   module owns only the native Powertools route tree mounted inside that host-owned
-  shell.
+  shell. Native Powertools pages own audited mutations, while the optional
+  `/ops/jobs/oban` bridge stays a nested read-only inspection surface.
   """
 
   @doc """
@@ -20,10 +21,13 @@ defmodule ObanPowertools.Web.Router do
     beneath the same host-owned outer scope
   - the optional bridge reuses `ObanPowertools.Web.LiveAuth` plus a Powertools-
     owned resolver adapter over documented `Oban.Web.Resolver` hooks
+  - the optional bridge remains read-only, while native Powertools pages own
+    audited mutations
 
   The optional bridge contract stays thin. Powertools owns only the nested
   mount, actor handoff, access mapping, and shared display formatting hooks. It
-  does not become a shadow dashboard or generic Oban Web plugin surface.
+  does not become a shadow dashboard or generic Oban Web plugin surface, and it
+  does not replace native Powertools pages for audited mutations.
   """
   defmacro oban_powertools_routes(path) do
     if Code.ensure_loaded?(Phoenix.LiveView.Router) do

@@ -1,8 +1,12 @@
 if Code.ensure_loaded?(Oban.Web.Resolver) do
   defmodule ObanPowertools.Web.ObanWebBridge do
     @moduledoc """
-    Thin adapter from Powertools auth and display seams to documented
+    Thin read-only adapter from Powertools auth and display seams to documented
     `Oban.Web.Resolver` callbacks for the optional `/ops/jobs/oban` mount.
+
+    This bridge is a bounded inspection surface. It reuses the same host-owned
+    auth and display seams as native Powertools pages, while native Powertools
+    pages remain the audited mutation surface.
     """
 
     @behaviour Oban.Web.Resolver
