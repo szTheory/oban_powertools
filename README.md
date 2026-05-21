@@ -58,10 +58,15 @@ If `oban_web` is installed, the library also mounts the optional `oban_web` brid
 `/ops/jobs/oban`. The host still owns the dependency choice and the outer `/ops/jobs` shell.
 Powertools owns only the nested mount plus its adapter plumbing over documented hooks.
 
-That bridge reuses the same host-owned `auth_module` and `display_policy` seams as the native
-Powertools pages. Supported bridge behavior stops at actor handoff, access mapping, shared
-display and redaction formatting, and bounded audit or telemetry integration through the existing
-Powertools policy contract.
+That bridge is read-only. It reuses the same host-owned `auth_module` and `display_policy`
+seams as the native Powertools pages, but it stays a bounded inspection surface rather than a
+native mutation equivalent. Native Powertools pages own audited mutations, richer preview and
+reason UX, and the durable operator flow around those actions.
+
+Supported bridge behavior stops at actor handoff, access mapping, shared display and redaction
+formatting, and bounded audit or telemetry integration through the existing Powertools policy
+contract. It does not promise bridge-side writes, full native parity, nav injection, or generic
+plugin behavior inside Oban Web.
 
 ## Supervision Ownership
 
