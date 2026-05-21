@@ -12,6 +12,7 @@ defmodule ObanPowertools.Workflow.Runtime do
   @success_states ["completed", "ok", "success"]
   @retryable_states ["retryable", "executing", "running"]
   @terminal_failure_states ["cancelled", "discarded", "deleted", "failed", "error"]
+  @runtime_principal Audit.system_principal("workflow_runtime", label: "system workflow runtime")
 
   def complete_step(repo, workflow_id, step_name, attrs \\ %{}) do
     status = normalize_status(Map.get(attrs, :status) || Map.get(attrs, "status") || "completed")
@@ -51,7 +52,8 @@ defmodule ObanPowertools.Workflow.Runtime do
           "workflow.step_completed",
           %{type: :workflow_step, id: updated_step.id},
           %{"workflow_id" => workflow_id, "status" => status},
-          repo: repo
+          repo: repo,
+          principal: @runtime_principal
         )
 
         Telemetry.execute_workflow_event(:step_completed, %{count: 1}, %{status: status})
@@ -126,7 +128,8 @@ defmodule ObanPowertools.Workflow.Runtime do
           "workflow.step_unblocked",
           %{type: :workflow_step, id: updated.id},
           %{"workflow_id" => updated.workflow_id},
-          repo: repo
+          repo: repo,
+          principal: @runtime_principal
         )
 
         Telemetry.execute_workflow_event(:step_unblocked, %{count: 1}, %{status: "available"})
@@ -168,7 +171,8 @@ defmodule ObanPowertools.Workflow.Runtime do
           "workflow.step_cancelled",
           %{type: :workflow_step, id: updated.id},
           %{"workflow_id" => updated.workflow_id},
-          repo: repo
+          repo: repo,
+          principal: @runtime_principal
         )
 
         Telemetry.execute_workflow_event(:cascade_cancelled, %{count: 1}, %{status: "cancelled"})

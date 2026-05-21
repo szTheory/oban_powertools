@@ -55,4 +55,20 @@ defmodule ObanPowertools.Workflow.Result do
     |> validate_number(:payload_bytes, greater_than_or_equal_to: 0)
     |> unique_constraint([:step_id, :attempt])
   end
+
+  def display_input(nil), do: nil
+
+  def display_input(%__MODULE__{} = result) do
+    %{
+      "attempt" => result.attempt,
+      "status" => result.status,
+      "payload" => result.payload,
+      "payload_bytes" => result.payload_bytes,
+      "retention" => result.retention,
+      "redacted" => result.redacted,
+      "summary" => result.summary,
+      "recorded_at" => result.recorded_at,
+      "expires_at" => result.expires_at
+    }
+  end
 end
