@@ -33,7 +33,8 @@ Configure the host-owned runtime contract:
 ```elixir
 config :oban_powertools,
   repo: MyApp.Repo,
-  auth_module: MyAppWeb.ObanPowertoolsAuth
+  auth_module: MyAppWeb.ObanPowertoolsAuth,
+  display_policy: MyAppWeb.ObanPowertoolsDisplayPolicy
 ```
 
 ## Router Mount Contract
@@ -53,9 +54,14 @@ end
 This contract gives the host native Powertools routes at `/ops/jobs` and nested pages such as
 `/ops/jobs/cron`, `/ops/jobs/limiters`, `/ops/jobs/workflows`, and `/ops/jobs/lifeline`.
 
-If `oban_web` is installed, the library also mounts the optional bridge at `/ops/jobs/oban`.
-Phase 8 freezes only that path and the shared `ObanPowertools.Web.LiveAuth` mount hook. Resolver,
-redaction, and policy seams are deferred to Phase 9.
+If `oban_web` is installed, the library also mounts the optional `oban_web` bridge at
+`/ops/jobs/oban`. The host still owns the dependency choice and the outer `/ops/jobs` shell.
+Powertools owns only the nested mount plus its adapter plumbing over documented hooks.
+
+That bridge reuses the same host-owned `auth_module` and `display_policy` seams as the native
+Powertools pages. Supported bridge behavior stops at actor handoff, access mapping, shared
+display and redaction formatting, and bounded audit or telemetry integration through the existing
+Powertools policy contract.
 
 ## Supervision Ownership
 
