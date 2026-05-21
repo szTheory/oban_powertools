@@ -19,6 +19,7 @@ defmodule ObanPowertools.Web.CronLiveTest do
   use ObanPowertools.LiveCase, async: false
 
   alias ObanPowertools.{Audit, Cron}
+  alias ObanPowertools.Lifeline.RepairPreview
 
   setup do
     original_display_policy = Application.get_env(:oban_powertools, :display_policy)
@@ -53,7 +54,7 @@ defmodule ObanPowertools.Web.CronLiveTest do
     :ok
   end
 
-  test "shows source badges and runs preview-first pause flow", %{conn: conn} do
+  test "shows source badges and runs durable preview-first pause flow", %{conn: conn} do
     {:ok, _} =
       Cron.sync_entry(TestRepo, %{
         name: "nightly",
@@ -81,8 +82,14 @@ defmodule ObanPowertools.Web.CronLiveTest do
       |> render_click()
 
     assert html =~ "Preview Action"
+    assert html =~ "Preview Status"
+    assert html =~ "Preview Token"
     assert html =~ "policy actor: operator:ops-1"
     assert html =~ "policy reason: none provided"
+
+    [preview] = TestRepo.all(RepairPreview)
+    assert html =~ preview.preview_token
+    assert preview.status == "ready"
 
     assert_receive {:telemetry_event, [:oban_powertools, :operator_action, :previewed],
                     %{count: 1}, %{action: "pause_cron_entry", source: "code"}}
@@ -101,6 +108,7 @@ defmodule ObanPowertools.Web.CronLiveTest do
     assert event.action == "cron.paused"
     assert event.actor_id == "ops-1"
     assert event.metadata["reason"] == "maintenance"
+    assert event.metadata["preview_token"]
   end
 
   test "blocks unauthorized cron mutation before preview state", %{conn: conn} do
@@ -230,6 +238,54 @@ defmodule ObanPowertools.Web.CronLiveTest do
     assert Audit.list(%{type: :cron_entry, id: "missing-principal"}, repo: TestRepo) == []
 
     entry = Enum.find(Cron.list_entries(TestRepo), &(&1.name == "missing-principal"))
+    assert is_nil(entry.paused_at)
+  end
+
+  test "renders explicit shared preview-state failures from persisted cron previews", %{conn: conn} do
+    {:ok, _} =
+      Cron.sync_entry(TestRepo, %{
+        name: "preview-states",
+        source: "runtime",
+        worker: "DemoWorker",
+        queue: "default",
+        expression: "* * * * *"
+      })
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-8", permissions: [:view_cron, :pause_cron_entry]}
+      )
+
+    {:ok, view, _html} = live(conn, "/ops/jobs/cron")
+
+    view
+    |> element("button[phx-value-action='pause_cron_entry'][phx-value-entry='preview-states']")
+    |> render_click()
+
+    [preview] = TestRepo.all(RepairPreview)
+
+    TestRepo.update!(RepairPreview.changeset(preview, %{status: "expired"}))
+    expired_html = render_click(view, "confirm", %{})
+    assert expired_html =~ "preview_expired"
+
+    refreshed_preview = TestRepo.get!(RepairPreview, preview.id)
+    TestRepo.update!(
+      RepairPreview.changeset(refreshed_preview, %{status: "drifted", metadata: %{"drift_reason" => "entry changed"}})
+    )
+
+    drifted_html = render_click(view, "confirm", %{})
+    assert drifted_html =~ "preview_drifted"
+
+    drifted_preview = TestRepo.get!(RepairPreview, preview.id)
+
+    TestRepo.update!(
+      RepairPreview.changeset(drifted_preview, %{status: "consumed", consumed_at: DateTime.utc_now()})
+    )
+
+    consumed_html = render_click(view, "confirm", %{})
+    assert consumed_html =~ "preview_consumed"
+
+    entry = Enum.find(Cron.list_entries(TestRepo), &(&1.name == "preview-states"))
     assert is_nil(entry.paused_at)
   end
 end

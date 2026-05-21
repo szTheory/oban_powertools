@@ -5,6 +5,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     use Phoenix.LiveView
 
     alias ObanPowertools.{Audit, Cron, DisplayPolicy, Telemetry}
+    alias ObanPowertools.Lifeline.RepairPreview
     alias ObanPowertools.Web.LiveAuth
 
     @impl true
@@ -32,7 +33,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       with :ok <-
              LiveAuth.authorize_action(socket, auth_action(action), resource,
                message: unauthorized_preview_message(action)
-             ) do
+             ),
+           {:ok, preview} <- Cron.preview_entry_action(repo(), action, entry) do
         Telemetry.execute_operator_action(:previewed, %{count: 1}, %{
           action: action,
           source: entry.source
@@ -40,15 +42,23 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
         {:noreply,
          socket
-         |> assign(:preview, %{action: action, entry: entry})
+         |> assign(:preview, preview)
+         |> assign(:reason, "")
          |> assign(:error_message, nil)}
       else
-        {:error, message} ->
+        {:error, message} when is_binary(message) ->
           {:noreply,
            socket
            |> assign(:preview, nil)
            |> assign(:reason, "")
            |> assign(:error_message, message)}
+
+        {:error, reason} ->
+          {:noreply,
+           socket
+           |> assign(:preview, nil)
+           |> assign(:reason, "")
+           |> assign(:error_message, error_message(reason))}
       end
     end
 
@@ -66,12 +76,13 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     def handle_event("confirm", _params, socket) do
-      %{action: action, entry: entry} = socket.assigns.preview
-      resource = %{type: :cron_entry, id: entry.name}
+      preview = socket.assigns.preview
+      entry_name = get_in(preview.metadata, ["resource", "id"])
+      resource = %{type: :cron_entry, id: entry_name}
 
-      with :ok <- LiveAuth.authorize_action(socket, auth_action(action), resource),
+      with :ok <- LiveAuth.authorize_action(socket, auth_action(preview.action), resource),
            {:ok, principal} <- LiveAuth.principal_for_action(socket),
-           {:ok, _result} <- perform_action(action, entry, principal, socket.assigns.reason) do
+           {:ok, _result} <- perform_action(preview, principal, socket.assigns.reason) do
         {:noreply,
          socket
          |> assign(:preview, nil)
@@ -83,7 +94,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           {:noreply, assign(socket, :error_message, message)}
 
         {:error, reason} ->
-          {:noreply, assign(socket, :error_message, inspect(reason))}
+          {:noreply,
+           socket
+           |> maybe_reload_preview(preview.preview_token)
+           |> assign(:error_message, error_message(reason))}
       end
     end
 
@@ -150,14 +164,30 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
         <div :if={@preview} class="rounded-lg border bg-slate-50 p-4">
           <h2 class="text-base font-semibold">Preview Action</h2>
-          <p class="mt-2 text-sm">
-            <%= preview_copy(@preview.action, @preview.entry) %>
-          </p>
+          <p class="mt-2 text-sm"><%= preview_summary(@preview) %></p>
           <p class="mt-2 text-sm text-zinc-600">
             This action will be written to the Powertools audit trail with the acting operator and reason.
           </p>
           <p class="mt-2 text-sm">
             <strong>Actor:</strong> <%= preview_actor_label(@current_actor) %>
+          </p>
+          <p class="mt-2 text-sm">
+            <strong>Action:</strong> <%= preview_action_label(@preview.action) %>
+          </p>
+          <p class="mt-2 text-sm">
+            <strong>Resource:</strong> <%= preview_resource_label(@preview) %>
+          </p>
+          <p class="mt-2 text-sm">
+            <strong>Intended Effect:</strong> <%= preview_effect(@preview) %>
+          </p>
+          <p class="mt-2 text-sm">
+            <strong>Audit Consequence:</strong> One immutable operator event will be written.
+          </p>
+          <p class="mt-2 text-sm">
+            <strong>Preview Status:</strong> <%= @preview.status %>
+          </p>
+          <p class="mt-2 text-sm">
+            <strong>Preview Token:</strong> <%= @preview.preview_token %>
           </p>
           <label class="mt-4 block text-sm font-medium">
             Reason
@@ -171,6 +201,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           </label>
           <p class="mt-2 text-sm">
             <strong>Rendered Reason:</strong> <%= preview_reason(@reason) %>
+          </p>
+          <p class="mt-2 text-sm">
+            <strong>Risk:</strong> <%= get_in(@preview.metadata, ["risk"]) %>
           </p>
           <p :if={@error_message} class="mt-3 text-sm text-red-700"><%= @error_message %></p>
           <div class="mt-4 flex gap-3">
@@ -195,14 +228,18 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       """
     end
 
-    defp perform_action("pause_cron_entry", entry, principal, reason),
-      do: Cron.pause_entry(repo(), entry, principal.id, reason: blank_to_nil(reason))
+    defp perform_action(%RepairPreview{action: "pause_cron_entry"} = preview, principal, reason),
+      do: Cron.pause_cron_entry(repo(), preview.preview_token, principal.id, reason: blank_to_nil(reason))
 
-    defp perform_action("resume_cron_entry", entry, principal, reason),
-      do: Cron.resume_entry(repo(), entry, principal.id, reason: blank_to_nil(reason))
+    defp perform_action(%RepairPreview{action: "resume_cron_entry"} = preview, principal, reason),
+      do: Cron.resume_cron_entry(repo(), preview.preview_token, principal.id, reason: blank_to_nil(reason))
 
-    defp perform_action("run_cron_entry", entry, principal, reason),
-      do: Cron.run_now(repo(), entry, principal.id, reason: blank_to_nil(reason))
+    defp perform_action(%RepairPreview{action: "run_cron_entry"} = preview, principal, reason),
+      do: Cron.run_cron_entry(repo(), preview.preview_token, principal.id, reason: blank_to_nil(reason))
+
+    defp maybe_reload_preview(socket, preview_token) do
+      assign(socket, :preview, repo().get_by(RepairPreview, preview_token: preview_token))
+    end
 
     defp find_entry!(entry_name) do
       Enum.find(Cron.list_entries(repo()), &(&1.name == entry_name)) || raise "entry not found"
@@ -212,14 +249,19 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp auth_action("resume_cron_entry"), do: :resume_cron_entry
     defp auth_action("run_cron_entry"), do: :run_cron_entry
 
-    defp preview_copy("pause_cron_entry", entry),
-      do: "Pause #{entry.name}. New slots will stop claiming until you resume it."
+    defp preview_summary(preview), do: get_in(preview.metadata, ["summary"]) || preview_action_label(preview.action)
 
-    defp preview_copy("resume_cron_entry", entry),
-      do: "Resume #{entry.name}. Eligible slots can begin claiming again."
+    defp preview_action_label("pause_cron_entry"), do: "pause cron entry"
+    defp preview_action_label("resume_cron_entry"), do: "resume cron entry"
+    defp preview_action_label("run_cron_entry"), do: "run cron entry now"
 
-    defp preview_copy("run_cron_entry", entry),
-      do: "Run #{entry.name} now. This may enqueue work immediately based on overlap policy."
+    defp preview_resource_label(preview) do
+      resource = get_in(preview.metadata, ["resource"]) || %{}
+      "#{resource["type"]}:#{resource["id"]}"
+    end
+
+    defp preview_effect(%RepairPreview{after_snapshot: %{"effect" => effect}}), do: effect
+    defp preview_effect(_preview), do: "See preview details."
 
     defp entry_actions(entry, actor) do
       entry
@@ -298,6 +340,16 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> Enum.filter(&MapSet.member?(entry_names, &1.resource))
       |> Enum.take(5)
     end
+
+    defp error_message(:preview_not_found), do: "preview_not_available"
+    defp error_message(:preview_not_available), do: "preview_not_available"
+    defp error_message(:preview_drifted), do: "preview_drifted"
+    defp error_message(:preview_expired), do: "preview_expired"
+    defp error_message(:preview_consumed), do: "preview_consumed"
+    defp error_message(:reason_required), do: "reason_required"
+    defp error_message(:reason_too_short), do: "reason_too_short"
+    defp error_message(:unauthorized), do: "unauthorized"
+    defp error_message(other), do: inspect(other)
 
     defp source_label("code"), do: "Code"
     defp source_label(_), do: "Runtime"

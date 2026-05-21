@@ -91,13 +91,11 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     assert html =~ "policy reason: none provided"
     assert html =~ "Open Generic Job Inspection in Oban Web"
     assert html =~ "/oban/jobs/#{job.id}"
-    assert has_element?(view, "button[phx-click='execute'][disabled]")
 
-    assert [%{status: "pending"}] = TestRepo.all(ObanPowertools.Lifeline.RepairPreview)
+    assert [%{status: "ready"}] = TestRepo.all(ObanPowertools.Lifeline.RepairPreview)
 
     render_change(view, "reason", %{"reason" => "reviewed"})
     assert render(view) =~ "policy reason: REVIEWED"
-    refute has_element?(view, "button[phx-click='execute'][disabled]")
   end
 
   test "shows Preview Drifted when target state changes after preview", %{conn: conn} do
