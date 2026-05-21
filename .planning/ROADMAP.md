@@ -22,6 +22,12 @@ Plans:
 
 **Goal:** Freeze auth, actor attribution, redaction, formatter, and optional `oban_web` seams so host apps can adopt predictable policy hooks.
 **Depends on:** Phase 8
+**Plans:** 3 plans
+
+Plans:
+- [x] `9-01-PLAN.md` — Freeze the host auth and audit-principal contract and enforce it through native mutation flows
+- [x] `9-02-PLAN.md` — Add the shared display-policy seam and apply it across native operator surfaces
+- [x] `9-03-PLAN.md` — Add the bounded `oban_web` bridge adapter plus docs and verification proof
 
 ### Phase 10: Operator UX Coherence & Mutation Safety
 
@@ -38,4 +44,4 @@ Plans:
 | Milestone | Phases | Plans | Status | Shipped |
 |-----------|--------|-------|--------|---------|
 | v1 | 0-7 | 28/28 | Shipped | 2026-05-21 |
-| v1.1 | 8-11 | 1/4 | Active | — |
+| v1.1 | 8-11 | 2/4 | Active | — |

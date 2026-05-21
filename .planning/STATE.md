@@ -2,18 +2,18 @@
 
 ## Project Reference
 **Core Value:** Oban Powertools provides an "Ultimate Batteries-Included" background job operations layer for Phoenix applications in the szTheory ecosystem. It guarantees Ecto-native safety, transparent observability, and durable idempotency while rejecting per-worker limits and implicit magic.
-**Current Focus:** Milestone `v1.1` is active with Phase 8 closed and Phase 9 policy-boundary hardening next.
+**Current Focus:** Milestone `v1.1` is active with Phase 9 complete and Phase 10 operator-UX coherence next.
 
 ## Current Position
-- **Phase:** 9
+- **Phase:** 10
 - **Plan:** —
-- **Status:** Phase 8 complete; ready to plan policy boundaries and optional bridge contracts
-- **Progress:** `[#####---------------]` (1/4 phases complete)
+- **Status:** Phase 9 complete; Phase 10 operator UX coherence and mutation-safety hardening next
+- **Progress:** `[##########----------]` (2/4 phases complete)
 
 ## Performance Metrics
-- **Phases Complete:** 9/9
-- **Plans Complete:** 31/31
-- **Metrics:** Phase 0 Plan 01 completed in 15m (Tasks: 3, Files: 5); Phase 1 Plan 01 completed in 12m (Tasks: 3, Files: 6); Phase 2 Plans 01-05 completed on 2026-05-19 with persistence, limiter, explain, cron, and native UI verification; Phase 3 Plans 01-05 completed on 2026-05-19 with durable DAG persistence, runtime signaling, workflow telemetry, and native workflow inspection; Phase 4 Plans 01-05 completed on 2026-05-19 with durable lifeline persistence, heartbeat/incident services, repair preview/execute, archive-prune retention, and the native Lifeline operator UI; Phase 5 Plans 01-05 completed on 2026-05-20 with traceability repair, restored validation/verification artifacts, normalized summary metadata, and a refreshed milestone audit; Phase 6 Plans 01-03 completed on 2026-05-20 with centralized runtime config, explicit installer wiring, cron auth-before-preview enforcement, and milestone evidence closure for `FND-01`, `FND-02`, and `ENG-03`; Phase 7 Plans 01-03 completed on 2026-05-21 with atomic incident retirement, evidence-driven reprojection, resolved-view LiveView continuity, and closed `LIF-02` verification; Phase 8 Plans 01-03 completed on 2026-05-21 with explicit host-owned install/config/router guidance, deterministic heartbeat supervision gating, a frozen nested `oban_web` bridge contract, and a documented public telemetry schema.
+- **Phases Complete:** 10/10
+- **Plans Complete:** 34/34
+- **Metrics:** Phase 0 Plan 01 completed in 15m (Tasks: 3, Files: 5); Phase 1 Plan 01 completed in 12m (Tasks: 3, Files: 6); Phase 2 Plans 01-05 completed on 2026-05-19 with persistence, limiter, explain, cron, and native UI verification; Phase 3 Plans 01-05 completed on 2026-05-19 with durable DAG persistence, runtime signaling, workflow telemetry, and native workflow inspection; Phase 4 Plans 01-05 completed on 2026-05-19 with durable lifeline persistence, heartbeat/incident services, repair preview/execute, archive-prune retention, and the native Lifeline operator UI; Phase 5 Plans 01-05 completed on 2026-05-20 with traceability repair, restored validation/verification artifacts, normalized summary metadata, and a refreshed milestone audit; Phase 6 Plans 01-03 completed on 2026-05-20 with centralized runtime config, explicit installer wiring, cron auth-before-preview enforcement, and milestone evidence closure for `FND-01`, `FND-02`, and `ENG-03`; Phase 7 Plans 01-03 completed on 2026-05-21 with atomic incident retirement, evidence-driven reprojection, resolved-view LiveView continuity, and closed `LIF-02` verification; Phase 8 Plans 01-03 completed on 2026-05-21 with explicit host-owned install/config/router guidance, deterministic heartbeat supervision gating, a frozen nested `oban_web` bridge contract, and a documented public telemetry schema; Phase 9 Plans 01-03 completed on 2026-05-21 with an explicit auth and audit-principal contract, a shared display-policy seam across native operator surfaces, and a bounded optional `oban_web` bridge plus proof artifacts.
 
 ## Accumulated Context
 - **Decisions:** 
@@ -37,5 +37,5 @@
 - **Blockers:** None
 
 ## Session Continuity
-- **Last Action:** Completed Phase 8 with install, supervision, route, telemetry, README, validation, and verification artifacts.
-- **Next Action:** Run `$gsd-discuss-phase 9` to define the Phase 9 policy, actor, redaction, and optional-bridge seams before planning.
+- **Last Action:** Completed Phase 9 with the auth/principal seam, shared display policy, bounded `/ops/jobs/oban` bridge adapter, README updates, and the Phase 9 verification artifact.
+- **Next Action:** Start Phase 10 to unify operator UX, read-only posture, preview/execute messaging, and mutation safety across the Powertools shell and bridge surfaces.
