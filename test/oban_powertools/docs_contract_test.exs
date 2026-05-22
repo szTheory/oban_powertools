@@ -52,9 +52,11 @@ defmodule ObanPowertools.DocsContractTest do
     assert source =~ "fresh-host:"
     assert source =~ "docs-contract:"
     assert source =~ "native-only:"
+    assert source =~ "first-session:"
     assert source =~ "bridge-enabled:"
     assert source =~ "test/oban_powertools/fresh_host_contract_test.exs"
     assert source =~ "test/oban_powertools/example_host_contract_test.exs"
+    assert source =~ "--only first_session"
   end
 
   defp joined_docs do

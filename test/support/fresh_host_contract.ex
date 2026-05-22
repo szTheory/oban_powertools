@@ -22,7 +22,15 @@ defmodule ObanPowertools.FreshHostContract do
       run!(dir, [{"MIX_ENV", "test"}], "mix", [
         "run",
         "-e",
-        "Application.ensure_all_started(:fresh_host); IO.puts(\"fresh_host booted\")"
+        ~S|case Application.ensure_all_started(:fresh_host) do
+  {:ok, _} ->
+    IO.puts("fresh_host booted")
+    System.halt(0)
+
+  {:error, reason} ->
+    IO.puts("fresh_host failed to boot: #{inspect(reason)}")
+    System.halt(1)
+end|
       ])
 
     %{
