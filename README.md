@@ -6,8 +6,12 @@ router scope, browser pipeline, auth, display policy, runtime config, and seeded
 
 ## 60-Second Install
 
-Add Oban Powertools to your host. `oban_web` stays optional and only enables the nested
-read-only bridge at `/ops/jobs/oban`.
+Start from a fresh Phoenix host, then add Oban Powertools. `oban_web` stays optional and only
+enables the nested read-only bridge at `/ops/jobs/oban`.
+
+```bash
+mix phx.new my_app --database postgres
+```
 
 ```elixir
 def deps do
@@ -18,15 +22,14 @@ def deps do
 end
 ```
 
-Run the installer:
+Run the installer after adding the dependency:
 
 ```bash
 mix oban_powertools.install
 ```
 
-The installer generates migrations and starter host wiring for `repo` and `auth_module`. The
-host must still add `display_policy: MyAppWeb.ObanPowertoolsDisplayPolicy` before mounting
-policy-sensitive native pages.
+The installer generates migrations, a host auth seam, and a host display-policy seam:
+`MyAppWeb.ObanPowertoolsAuth` and `MyAppWeb.ObanPowertoolsDisplayPolicy`.
 
 ```elixir
 config :oban_powertools,
@@ -34,6 +37,8 @@ config :oban_powertools,
   auth_module: MyAppWeb.ObanPowertoolsAuth,
   display_policy: MyAppWeb.ObanPowertoolsDisplayPolicy
 ```
+
+The host owns those modules. They are starter seams, not production-ready policy implementations.
 
 Run the generated migrations, then mount the Powertools route tree inside a host-owned browser
 scope:
@@ -50,24 +55,36 @@ end
 Native Powertools pages then mount at `/ops/jobs`, and the optional `oban_web` bridge mounts at
 `/ops/jobs/oban` when `oban_web` is installed.
 
+Before calling day-0 setup complete, make the generated host pass the bounded proof threshold:
+
+```bash
+mix compile
+mix ecto.migrate
+mix phx.server
+```
+
+`mix ecto.reset` is the equivalent reset path when you want a clean local proof run. The first
+successful operator session starts only after that compile, migrate or reset, and boot check has
+passed and a real native mutation succeeds.
+
 ## Support Truth
 
 - The host owns the outer `/ops/jobs` shell, browser pipeline, auth module, display policy, and
   runtime config.
 - The optional `/ops/jobs/oban` bridge is read-only.
-- native Powertools pages own audited mutations.
+- Native Powertools pages own audited mutations.
 - `oban_web` is optional and narrower than the native Powertools surface.
 
 ## Guides
 
 - [Installation](guides/installation.md) covers the exact host-owned setup path, including
-  `display_policy: MyAppWeb.ObanPowertoolsDisplayPolicy`.
-- [First Operator Session](guides/first-operator-session.md) walks from install to a first
-  successful `/ops/jobs` session and the read-only bridge.
+  `ObanPowertoolsAuth`, `ObanPowertoolsDisplayPolicy`, and the compile/migrate/boot threshold.
+- [First Operator Session](guides/first-operator-session.md) walks from install to the canonical
+  `ops-demo` -> `pause_cron_entry` on `nightly_sync` proof and the read-only bridge.
 - [Example App Walkthrough](guides/example-app-walkthrough.md) points to the canonical fixture at
   `examples/phoenix_host`.
 
 ## Canonical Example Host
 
-The canonical generated host fixture lives at `examples/phoenix_host`. It is the public reference
-path for `mix phx.new` plus `mix oban_powertools.install`, not a hand-built demo app.
+The canonical curated host fixture lives at `examples/phoenix_host`. It is the public reference
+path for `mix phx.new` plus `mix oban_powertools.install`, not a fully generated demo app.

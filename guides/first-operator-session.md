@@ -1,22 +1,28 @@
 # First Operator Session
 
 This walkthrough takes a new host from dependency install to a first successful operator session
-at `/ops/jobs`.
+at `/ops/jobs`. Success is not compile, reset, or seed output alone. Success is one real native
+audited mutation with durable evidence.
 
 ## 1. Finish the Day-0 Setup
 
 Start from [Installation](installation.md) and confirm these host-owned steps are complete:
 
 - `mix oban_powertools.install`
-- `config :oban_powertools` includes `repo`, `auth_module`, and
+- `config :oban_powertools` includes `repo`, `auth_module: MyAppWeb.ObanPowertoolsAuth`, and
   `display_policy: MyAppWeb.ObanPowertoolsDisplayPolicy`
 - the host router mounts the library routes inside `/ops/jobs`
-- the generated migrations have been run
+- `mix compile` succeeds
+- `mix ecto.migrate` or `mix ecto.reset` succeeds
+- one bounded boot check via `mix phx.server` succeeds
 
 ## 2. Seed an Operator Actor
 
 Seed at least one operator account or session fixture in your host app. The goal is a real actor
 that your `auth_module` can read and authorize for native operator actions.
+
+The canonical proof actor is `ops-demo`. The canonical proof target is the native cron entry
+`nightly_sync`.
 
 For a first session, give the seeded actor enough access to:
 
@@ -37,8 +43,8 @@ browser pipeline, your host-owned auth module, and your host-owned display polic
 
 ## 4. Complete One Native Audited Mutation
 
-Use one native Powertools page to perform an audited mutation. Good first examples are a cron
-pause or resume flow that requires preview and an operator reason before execution.
+Use one native Powertools page to perform an audited mutation. The canonical proof is
+`pause_cron_entry` on `nightly_sync` as operator `ops-demo`.
 
 This matters because the native pages are the supported mutation surface:
 
@@ -59,7 +65,8 @@ Powertools pages.
 Your first operator session is successful when:
 
 - `/ops/jobs` renders for the seeded operator
-- a native page completes one audited mutation
+- operator `ops-demo` completes native action `pause_cron_entry` on `nightly_sync`
+- durable audit evidence records that native mutation
 - `/ops/jobs/oban` is available only when `oban_web` is installed
 - `/ops/jobs/oban` remains read-only
 

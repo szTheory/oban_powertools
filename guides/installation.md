@@ -1,8 +1,16 @@
 # Installation
 
 This is the exact day-0 path for a Phoenix host app. The library owns internal pages and runtime
-helpers. Your host owns auth, display policy, the outer router scope, and the database migrations
-it runs.
+helpers. Your host owns auth, display policy, the outer router scope, and the database commands it
+runs.
+
+## 0. Start From A Fresh Phoenix Host
+
+The paved road starts from a real Phoenix app:
+
+```bash
+mix phx.new my_app --database postgres
+```
 
 ## 1. Add Dependencies
 
@@ -26,14 +34,14 @@ Run the generator-backed installer:
 mix oban_powertools.install
 ```
 
-The installer adds starter host wiring for `repo` and `auth_module`, creates Powertools
-migrations, and mounts the library route tree under a host-owned `/ops/jobs` scope. It does not
-scaffold a display policy for you.
+The installer adds starter host wiring for `repo`, `auth_module`, and `display_policy`, creates
+Powertools migrations, and mounts the library route tree under a host-owned `/ops/jobs` scope.
+The generated `MyAppWeb.ObanPowertoolsAuth` and `MyAppWeb.ObanPowertoolsDisplayPolicy` modules are
+thin starter seams owned by the host app.
 
 ## 3. Add the Required Host Runtime Config
 
-Keep the generated `repo` and `auth_module`, then add the explicit display policy step before
-mounting policy-sensitive native pages:
+Keep the generated `repo`, `auth_module`, and `display_policy` wiring in place:
 
 ```elixir
 config :oban_powertools,
@@ -42,8 +50,9 @@ config :oban_powertools,
   display_policy: MyAppWeb.ObanPowertoolsDisplayPolicy
 ```
 
-`auth_module` is host-owned. `display_policy: MyAppWeb.ObanPowertoolsDisplayPolicy` is also
-host-owned and required before native pages render policy-sensitive values.
+`auth_module: MyAppWeb.ObanPowertoolsAuth` is host-owned. `display_policy:
+MyAppWeb.ObanPowertoolsDisplayPolicy` is also host-owned and required before native pages render
+policy-sensitive values. Neither starter seam should be treated as a finished production policy.
 
 ## 4. Confirm the Router Mount
 
@@ -61,7 +70,15 @@ end
 That mount gives you native Powertools pages at `/ops/jobs` and the optional read-only bridge at
 `/ops/jobs/oban`.
 
-## 5. Run the Generated Migrations
+## 5. Compile The Generated Host Once
+
+Before calling installation successful, compile the generated host:
+
+```bash
+mix compile
+```
+
+## 6. Run The Required Database Path
 
 `mix oban_powertools.install` generates migrations for audit, idempotency, limiters, cron,
 workflow, and lifeline tables. Run them in your host app:
@@ -70,12 +87,26 @@ workflow, and lifeline tables. Run them in your host app:
 mix ecto.migrate
 ```
 
-## 6. Optional `oban_web` Dependency
+Use `mix ecto.reset` instead when you want a clean local reset plus seeds. The day-0 contract is
+not complete until one of those database paths succeeds.
+
+## 7. Boot The Host Once
+
+Run one bounded boot check before the first operator action:
+
+```bash
+mix phx.server
+```
+
+If the host boots and `/ops/jobs` renders through your browser pipeline, auth seam, and display
+policy seam, the paved road is ready for the first native session.
+
+## 8. Optional `oban_web` Dependency
 
 `oban_web` is optional. If you install it, Powertools mounts the nested bridge at
 `/ops/jobs/oban`. That bridge remains read-only and narrower than the native Powertools pages.
 
-## 7. Continue to the First Operator Session
+## 9. Continue To The First Operator Session
 
 Move on to [First Operator Session](first-operator-session.md) once the host can compile, migrate,
 and boot with the config and router contract above.
