@@ -2,6 +2,14 @@ defmodule Mix.Tasks.ObanPowertools.Install do
   use Igniter.Mix.Task
 
   @shortdoc "Installs Oban Powertools into a Phoenix application"
+  @router_scope_contract """
+  scope "/ops/jobs" do
+    pipe_through :browser
+
+    require ObanPowertools.Web.Router
+    ObanPowertools.Web.Router.oban_powertools_routes("/oban")
+  end
+  """
 
   def info(_argv, _composing_task) do
     %Igniter.Mix.Task.Info{
@@ -13,6 +21,7 @@ defmodule Mix.Tasks.ObanPowertools.Install do
   def igniter(igniter) do
     igniter
     |> setup_auth_module()
+    |> setup_display_policy_module()
     |> setup_runtime_config()
     |> setup_router_scope()
     |> setup_migration()
@@ -23,11 +32,15 @@ defmodule Mix.Tasks.ObanPowertools.Install do
 
   defp setup_auth_module(igniter) do
     web_module = Igniter.Libs.Phoenix.web_module(igniter)
-
     auth_module_name = Module.concat(web_module, "ObanPowertoolsAuth")
 
     contents = """
-      @moduledoc "Host-implemented authorization for Powertools actions."
+      @moduledoc \"\"\"
+      Thin host-owned Powertools auth seam.
+
+      Fill in your real operator actor lookup, authorization policy, and durable
+      audit principal envelope before exposing operator routes in production.
+      \"\"\"
       @behaviour ObanPowertools.Auth
 
       @impl true
@@ -37,46 +50,107 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       end
 
       @impl true
-      def can_perform_action?(_actor, _action, _resource) do
-        # TODO: Implement your authorization logic
-        false
+      def authorize(nil, _action, _resource), do: {:error, :unauthorized}
+
+      def authorize(_actor, _action, _resource) do
+        # TODO: Authorize Powertools actions for your real operator roles
+        {:error, :unauthorized}
+      end
+
+      @impl true
+      def audit_principal(_actor) do
+        # TODO: Return %{id: ..., type: ..., label: ...} for durable audit attribution
+        nil
       end
     """
 
     Igniter.Project.Module.create_module(igniter, auth_module_name, contents)
   end
 
+  defp setup_display_policy_module(igniter) do
+    web_module = Igniter.Libs.Phoenix.web_module(igniter)
+    display_policy_module_name = Module.concat(web_module, "ObanPowertoolsDisplayPolicy")
+
+    contents = """
+      @moduledoc \"\"\"
+      Thin host-owned Powertools display policy seam.
+
+      Return redacted or host-formatted values for operator-visible fields.
+      \"\"\"
+
+      def display(_kind, _value, _context) do
+        # TODO: Redact or format operator-visible values for your host
+        nil
+      end
+    """
+
+    Igniter.Project.Module.create_module(igniter, display_policy_module_name, contents)
+  end
+
   defp setup_runtime_config(igniter) do
     app_module = Igniter.Project.Module.module_name_prefix(igniter)
     web_module = Igniter.Libs.Phoenix.web_module(igniter)
+    repo_module = Module.concat(app_module, "Repo")
     auth_module_name = Module.concat(web_module, "ObanPowertoolsAuth")
+    display_policy_module_name = Module.concat(web_module, "ObanPowertoolsDisplayPolicy")
 
-    Igniter.Project.Config.configure_group(
-      igniter,
-      "config.exs",
-      :oban_powertools,
-      [],
-      [
-        {[:repo], {:code, Macro.escape(Module.concat(app_module, "Repo"))}},
-        {[:auth_module], {:code, Macro.escape(auth_module_name)}}
-      ],
-      comment: """
-      Explicit Powertools host wiring:
+    if Igniter.Project.Config.configures_key?(igniter, "config.exs", :oban_powertools, []) do
+      igniter
+      |> Igniter.Project.Config.configure_new(
+        "config.exs",
+        :oban_powertools,
+        [:repo],
+        {:code, quote(do: unquote(repo_module))}
+      )
+      |> Igniter.Project.Config.configure_new(
+        "config.exs",
+        :oban_powertools,
+        [:auth_module],
+        {:code, quote(do: unquote(auth_module_name))}
+      )
+      |> Igniter.Project.Config.configure_new(
+        "config.exs",
+        :oban_powertools,
+        [:display_policy],
+        {:code, quote(do: unquote(display_policy_module_name))}
+      )
+    else
+      Igniter.Project.Config.configure_new(
+        igniter,
+        "config.exs",
+        :oban_powertools,
+        [],
+        {:code,
+         quote do
+           [
+             repo: unquote(repo_module),
+             auth_module: unquote(auth_module_name),
+             display_policy: unquote(display_policy_module_name)
+           ]
+         end},
+        comment: """
+        Explicit Powertools host wiring:
 
-      config :oban_powertools,
-        repo: MyApp.Repo,
-        auth_module: MyAppWeb.ObanPowertoolsAuth
+        config :oban_powertools,
+          repo: MyApp.Repo,
+          auth_module: MyAppWeb.ObanPowertoolsAuth,
+          display_policy: MyAppWeb.ObanPowertoolsDisplayPolicy
 
-      Host-owned contract:
-      - The host sets config :oban_powertools, repo: ..., auth_module: ...
-      - ObanPowertools.Application owns internal supervision
-      - ObanPowertools.Application only starts ObanPowertools.Lifeline.HeartbeatWriter after repo wiring exists
-      """
-    )
+        Host-owned contract:
+        - The host sets config :oban_powertools, repo: ..., auth_module: ..., display_policy: ...
+        - ObanPowertools.Application owns internal supervision
+        - ObanPowertools.Application only starts ObanPowertools.Lifeline.HeartbeatWriter after repo wiring exists
+        """
+      )
+    end
   end
 
   defp setup_router_scope(igniter) do
+    _ = @router_scope_contract
+
     router_contents = """
+      pipe_through :browser
+
       require ObanPowertools.Web.Router
       ObanPowertools.Web.Router.oban_powertools_routes("/oban")
     """
