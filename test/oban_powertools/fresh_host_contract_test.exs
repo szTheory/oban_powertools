@@ -14,12 +14,24 @@ defmodule ObanPowertools.FreshHostContractTest do
 
     config_source = File.read!(Path.join(result.dir, "config/config.exs"))
     router_source = File.read!(Path.join([result.dir, "lib", "fresh_host_web", "router.ex"]))
+    auth_source =
+      File.read!(Path.join([result.dir, "lib", "fresh_host_web", "oban_powertools_auth.ex"]))
 
+    display_policy_source =
+      File.read!(
+        Path.join([result.dir, "lib", "fresh_host_web", "oban_powertools_display_policy.ex"])
+      )
+
+    assert config_source =~ "config :oban_powertools"
     assert config_source =~ "repo: FreshHost.Repo"
     assert config_source =~ "auth_module: FreshHostWeb.ObanPowertoolsAuth"
     assert config_source =~ "display_policy: FreshHostWeb.ObanPowertoolsDisplayPolicy"
     assert router_source =~ ~s(scope "/ops/jobs")
     assert router_source =~ "pipe_through :browser"
     assert router_source =~ ~s|ObanPowertools.Web.Router.oban_powertools_routes("/oban")|
+    assert auth_source =~ "defmodule FreshHostWeb.ObanPowertoolsAuth"
+    assert auth_source =~ "def audit_principal(actor) when is_map(actor)"
+    assert display_policy_source =~ "defmodule FreshHostWeb.ObanPowertoolsDisplayPolicy"
+    assert display_policy_source =~ "def display(:reason, reason, _context) when is_binary(reason)"
   end
 end

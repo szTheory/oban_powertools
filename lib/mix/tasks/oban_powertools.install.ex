@@ -2,6 +2,12 @@ defmodule Mix.Tasks.ObanPowertools.Install do
   use Igniter.Mix.Task
 
   @shortdoc "Installs Oban Powertools into a Phoenix application"
+  @powertools_config_contract """
+  config :oban_powertools,
+    repo: MyApp.Repo,
+    auth_module: MyAppWeb.ObanPowertoolsAuth,
+    display_policy: MyAppWeb.ObanPowertoolsDisplayPolicy
+  """
   @router_scope_contract """
   scope "/ops/jobs" do
     pipe_through :browser
@@ -88,61 +94,33 @@ defmodule Mix.Tasks.ObanPowertools.Install do
   end
 
   defp setup_runtime_config(igniter) do
+    _ = @powertools_config_contract
+
     app_module = Igniter.Project.Module.module_name_prefix(igniter)
     web_module = Igniter.Libs.Phoenix.web_module(igniter)
     repo_module = Module.concat(app_module, "Repo")
     auth_module_name = Module.concat(web_module, "ObanPowertoolsAuth")
     display_policy_module_name = Module.concat(web_module, "ObanPowertoolsDisplayPolicy")
 
-    if Igniter.Project.Config.configures_key?(igniter, "config.exs", :oban_powertools, []) do
-      igniter
-      |> Igniter.Project.Config.configure_new(
-        "config.exs",
-        :oban_powertools,
-        [:repo],
-        {:code, quote(do: unquote(repo_module))}
-      )
-      |> Igniter.Project.Config.configure_new(
-        "config.exs",
-        :oban_powertools,
-        [:auth_module],
-        {:code, quote(do: unquote(auth_module_name))}
-      )
-      |> Igniter.Project.Config.configure_new(
-        "config.exs",
-        :oban_powertools,
-        [:display_policy],
-        {:code, quote(do: unquote(display_policy_module_name))}
-      )
-    else
-      Igniter.Project.Config.configure_new(
-        igniter,
-        "config.exs",
-        :oban_powertools,
-        [],
-        {:code,
-         quote do
-           [
-             repo: unquote(repo_module),
-             auth_module: unquote(auth_module_name),
-             display_policy: unquote(display_policy_module_name)
-           ]
-         end},
-        comment: """
-        Explicit Powertools host wiring:
-
-        config :oban_powertools,
-          repo: MyApp.Repo,
-          auth_module: MyAppWeb.ObanPowertoolsAuth,
-          display_policy: MyAppWeb.ObanPowertoolsDisplayPolicy
-
-        Host-owned contract:
-        - The host sets config :oban_powertools, repo: ..., auth_module: ..., display_policy: ...
-        - ObanPowertools.Application owns internal supervision
-        - ObanPowertools.Application only starts ObanPowertools.Lifeline.HeartbeatWriter after repo wiring exists
-        """
-      )
-    end
+    igniter
+    |> Igniter.Project.Config.configure_new(
+      "config.exs",
+      :oban_powertools,
+      [:repo],
+      {:code, quote(do: unquote(repo_module))}
+    )
+    |> Igniter.Project.Config.configure_new(
+      "config.exs",
+      :oban_powertools,
+      [:auth_module],
+      {:code, quote(do: unquote(auth_module_name))}
+    )
+    |> Igniter.Project.Config.configure_new(
+      "config.exs",
+      :oban_powertools,
+      [:display_policy],
+      {:code, quote(do: unquote(display_policy_module_name))}
+    )
   end
 
   defp setup_router_scope(igniter) do
@@ -166,8 +144,9 @@ defmodule Mix.Tasks.ObanPowertools.Install do
   defp setup_migration(igniter) do
     igniter
     |> Igniter.Libs.Ecto.gen_migration(
-      nil,
+      repo_module(igniter),
       "oban_powertools_audit_events",
+      timestamp: migration_timestamp(0),
       body: """
         def change do
           create table(:oban_powertools_audit_events) do
@@ -185,8 +164,9 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       """
     )
     |> Igniter.Libs.Ecto.gen_migration(
-      nil,
+      repo_module(igniter),
       "oban_powertools_idempotency_receipts",
+      timestamp: migration_timestamp(1),
       body: """
         def change do
           create table(:oban_powertools_idempotency_receipts, primary_key: false) do
@@ -210,8 +190,9 @@ defmodule Mix.Tasks.ObanPowertools.Install do
   defp setup_smart_engine_migrations(igniter) do
     igniter
     |> Igniter.Libs.Ecto.gen_migration(
-      nil,
+      repo_module(igniter),
       "oban_powertools_limit_resources",
+      timestamp: migration_timestamp(10),
       body: """
         def change do
           create table(:oban_powertools_limit_resources, primary_key: false) do
@@ -237,8 +218,9 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       """
     )
     |> Igniter.Libs.Ecto.gen_migration(
-      nil,
+      repo_module(igniter),
       "oban_powertools_limit_states",
+      timestamp: migration_timestamp(11),
       body: """
         def change do
           create table(:oban_powertools_limit_states, primary_key: false) do
@@ -261,8 +243,9 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       """
     )
     |> Igniter.Libs.Ecto.gen_migration(
-      nil,
+      repo_module(igniter),
       "oban_powertools_cron_entries",
+      timestamp: migration_timestamp(12),
       body: """
         def change do
           create table(:oban_powertools_cron_entries, primary_key: false) do
@@ -292,8 +275,9 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       """
     )
     |> Igniter.Libs.Ecto.gen_migration(
-      nil,
+      repo_module(igniter),
       "oban_powertools_cron_slots",
+      timestamp: migration_timestamp(13),
       body: """
         def change do
           create table(:oban_powertools_cron_slots, primary_key: false) do
@@ -319,8 +303,9 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       """
     )
     |> Igniter.Libs.Ecto.gen_migration(
-      nil,
+      repo_module(igniter),
       "oban_powertools_blocker_snapshots",
+      timestamp: migration_timestamp(14),
       body: """
         def change do
           create table(:oban_powertools_blocker_snapshots, primary_key: false) do
@@ -348,8 +333,9 @@ defmodule Mix.Tasks.ObanPowertools.Install do
   defp setup_workflow_migrations(igniter) do
     igniter
     |> Igniter.Libs.Ecto.gen_migration(
-      nil,
+      repo_module(igniter),
       "oban_powertools_workflows",
+      timestamp: migration_timestamp(20),
       body: """
         def change do
           create table(:oban_powertools_workflows, primary_key: false) do
@@ -376,8 +362,9 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       """
     )
     |> Igniter.Libs.Ecto.gen_migration(
-      nil,
+      repo_module(igniter),
       "oban_powertools_workflow_steps",
+      timestamp: migration_timestamp(21),
       body: """
         def change do
           create table(:oban_powertools_workflow_steps, primary_key: false) do
@@ -412,8 +399,9 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       """
     )
     |> Igniter.Libs.Ecto.gen_migration(
-      nil,
+      repo_module(igniter),
       "oban_powertools_workflow_edges",
+      timestamp: migration_timestamp(22),
       body: """
         def change do
           create table(:oban_powertools_workflow_edges, primary_key: false) do
@@ -435,8 +423,9 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       """
     )
     |> Igniter.Libs.Ecto.gen_migration(
-      nil,
+      repo_module(igniter),
       "oban_powertools_workflow_results",
+      timestamp: migration_timestamp(23),
       body: """
         def change do
           create table(:oban_powertools_workflow_results, primary_key: false) do
@@ -468,8 +457,9 @@ defmodule Mix.Tasks.ObanPowertools.Install do
   defp setup_phase_4_migrations(igniter) do
     igniter
     |> Igniter.Libs.Ecto.gen_migration(
-      nil,
+      repo_module(igniter),
       "oban_powertools_heartbeats",
+      timestamp: migration_timestamp(30),
       body: """
         def change do
           create table(:oban_powertools_heartbeats, primary_key: false) do
@@ -495,8 +485,9 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       """
     )
     |> Igniter.Libs.Ecto.gen_migration(
-      nil,
+      repo_module(igniter),
       "oban_powertools_lifeline_incidents",
+      timestamp: migration_timestamp(31),
       body: """
         def change do
           create table(:oban_powertools_lifeline_incidents, primary_key: false) do
@@ -527,8 +518,9 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       """
     )
     |> Igniter.Libs.Ecto.gen_migration(
-      nil,
+      repo_module(igniter),
       "oban_powertools_repair_previews",
+      timestamp: migration_timestamp(32),
       body: """
         def change do
           create table(:oban_powertools_repair_previews, primary_key: false) do
@@ -565,8 +557,9 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       """
     )
     |> Igniter.Libs.Ecto.gen_migration(
-      nil,
+      repo_module(igniter),
       "oban_powertools_archive_runs",
+      timestamp: migration_timestamp(33),
       body: """
         def change do
           create table(:oban_powertools_archive_runs, primary_key: false) do
@@ -595,8 +588,9 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       """
     )
     |> Igniter.Libs.Ecto.gen_migration(
-      nil,
+      repo_module(igniter),
       "oban_powertools_repair_archives",
+      timestamp: migration_timestamp(34),
       body: """
         def change do
           create table(:oban_powertools_repair_archives, primary_key: false) do
@@ -627,5 +621,15 @@ defmodule Mix.Tasks.ObanPowertools.Install do
         end
       """
     )
+  end
+
+  defp repo_module(igniter) do
+    Module.concat(Igniter.Project.Module.module_name_prefix(igniter), "Repo")
+  end
+
+  defp migration_timestamp(offset_seconds) do
+    DateTime.utc_now()
+    |> DateTime.add(offset_seconds, :second)
+    |> Calendar.strftime("%Y%m%d%H%M%S")
   end
 end

@@ -30,7 +30,23 @@ defmodule ObanPowertools.Web.Router do
   does not replace native Powertools pages for audited mutations.
   """
   defmacro oban_powertools_routes(path) do
+    oban_web_router = Module.concat([Oban, Web, Router])
+
     if Code.ensure_loaded?(Phoenix.LiveView.Router) do
+      bridge_routes =
+        if Code.ensure_loaded?(oban_web_router) do
+          quote do
+            import unquote(oban_web_router), only: [oban_dashboard: 2]
+
+            oban_dashboard(unquote(path),
+              resolver: ObanPowertools.Web.ObanWebBridge,
+              on_mount: [ObanPowertools.Web.LiveAuth]
+            )
+          end
+        else
+          quote(do: nil)
+        end
+
       quote do
         import Phoenix.LiveView.Router, only: [live: 3, live: 4, live_session: 3]
 
@@ -46,14 +62,7 @@ defmodule ObanPowertools.Web.Router do
           live("/workflows/:id", ObanPowertools.Web.WorkflowsLive, :show)
         end
 
-        if Code.ensure_loaded?(Oban.Web.Router) do
-          import Oban.Web.Router, only: [oban_dashboard: 2]
-
-          oban_dashboard(unquote(path),
-            resolver: ObanPowertools.Web.ObanWebBridge,
-            on_mount: [ObanPowertools.Web.LiveAuth]
-          )
-        end
+        unquote(bridge_routes)
       end
     else
       quote do
