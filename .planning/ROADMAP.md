@@ -44,10 +44,49 @@ Plans:
 
 **Goal:** Prove the public host contract through docs, example-app flows, compatibility guidance, and automated verification.
 **Depends on:** Phase 10
+**Plans:** 4 plans
+
+Plans:
+- [x] `11-01-PLAN.md` — Publish the concise README, ExDoc guide wiring, and exact day-0 guides that make `display_policy` and first-session setup honest
+- [x] `11-02-PLAN.md` — Commit the canonical generated Phoenix host fixture with real auth, display policy, router ownership, and seeded operator data
+- [x] `11-03-PLAN.md` — Document one honest upgrade lane, the tested compatibility matrix, and the day-2 hardening/bridge/troubleshooting/support guides
+- [x] `11-04-PLAN.md` — Add docs contract tests plus native-only, bridge-enabled, and upgrade-proof host-contract verification lanes
+
+### Phase 12: Fresh Host Install Path & Example Fixture Repair
+
+**Goal:** Restore the documented day-0 install path so a fresh Phoenix host and the canonical example fixture both prove the public host-owned setup contract end to end.
+**Depends on:** Phase 11
+**Requirements:** `PKG-01`, `DOC-01`
+**Gap Closure:** Closes audit gaps from `v1.1-MILESTONE-AUDIT.md`
+**Plans:** 0 plans
+
+### Phase 13: Native-Only Optional Dependency Contract Proof
+
+**Goal:** Make the native-only host path compile and verify cleanly without `oban_web`, while preserving the bounded bridge contract when the dependency is present.
+**Depends on:** Phase 12
+**Requirements:** `PKG-03`, `DOC-03`
+**Gap Closure:** Closes audit gaps from `v1.1-MILESTONE-AUDIT.md`
+**Plans:** 0 plans
+
+### Phase 14: Evidence Chain & Cross-Phase Verification Closure
+
+**Goal:** Repair the requirements-to-verification-to-summary evidence chain across Phases 8-10 so the host contract seams that already exist are audit-closeable.
+**Depends on:** Phase 13
+**Requirements:** `POL-01`, `POL-02`, `POL-03`, `HST-02`
+**Gap Closure:** Closes audit gaps from `v1.1-MILESTONE-AUDIT.md`
+**Plans:** 0 plans
+
+### Phase 15: Upgrade Lane, Support Truth & Public Docs Integrity
+
+**Goal:** Replace the synthetic upgrade proof with a real supported-host lane and align public support-truth docs with what the fixture, guides, and regression suite actually prove.
+**Depends on:** Phase 14
+**Requirements:** `PKG-02`, `HST-03`, `DOC-02`
+**Gap Closure:** Closes audit gaps from `v1.1-MILESTONE-AUDIT.md`
+**Plans:** 0 plans
 
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
 |-----------|--------|-------|--------|---------|
 | v1 | 0-7 | 28/28 | Shipped | 2026-05-21 |
-| v1.1 | 8-11 | 3/4 | Active | — |
+| v1.1 | 8-15 | 4/8 | Active | — |
