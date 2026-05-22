@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-22T13:56:40Z"
+last_updated: "2026-05-22T14:08:50.111Z"
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 17
-  completed_plans: 14
+  completed_plans: 15
   percent: 50
 ---
 
@@ -25,9 +25,9 @@ Phase: 12 (fresh-host-install-path-example-fixture-repair) — EXECUTING
 Plan: 2 of 4
 
 - **Phase:** 12
-- **Plan:** 2
-- **Status:** Completed Plan 12-01, ready for Plan 12-02
-- **Progress:** [████████░░] 82%
+- **Plan:** 3 of 4
+- **Status:** Ready to execute Plan 12-03
+- **Progress:** [█████████░] 88%
 
 ## Performance Metrics
 
@@ -38,7 +38,8 @@ Plan: 2 of 4
 ## Accumulated Context
 
 - **Decisions:** 
-  - Using a 3-layer Hybrid Web UI Strategy (Powertools Shell wrapping Oban Web).
+  Added installer-faithful fixture migrations, narrow ops-demo/nightly_sync seed state, and explicit three-bucket curated provenance guidance for examples/phoenix_host.
+
   - Purely Postgres/Ecto-native state management (no Redis).
   - Explicit rate limiting, explicit workflow DAGs, and a dry-run repair center.
   - Used Igniter.Mix.Task to build the setup task and inject configuration into the host app.
@@ -63,5 +64,5 @@ Plan: 2 of 4
 
 ## Session Continuity
 
-- **Last Action:** Completed Plan 12-01 with structural installer coverage, a repaired fresh-host install pipeline, and a native-only `mix phx.new` proof lane.
-- **Next Action:** Execute Plan 12-02 for fixture migration completeness and provenance repair.
+- **Last Action:** Completed Plan 12-02 with fixture migrations, narrow seed state, and curated provenance repair.
+- **Next Action:** Execute Plan 12-03 for the deterministic first-session proof lane.

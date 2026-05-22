@@ -58,7 +58,7 @@ Plans:
 **Depends on:** Phase 11
 **Requirements:** `PKG-01`, `DOC-01`
 **Gap Closure:** Closes audit gaps from `v1.1-MILESTONE-AUDIT.md`
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 - [x] `12-01-PLAN.md` — Repair the fresh-host installer so it emits repo/auth/display-policy wiring, route scope, and Powertools migrations without crashing

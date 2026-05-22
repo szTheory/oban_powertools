@@ -26,7 +26,7 @@
 
 ### Docs & Example-Proof
 
-- [ ] **DOC-01**: A developer can complete a day-0 install and first successful operator session by following a concise documented path and example app.
+- [x] **DOC-01**: A developer can complete a day-0 install and first successful operator session by following a concise documented path and example app.
 - [ ] **DOC-02**: A developer can apply a production-hardening checklist for auth, telemetry, optional dependencies, and troubleshooting without reading internal implementation code.
 - [ ] **DOC-03**: Maintainers can verify the public host contract with automated proof that covers optional dependency paths, route/auth integration, and support-truth regressions.
 
