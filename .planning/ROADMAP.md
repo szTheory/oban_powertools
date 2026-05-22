@@ -58,13 +58,13 @@ Plans:
 **Depends on:** Phase 11
 **Requirements:** `PKG-01`, `DOC-01`
 **Gap Closure:** Closes audit gaps from `v1.1-MILESTONE-AUDIT.md`
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] `12-01-PLAN.md` — Repair the fresh-host installer so it emits repo/auth/display-policy wiring, route scope, and Powertools migrations without crashing
 - [x] `12-02-PLAN.md` — Make the canonical fixture migration-complete and provenance-honest with narrow first-session seed data
 - [x] `12-03-PLAN.md` — Add one deterministic native first-session proof lane that writes durable audit evidence
-- [ ] `12-04-PLAN.md` — Align public docs, docs contract tests, and CI lanes to the repaired install and first-session truth
+- [x] `12-04-PLAN.md` — Align public docs, docs contract tests, and CI lanes to the repaired install and first-session truth
 
 ### Phase 13: Native-Only Optional Dependency Contract Proof
 

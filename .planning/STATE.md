@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: executing
-last_updated: "2026-05-22T14:20:50Z"
+status: verifying
+last_updated: "2026-05-22T20:58:22.765Z"
 progress:
   total_phases: 8
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 17
-  completed_plans: 16
-  percent: 94
+  completed_plans: 17
+  percent: 63
 ---
 
 # Project State
@@ -26,14 +26,14 @@ Plan: 4 of 4
 
 - **Phase:** 12
 - **Plan:** 4 of 4
-- **Status:** Ready to execute Plan 12-04
-- **Progress:** [█████████░] 94%
+- **Status:** Phase complete — ready for verification
+- **Progress:** [██████████] 100%
 
 ## Performance Metrics
 
 - **Phases Complete:** 12/12
 - **Plans Complete:** 41/41
-- **Metrics:** Phase 0 Plan 01 completed in 15m (Tasks: 3, Files: 5); Phase 1 Plan 01 completed in 12m (Tasks: 3, Files: 6); Phase 2 Plans 01-05 completed on 2026-05-19 with persistence, limiter, explain, cron, and native UI verification; Phase 3 Plans 01-05 completed on 2026-05-19 with durable DAG persistence, runtime signaling, workflow telemetry, and native workflow inspection; Phase 4 Plans 01-05 completed on 2026-05-19 with durable lifeline persistence, heartbeat/incident services, repair preview/execute, archive-prune retention, and the native Lifeline operator UI; Phase 5 Plans 01-05 completed on 2026-05-20 with traceability repair, restored validation/verification artifacts, normalized summary metadata, and a refreshed milestone audit; Phase 6 Plans 01-03 completed on 2026-05-20 with centralized runtime config, explicit installer wiring, cron auth-before-preview enforcement, and milestone evidence closure for `FND-01`, `FND-02`, and `ENG-03`; Phase 7 Plans 01-03 completed on 2026-05-21 with atomic incident retirement, evidence-driven reprojection, resolved-view LiveView continuity, and closed `LIF-02` verification; Phase 8 Plans 01-03 completed on 2026-05-21 with explicit host-owned install/config/router guidance, deterministic heartbeat supervision gating, a frozen nested `oban_web` bridge contract, and a documented public telemetry schema; Phase 9 Plans 01-03 completed on 2026-05-21 with an explicit auth and audit-principal contract, a shared display-policy seam across native operator surfaces, and a bounded optional `oban_web` bridge plus proof artifacts; Phase 10 Plan 01 completed on 2026-05-21 with a shared durable preview contract, preview-token execution gating for cron mutations, and durable-preview LiveView coverage; Phase 10 Plan 02 completed on 2026-05-21 with centralized native operator vocabulary, consistent read-only framing, and aligned audit/workflow support-truth copy; Phase 10 Plan 03 completed on 2026-05-21 with a locked read-only `/ops/jobs/oban` bridge contract, route-level proof, and README support-truth aligned to native audited mutation ownership; Phase 11 Plans 01-04 completed on 2026-05-22 with ExDoc-backed day-0/day-2 guides, the canonical `examples/phoenix_host` fixture, a narrow compatibility promise, docs contract tests, and native-only / bridge-enabled / upgrade-proof host verification; Phase 12 Plan 01 completed on 2026-05-22 with repaired fresh-host installer config/router/seam generation, deterministic Powertools migrations, and a real `mix phx.new` install-to-boot proof lane; Phase 12 Plan 03 completed in 6min (Tasks: 2, Files: 3) with a native first-session proof lane and root host-contract harness for `ops-demo`, `nightly_sync`, and `pause_cron_entry`.
+- **Metrics:** Phase 0 Plan 01 completed in 15m (Tasks: 3, Files: 5); Phase 1 Plan 01 completed in 12m (Tasks: 3, Files: 6); Phase 2 Plans 01-05 completed on 2026-05-19 with persistence, limiter, explain, cron, and native UI verification; Phase 3 Plans 01-05 completed on 2026-05-19 with durable DAG persistence, runtime signaling, workflow telemetry, and native workflow inspection; Phase 4 Plans 01-05 completed on 2026-05-19 with durable lifeline persistence, heartbeat/incident services, repair preview/execute, archive-prune retention, and the native Lifeline operator UI; Phase 5 Plans 01-05 completed on 2026-05-20 with traceability repair, restored validation/verification artifacts, normalized summary metadata, and a refreshed milestone audit; Phase 6 Plans 01-03 completed on 2026-05-20 with centralized runtime config, explicit installer wiring, cron auth-before-preview enforcement, and milestone evidence closure for `FND-01`, `FND-02`, and `ENG-03`; Phase 7 Plans 01-03 completed on 2026-05-21 with atomic incident retirement, evidence-driven reprojection, resolved-view LiveView continuity, and closed `LIF-02` verification; Phase 8 Plans 01-03 completed on 2026-05-21 with explicit host-owned install/config/router guidance, deterministic heartbeat supervision gating, a frozen nested `oban_web` bridge contract, and a documented public telemetry schema; Phase 9 Plans 01-03 completed on 2026-05-21 with an explicit auth and audit-principal contract, a shared display-policy seam across native operator surfaces, and a bounded optional `oban_web` bridge plus proof artifacts; Phase 10 Plan 01 completed on 2026-05-21 with a shared durable preview contract, preview-token execution gating for cron mutations, and durable-preview LiveView coverage; Phase 10 Plan 02 completed on 2026-05-21 with centralized native operator vocabulary, consistent read-only framing, and aligned audit/workflow support-truth copy; Phase 10 Plan 03 completed on 2026-05-21 with a locked read-only `/ops/jobs/oban` bridge contract, route-level proof, and README support-truth aligned to native audited mutation ownership; Phase 11 Plans 01-04 completed on 2026-05-22 with ExDoc-backed day-0/day-2 guides, the canonical `examples/phoenix_host` fixture, a narrow compatibility promise, docs contract tests, and native-only / bridge-enabled / upgrade-proof host verification; Phase 12 Plan 01 completed on 2026-05-22 with repaired fresh-host installer config/router/seam generation, deterministic Powertools migrations, and a real `mix phx.new` install-to-boot proof lane; Phase 12 Plan 03 completed in 6min (Tasks: 2, Files: 3) with a native first-session proof lane and root host-contract harness for `ops-demo`, `nightly_sync`, and `pause_cron_entry`; Phase 12 Plan 04 completed in 17min (Tasks: 2, Files: 7) with repaired public docs, docs-contract enforcement, and a dedicated `fresh-host` CI lane aligned to the canonical proof stack.
 
 ## Accumulated Context
 
@@ -61,10 +61,13 @@ Plan: 4 of 4
   - Resolve the optional `oban_web` bridge at macro expansion time so native-only hosts compile cleanly.
   - Use the native `/ops/jobs/cron` LiveView as the authoritative first-session proof surface.
   - Keep the root contract deterministic with a dedicated `first_session!` helper that runs only the canonical fixture proof file.
+  - Define day-0 success as compile plus migrate or reset plus one boot check before the first native operator mutation.
+  - Treat `ops-demo` pausing `nightly_sync` via `pause_cron_entry` as the canonical `DOC-01` proof threshold in both docs and tests.
+  - Keep the workflow explicit with a dedicated `fresh-host` lane instead of folding fresh-host proof into structural checks.
 - **Todos:** None
 - **Blockers:** None
 
 ## Session Continuity
 
-- **Last Action:** Completed Plan 12-03 with the native first-session proof lane and root host-contract harness wiring.
-- **Next Action:** Execute Plan 12-04 to align docs, docs contract tests, and CI lanes to the repaired first-session truth.
+- **Last Action:** Completed Plan 12-04 with aligned public docs, docs-contract assertions, and a dedicated `fresh-host` workflow lane.
+- **Next Action:** Verify Phase 12 using the repaired docs, fresh-host proof, and native first-session contract stack.
