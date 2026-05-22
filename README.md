@@ -1,13 +1,13 @@
 # ObanPowertools
 
 Oban Powertools is a host-owned operations layer for Oban-backed Phoenix applications. The
-library owns the internal runtime helpers, pages, and telemetry wrappers; the host app owns
-installation, config, router scope, browser pipeline, and policy implementation.
+library owns internal runtime helpers, native pages, and bridge adapters. The host app owns
+router scope, browser pipeline, auth, display policy, runtime config, and seeded operator data.
 
-## Installation
+## 60-Second Install
 
-Add Oban Powertools to your host app. `oban_web` stays optional and only enables the nested
-bridge route at `/ops/jobs/oban`.
+Add Oban Powertools to your host. `oban_web` stays optional and only enables the nested
+read-only bridge at `/ops/jobs/oban`.
 
 ```elixir
 def deps do
@@ -24,11 +24,9 @@ Run the installer:
 mix oban_powertools.install
 ```
 
-`mix oban_powertools.install` generates the Powertools Ecto migrations the host must run for
-audit, idempotency, smart-engine, workflow, and lifeline tables. The generator creates the
-migration wiring; the host is responsible for running those migrations as part of installation.
-
-Configure the host-owned runtime contract:
+The installer generates migrations and starter host wiring for `repo` and `auth_module`. The
+host must still add `display_policy: MyAppWeb.ObanPowertoolsDisplayPolicy` before mounting
+policy-sensitive native pages.
 
 ```elixir
 config :oban_powertools,
@@ -37,10 +35,8 @@ config :oban_powertools,
   display_policy: MyAppWeb.ObanPowertoolsDisplayPolicy
 ```
 
-## Router Mount Contract
-
-The host app owns the outer `/ops/jobs` scope and the browser pipeline that protects it. The
-library owns the route tree mounted inside that scope.
+Run the generated migrations, then mount the Powertools route tree inside a host-owned browser
+scope:
 
 ```elixir
 scope "/ops/jobs" do
@@ -51,45 +47,27 @@ scope "/ops/jobs" do
 end
 ```
 
-This contract gives the host native Powertools routes at `/ops/jobs` and nested pages such as
-`/ops/jobs/cron`, `/ops/jobs/limiters`, `/ops/jobs/workflows`, and `/ops/jobs/lifeline`.
+Native Powertools pages then mount at `/ops/jobs`, and the optional `oban_web` bridge mounts at
+`/ops/jobs/oban` when `oban_web` is installed.
 
-If `oban_web` is installed, the library also mounts the optional `oban_web` bridge at
-`/ops/jobs/oban`. The host still owns the dependency choice and the outer `/ops/jobs` shell.
-Powertools owns only the nested mount plus its adapter plumbing over documented hooks.
+## Support Truth
 
-That bridge is read-only. It reuses the same host-owned `auth_module` and `display_policy`
-seams as the native Powertools pages, but it stays a bounded inspection surface rather than a
-native mutation equivalent. Native Powertools pages own audited mutations, richer preview and
-reason UX, and the durable operator flow around those actions.
+- The host owns the outer `/ops/jobs` shell, browser pipeline, auth module, display policy, and
+  runtime config.
+- The optional `/ops/jobs/oban` bridge is read-only.
+- native Powertools pages own audited mutations.
+- `oban_web` is optional and narrower than the native Powertools surface.
 
-Supported bridge behavior stops at actor handoff, access mapping, shared display and redaction
-formatting, and bounded audit or telemetry integration through the existing Powertools policy
-contract. It does not promise bridge-side writes, full native parity, nav injection, or generic
-plugin behavior inside Oban Web.
+## Guides
 
-## Supervision Ownership
+- [Installation](guides/installation.md) covers the exact host-owned setup path, including
+  `display_policy: MyAppWeb.ObanPowertoolsDisplayPolicy`.
+- [First Operator Session](guides/first-operator-session.md) walks from install to a first
+  successful `/ops/jobs` session and the read-only bridge.
+- [Example App Walkthrough](guides/example-app-walkthrough.md) points to the canonical fixture at
+  `examples/phoenix_host`.
 
-`ObanPowertools.Application` owns the library’s internal supervision tree. The host does not
-start Powertools children directly through its own supervisor.
+## Canonical Example Host
 
-`ObanPowertools.Lifeline.HeartbeatWriter` starts only when the host has provided
-`config :oban_powertools, repo: MyApp.Repo`. Missing repo wiring no longer crashes library boot,
-but direct startup of persistence-backed services still fails fast with the shared runtime-config
-setup error.
-
-## Telemetry Contract
-
-All public events use the `[:oban_powertools, family, event_suffix]` shape. The public
-measurement key is `:count`.
-
-| Family | Allowed metadata keys |
-|--------|------------------------|
-| `operator_action` | `action`, `source` |
-| `limiter` | `action`, `blocker_code`, `resource`, `scope` |
-| `cron` | `action`, `source`, `overlap_policy`, `catch_up_policy` |
-| `workflow` | `status`, `state` |
-| `lifeline` | `action`, `incident_class`, `target_type`, `outcome`, `archived_count`, `pruned_count` |
-
-IDs, job args, preview tokens, and free-form reasons are intentionally outside the public
-telemetry API. High-cardinality evidence belongs in durable tables rather than telemetry payloads.
+The canonical generated host fixture lives at `examples/phoenix_host`. It is the public reference
+path for `mix phx.new` plus `mix oban_powertools.install`, not a hand-built demo app.
