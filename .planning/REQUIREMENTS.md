@@ -8,7 +8,7 @@
 
 ### Packaging & Install
 
-- [ ] **PKG-01**: A Phoenix host app can install Oban Powertools through a documented, host-owned generator path that produces deterministic wiring for config, supervision, routes, and migrations.
+- [x] **PKG-01**: A Phoenix host app can install Oban Powertools through a documented, host-owned generator path that produces deterministic wiring for config, supervision, routes, and migrations.
 - [ ] **PKG-02**: A maintainer can upgrade an existing host app between supported milestone versions using an explicit migration and compatibility guide without guessing hidden contract changes.
 - [ ] **PKG-03**: A host app can run Oban Powertools with or without `oban_web` installed, with the optional-path behavior documented and continuously verifiable.
 
