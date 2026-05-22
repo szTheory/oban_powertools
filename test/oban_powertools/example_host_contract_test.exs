@@ -33,6 +33,8 @@ defmodule ObanPowertools.ExampleHostContractTest do
   test "first-session lane proves ops-demo pauses nightly_sync with pause_cron_entry" do
     result = ExampleHostContract.first_session!()
 
+    assert result.output =~ "PhoenixHostWeb.ObanPowertoolsFirstSessionTest"
+    assert result.output =~ "1 test, 0 failures"
     assert result.output =~ "ops-demo"
     assert result.output =~ "nightly_sync"
     assert result.output =~ "pause_cron_entry"
