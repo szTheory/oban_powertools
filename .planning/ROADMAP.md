@@ -72,7 +72,12 @@ Plans:
 **Depends on:** Phase 12
 **Requirements:** `PKG-03`, `DOC-03`
 **Gap Closure:** Closes audit gaps from `v1.1-MILESTONE-AUDIT.md`
-**Plans:** 0 plans
+**Plans:** 3/3 plans complete
+
+Plans:
+- [x] `13-01-PLAN.md` — Make the temp-fixture proof harness honest for native-only dependency absence and add one real bridge render smoke
+- [x] `13-02-PLAN.md` — Rewrite README and guides around a native-first support story with an optional read-only bridge annex
+- [x] `13-03-PLAN.md` — Lock the native-first wording into docs-contract assertions and rename workflow jobs without collapsing `fresh-host`
 
 ### Phase 14: Evidence Chain & Cross-Phase Verification Closure
 
@@ -80,7 +85,7 @@ Plans:
 **Depends on:** Phase 13
 **Requirements:** `POL-01`, `POL-02`, `POL-03`, `HST-02`
 **Gap Closure:** Closes audit gaps from `v1.1-MILESTONE-AUDIT.md`
-**Plans:** 0 plans
+**Plans:** 2/4 plans executed
 
 ### Phase 15: Upgrade Lane, Support Truth & Public Docs Integrity
 

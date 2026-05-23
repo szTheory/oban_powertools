@@ -14,8 +14,8 @@
 
 ### Policy Surfaces
 
-- [ ] **POL-01**: A host app can provide stable auth and actor-attribution hooks that apply consistently across plugs, LiveView mounts, and mutation events.
-- [ ] **POL-02**: A host app can provide shared redaction and formatter policies that apply consistently across Powertools-native screens and the Oban Web bridge.
+- [x] **POL-01**: A host app can provide stable auth and actor-attribution hooks that apply consistently across plugs, LiveView mounts, and mutation events.
+- [x] **POL-02**: A host app can provide shared redaction and formatter policies that apply consistently across Powertools-native screens and the Oban Web bridge.
 - [ ] **POL-03**: Operators and integrators can rely on a documented low-cardinality telemetry contract whose event names, measurements, and metadata boundaries are treated as public API.
 
 ### Host Topology & UX
