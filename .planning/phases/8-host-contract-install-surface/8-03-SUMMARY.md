@@ -1,21 +1,27 @@
 ---
-phase: 8
+phase: 8-host-contract-install-surface
 plan: 03
-subsystem: host-contract-install-surface
+subsystem: docs
 tags: [telemetry, docs, validation, host-contract]
-requires: ["8-01", "8-02"]
-provides: [POL-03, PKG-01, HST-01]
+requires:
+  - phase: 8-01
+    provides: explicit host-owned install and supervision contract
+  - phase: 8-02
+    provides: host-owned router and nested bridge contract
+provides:
+  - public telemetry contract closure metadata for `POL-03`
+  - preserved historical execution record for the original Phase 8 public contract slice
 affects:
   - lib/oban_powertools/telemetry.ex
   - test/oban_powertools/telemetry_test.exs
   - README.md
   - .planning/phases/8-host-contract-install-surface/8-VALIDATION.md
-tech_stack:
+tech-stack:
   added: []
   patterns:
     - public telemetry contract exposed as stable code surface plus executable proof
     - README and validation artifacts aligned to the same install, supervision, and route contract
-key_files:
+key-files:
   created:
     - .planning/phases/8-host-contract-install-surface/8-03-SUMMARY.md
   modified:
@@ -23,14 +29,17 @@ key_files:
     - test/oban_powertools/telemetry_test.exs
     - README.md
     - .planning/phases/8-host-contract-install-surface/8-VALIDATION.md
-decisions:
+key-decisions:
   - Freeze the public telemetry API around five event families, the `:count` measurement, and low-cardinality metadata keys only.
   - Publish the host-owned install, route, and supervision contract in README instead of leaving adoption guidance implicit in source.
   - Treat the Phase 8 validation artifact as completed proof metadata by promoting the real test commands and approval markers.
-metrics:
-  completed_date: 2026-05-21
-  task_count: 2
-  file_count: 4
+patterns-established:
+  - Phase-local verification remains the canonical proof layer for `POL-03`.
+  - Retrospective summary metadata can close an evidence gap without rewriting the historical execution body.
+requirements-completed: [POL-03]
+retrospective-proof-added-in: Phase 14
+duration: 2min
+completed: 2026-05-21
 ---
 
 # Phase 8 Plan 03: Public Contract Summary
