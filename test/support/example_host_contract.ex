@@ -159,7 +159,7 @@ defmodule ObanPowertools.ExampleHostContract do
     restored =
       String.replace(
         source,
-        "auth_module: PhoenixHostWeb.ObanPowertoolsAuth,",
+        "auth_module: PhoenixHostWeb.ObanPowertoolsAuth",
         "auth_module: PhoenixHostWeb.ObanPowertoolsAuth,\n  display_policy: PhoenixHostWeb.ObanPowertoolsDisplayPolicy"
       )
 
