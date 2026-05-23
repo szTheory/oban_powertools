@@ -35,6 +35,7 @@ Oban Powertools should compound from a shipped v1 foundation into a host-friendl
 - **Why now:** the host contract is now stable enough to support the next major capability milestone, which upgrades workflows from durable primitives into a stronger orchestration substrate.
 - **Unlocks:** callback/recovery semantics, stuck-graph diagnosis, signal/await behavior, cancellation and expiry contracts, and repair-safe workflow state transitions.
 - **Non-goals:** broad control-plane unification before workflow semantics settle, generic Oban Web replacement, ecosystem-specific integrations, mobile/operator companion surfaces.
+- **Activated:** 2026-05-23 via `$gsd-new-milestone`
 
 ## Candidate Milestones
 

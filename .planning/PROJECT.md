@@ -66,6 +66,17 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 Version `v1.1` shipped on 2026-05-23. All 12 host-contract milestone requirements are evidence-closed: fresh-host install, canonical first-session proof, native-only optional dependency support, bounded bridge support, repaired cross-phase traceability, and a real archived-host upgrade lane now align with the public docs and CI proof stack.
 
+## Current Milestone: v1.2 Workflow Semantics & Recovery
+
+**Goal:** Strengthen workflow orchestration semantics so recovery, diagnosis, and operator actions stay explicit and safe under real host-app runtime conditions.
+
+**Target features:**
+- Callback and recovery semantics for workflow completion, retry, and failure transitions.
+- Stuck-graph diagnosis with explicit waiting, orphaned, and blocked-state explanations.
+- Signal/await, cancellation, and expiry contracts that preserve durable workflow truth and repair-safe operator behavior.
+
+**Why now:** v1.1 froze the host-owned install, auth, router, telemetry, and support-truth boundaries, which removes the main adoption churn and makes workflow semantics the highest-leverage next runtime capability to harden.
+
 ## Next Milestone Goals
 
 - Start `v1.2 Workflow Semantics & Recovery` as the next planned milestone.
@@ -95,4 +106,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-23 after v1.1 shipment*
+*Last updated: 2026-05-23 after starting v1.2 milestone*
