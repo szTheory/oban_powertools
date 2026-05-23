@@ -26,6 +26,13 @@ metrics:
 - Replaced the old negative `resolver:` source assertion with a positive router contract test that proves the nested bridge path, shared mount hooks, and Powertools-owned resolver metadata.
 - Updated README and added `9-VERIFICATION.md` so the optional `oban_web` path is documented as host-optional, nested, and limited to the shared Powertools auth and display seams.
 
+## Retrospective Traceability Note
+
+Phase 14 preserved this 2026-05-21 execution record while clarifying later audit truth:
+- The 2026-05-22 milestone audit reopened present-tense `PKG-03` closure after finding that native-only hosts still failed to compile without `oban_web`.
+- This summary remains historical evidence for the bounded bridge, auth, and display-policy seams that Phase 9 shipped on 2026-05-21.
+- Current present-tense closure truth for `PKG-03` now lives in Phase 13 rather than in this historical Phase 9 summary.
+
 ## Verification Evidence
 
 - `mix test test/oban_powertools/web/router_test.exs`

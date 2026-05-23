@@ -46,6 +46,13 @@ completed: 2026-05-21
 
 Phase 8's public contract is now visible and testable outside the implementation details: the telemetry wrapper exposes a stable contract, the README describes the exact host-owned install and mount seams, and the validation artifact points at the proof set that guards them.
 
+## Retrospective Traceability Note
+
+Phase 14 preserved this 2026-05-21 execution record while narrowing present-tense closure truth:
+- `POL-03` is the requirement this summary now closes through `requirements-completed` plus the canonical proof in `8-VERIFICATION.md`.
+- The 2026-05-22 milestone audit later reopened present-tense `PKG-01` closure for the documented install path.
+- Current install-path closure truth for `PKG-01` now lives in Phase 12 rather than in this historical Phase 8 summary.
+
 ## Tasks Completed
 
 | Task | Name | Commits | Result |
