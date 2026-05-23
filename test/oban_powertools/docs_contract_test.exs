@@ -8,7 +8,9 @@ defmodule ObanPowertools.DocsContractTest do
     "guides/example-app-walkthrough.md",
     "guides/upgrade-and-compatibility.md",
     "guides/optional-oban-web-bridge.md",
-    "guides/support-truth-and-ownership-boundaries.md"
+    "guides/support-truth-and-ownership-boundaries.md",
+    "guides/production-hardening.md",
+    "guides/troubleshooting.md"
   ]
   @workflow_file ".github/workflows/host-contract-proof.yml"
 
@@ -40,9 +42,16 @@ defmodule ObanPowertools.DocsContractTest do
   test "support truth stays locked in docs" do
     source = joined_docs()
 
-    assert source =~ "Native Powertools pages own audited mutations."
-    assert source =~ "host owns router scope"
+    assert source =~ "supported"
+    assert source =~ "tested"
+    assert source =~ "best-effort"
+    assert source =~ "host-owned"
+    assert source =~ "intentionally unsupported"
+    assert source =~ "best-effort outside tested lanes"
+    assert source =~ "native `/ops/jobs` shell"
+    assert source =~ "/ops/jobs/oban"
     assert source =~ "read-only"
+    assert source =~ "supported mutation surface"
   end
 
   test "workflow keeps the repaired proof lanes explicit" do
@@ -51,12 +60,27 @@ defmodule ObanPowertools.DocsContractTest do
     assert source =~ "structural:"
     assert source =~ "fresh-host:"
     assert source =~ "docs-contract:"
-    assert source =~ "native-only:"
+    assert source =~ "native-first:"
     assert source =~ "first-session:"
-    assert source =~ "bridge-enabled:"
+    assert source =~ "optional-bridge:"
+    assert source =~ "upgrade-proof:"
     assert source =~ "test/oban_powertools/fresh_host_contract_test.exs"
     assert source =~ "test/oban_powertools/example_host_contract_test.exs"
     assert source =~ "--only first_session"
+    assert source =~ "--only upgrade-proof"
+  end
+
+  test "troubleshooting docs keep the exact fail-fast runtime markers" do
+    source = joined_docs()
+
+    assert source =~
+             "Oban Powertools requires :repo in config :oban_powertools, repo: MyApp.Repo before using persistence-backed features."
+
+    assert source =~
+             "Oban Powertools requires :auth_module in config :oban_powertools, auth_module: MyAppWeb.ObanPowertoolsAuth before mounting native operator pages."
+
+    assert source =~
+             "Oban Powertools requires :display_policy in config :oban_powertools, display_policy: MyAppWeb.ObanPowertoolsDisplayPolicy before mounting policy-sensitive native operator pages."
   end
 
   defp joined_docs do
