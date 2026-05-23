@@ -1,7 +1,7 @@
 ---
 phase: 12-fresh-host-install-path-example-fixture-repair
 verified: 2026-05-22T22:45:34Z
-status: human_needed
+status: passed
 score: 12/12 must-haves verified
 overrides_applied: 0
 human_verification:
@@ -17,7 +17,7 @@ human_verification:
 
 **Phase Goal:** Restore the documented day-0 install path so a fresh Phoenix host and the canonical example fixture both prove the public host-owned setup contract end to end.
 **Verified:** 2026-05-22T22:45:34Z
-**Status:** human_needed
+**Status:** passed
 **Re-verification:** No - initial verification
 
 ## Goal Achievement
@@ -114,23 +114,25 @@ No orphaned Phase 12 requirements were found in `.planning/REQUIREMENTS.md`.
 | `lib/mix/tasks/oban_powertools.install.ex` | 54, 62, 68, 88 | `TODO` starter seams | ℹ️ Info | Intentional host-owned scaffolding; structural tests verify these remain thin placeholders rather than fake business logic. |
 | `examples/phoenix_host/regenerate.sh` | 59-62 | explicit `TODO` manual follow-up markers | ℹ️ Info | Intentional provenance honesty; script correctly avoids claiming full generator provenance. |
 
-### Human Verification Required
+### Human Verification Completed
 
 ### 1. Public Docs Consistency
 
 **Test:** Read `README.md`, `guides/installation.md`, `guides/first-operator-session.md`, and `guides/example-app-walkthrough.md` together.
 **Expected:** They describe the same paved road: `mix phx.new`, add dependency, `mix oban_powertools.install`, fill host-owned seams, compile, migrate/reset, boot, then complete `pause_cron_entry` on `nightly_sync` as `ops-demo`.
+**Result:** Passed on 2026-05-23. The install, first-session, README, and example-app docs all present the same native-first paved road and consistently mark host-owned follow-up.
 **Why human:** Marker-based tests cannot judge whether the prose is actually clear, non-misleading, and proportioned correctly for a new adopter.
 
 ### 2. Curated Fixture Provenance Honesty
 
 **Test:** Read `examples/phoenix_host/README.md` alongside `examples/phoenix_host/regenerate.sh`.
 **Expected:** A maintainer would reasonably conclude the fixture is curated, partially regenerated, and still requires explicit manual host-owned follow-up.
+**Result:** Passed on 2026-05-23. The fixture README and regeneration script describe a curated host with explicit manual follow-up rather than overclaiming generator provenance.
 **Why human:** This is an editorial support-truth judgment, not a binary code-path property.
 
 ### Gaps Summary
 
-No implementation gaps were found. The phase goal is achieved in code and automated proof. Remaining work is limited to human editorial verification of support-truth wording and provenance clarity.
+No implementation or editorial gaps remain. The phase goal is achieved in code, automated proof, and human support-truth review.
 
 ---
 

@@ -29,14 +29,15 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 - ✓ Audit logging for manual UI operations (`LIF-03`) — v1
 - ✓ Archive-before-delete retention flows (`LIF-04`) — v1
 - ✓ Host-owned install/config/router contract with deterministic migrations (`PKG-01`) — v1.1 Phase 8
-- ✓ Public low-cardinality telemetry contract (`POL-03`) — v1.1 Phase 8
+- ✓ Public low-cardinality telemetry contract (`POL-03`) — v1.1 Phase 8 / Phase 14 closure repair
 - ✓ Host/library ownership boundary for routes and supervision (`HST-01`) — v1.1 Phase 8
-
-### Active
-
-- [ ] Stabilize the remaining public host contract for upgrade, auth, redaction, and optional `oban_web` adoption (`v1.1`).
-- [ ] Unify operator permission/read-only/preview/audit expectations across the Powertools shell and the Oban Web bridge (`v1.1`).
-- [ ] Produce docs, example-app proof, and support-truth guidance that make host adoption predictable (`v1.1`).
+- ✓ Stable auth and actor-attribution hooks across native operator flows (`POL-01`) — v1.1 Phase 9 / Phase 14 closure repair
+- ✓ Shared redaction and display-policy seams across native pages and the bridge (`POL-02`) — v1.1 Phase 9 / Phase 14 closure repair
+- ✓ Consistent preview/read-only/reason/audit behavior across operator surfaces (`HST-02`) — v1.1 Phase 10 / Phase 14 closure repair
+- ✓ Supported day-0 install and first successful operator session (`DOC-01`) — v1.1 Phase 12
+- ✓ Native-only and optional-bridge host contract proof (`PKG-03`, `DOC-03`) — v1.1 Phase 13
+- ✓ Supported archived-host upgrade lane (`PKG-02`) — v1.1 Phase 15
+- ✓ Explicit support-truth boundaries and host-owned hardening/troubleshooting guidance (`HST-03`, `DOC-02`) — v1.1 Phase 15
 
 ### Out of Scope
 
@@ -63,23 +64,27 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 ## Current State
 
-Version `v1` shipped on 2026-05-21. All 16 v1 requirements are evidence-closed, and Phase 8 of `v1.1` now closes the first public host-contract slice across install, route ownership, supervision posture, telemetry, README guidance, and validation proof.
-
-## Current Milestone: v1.1 Host Contract & Adoption Hardening
-
-**Goal:** Make Oban Powertools predictable to install, configure, secure, and operate as a host-owned Phoenix dependency before expanding the public runtime surface again.
-
-**Target features:**
-- Stable upgrade and optional dependency contract for host apps, building on the shipped install/config/router baseline from Phase 8.
-- Frozen auth, redaction, and audit seams across the Powertools shell and Oban Web bridge, with telemetry now documented as public API.
-- Consistent operator UX for permissions, read-only states, preview/reason/audit flows, and docs/example-app onboarding.
-
-**Why now:** The cheapest post-v1 unlock is reducing host-adoption and contract churn so later workflow and control-plane expansion can land on stable public seams.
+Version `v1.1` shipped on 2026-05-23. All 12 host-contract milestone requirements are evidence-closed: fresh-host install, canonical first-session proof, native-only optional dependency support, bounded bridge support, repaired cross-phase traceability, and a real archived-host upgrade lane now align with the public docs and CI proof stack.
 
 ## Next Milestone Goals
 
-- Ship the v1.1 host-contract hardening slice and keep workflow semantics as the next major capability milestone.
-- Use `.planning/MILESTONE-ARC.md` as the source of truth for future milestone pulls and pivots.
+- Start `v1.2 Workflow Semantics & Recovery` as the next planned milestone.
+- Strengthen workflow callback/recovery semantics, stuck-graph diagnosis, signal/await behavior, and cancellation/expiry contracts on top of the now-stable host contract.
+- Keep `.planning/MILESTONE-ARC.md` as the source of truth for milestone ordering and pivots.
+
+## Recently Shipped
+
+<details>
+<summary>v1.1 Host Contract & Adoption Hardening</summary>
+
+Goal: make Oban Powertools predictable to install, configure, secure, and operate as a host-owned Phoenix dependency before expanding the public runtime surface again.
+
+Delivered:
+- Stable install, upgrade, auth, redaction, display-policy, and optional dependency seams for host apps.
+- Native-first operator UX with the `/ops/jobs/oban` bridge kept explicitly narrower and read-only.
+- Repaired docs, example-host, first-session, native-only, bridge, and upgrade proof lanes that make public support truth enforceable.
+
+</details>
 
 ## Evolution
 
@@ -90,4 +95,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-21 after Phase 8 completion*
+*Last updated: 2026-05-23 after v1.1 shipment*

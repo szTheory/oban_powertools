@@ -19,25 +19,24 @@ Oban Powertools should compound from a shipped v1 foundation into a host-friendl
 - Telemetry is a public API; high-cardinality evidence belongs in durable tables.
 - Explain, then act: preview/reason/audit flows before broadening mutations.
 
-## Active Milestone
+## Recently Shipped
 
 ### v1.1 Host Contract & Adoption Hardening
 
-- **Status:** active
-- **Why now:** v1 shipped the major runtime primitives, but the next cheapest unlock is reducing install, upgrade, auth, redaction, telemetry, and optional-dependency surprise before expanding the public surface again.
-- **Unlocks:** safer host adoption, stable extension seams, cleaner docs/examples, lower churn for later workflow/control-plane milestones.
-- **Non-goals:** new major engine primitives, full native Oban Web replacement, ecosystem-specific integrations, mobile/operator companion surfaces.
+- **Status:** shipped 2026-05-23
+- **Why it shipped:** the repo now proves the host-owned install path, native-first operator session, optional dependency boundaries, repaired cross-phase evidence chain, and supported archived-host upgrade lane end to end.
+- **Unlocked:** safer host adoption, trustworthy support-truth docs, stable extension seams, and lower churn for later workflow/control-plane milestones.
 
-## Candidate Milestones
+## Active Milestone
 
 ### v1.2 Workflow Semantics & Recovery
 
-- **Status:** candidate
-- **Priority:** highest capability unlock
-- **Why now:** this is the first major capability milestone after the host contract settles; it upgrades v1 workflows from durable primitives into a stronger orchestration substrate.
-- **Includes:** callback/recovery semantics, stuck-graph diagnosis, signal/await semantics, cancellation/expiry contracts, repair-safe workflow state transitions.
-- **Pros:** biggest JTBD unlock; strongest differentiation; prerequisite for deeper forensics and automation.
-- **Tradeoffs:** highest semantic complexity; risky to stabilize before host/policy seams are cleaner.
+- **Status:** active
+- **Why now:** the host contract is now stable enough to support the next major capability milestone, which upgrades workflows from durable primitives into a stronger orchestration substrate.
+- **Unlocks:** callback/recovery semantics, stuck-graph diagnosis, signal/await behavior, cancellation and expiry contracts, and repair-safe workflow state transitions.
+- **Non-goals:** broad control-plane unification before workflow semantics settle, generic Oban Web replacement, ecosystem-specific integrations, mobile/operator companion surfaces.
+
+## Candidate Milestones
 
 ### v1.3 Unified Control Plane & Explainability
 
