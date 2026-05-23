@@ -1,8 +1,13 @@
 # PhoenixHost
 
-`examples/phoenix_host` is the canonical curated fixture for the public host contract.
+`examples/phoenix_host` is the canonical curated current-state fixture for the public host
+contract.
 It is not a polished showcase app. It exists to prove one honest install-to-first-session
 lane and to keep the host/library ownership boundary reviewable.
+
+`examples/phoenix_host_upgrade_source` is a separate frozen historical fixture. It exists only
+for the singular supported upgrade lane and should not replace this current-state fixture when
+you want to inspect the live public host contract.
 
 ## What this fixture proves
 

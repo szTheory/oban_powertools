@@ -4,10 +4,14 @@ Oban Powertools is a host-owned operations layer for Oban-backed Phoenix applica
 library owns internal runtime helpers, native pages, and bridge adapters. The host app owns
 router scope, browser pipeline, auth, display policy, runtime config, and seeded operator data.
 
+Oban Powertools ships a native, host-owned operator shell at `/ops/jobs`.
+`oban_web` is optional; when installed, Powertools mounts a nested read-only Oban Web bridge at `/ops/jobs/oban` for additional inspection.
+
 ## 60-Second Install
 
-Start from a fresh Phoenix host, then add Oban Powertools. `oban_web` stays optional and only
-enables the nested read-only bridge at `/ops/jobs/oban`.
+Start from a fresh Phoenix host, then add Oban Powertools. The default paved road is the native
+shell at `/ops/jobs`, and `oban_web` stays optional for the nested read-only bridge at
+`/ops/jobs/oban`.
 
 ```bash
 mix phx.new my_app --database postgres
@@ -69,11 +73,24 @@ passed and a real native mutation succeeds.
 
 ## Support Truth
 
-- The host owns the outer `/ops/jobs` shell, browser pipeline, auth module, display policy, and
-  runtime config.
-- The optional `/ops/jobs/oban` bridge is read-only.
-- Native Powertools pages own audited mutations.
-- `oban_web` is optional and narrower than the native Powertools surface.
+- `supported`: the native `/ops/jobs` shell is the supported operator surface, and native
+  Powertools pages are the supported mutation surface.
+- `supported`: the optional `/ops/jobs/oban` bridge is supported only as a narrower read-only
+  inspection annex.
+- `supported`: one singular upgrade lane is supported for hosts that already have Postgres/Ecto,
+  `repo`, `auth_module`, `/ops/jobs`, and Powertools migrations in place and still need to add
+  `display_policy`.
+- `tested`: the repo proves the fresh-host install lane, the native-first fixture lane, the
+  first-session lane, the optional bridge render lane, the docs-contract lane, and the supported
+  upgrade lane.
+- `best-effort`: best-effort outside tested lanes applies to semver-allowed combinations,
+  bridge-enabled or diverged source hosts, bespoke shells, and unusual proxy or session setups.
+- `host-owned`: the host owns router scope, browser pipeline, auth, actor/session lookup,
+  display policy, runtime config, reverse-proxy and WebSocket behavior, seeded operator data,
+  and whether the bridge is exposed in production.
+- `intentionally unsupported`: using the bridge as a mutation surface, hidden fallback behavior
+  when required config is missing, non-Postgres support, and broader compatibility claims
+  outside verified lanes.
 
 ## Guides
 
@@ -81,6 +98,9 @@ passed and a real native mutation succeeds.
   `ObanPowertoolsAuth`, `ObanPowertoolsDisplayPolicy`, and the compile/migrate/boot threshold.
 - [First Operator Session](guides/first-operator-session.md) walks from install to the canonical
   `ops-demo` -> `pause_cron_entry` on `nightly_sync` proof and the read-only bridge.
+- [Support Truth And Ownership Boundaries](guides/support-truth-and-ownership-boundaries.md)
+  expands the shared supported/tested/best-effort/host-owned/intentionally unsupported
+  vocabulary.
 - [Example App Walkthrough](guides/example-app-walkthrough.md) points to the canonical fixture at
   `examples/phoenix_host`.
 
@@ -88,3 +108,5 @@ passed and a real native mutation succeeds.
 
 The canonical curated host fixture lives at `examples/phoenix_host`. It is the public reference
 path for `mix phx.new` plus `mix oban_powertools.install`, not a fully generated demo app.
+`examples/phoenix_host_upgrade_source` exists separately only as the frozen source fixture for
+the supported upgrade lane.

@@ -1,6 +1,8 @@
 # Example App Walkthrough
 
-The canonical host fixture lives at `examples/phoenix_host`.
+The canonical current-state host fixture lives at `examples/phoenix_host`.
+The frozen historical source fixture for the supported upgrade lane lives at
+`examples/phoenix_host_upgrade_source`.
 
 It is a curated fixture, not a fully generated demo app. It proves the supported paved road:
 
@@ -18,7 +20,7 @@ Read the fixture as three provenance buckets:
 3. Manual host-owned follow-up keeps the auth seam, display-policy seam, and narrow support-truth
    seed lane explicit.
 
-## What the Fixture Proves
+## What the Fixtures Prove
 
 `examples/phoenix_host` is the contract proof for the public docs path. It demonstrates:
 
@@ -30,10 +32,15 @@ Read the fixture as three provenance buckets:
 - the canonical proof values `ops-demo`, `nightly_sync`, and `pause_cron_entry`
 - the optional read-only `/ops/jobs/oban` bridge path when `oban_web` is present
 
+`examples/phoenix_host_upgrade_source` is not a second canonical fixture. It exists only as the
+frozen pre-`display_policy` source host for the singular supported upgrade lane.
+
 ## Why This Fixture Exists
 
-The fixture keeps the docs honest. If the documented install path ever drifts from the real host
-shape, `examples/phoenix_host` is where that drift becomes visible first.
+The fixtures keep the docs honest. If the documented install path ever drifts from the real host
+shape, `examples/phoenix_host` is where that drift becomes visible first. If the documented
+upgrade lane drifts from the real supported source host, `examples/phoenix_host_upgrade_source`
+is where that drift becomes visible first.
 
 ## How to Use It
 
