@@ -30,7 +30,7 @@ proof_scope: targeted
 
 These reruns are intentionally bounded to the shared preview, read-only, audit, workflow, router, and docs-contract seams assigned to `HST-02`.
 
-| Proof Surface | Command | Result |
+| Proof Surface | Command | Result | Status |
 | --- | --- | --- | --- |
 | Cron shared preview and mutation gating | `mix test test/oban_powertools/web/live/cron_live_test.exs` | `6 tests, 0 failures` | ✓ PASS |
 | Lifeline shared repair preview and audit boundary | `mix test test/oban_powertools/web/live/lifeline_live_test.exs` | `8 tests, 0 failures` | ✓ PASS |

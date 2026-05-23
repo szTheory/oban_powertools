@@ -5,7 +5,7 @@ subsystem: testing
 tags: [verification, requirements, liveview, router, docs]
 requires:
   - phase: 14-01
-    provides: normalized phase 10 summary metadata and preserved historical execution posture
+    provides: repaired earlier-wave evidence-chain posture so the new Phase 10 verification can be indexed consistently in the final closure memo
 provides:
   - fresh 2026-05-23 proof results for phase 10 preview, read-only, audit, workflow, router, and docs seams
   - canonical phase-level verification coverage for `HST-02`
