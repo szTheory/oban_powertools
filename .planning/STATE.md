@@ -2,18 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Workflow Semantics & Recovery
-current_phase: null
-current_phase_name: none
-current_plan: 0
-status: defining_requirements
-stopped_at: Milestone v1.2 initialized for requirement definition
-last_updated: 2026-05-23T21:30:00.000Z
+current_plan: 1
+status: ready_to_plan
+stopped_at: Phase 16 complete (1/1) — ready to discuss Phase 17
+last_updated: 2026-05-23T20:51:19.737Z
 progress:
   total_phases: 8
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 55
+  completed_plans: 34
+  percent: 13
 ---
 
 # Project State
@@ -21,19 +19,19 @@ progress:
 ## Project Reference
 
 **Core Value:** Oban Powertools provides an "Ultimate Batteries-Included" background job operations layer for Phoenix applications in the szTheory ecosystem. It guarantees Ecto-native safety, transparent observability, and durable idempotency while rejecting per-worker limits and implicit magic.
-**Current Focus:** v1.2 Workflow Semantics & Recovery requirement and roadmap definition
+**Current Focus:** Phase 17 — db first transition engine command pipeline
 
 ## Current Position
 
-Phase: not started
-Plan: 0 of 0
+Phase: 16 (semantics-contract-cause-vocabulary-compatibility-baseline) — EXECUTING
+Plan: 1 of 1
 
-- **Phase:** not started
+- **Phase:** 17
 - **Plan:** 0 of 0
-- **Current Plan:** Requirement definition
-- **Total Plans in Phase:** 0
-- **Status:** Defining requirements
-- **Progress:** [----------] 0%
+- **Current Plan:** Not started
+- **Total Plans in Phase:** 1
+- **Status:** Ready to plan
+- **Progress:** [██████████] 100%
 
 ## Performance Metrics
 
@@ -89,8 +87,8 @@ Plan: 0 of 0
 
 ## Session Continuity
 
-- **Last session:** 2026-05-23T13:41:59.872Z
-- **Stopped At:** Milestone kickoff
+- **Last session:** 2026-05-23T20:49:43.159Z
+- **Stopped At:** Completed 16-01-PLAN.md
 - **Resume File:** None
-- **Last Action:** Activated v1.2 Workflow Semantics & Recovery for research, requirements, and roadmap definition.
-- **Next Action:** Complete milestone research, define requirements, and write the v1.2 roadmap.
+- **Last Action:** Restored the active v1.2 roadmap and seeded Phase 16 context for semantics/lifecycle planning.
+- **Next Action:** Run `$gsd-discuss-phase 16` and then `$gsd-plan-phase 16`.

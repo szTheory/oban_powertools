@@ -15,9 +15,9 @@
 
 ### Workflow Semantics
 
-- [ ] **WFS-01**: A maintainer can rely on one explicit workflow and step lifecycle contract with durable terminal causes for `completed`, `failed`, `cancelled`, `expired`, and recovery-driven transitions.
+- [x] **WFS-01**: A maintainer can rely on one explicit workflow and step lifecycle contract with durable terminal causes for `completed`, `failed`, `cancelled`, `expired`, and recovery-driven transitions.
 - [ ] **WFS-02**: Runtime and operator mutations can only move workflows through documented legal transitions that are recomputed from Postgres-backed truth rather than transient PubSub state.
-- [ ] **WFS-03**: In-flight workflows created before v1.2 can continue or reconcile under a documented semantics-compatibility strategy without silent meaning drift.
+- [x] **WFS-03**: In-flight workflows created before v1.2 can continue or reconcile under a documented semantics-compatibility strategy without silent meaning drift.
 
 ### Callbacks & Recovery
 
