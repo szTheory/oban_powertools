@@ -1,7 +1,7 @@
 ---
 phase: 9
 plan: 03
-verified: 2026-05-21
+verified: 2026-05-23
 status: passed
 ---
 
@@ -25,20 +25,29 @@ mix test test/oban_powertools/web/router_test.exs
 rg -n "/ops/jobs/oban|optional `oban_web`|documented hooks|auth_module|display_policy|shadow dashboard|plugin" README.md .planning/phases/9-policy-boundaries-optional-bridge-contracts/9-VERIFICATION.md
 ```
 
-### Phase 9 contract proof set
+### Phase 9 targeted requirement proof set
 
 ```bash
-mix test test/oban_powertools/auth_test.exs test/oban_powertools/web/router_test.exs test/oban_powertools/web/live/cron_live_test.exs test/oban_powertools/web/live/lifeline_live_test.exs test/oban_powertools/web/live/audit_live_test.exs test/oban_powertools/web/live/workflows_live_test.exs
+mix test test/oban_powertools/auth_test.exs
+mix test test/oban_powertools/web/live/cron_live_test.exs test/oban_powertools/web/live/lifeline_live_test.exs
+mix test test/oban_powertools/web/live/audit_live_test.exs test/oban_powertools/web/live/workflows_live_test.exs
+mix test test/oban_powertools/web/router_test.exs
 ```
 
-## Latest Result
+## Fresh Proof Capture
 
+Captured on 2026-05-23 for the exact auth, native mutation, display-policy, and router seams that
+support `POL-01` and `POL-02`. This refresh intentionally does not attempt to re-close `PKG-03`.
+
+- `mix test test/oban_powertools/auth_test.exs`
+  - Result: passed
+  - Evidence: `6 tests, 0 failures`
+- `mix test test/oban_powertools/web/live/cron_live_test.exs test/oban_powertools/web/live/lifeline_live_test.exs`
+  - Result: passed
+  - Evidence: `14 tests, 0 failures`
+- `mix test test/oban_powertools/web/live/audit_live_test.exs test/oban_powertools/web/live/workflows_live_test.exs`
+  - Result: passed
+  - Evidence: `6 tests, 0 failures`
 - `mix test test/oban_powertools/web/router_test.exs`
   - Result: passed
-  - Evidence: `4 tests, 0 failures`
-- `rg -n '/ops/jobs/oban|optional \`oban_web\`|documented hooks|auth_module|display_policy|shadow dashboard|plugin' README.md .planning/phases/9-policy-boundaries-optional-bridge-contracts/9-VERIFICATION.md`
-  - Result: passed
-  - Evidence: matched the optional path, documented hooks, `auth_module`, and `display_policy` markers without adding broader bridge promises to README prose
-- `mix test test/oban_powertools/auth_test.exs test/oban_powertools/web/router_test.exs test/oban_powertools/web/live/cron_live_test.exs test/oban_powertools/web/live/lifeline_live_test.exs test/oban_powertools/web/live/audit_live_test.exs test/oban_powertools/web/live/workflows_live_test.exs`
-  - Result: passed
-  - Evidence: `28 tests, 0 failures`
+  - Evidence: `6 tests, 0 failures`
