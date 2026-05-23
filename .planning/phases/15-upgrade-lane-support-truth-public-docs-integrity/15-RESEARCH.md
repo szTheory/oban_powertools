@@ -313,17 +313,17 @@ The repo already uses ExUnit tags to keep proof lanes targeted, and that should 
 | A2 | The archived fixture can still reuse the existing `ops-demo` / `nightly_sync` / `pause_cron_entry` seed lane after upgrade. [ASSUMED] | Summary; Pattern 2 | Medium; if the historical host shape cannot support that seed path cleanly, the planner must choose a different native proof action. |
 | A3 | Two future docs-contract warning signs mention exact sentence assertions in `production-hardening.md` and `troubleshooting.md`. [ASSUMED] | Common Pitfalls | Low; this is a planning guardrail, not a product constraint. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Which exact commit should define the archived source fixture?**
-   - What we know: The fixture must represent a real native-first host before explicit `display_policy` support-truth, and the current repo does not already contain that archived tree. [VERIFIED: test/support/example_host_contract.ex; examples/phoenix_host/README.md; .planning/phases/15-upgrade-lane-support-truth-public-docs-integrity/15-CONTEXT.md]
-   - What's unclear: The exact historical commit SHA is not recorded yet in repo docs. [VERIFIED: examples/phoenix_host/README.md; git log --oneline --decorate --all --grep='display_policy\\|Phase 11\\|upgrade']
-   - Recommendation: Make “choose and document source commit SHA” the first task in the fixture slice, then bake that SHA into the archived fixture README and any maintainer-only regeneration script. [VERIFIED: .planning/phases/15-upgrade-lane-support-truth-public-docs-integrity/15-CONTEXT.md]
+   - Resolution: Use installer commit `a1fed86` (`fix(12-01): emit the thin host install contract`) as the canonical historical source reference for the archived upgrade fixture. [VERIFIED: git show a1fed86:lib/mix/tasks/oban_powertools.install.ex]
+   - Why this commit: It already emits the supported native-first prerequisites required by D-05 and D-06: `repo`, `auth_module`, and the host-owned `/ops/jobs` route scope, while it predates the later `display_policy` contract that appears in commit `55460bb`. [VERIFIED: git show a1fed86:lib/mix/tasks/oban_powertools.install.ex; git show 55460bb:lib/mix/tasks/oban_powertools.install.ex]
+   - Planning consequence: The archived fixture README and maintainer-only regeneration script should record `a1fed86` explicitly and treat it as the singular supported source-lane provenance anchor. [VERIFIED: .planning/phases/15-upgrade-lane-support-truth-public-docs-integrity/15-CONTEXT.md]
 
 2. **Which native action should the rebuilt upgrade lane prove?**
-   - What we know: The action must be native, meaningful, deterministic, and aligned with the existing first-session/operator contract. [VERIFIED: .planning/phases/15-upgrade-lane-support-truth-public-docs-integrity/15-CONTEXT.md; guides/first-operator-session.md]
-   - What's unclear: The context intentionally leaves the exact action to discretion. [VERIFIED: .planning/phases/15-upgrade-lane-support-truth-public-docs-integrity/15-CONTEXT.md]
-   - Recommendation: Prefer reusing the existing first-session proof if the upgraded historical fixture can support it without extra seed complexity. [ASSUMED]
+   - Resolution: Reuse the existing first-session native proof threshold after upgrade by asserting `ops-demo`, `nightly_sync`, and `pause_cron_entry` from the native cron path. [VERIFIED: guides/first-operator-session.md; test/oban_powertools/example_host_contract_test.exs]
+   - Why this action: It is already the repo's deterministic native operator proof, it stays on the supported `/ops/jobs` shell, and it avoids broadening the phase into bridge or browser-E2E coverage. [VERIFIED: .planning/phases/15-upgrade-lane-support-truth-public-docs-integrity/15-CONTEXT.md; guides/first-operator-session.md]
+   - Planning consequence: The upgrade harness, the `upgrade-proof` test, and the public upgrade guide should all name this exact proof threshold so `PKG-02` is backed by one consistent executable story. [VERIFIED: .planning/phases/15-upgrade-lane-support-truth-public-docs-integrity/15-CONTEXT.md]
 
 ## Environment Availability
 
