@@ -93,7 +93,7 @@ Plans:
 **Depends on:** Phase 14
 **Requirements:** `PKG-02`, `HST-03`, `DOC-02`
 **Gap Closure:** Closes audit gaps from `v1.1-MILESTONE-AUDIT.md`
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] `15-01-PLAN.md` — Freeze one archived historical fixture as the singular supported upgrade-source lane with explicit provenance
