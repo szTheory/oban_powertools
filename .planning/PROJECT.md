@@ -39,6 +39,12 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 - ✓ Supported archived-host upgrade lane (`PKG-02`) — v1.1 Phase 15
 - ✓ Explicit support-truth boundaries and host-owned hardening/troubleshooting guidance (`HST-03`, `DOC-02`) — v1.1 Phase 15
 
+### Active
+
+- [ ] Freeze explicit workflow lifecycle vocabulary, legal transitions, and in-flight compatibility rules (`WFS-01`, `WFS-02`, `WFS-03`).
+- [ ] Add durable callbacks, scoped recovery, cooperative cancellation, and auditable recovery evidence (`REC-01`, `REC-02`, `REC-03`).
+- [ ] Add durable await/signal/expiry semantics and workflow-local diagnosis with support-truth proof (`SIG-01`, `SIG-02`, `SIG-03`, `DIA-01`, `DIA-02`, `VER-01`, `VER-02`, `POL-04`).
+
 ### Out of Scope
 
 - Per-worker ad hoc rate limiting outside the explicit global/partitioned limiter model.
@@ -71,6 +77,8 @@ Version `v1.1` shipped on 2026-05-23. All 12 host-contract milestone requirement
 **Goal:** Strengthen workflow orchestration semantics so recovery, diagnosis, and operator actions stay explicit and safe under real host-app runtime conditions.
 
 **Target features:**
+- One repo-local lifecycle contract with semantics version `2`, durable terminal-cause vocabulary, and explicit legal transition meanings for workflow and step rows.
+- An additive pre-v1.2 compatibility posture: new rows default to semantics version `2`, while historical rows stay on an explicit compatibility path until a v2 transition rewrites durable meaning.
 - Callback and recovery semantics for workflow completion, retry, and failure transitions.
 - Stuck-graph diagnosis with explicit waiting, orphaned, and blocked-state explanations.
 - Signal/await, cancellation, and expiry contracts that preserve durable workflow truth and repair-safe operator behavior.
