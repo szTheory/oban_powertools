@@ -2,6 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Workflow Semantics & Recovery
+current_phase: "17"
+current_phase_name: db-first-transition-engine-command-pipeline
 current_plan: 1
 status: ready_to_plan
 stopped_at: Phase 16 complete (1/1) — ready to discuss Phase 17
@@ -23,8 +25,8 @@ progress:
 
 ## Current Position
 
-Phase: 16 (semantics-contract-cause-vocabulary-compatibility-baseline) — EXECUTING
-Plan: 1 of 1
+Phase: 17 (db-first-transition-engine-command-pipeline) — NOT STARTED
+Plan: 0 of 0
 
 - **Phase:** 17
 - **Plan:** 0 of 0
@@ -90,5 +92,5 @@ Plan: 1 of 1
 - **Last session:** 2026-05-23T20:49:43.159Z
 - **Stopped At:** Completed 16-01-PLAN.md
 - **Resume File:** None
-- **Last Action:** Restored the active v1.2 roadmap and seeded Phase 16 context for semantics/lifecycle planning.
-- **Next Action:** Run `$gsd-discuss-phase 16` and then `$gsd-plan-phase 16`.
+- **Last Action:** Completed Phase 16 execution, summary, and verification handoff artifacts.
+- **Next Action:** Run `$gsd-discuss-phase 17` and then `$gsd-plan-phase 17`.
