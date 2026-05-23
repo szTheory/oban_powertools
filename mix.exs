@@ -49,7 +49,20 @@ defmodule ObanPowertools.MixProject do
           "guides/first-operator-session.md",
           "guides/example-app-walkthrough.md"
         ],
-        "Day 2": ~r"^guides/(?!installation|first-operator-session|example-app-walkthrough).+\\.md$"
+        "Builders": [
+          "guides/workers-and-idempotency.md",
+          "guides/limits-and-explain.md",
+          "guides/workflows.md",
+          "guides/lifeline-and-repairs.md",
+          "guides/policy-integration-patterns.md"
+        ],
+        "Operations": [
+          "guides/optional-oban-web-bridge.md",
+          "guides/support-truth-and-ownership-boundaries.md",
+          "guides/production-hardening.md",
+          "guides/troubleshooting.md",
+          "guides/upgrade-and-compatibility.md"
+        ]
       ]
     ]
   end

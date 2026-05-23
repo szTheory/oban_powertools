@@ -4,6 +4,8 @@ This is the exact day-0 path for a Phoenix host app. The library owns internal p
 helpers. Your host owns auth, display policy, the outer router scope, and the database commands it
 runs.
 
+Oban Powertools ships a native, host-owned operator shell at `/ops/jobs`.
+
 ## 0. Start From A Fresh Phoenix Host
 
 The paved road starts from a real Phoenix app:
@@ -14,8 +16,8 @@ mix phx.new my_app --database postgres
 
 ## 1. Add Dependencies
 
-Add Oban Powertools to your host app. Add `oban_web` only if you want the nested read-only bridge
-at `/ops/jobs/oban`.
+Add Oban Powertools to your host app. `oban_web` is optional, and you only add it if you want the
+nested read-only bridge at `/ops/jobs/oban`.
 
 ```elixir
 def deps do
@@ -68,7 +70,7 @@ end
 ```
 
 That mount gives you native Powertools pages at `/ops/jobs` and the optional read-only bridge at
-`/ops/jobs/oban`.
+`/ops/jobs/oban`. Native Powertools pages are the supported mutation surface.
 
 ## 5. Compile The Generated Host Once
 
@@ -105,6 +107,7 @@ policy seam, the paved road is ready for the first native session.
 
 `oban_web` is optional. If you install it, Powertools mounts the nested bridge at
 `/ops/jobs/oban`. That bridge remains read-only and narrower than the native Powertools pages.
+The host owns router scope, browser pipeline, auth, display policy, and runtime config.
 
 ## 9. Continue To The First Operator Session
 

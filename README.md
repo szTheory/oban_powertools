@@ -98,15 +98,30 @@ passed and a real native mutation succeeds.
   `ObanPowertoolsAuth`, `ObanPowertoolsDisplayPolicy`, and the compile/migrate/boot threshold.
 - [First Operator Session](guides/first-operator-session.md) walks from install to the canonical
   `ops-demo` -> `pause_cron_entry` on `nightly_sync` proof and the read-only bridge.
+- [Example App Walkthrough](guides/example-app-walkthrough.md) points to the canonical fixture at
+  `examples/phoenix_host`.
+- [Workers And Idempotency](guides/workers-and-idempotency.md) shows how to build typed workers
+  and what `enqueue/2` guarantees.
+- [Limits And Explain](guides/limits-and-explain.md) covers limiter declarations, blocked
+  outcomes, and blocker inspection.
+- [Workflows](guides/workflows.md) explains the durable DAG builder, dependency release, and
+  current runtime semantics.
+- [Lifeline And Repairs](guides/lifeline-and-repairs.md) covers heartbeat projection, incident
+  diagnosis, repair preview, and audited execution.
+- [Policy Integration Patterns](guides/policy-integration-patterns.md) shows how the host auth
+  and display seams should be shaped in a real Phoenix app.
+- [Optional Oban Web Bridge](guides/optional-oban-web-bridge.md) defines the bounded
+  `/ops/jobs/oban` read-only annex.
 - [Support Truth And Ownership Boundaries](guides/support-truth-and-ownership-boundaries.md)
   expands the shared supported/tested/best-effort/host-owned/intentionally unsupported
   vocabulary.
-- [Example App Walkthrough](guides/example-app-walkthrough.md) points to the canonical fixture at
-  `examples/phoenix_host`.
 
 ## Canonical Example Host
 
 The canonical curated host fixture lives at `examples/phoenix_host`. It is the public reference
-path for `mix phx.new` plus `mix oban_powertools.install`, not a fully generated demo app.
+path for `mix phx.new` plus `mix oban_powertools.install`, not a fully generated demo app. The
+tracked source tree is the config, lib, migrations, seeds, static assets, and focused tests that
+keep the documented host contract reviewable. Local build artifacts and vendored dependencies are
+not part of that public contract.
 `examples/phoenix_host_upgrade_source` exists separately only as the frozen source fixture for
 the supported upgrade lane.

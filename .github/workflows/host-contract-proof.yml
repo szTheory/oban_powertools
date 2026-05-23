@@ -65,7 +65,7 @@ jobs:
       - run: mix deps.get
       - run: mix test test/oban_powertools/docs_contract_test.exs
 
-  native-only:
+  native-first:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -113,7 +113,7 @@ jobs:
       - run: mix deps.get
       - run: mix test test/oban_powertools/example_host_contract_test.exs --only first_session
 
-  bridge-enabled:
+  optional-bridge:
     runs-on: ubuntu-latest
     services:
       postgres:

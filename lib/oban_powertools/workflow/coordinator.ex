@@ -13,8 +13,10 @@ defmodule ObanPowertools.Workflow.Coordinator do
 
   @impl true
   def init(_opts) do
-    if Code.ensure_loaded?(Phoenix.PubSub) do
-      Phoenix.PubSub.subscribe(ObanPowertools.PubSub, ObanPowertools.Workflow.Signal.topic())
+    pubsub = Phoenix.PubSub
+
+    if Code.ensure_loaded?(pubsub) and function_exported?(pubsub, :subscribe, 2) do
+      apply(pubsub, :subscribe, [ObanPowertools.PubSub, ObanPowertools.Workflow.Signal.topic()])
     end
 
     {:ok, %{}}

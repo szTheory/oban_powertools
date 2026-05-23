@@ -2,7 +2,8 @@
 
 This walkthrough takes a new host from dependency install to a first successful operator session
 at `/ops/jobs`. Success is not compile, reset, or seed output alone. Success is one real native
-audited mutation with durable evidence.
+audited mutation with durable evidence. The native `/ops/jobs` shell is the default paved road,
+and `/ops/jobs/oban` is only an additional read-only inspection stop when `oban_web` is installed.
 
 ## 1. Finish the Day-0 Setup
 
@@ -54,11 +55,12 @@ This matters because the native pages are the supported mutation surface:
 
 ## 5. Check the Optional Bridge Boundary
 
-If `oban_web` is installed, open `/ops/jobs/oban`.
+If `oban_web` is installed, open `/ops/jobs/oban` after the native `ops-demo` ->
+`pause_cron_entry` on `nightly_sync` proof succeeds.
 
-That route is a read-only bridge. It shares the same host-owned actor and display seams, but it is
-not a mutation equivalent. Use it for bounded inspection. Keep audited mutation work on the native
-Powertools pages.
+That route is an additional read-only inspection stop. It shares the same host-owned actor and
+display seams, but it is not a mutation equivalent. Use it for bounded inspection. Keep audited
+mutation work on the native Powertools pages.
 
 ## 6. What Success Looks Like
 

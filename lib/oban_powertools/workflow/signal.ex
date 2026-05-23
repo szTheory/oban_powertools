@@ -17,8 +17,10 @@ defmodule ObanPowertools.Workflow.Signal do
     do: %{event: :workflow_completed, workflow_id: workflow_id}
 
   def broadcast(event) do
-    if Code.ensure_loaded?(Phoenix.PubSub) do
-      Phoenix.PubSub.broadcast(ObanPowertools.PubSub, topic(), {:workflow_signal, event})
+    pubsub = Phoenix.PubSub
+
+    if Code.ensure_loaded?(pubsub) and function_exported?(pubsub, :broadcast, 3) do
+      apply(pubsub, :broadcast, [ObanPowertools.PubSub, topic(), {:workflow_signal, event}])
     else
       :ok
     end

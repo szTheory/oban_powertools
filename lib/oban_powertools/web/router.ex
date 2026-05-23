@@ -31,8 +31,18 @@ defmodule ObanPowertools.Web.Router do
   """
   defmacro oban_powertools_routes(path) do
     oban_web_router = Module.concat([Oban, Web, Router])
+    native_route_modules = [
+      ObanPowertools.Web.LiveAuth,
+      ObanPowertools.Web.EngineOverviewLive,
+      ObanPowertools.Web.LifelineLive,
+      ObanPowertools.Web.LimitersLive,
+      ObanPowertools.Web.CronLive,
+      ObanPowertools.Web.AuditLive,
+      ObanPowertools.Web.WorkflowsLive
+    ]
 
-    if Code.ensure_loaded?(Phoenix.LiveView.Router) do
+    if Code.ensure_loaded?(Phoenix.LiveView.Router) and
+         Enum.all?(native_route_modules, &Code.ensure_loaded?/1) do
       bridge_routes =
         if Code.ensure_loaded?(oban_web_router) do
           quote do
@@ -66,7 +76,7 @@ defmodule ObanPowertools.Web.Router do
       end
     else
       quote do
-        # Phoenix LiveView is not available, skip mounting Powertools routes.
+        # Powertools web dependencies are not available, skip mounting routes.
       end
     end
   end

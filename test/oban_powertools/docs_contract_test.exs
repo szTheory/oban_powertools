@@ -6,6 +6,11 @@ defmodule ObanPowertools.DocsContractTest do
     "guides/installation.md",
     "guides/first-operator-session.md",
     "guides/example-app-walkthrough.md",
+    "guides/workers-and-idempotency.md",
+    "guides/limits-and-explain.md",
+    "guides/workflows.md",
+    "guides/lifeline-and-repairs.md",
+    "guides/policy-integration-patterns.md",
     "guides/upgrade-and-compatibility.md",
     "guides/optional-oban-web-bridge.md",
     "guides/support-truth-and-ownership-boundaries.md",
@@ -52,6 +57,30 @@ defmodule ObanPowertools.DocsContractTest do
     assert source =~ "/ops/jobs/oban"
     assert source =~ "read-only"
     assert source =~ "supported mutation surface"
+  end
+
+  test "builder docs keep the core primitive contract explicit" do
+    source = joined_docs()
+
+    assert source =~ "use ObanPowertools.Worker"
+    assert source =~ "enqueue/2"
+    assert source =~ "{:conflict, job}"
+    assert source =~ "Explain.explain"
+    assert source =~ "Workflow.new"
+    assert source =~ "Workflow.complete_step"
+    assert source =~ "Lifeline.preview_repair"
+    assert source =~ "Lifeline.execute_repair"
+  end
+
+  test "policy docs keep host-owned auth and display seams explicit" do
+    source = joined_docs()
+
+    assert source =~ "current_actor/1"
+    assert source =~ "authorize/3"
+    assert source =~ "audit_principal/1"
+    assert source =~ "display/3"
+    assert source =~ "host-owned"
+    assert source =~ "read-only"
   end
 
   test "workflow keeps the repaired proof lanes explicit" do
