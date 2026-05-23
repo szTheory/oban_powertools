@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: "15"
 current_phase_name: upgrade-lane-support-truth-public-docs-integrity
 current_plan: 3
-status: executing
-stopped_at: Completed 15-02-PLAN.md
-last_updated: "2026-05-23T13:35:30.899Z"
+status: verifying
+stopped_at: Completed 15-03-PLAN.md
+last_updated: "2026-05-23T13:41:59.877Z"
 progress:
   total_phases: 8
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 27
-  completed_plans: 26
-  percent: 96
+  completed_plans: 27
+  percent: 100
 ---
 
 # Project State
@@ -25,21 +25,21 @@ progress:
 
 ## Current Position
 
-Phase: 15 (upgrade-lane-support-truth-public-docs-integrity) — EXECUTING
+Phase: 15 (upgrade-lane-support-truth-public-docs-integrity) — VERIFYING
 Plan: 3 of 3
 
 - **Phase:** 15
 - **Plan:** 3 of 3
 - **Current Plan:** 3
 - **Total Plans in Phase:** 3
-- **Status:** Ready to execute
-- **Progress:** [██████████] 96%
+- **Status:** Phase complete — ready for verification
+- **Progress:** [██████████] 100%
 
 ## Performance Metrics
 
 - **Phases Complete:** 12/12
 - **Plans Complete:** 42/42
-- **Metrics:** Phase 0 Plan 01 completed in 15m (Tasks: 3, Files: 5); Phase 1 Plan 01 completed in 12m (Tasks: 3, Files: 6); Phase 2 Plans 01-05 completed on 2026-05-19 with persistence, limiter, explain, cron, and native UI verification; Phase 3 Plans 01-05 completed on 2026-05-19 with durable DAG persistence, runtime signaling, workflow telemetry, and native workflow inspection; Phase 4 Plans 01-05 completed on 2026-05-19 with durable lifeline persistence, heartbeat/incident services, repair preview/execute, archive-prune retention, and the native Lifeline operator UI; Phase 5 Plans 01-05 completed on 2026-05-20 with traceability repair, restored validation/verification artifacts, normalized summary metadata, and a refreshed milestone audit; Phase 6 Plans 01-03 completed on 2026-05-20 with centralized runtime config, explicit installer wiring, cron auth-before-preview enforcement, and milestone evidence closure for `FND-01`, `FND-02`, and `ENG-03`; Phase 7 Plans 01-03 completed on 2026-05-21 with atomic incident retirement, evidence-driven reprojection, resolved-view LiveView continuity, and closed `LIF-02` verification; Phase 8 Plans 01-03 completed on 2026-05-21 with explicit host-owned install/config/router guidance, deterministic heartbeat supervision gating, a frozen nested `oban_web` bridge contract, and a documented public telemetry schema; Phase 9 Plans 01-03 completed on 2026-05-21 with an explicit auth and audit-principal contract, a shared display-policy seam across native operator surfaces, and a bounded optional `oban_web` bridge plus proof artifacts; Phase 10 Plan 01 completed on 2026-05-21 with a shared durable preview contract, preview-token execution gating for cron mutations, and durable-preview LiveView coverage; Phase 10 Plan 02 completed on 2026-05-21 with centralized native operator vocabulary, consistent read-only framing, and aligned audit/workflow support-truth copy; Phase 10 Plan 03 completed on 2026-05-21 with a locked read-only `/ops/jobs/oban` bridge contract, route-level proof, and README support-truth aligned to native audited mutation ownership; Phase 11 Plans 01-04 completed on 2026-05-22 with ExDoc-backed day-0/day-2 guides, the canonical `examples/phoenix_host` fixture, a narrow compatibility promise, docs contract tests, and native-only / bridge-enabled / upgrade-proof host verification; Phase 12 Plan 01 completed on 2026-05-22 with repaired fresh-host installer config/router/seam generation, deterministic Powertools migrations, and a real `mix phx.new` install-to-boot proof lane; Phase 12 Plan 03 completed in 6min (Tasks: 2, Files: 3) with a native first-session proof lane and root host-contract harness for `ops-demo`, `nightly_sync`, and `pause_cron_entry`; Phase 12 Plan 04 completed in 17min (Tasks: 2, Files: 7) with repaired public docs, docs-contract enforcement, and a dedicated `fresh-host` CI lane aligned to the canonical proof stack; Phase 14 Plans 01-02 completed on 2026-05-23 with normalized Phase 8/9 closure metadata and a rebuilt Phase 9 REQ-ID verification chain for `POL-01` and `POL-02`; Phase 14 Plan 03 completed in 2min (Tasks: 2, Files: 2) with a new Phase 10 verification artifact that closes `HST-02` through fresh LiveView, router, and docs proof; Phase 14 Plan 04 completed in 3min (Tasks: 3, Files: 2) with a cross-phase closure memo and refreshed milestone audit that mark the repaired Phase 8-10 evidence chain satisfied without moving proof ownership into Phase 14; Phase 15 Plan 01 completed in 4min (Tasks: 2, Files: 52) with a frozen archived upgrade-source fixture and commit-pinned provenance helper for the supported upgrade lane; Phase 15 Plan 02 completed in 5min (Tasks: 3, Files: 3) with a real archived-host upgrade harness, native post-upgrade cron proof, and a rewritten host-shape upgrade guide.
+- **Metrics:** Phase 0 Plan 01 completed in 15m (Tasks: 3, Files: 5); Phase 1 Plan 01 completed in 12m (Tasks: 3, Files: 6); Phase 2 Plans 01-05 completed on 2026-05-19 with persistence, limiter, explain, cron, and native UI verification; Phase 3 Plans 01-05 completed on 2026-05-19 with durable DAG persistence, runtime signaling, workflow telemetry, and native workflow inspection; Phase 4 Plans 01-05 completed on 2026-05-19 with durable lifeline persistence, heartbeat/incident services, repair preview/execute, archive-prune retention, and the native Lifeline operator UI; Phase 5 Plans 01-05 completed on 2026-05-20 with traceability repair, restored validation/verification artifacts, normalized summary metadata, and a refreshed milestone audit; Phase 6 Plans 01-03 completed on 2026-05-20 with centralized runtime config, explicit installer wiring, cron auth-before-preview enforcement, and milestone evidence closure for `FND-01`, `FND-02`, and `ENG-03`; Phase 7 Plans 01-03 completed on 2026-05-21 with atomic incident retirement, evidence-driven reprojection, resolved-view LiveView continuity, and closed `LIF-02` verification; Phase 8 Plans 01-03 completed on 2026-05-21 with explicit host-owned install/config/router guidance, deterministic heartbeat supervision gating, a frozen nested `oban_web` bridge contract, and a documented public telemetry schema; Phase 9 Plans 01-03 completed on 2026-05-21 with an explicit auth and audit-principal contract, a shared display-policy seam across native operator surfaces, and a bounded optional `oban_web` bridge plus proof artifacts; Phase 10 Plan 01 completed on 2026-05-21 with a shared durable preview contract, preview-token execution gating for cron mutations, and durable-preview LiveView coverage; Phase 10 Plan 02 completed on 2026-05-21 with centralized native operator vocabulary, consistent read-only framing, and aligned audit/workflow support-truth copy; Phase 10 Plan 03 completed on 2026-05-21 with a locked read-only `/ops/jobs/oban` bridge contract, route-level proof, and README support-truth aligned to native audited mutation ownership; Phase 11 Plans 01-04 completed on 2026-05-22 with ExDoc-backed day-0/day-2 guides, the canonical `examples/phoenix_host` fixture, a narrow compatibility promise, docs contract tests, and native-only / bridge-enabled / upgrade-proof host verification; Phase 12 Plan 01 completed on 2026-05-22 with repaired fresh-host installer config/router/seam generation, deterministic Powertools migrations, and a real `mix phx.new` install-to-boot proof lane; Phase 12 Plan 03 completed in 6min (Tasks: 2, Files: 3) with a native first-session proof lane and root host-contract harness for `ops-demo`, `nightly_sync`, and `pause_cron_entry`; Phase 12 Plan 04 completed in 17min (Tasks: 2, Files: 7) with repaired public docs, docs-contract enforcement, and a dedicated `fresh-host` CI lane aligned to the canonical proof stack; Phase 14 Plans 01-02 completed on 2026-05-23 with normalized Phase 8/9 closure metadata and a rebuilt Phase 9 REQ-ID verification chain for `POL-01` and `POL-02`; Phase 14 Plan 03 completed in 2min (Tasks: 2, Files: 2) with a new Phase 10 verification artifact that closes `HST-02` through fresh LiveView, router, and docs proof; Phase 14 Plan 04 completed in 3min (Tasks: 3, Files: 2) with a cross-phase closure memo and refreshed milestone audit that mark the repaired Phase 8-10 evidence chain satisfied without moving proof ownership into Phase 14; Phase 15 Plan 01 completed in 4min (Tasks: 2, Files: 52) with a frozen archived upgrade-source fixture and commit-pinned provenance helper for the supported upgrade lane; Phase 15 Plan 02 completed in 5min (Tasks: 3, Files: 3) with a real archived-host upgrade harness, native post-upgrade cron proof, and a rewritten host-shape upgrade guide; Phase 15 Plan 03 completed in 8min (Tasks: 3, Files: 7) with five-bucket support-truth docs, host-owned hardening/troubleshooting guidance, and narrowed docs-contract markers.
 
 ## Accumulated Context
 
@@ -81,13 +81,16 @@ Plan: 3 of 3
   - Refresh the milestone audit additively so it records repaired current state without erasing the 2026-05-22 findings.
   - Use `examples/phoenix_host_upgrade_source` as the only upgrade-lane fixture root instead of mutating the current fixture in place.
   - Treat `ops-demo` -> `pause_cron_entry` on `nightly_sync` as the required post-upgrade proof threshold rather than config restoration alone.
+  - Use the same supported/tested/best-effort/host-owned/intentionally unsupported vocabulary in every public support-truth entrypoint.
+  - Keep production-hardening prose narrative, but anchor troubleshooting claims to the exact RuntimeConfig fail-fast errors.
+  - Expand docs-contract coverage to hardening and troubleshooting guides while asserting markers only, not guide paragraphs.
 - **Todos:** None
 - **Blockers:** None
 
 ## Session Continuity
 
-- **Last session:** 2026-05-23T13:35:30.433Z
-- **Stopped At:** Completed 15-02-PLAN.md
+- **Last session:** 2026-05-23T13:41:59.872Z
+- **Stopped At:** Completed 15-03-PLAN.md
 - **Resume File:** None
-- **Last Action:** Completed Phase 15 Plan 02 with the archived-host upgrade harness, native post-upgrade proof lane, and host-shape upgrade guide rewrite.
-- **Next Action:** Execute Phase 15 Plan 03 to align support-truth, hardening, troubleshooting, and docs-contract claims to the rebuilt upgrade lane.
+- **Last Action:** Completed Phase 15 Plan 03 with five-bucket support-truth docs, host-owned hardening and troubleshooting guidance, and narrowed docs-contract assertions.
+- **Next Action:** Run final phase verification and milestone-close review for Phase 15.

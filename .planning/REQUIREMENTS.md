@@ -2,7 +2,7 @@
 
 **Milestone:** v1.1 Host Contract & Adoption Hardening
 **Status:** Reopened by milestone audit 2026-05-22
-**Coverage:** 7/12 requirements are currently marked complete after the Phase 12-14 repairs; the remaining unchecked items are the outstanding milestone gaps.
+**Coverage:** 10/12 requirements are currently marked complete after the Phase 12-15 repairs; the remaining unchecked items are the outstanding milestone gaps.
 
 ## v1.1 Requirements
 
@@ -22,12 +22,12 @@
 
 - [x] **HST-01**: A host app can mount the Powertools shell and bridge routes with clear, documented ownership boundaries between library code and host router/supervision/config.
 - [x] **HST-02**: An operator sees consistent permission, read-only, preview, reason, and audit behavior across the Powertools shell and any bridged operator flows.
-- [ ] **HST-03**: A host app can understand support-truth boundaries for what Powertools guarantees versus what remains host-owned or intentionally unsupported.
+- [x] **HST-03**: A host app can understand support-truth boundaries for what Powertools guarantees versus what remains host-owned or intentionally unsupported.
 
 ### Docs & Example-Proof
 
 - [x] **DOC-01**: A developer can complete a day-0 install and first successful operator session by following a concise documented path and example app.
-- [ ] **DOC-02**: A developer can apply a production-hardening checklist for auth, telemetry, optional dependencies, and troubleshooting without reading internal implementation code.
+- [x] **DOC-02**: A developer can apply a production-hardening checklist for auth, telemetry, optional dependencies, and troubleshooting without reading internal implementation code.
 - [ ] **DOC-03**: Maintainers can verify the public host contract with automated proof that covers optional dependency paths, route/auth integration, and support-truth regressions.
 
 ## Future Requirements

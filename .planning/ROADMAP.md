@@ -93,16 +93,16 @@ Plans:
 **Depends on:** Phase 14
 **Requirements:** `PKG-02`, `HST-03`, `DOC-02`
 **Gap Closure:** Closes audit gaps from `v1.1-MILESTONE-AUDIT.md`
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] `15-01-PLAN.md` — Freeze one archived historical fixture as the singular supported upgrade-source lane with explicit provenance
-- [ ] `15-02-PLAN.md` — Rebuild the real `upgrade-proof` lane and rewrite the upgrade guide around the supported host shape
-- [ ] `15-03-PLAN.md` — Align support-truth, hardening, troubleshooting, and docs-contract claims to the verified lanes
+- [x] `15-02-PLAN.md` — Rebuild the real `upgrade-proof` lane and rewrite the upgrade guide around the supported host shape
+- [x] `15-03-PLAN.md` — Align support-truth, hardening, troubleshooting, and docs-contract claims to the verified lanes
 
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
 |-----------|--------|-------|--------|---------|
 | v1 | 0-7 | 28/28 | Shipped | 2026-05-21 |
-| v1.1 | 8-15 | 7/8 | Active | — |
+| v1.1 | 8-15 | 8/8 | Active | — |
