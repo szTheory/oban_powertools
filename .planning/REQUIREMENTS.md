@@ -2,7 +2,7 @@
 
 **Milestone:** v1.1 Host Contract & Adoption Hardening
 **Status:** Reopened by milestone audit 2026-05-22
-**Coverage:** 1/12 requirements fully satisfied after the 2026-05-22 audit; all reopened gaps are reset to pending below.
+**Coverage:** 7/12 requirements are currently marked complete after the Phase 12-14 repairs; the remaining unchecked items are the outstanding milestone gaps.
 
 ## v1.1 Requirements
 
@@ -16,7 +16,7 @@
 
 - [x] **POL-01**: A host app can provide stable auth and actor-attribution hooks that apply consistently across plugs, LiveView mounts, and mutation events.
 - [x] **POL-02**: A host app can provide shared redaction and formatter policies that apply consistently across Powertools-native screens and the Oban Web bridge.
-- [ ] **POL-03**: Operators and integrators can rely on a documented low-cardinality telemetry contract whose event names, measurements, and metadata boundaries are treated as public API.
+- [x] **POL-03**: Operators and integrators can rely on a documented low-cardinality telemetry contract whose event names, measurements, and metadata boundaries are treated as public API.
 
 ### Host Topology & UX
 

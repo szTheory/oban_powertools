@@ -85,7 +85,7 @@ Plans:
 **Depends on:** Phase 13
 **Requirements:** `POL-01`, `POL-02`, `POL-03`, `HST-02`
 **Gap Closure:** Closes audit gaps from `v1.1-MILESTONE-AUDIT.md`
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 ### Phase 15: Upgrade Lane, Support Truth & Public Docs Integrity
 
@@ -100,4 +100,4 @@ Plans:
 | Milestone | Phases | Plans | Status | Shipped |
 |-----------|--------|-------|--------|---------|
 | v1 | 0-7 | 28/28 | Shipped | 2026-05-21 |
-| v1.1 | 8-15 | 4/8 | Active | — |
+| v1.1 | 8-15 | 7/8 | Active | — |
