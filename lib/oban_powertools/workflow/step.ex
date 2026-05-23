@@ -22,6 +22,13 @@ defmodule ObanPowertools.Workflow.Step do
     field(:dependency_snapshot, :map, default: %{})
     field(:blocker_codes, {:array, :string}, default: [])
     field(:blocker_details, :map, default: %{})
+    field(:terminal_cause, :string)
+    field(:awaiting_signal_name, :string)
+    field(:await_correlation_key, :string)
+    field(:await_dedupe_key, :string)
+    field(:await_deadline_at, :utc_datetime_usec)
+    field(:cancel_requested_at, :utc_datetime_usec)
+    field(:last_transition_at, :utc_datetime_usec)
     field(:started_at, :utc_datetime_usec)
     field(:finished_at, :utc_datetime_usec)
     field(:cancelled_at, :utc_datetime_usec)
@@ -53,6 +60,13 @@ defmodule ObanPowertools.Workflow.Step do
       :dependency_snapshot,
       :blocker_codes,
       :blocker_details,
+      :terminal_cause,
+      :awaiting_signal_name,
+      :await_correlation_key,
+      :await_dedupe_key,
+      :await_deadline_at,
+      :cancel_requested_at,
+      :last_transition_at,
       :nested_workflow_id,
       :started_at,
       :finished_at,

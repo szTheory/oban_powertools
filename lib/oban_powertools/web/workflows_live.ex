@@ -7,7 +7,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     import Ecto.Query
 
     alias ObanPowertools.DisplayPolicy
-    alias ObanPowertools.Workflow.{Edge, Result, Step, Workflow}
+    alias ObanPowertools.Workflow.{Edge, Result, Runtime, Step, Workflow}
     alias ObanPowertools.Web.LiveAuth
 
     @impl true
@@ -117,6 +117,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <%= if @workflow do %>
               <h2 class="text-base font-semibold"><%= @workflow.name %></h2>
               <p class="mt-2 text-sm text-zinc-600">State: <%= @workflow.state %></p>
+              <p class="mt-1 text-sm text-zinc-600">Diagnosis: <%= workflow_diagnosis(@workflow, @steps) %></p>
               <p class="mt-1 text-sm text-zinc-600">Runnable now: <%= @workflow.runnable_step_count %></p>
 
               <div class="mt-4 space-y-3">
@@ -125,6 +126,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                     <div>
                       <p class="font-medium"><%= step.step_name %></p>
                       <p class="text-xs text-zinc-500"><%= step.state %></p>
+                      <p class="text-xs text-zinc-500">diagnosis: <%= step_diagnosis(step) || "none" %></p>
                     </div>
                     <.link
                       patch={selected_step_path(@workflow.id, step.step_name)}
@@ -151,6 +153,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           <h2 class="text-base font-semibold"><%= @selected_step.step_name %></h2>
           <p class="mt-2 text-sm text-zinc-600">Worker: <%= @selected_step.worker %></p>
           <p class="mt-1 text-sm text-zinc-600">State: <%= @selected_step.state %></p>
+          <p class="mt-1 text-sm text-zinc-600">Diagnosis: <%= step_diagnosis(@selected_step) || "none" %></p>
           <p class="mt-1 text-sm text-zinc-600">
             Result available:
             <%= if result_display.available?, do: "yes", else: "no" %>
@@ -259,6 +262,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         step_name: step.step_name
       })
     end
+
+    defp workflow_diagnosis(workflow, steps), do: Runtime.workflow_diagnosis(workflow, steps)
+    defp step_diagnosis(step), do: Runtime.step_diagnosis(step)
 
     defp highlight_class(step, nil), do: if(step.blocker_codes != [], do: "border-amber-400 bg-amber-50", else: "")
     defp highlight_class(step, selected_step) do

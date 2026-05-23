@@ -90,6 +90,28 @@ defmodule ObanPowertools.Workflow do
   def complete_step(repo, workflow_id, step_name, attrs \\ []),
     do: ObanPowertools.Workflow.Runtime.complete_step(repo, workflow_id, step_name, Enum.into(attrs, %{}))
 
+  def await_step(repo, workflow_id, step_name, attrs \\ []),
+    do: ObanPowertools.Workflow.Runtime.await_step(repo, workflow_id, step_name, Enum.into(attrs, %{}))
+
+  def deliver_signal(repo, attrs),
+    do: ObanPowertools.Workflow.Runtime.deliver_signal(repo, Enum.into(attrs, %{}))
+
+  def request_cancel(repo, workflow_id, attrs \\ []),
+    do: ObanPowertools.Workflow.Runtime.request_cancel(repo, workflow_id, Enum.into(attrs, %{}))
+
+  def recover_step(repo, workflow_id, step_name, action, attrs \\ []),
+    do:
+      ObanPowertools.Workflow.Runtime.recover_step(
+        repo,
+        workflow_id,
+        step_name,
+        action,
+        Enum.into(attrs, %{})
+      )
+
+  def dispatch_callbacks(repo, opts \\ []),
+    do: ObanPowertools.Workflow.Runtime.dispatch_callbacks(repo, opts)
+
   defp normalize(%__MODULE__{} = workflow) do
     with {:ok, steps} <- normalize_steps(workflow.steps),
          :ok <- validate_workflow_name(workflow.name),
@@ -138,12 +160,14 @@ defmodule ObanPowertools.Workflow do
       name: normalized.name,
       workflow_context: normalized.workflow_context,
       definition_version: normalized.definition_version,
+      semantics_version: 2,
       state: if(normalized.runnable_step_count > 0, do: "available", else: "pending"),
       step_count: length(normalized.steps),
       runnable_step_count: normalized.runnable_step_count,
       completed_step_count: 0,
       cancelled_step_count: 0,
-      failed_step_count: 0
+      failed_step_count: 0,
+      last_transition_at: DateTime.utc_now()
     }
 
     Multi.new()
@@ -176,7 +200,8 @@ defmodule ObanPowertools.Workflow do
         dependency_count: step.dependency_count,
         dependency_snapshot: step.dependency_snapshot,
         blocker_codes: step.blocker_codes,
-        blocker_details: step.blocker_details
+        blocker_details: step.blocker_details,
+        last_transition_at: DateTime.utc_now()
       }
 
       case repo.insert(Step.changeset(%Step{}, attrs)) do

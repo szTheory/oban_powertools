@@ -9,7 +9,7 @@ defmodule ObanPowertools.Lifeline do
   alias ObanPowertools.{Audit, Auth}
   alias ObanPowertools.Lifeline.{ArchiveRun, Heartbeat, Incident, RepairPreview}
   alias ObanPowertools.Telemetry
-  alias ObanPowertools.Workflow.Step
+  alias ObanPowertools.Workflow.{Runtime, Step}
 
   @heartbeat_warning_ms 45_000
   @heartbeat_missing_ms 120_000
@@ -386,6 +386,8 @@ defmodule ObanPowertools.Lifeline do
   end
 
   defp upsert_workflow_stuck_incident(repo, step, now) do
+    diagnosis = Runtime.step_diagnosis(step) || "blocked"
+
     attrs = %{
       incident_class: "workflow_stuck",
       status: "active",
@@ -393,7 +395,7 @@ defmodule ObanPowertools.Lifeline do
       workflow_step_id: step.id,
       incident_fingerprint: "workflow_stuck:#{step.workflow_id}:#{step.step_name}",
       health_state: nil,
-      summary: "Workflow step #{step.step_name} is blocked",
+      summary: "Workflow step #{step.step_name} is #{diagnosis}",
       affected_counts: %{
         "workflow_steps" => 1,
         "blocked_descendants" =>
@@ -403,6 +405,7 @@ defmodule ObanPowertools.Lifeline do
       },
       evidence: %{
         "step_name" => step.step_name,
+        "diagnosis" => diagnosis,
         "blocker_codes" => step.blocker_codes,
         "dependency_snapshot" => step.dependency_snapshot
       },
@@ -860,32 +863,16 @@ defmodule ObanPowertools.Lifeline do
         {:ok, repo.update!(Ecto.Changeset.change(job, state: "cancelled", cancelled_at: now))}
 
       {"workflow_step", "workflow_step_retry"} ->
-        step = repo.get!(Step, preview.target_id)
-
-        {:ok,
-         repo.update!(
-           Step.changeset(step, %{
-             state: "available",
-             blocker_codes: [],
-             blocker_details: %{},
-             dependency_snapshot: step.dependency_snapshot
-           })
-         )}
+        Runtime.recover_step_by_id(repo, preview.target_id, :retry,
+          actor_id: "lifeline",
+          reason: get_in(preview.metadata, ["reason"])
+        )
 
       {"workflow_step", "workflow_step_cancel"} ->
-        step = repo.get!(Step, preview.target_id)
-
-        {:ok,
-         repo.update!(
-           Step.changeset(step, %{
-             state: "cancelled",
-             blocker_codes: ["cancelled_by_dependency"],
-             blocker_details: step.blocker_details,
-             dependency_snapshot: step.dependency_snapshot,
-             cancelled_at: now,
-             finished_at: now
-           })
-         )}
+        Runtime.recover_step_by_id(repo, preview.target_id, :cancel,
+          actor_id: "lifeline",
+          reason: get_in(preview.metadata, ["reason"])
+        )
     end
   end
 
