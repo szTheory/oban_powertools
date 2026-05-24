@@ -32,3 +32,18 @@
 - Repaired the Phase 8-10 evidence chain so policy, telemetry, and operator UX requirements are audit-closeable again.
 - Replaced the synthetic upgrade path with a real archived-host upgrade lane.
 - Unified README, guides, hardening, troubleshooting, and fixture docs around one explicit support-truth vocabulary.
+
+## v1.2
+
+- **Status:** Active
+- **Phases:** 16-23
+- **Plans:** 0
+- **Timeline:** 2026-05-23 -> present
+- **Git range:** `4d22f81` -> current
+
+### Intended Deliverables
+
+- Freeze the workflow and step lifecycle contract with durable terminal causes and explicit pre-v1.2 compatibility rules.
+- Route workflow runtime and operator mutations through one DB-first transition engine with durable callback, recovery, cancel, and await/signal evidence.
+- Add shared workflow diagnosis vocabulary across native workflow and Lifeline surfaces.
+- Close the milestone with race-path fixtures, in-flight upgrade proof, low-cardinality telemetry markers, and support-truth docs that match the proven semantics.

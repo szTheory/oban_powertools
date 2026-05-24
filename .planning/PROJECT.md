@@ -41,9 +41,8 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 
 ### Active
 
-- [ ] Freeze explicit workflow lifecycle vocabulary, legal transitions, and in-flight compatibility rules (`WFS-01`, `WFS-02`, `WFS-03`).
-- [ ] Add durable callbacks, scoped recovery, cooperative cancellation, and auditable recovery evidence (`REC-01`, `REC-02`, `REC-03`).
-- [ ] Add durable await/signal/expiry semantics and workflow-local diagnosis with support-truth proof (`SIG-01`, `SIG-02`, `SIG-03`, `DIA-01`, `DIA-02`, `VER-01`, `VER-02`, `POL-04`).
+- [ ] Finish the remaining callback outbox and delivery guarantees (`REC-01`).
+- [ ] Finish the remaining await/signal/expiry contract surface and support-truth closure (`SIG-01`, `SIG-02`, `SIG-03`, `POL-04`).
 
 ### Out of Scope
 
@@ -83,6 +82,8 @@ Version `v1.1` shipped on 2026-05-23. All 12 host-contract milestone requirement
 - Stuck-graph diagnosis with explicit waiting, orphaned, and blocked-state explanations.
 - Signal/await, cancellation, and expiry contracts that preserve durable workflow truth and repair-safe operator behavior.
 
+**Phase 17 status:** complete. The workflow command core is now DB-first, writes durable accepted/rejected command evidence, gates legacy rows explicitly, keeps cancel-race outcomes durable, and exposes one shared diagnosis/refusal vocabulary to Lifeline and the native workflow screen.
+
 **Why now:** v1.1 froze the host-owned install, auth, router, telemetry, and support-truth boundaries, which removes the main adoption churn and makes workflow semantics the highest-leverage next runtime capability to harden.
 
 ## Next Milestone Goals
@@ -114,4 +115,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-23 after starting v1.2 milestone*
+*Last updated: 2026-05-24 after Phase 17 execution*

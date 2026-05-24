@@ -16,14 +16,14 @@
 ### Workflow Semantics
 
 - [x] **WFS-01**: A maintainer can rely on one explicit workflow and step lifecycle contract with durable terminal causes for `completed`, `failed`, `cancelled`, `expired`, and recovery-driven transitions.
-- [ ] **WFS-02**: Runtime and operator mutations can only move workflows through documented legal transitions that are recomputed from Postgres-backed truth rather than transient PubSub state.
+- [x] **WFS-02**: Runtime and operator mutations can only move workflows through documented legal transitions that are recomputed from Postgres-backed truth rather than transient PubSub state.
 - [x] **WFS-03**: In-flight workflows created before v1.2 can continue or reconcile under a documented semantics-compatibility strategy without silent meaning drift.
 
 ### Callbacks & Recovery
 
 - [ ] **REC-01**: A host app can receive post-commit workflow callbacks through a durable outbox so workflow completion, failure, cancellation, expiry, and recovery side effects survive crashes and retries.
-- [ ] **REC-02**: An operator or runtime can request scoped workflow recovery without silently re-running already successful side-effecting steps, and the new attempt evidence remains durable and auditable.
-- [ ] **REC-03**: Workflow cancellation is cooperative and explicit: operators can see request versus final outcome, and late step completion after a cancel request is preserved as durable evidence instead of hidden.
+- [x] **REC-02**: An operator or runtime can request scoped workflow recovery without silently re-running already successful side-effecting steps, and the new attempt evidence remains durable and auditable.
+- [x] **REC-03**: Workflow cancellation is cooperative and explicit: operators can see request versus final outcome, and late step completion after a cancel request is preserved as durable evidence instead of hidden.
 
 ### Await, Signal, And Expiry
 
@@ -33,13 +33,13 @@
 
 ### Diagnosis & Operator Surfaces
 
-- [ ] **DIA-01**: A workflow screen can explain durable cause classes such as `waiting_on_signal`, `waiting_on_retryable_dependency`, `missing_dependency_result`, `orphaned_executor`, `cancel_requested`, and `expired_wait` without requiring direct database inspection.
-- [ ] **DIA-02**: Lifeline and workflow inspection surfaces consume the same workflow diagnosis vocabulary and expose only bounded, audited recovery actions that re-enter the workflow command pipeline.
+- [x] **DIA-01**: A workflow screen can explain durable cause classes such as `waiting_on_signal`, `waiting_on_retryable_dependency`, `missing_dependency_result`, `orphaned_executor`, `cancel_requested`, and `expired_wait` without requiring direct database inspection.
+- [x] **DIA-02**: Lifeline and workflow inspection surfaces consume the same workflow diagnosis vocabulary and expose only bounded, audited recovery actions that re-enter the workflow command pipeline.
 
 ### Verification, Telemetry, And Support Truth
 
-- [ ] **VER-01**: The repo proves duplicate, late, dropped, and race-path workflow events with automated fixtures covering signal replay, cancel-versus-complete races, expiry, and lost wakeup reconciliation.
-- [ ] **VER-02**: A maintainer can upgrade hosts with in-flight waiting, retrying, cancelling, or recovering workflows without breaking semantics or leaving support unable to explain stored state.
+- [x] **VER-01**: The repo proves duplicate, late, dropped, and race-path workflow events with automated fixtures covering signal replay, cancel-versus-complete races, expiry, and lost wakeup reconciliation.
+- [x] **VER-02**: A maintainer can upgrade hosts with in-flight waiting, retrying, cancelling, or recovering workflows without breaking semantics or leaving support unable to explain stored state.
 - [ ] **POL-04**: The public telemetry and support-truth docs describe the new workflow semantics with low-cardinality events, explicit non-goals, and no present-tense guarantees that lack durable proof.
 
 ## Capability Selection Rubric
@@ -111,25 +111,25 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | WFS-01 | 16 | In progress |
-| WFS-02 | 16 | In progress |
+| WFS-02 | 17 | Complete |
 | WFS-03 | 16 | In progress |
 | REC-01 | TBD | Pending |
-| REC-02 | TBD | Pending |
-| REC-03 | TBD | Pending |
+| REC-02 | 17 | Complete |
+| REC-03 | 17 | Complete |
 | SIG-01 | TBD | Pending |
 | SIG-02 | TBD | Pending |
 | SIG-03 | TBD | Pending |
-| DIA-01 | TBD | Pending |
-| DIA-02 | TBD | Pending |
-| VER-01 | TBD | Pending |
-| VER-02 | TBD | Pending |
+| DIA-01 | 17 | Complete |
+| DIA-02 | 17 | Complete |
+| VER-01 | 17 | Complete |
+| VER-02 | 17 | Complete |
 | POL-04 | TBD | Pending |
 
 **Coverage:**
 - v1.2 requirements: 14 total
-- Mapped to phases: 0
-- Unmapped: 14
+- Mapped to phases: 9
+- Unmapped: 5
 
 ---
 *Requirements defined: 2026-05-23*
-*Last updated: 2026-05-23 after v1.2 milestone research synthesis*
+*Last updated: 2026-05-24 after Phase 17 command-core execution*
