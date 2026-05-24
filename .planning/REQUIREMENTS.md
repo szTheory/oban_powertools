@@ -21,15 +21,15 @@
 
 ### Callbacks & Recovery
 
-- [ ] **REC-01**: A host app can receive post-commit workflow callbacks through a durable outbox so workflow completion, failure, cancellation, expiry, and recovery side effects survive crashes and retries.
+- [x] **REC-01**: A host app can receive post-commit workflow callbacks through a durable outbox so workflow completion, failure, cancellation, expiry, and recovery side effects survive crashes and retries.
 - [x] **REC-02**: An operator or runtime can request scoped workflow recovery without silently re-running already successful side-effecting steps, and the new attempt evidence remains durable and auditable.
 - [x] **REC-03**: Workflow cancellation is cooperative and explicit: operators can see request versus final outcome, and late step completion after a cancel request is preserved as durable evidence instead of hidden.
 
 ### Await, Signal, And Expiry
 
-- [ ] **SIG-01**: A workflow step can durably register an await contract with signal name, correlation identity, dedupe behavior, and deadline so waiting survives restarts and cross-node execution.
-- [ ] **SIG-02**: Incoming workflow signals are stored as durable facts and reconciled idempotently whether they arrive before, during, or after a matching wait registration.
-- [ ] **SIG-03**: Expiry and late-arrival policy is explicit: a maintainer can tell whether an overdue wait failed, cancelled downstream work, remained recoverable, or ignored late signals by contract.
+- [x] **SIG-01**: A workflow step can durably register an await contract with signal name, correlation identity, dedupe behavior, and deadline so waiting survives restarts and cross-node execution.
+- [x] **SIG-02**: Incoming workflow signals are stored as durable facts and reconciled idempotently whether they arrive before, during, or after a matching wait registration.
+- [x] **SIG-03**: Expiry and late-arrival policy is explicit: a maintainer can tell whether an overdue wait failed, cancelled downstream work, remained recoverable, or ignored late signals by contract.
 
 ### Diagnosis & Operator Surfaces
 
@@ -40,7 +40,7 @@
 
 - [x] **VER-01**: The repo proves duplicate, late, dropped, and race-path workflow events with automated fixtures covering signal replay, cancel-versus-complete races, expiry, and lost wakeup reconciliation.
 - [x] **VER-02**: A maintainer can upgrade hosts with in-flight waiting, retrying, cancelling, or recovering workflows without breaking semantics or leaving support unable to explain stored state.
-- [ ] **POL-04**: The public telemetry and support-truth docs describe the new workflow semantics with low-cardinality events, explicit non-goals, and no present-tense guarantees that lack durable proof.
+- [x] **POL-04**: The public telemetry and support-truth docs describe the new workflow semantics with low-cardinality events, explicit non-goals, and no present-tense guarantees that lack durable proof.
 
 ## Capability Selection Rubric
 
@@ -113,17 +113,17 @@
 | WFS-01 | 16 | In progress |
 | WFS-02 | 17 | Complete |
 | WFS-03 | 16 | In progress |
-| REC-01 | TBD | Pending |
+| REC-01 | 18 | Complete |
 | REC-02 | 17 | Complete |
 | REC-03 | 17 | Complete |
-| SIG-01 | TBD | Pending |
-| SIG-02 | TBD | Pending |
-| SIG-03 | TBD | Pending |
+| SIG-01 | 19 | Complete |
+| SIG-02 | 19 | Complete |
+| SIG-03 | 19 | Complete |
 | DIA-01 | 17 | Complete |
 | DIA-02 | 17 | Complete |
-| VER-01 | 17 | Complete |
-| VER-02 | 17 | Complete |
-| POL-04 | TBD | Pending |
+| VER-01 | 19 | Complete |
+| VER-02 | 19 | Complete |
+| POL-04 | 18 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 14 total
@@ -132,4 +132,4 @@
 
 ---
 *Requirements defined: 2026-05-23*
-*Last updated: 2026-05-24 after Phase 17 command-core execution*
+*Last updated: 2026-05-24 after Phase 19 await, signal, and expiry proof closure*

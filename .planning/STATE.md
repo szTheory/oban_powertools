@@ -4,14 +4,14 @@ milestone: v1.2
 milestone_name: Workflow Semantics & Recovery
 current_plan: Not started
 status: planning
-stopped_at: Phase 18 context gathered
-last_updated: "2026-05-24T11:03:27.221Z"
+stopped_at: Completed Phase 21 execution artifacts, summaries, and targeted verification
+last_updated: "2026-05-24T18:09:21.825Z"
 progress:
   total_phases: 8
-  completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
-  percent: 25
+  completed_phases: 6
+  total_plans: 16
+  completed_plans: 16
+  percent: 100
 ---
 
 # Project State
@@ -19,17 +19,17 @@ progress:
 ## Project Reference
 
 **Core Value:** Oban Powertools provides an "Ultimate Batteries-Included" background job operations layer for Phoenix applications in the szTheory ecosystem. It guarantees Ecto-native safety, transparent observability, and durable idempotency while rejecting per-worker limits and implicit magic.
-**Current Focus:** Phase 17 — db first transition engine command pipeline
+**Current Focus:** Phase 22 — lifeline-integration-bounded-recovery-actions
 
 ## Current Position
 
-Phase: 17 (db-first-transition-engine-command-pipeline) — NOT STARTED
+Phase: 22 (lifeline-integration-bounded-recovery-actions) — NOT STARTED
 Plan: 0 of 0
 
-- **Phase:** 17
+- **Phase:** 22
 - **Plan:** 0 of 0
 - **Current Plan:** Not started
-- **Total Plans in Phase:** 1
+- **Total Plans in Phase:** 0
 - **Status:** Ready to plan
 - **Progress:** [██████████] 100%
 
@@ -87,8 +87,8 @@ Plan: 0 of 0
 
 ## Session Continuity
 
-- **Last session:** 2026-05-24T11:03:27.213Z
-- **Stopped At:** Phase 18 context gathered
-- **Resume File:** .planning/phases/18-durable-callback-outbox-recovery-attempts/18-CONTEXT.md
-- **Last Action:** Completed Phase 16 execution, summary, and verification handoff artifacts.
-- **Next Action:** Run `$gsd-discuss-phase 17` and then `$gsd-plan-phase 17`.
+- **Last session:** 2026-05-24T16:59:16.638Z
+- **Stopped At:** Completed Phase 21 execution artifacts, summaries, and targeted verification
+- **Resume File:** .planning/phases/21-workflow-diagnosis-projection-native-workflow-surface/21-03-SUMMARY.md
+- **Last Action:** Closed Phase 21 from a dirty working tree after the full targeted proof bundle passed.
+- **Next Action:** Run `$gsd-discuss-phase 22` and then `$gsd-plan-phase 22`.

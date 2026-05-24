@@ -41,8 +41,12 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 
 ### Active
 
-- [ ] Finish the remaining callback outbox and delivery guarantees (`REC-01`).
-- [ ] Finish the remaining await/signal/expiry contract surface and support-truth closure (`SIG-01`, `SIG-02`, `SIG-03`, `POL-04`).
+- [x] Finish the remaining await/signal/expiry contract surface (`SIG-01`, `SIG-02`, `SIG-03`).
+
+### Recently Validated
+
+- ✓ Narrow workflow callback contract and grouped recovery-session evidence (`REC-01`, `REC-02`, `POL-04`) — v1.2 Phase 18
+- ✓ Workflow-scoped await registration, canonical signal facts, and authoritative expiry proof (`SIG-01`, `SIG-02`, `SIG-03`, `VER-01`, `VER-02`) — v1.2 Phase 19
 
 ### Out of Scope
 
@@ -78,11 +82,15 @@ Version `v1.1` shipped on 2026-05-23. All 12 host-contract milestone requirement
 **Target features:**
 - One repo-local lifecycle contract with semantics version `2`, durable terminal-cause vocabulary, and explicit legal transition meanings for workflow and step rows.
 - An additive pre-v1.2 compatibility posture: new rows default to semantics version `2`, while historical rows stay on an explicit compatibility path until a v2 transition rewrites durable meaning.
-- Callback and recovery semantics for workflow completion, retry, and failure transitions.
+- Callback and recovery semantics for workflow completion, retry, and failure transitions, limited to the two post-commit events `workflow.terminal` and `workflow.recovery_completed`.
 - Stuck-graph diagnosis with explicit waiting, orphaned, and blocked-state explanations.
 - Signal/await, cancellation, and expiry contracts that preserve durable workflow truth and repair-safe operator behavior.
 
 **Phase 17 status:** complete. The workflow command core is now DB-first, writes durable accepted/rejected command evidence, gates legacy rows explicitly, keeps cancel-race outcomes durable, and exposes one shared diagnosis/refusal vocabulary to Lifeline and the native workflow screen.
+
+**Phase 18 status:** in progress in the working tree. Workflow callbacks now stay narrow and post-commit, use lease-safe outbox claiming, and attach recovery-complete rows to workflow-scoped recovery-session headers without widening the public API.
+
+**Phase 19 status:** complete in the working tree. Waiting steps now keep one explicit `active_await_id` mirror, canonical signal rows resolve through workflow-scoped authority instead of correlation-only wakeups, expiry stays DB-first, and the archived upgrade lane now exercises an in-flight waiting workflow under the supported host contract.
 
 **Why now:** v1.1 froze the host-owned install, auth, router, telemetry, and support-truth boundaries, which removes the main adoption churn and makes workflow semantics the highest-leverage next runtime capability to harden.
 
@@ -115,4 +123,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-24 after Phase 17 execution*
+*Last updated: 2026-05-24 after Phase 19 await, signal, and expiry contract execution*
