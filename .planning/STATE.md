@@ -27,11 +27,14 @@ Phase: 25 (traceability-audit-consistency-repair) — EXECUTING
 Plan: 3 of 3
 
 - **Phase:** 25
-- **Plan:** 0 of 0
+- **Plan:** 3 of 3
 - **Current Plan:** 3
 - **Total Plans in Phase:** 3
-- **Status:** Ready to execute
+- **Status:** Executing
 - **Progress:** [██████████] 96%
+- **Canonical sequencing:** `.planning/ROADMAP.md`
+- **Historical failed audit snapshot:** `.planning/v1.2-MILESTONE-AUDIT.md`
+- **Current canonical milestone verdict:** `.planning/milestones/v1.2-rerun-MILESTONE-AUDIT.md`
 
 ## Performance Metrics
 
@@ -90,5 +93,5 @@ Plan: 3 of 3
 - **Last session:** 2026-05-25T13:02:32.000Z
 - **Stopped At:** Completed 25-02-PLAN.md
 - **Resume File:** None
-- **Last Action:** Added roadmap gap-closure phases and reopened unsatisfied v1.2 requirements pending verification artifact backfill.
-- **Next Action:** Run `$gsd-plan-phase 24` to define the verification backfill work, then continue through Phases 25 and 26 before re-running `$gsd-audit-milestone`.
+- **Last Action:** Preserved the failed v1.2 audit snapshot, added the canonical rerun audit, and advanced Phase 25 to Plan 3.
+- **Next Action:** Complete `25-03-PLAN.md`, then follow `.planning/ROADMAP.md` for active sequencing and use `.planning/milestones/v1.2-rerun-MILESTONE-AUDIT.md` as the current milestone verdict while keeping `.planning/v1.2-MILESTONE-AUDIT.md` as the failed historical snapshot.
