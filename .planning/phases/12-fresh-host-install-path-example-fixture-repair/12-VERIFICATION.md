@@ -134,6 +134,8 @@ No orphaned Phase 12 requirements were found in `.planning/REQUIREMENTS.md`.
 
 No implementation or editorial gaps remain. The phase goal is achieved in code, automated proof, and human support-truth review.
 
+Phase 26 normalized `12-UAT.md` to the current canonical UAT schema on 2026-05-25 for archival hygiene; this preserved the successful human closeout completed on 2026-05-23 and did not reopen Phase 12 implementation scope.
+
 ---
 
 _Verified: 2026-05-22T22:45:34Z_
