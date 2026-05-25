@@ -2,11 +2,11 @@
 
 ## What This Is
 
-Oban Powertools is a batteries-included background job operations layer for Phoenix applications in the szTheory ecosystem. It extends Oban with typed worker contracts, durable idempotency, global throttling, explicit workflow DAGs, and a native operator surface for cron, workflows, and Lifeline repair flows.
+Oban Powertools is a host-owned operations layer for Oban-backed Phoenix applications in the szTheory ecosystem. It extends Oban with typed worker contracts, durable idempotency, explicit limiter and cron controls, durable workflow semantics, and native operator surfaces for diagnosis, repair, and audited manual operations.
 
 ## Core Value
 
-Ecto-native operational safety with explicit, inspectable behavior for developers and operators.
+Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
 
 ## Requirements
 
@@ -43,6 +43,8 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 
 - Per-worker ad hoc rate limiting outside the explicit global/partitioned limiter model.
 - Non-Postgres coordination layers such as Redis-backed control planes.
+- Presenting the workflow layer as a general orchestration platform.
+- Rebuilding the full generic Oban Web dashboard surface before the native Powertools control plane clearly demands it.
 
 ## Context
 
@@ -56,6 +58,18 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 - ✓ Require auth before previewing or mutating operator actions.
 - ✓ Preserve implementation ownership while using later phases to close evidence gaps.
 
+## Decision Posture
+
+- Prefer research-backed, one-shot recommendations over interactive re-litigation.
+- Shift the decision burden left within GSD for this repo: downstream agents should read repo-local context and prompts, analyze tradeoffs, and recommend a coherent default before asking the user anything.
+- When `discuss-phase` runs for this repo, agents should do real repo-local research first: read current planning artifacts, relevant prompts, nearby phase context, and implementation surfaces before forming questions.
+- Default `discuss-phase` behavior is to narrow to one coherent recommendation set, not to present broad option menus.
+- Do not ask the user to choose between implementation options that can be resolved by existing repo decisions, Phoenix/LiveView/Ecto/Postgres norms, ecosystem best practice, or direct inspection of the current implementation.
+- Escalate questions only when a choice would materially change the public product promise, support truth, operator trust, architectural boundaries, or long-term maintainer burden.
+- When escalation is necessary, present the recommended path first and ask the narrowest possible question rather than running a broad design interview.
+- Favor idiomatic Phoenix/LiveView/Ecto/Postgres patterns, least-surprise UX, strong DX, and ecosystem lessons from comparable operator/admin systems.
+- Treat prior locked CONTEXT decisions as defaults unless a later phase must reopen them for one of the material reasons above.
+
 ## Constraints
 
 - Remain compatible with Phoenix host applications in the szTheory ecosystem.
@@ -64,14 +78,19 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 ## Current State
 
-Version `v1.2` shipped on 2026-05-25. Workflow semantics now have an explicit v2 lifecycle contract, one DB-first mutation path, durable callback/recovery/await/signal/cancel evidence, diagnosis-first workflow and Lifeline surfaces, and a repaired verification-plus-traceability chain that matches the public support story.
+Version `v1.2` shipped on 2026-05-25. Workflow semantics now have an explicit v2 lifecycle contract, one DB-first mutation path, durable callback/recovery/await/signal/cancel evidence, diagnosis-first workflow and Lifeline surfaces, and a repaired verification-plus-traceability chain that matches the public support story. A same-day adopter-focused assessment judged the library strong and already useful for serious Phoenix SaaS teams, with the main remaining gap being cross-surface operator cohesion rather than missing foundational capabilities.
 
-## Next Milestone Goals
+## Current Milestone: v1.3 Unified Control Plane & Explainability
 
-- Start `v1.3 Unified Control Plane & Explainability` or another explicitly chosen candidate through `$gsd-new-milestone`.
-- Reuse the now-shipped workflow semantics contract as the stable substrate for cross-surface operator vocabulary, action policy, and explainability.
-- Create a fresh `.planning/REQUIREMENTS.md` for the next milestone before opening new active phases.
-- Keep `.planning/MILESTONE-ARC.md` as the source of truth for milestone ordering and pivots.
+**Goal:** make the native `/ops/jobs` shell feel like one coherent operator control plane rather than a set of adjacent feature pages.
+
+**Target features:**
+- shared operator vocabulary, status taxonomy, and ownership boundaries across overview, cron, limiters, workflows, Lifeline, audit, and Oban Web handoffs
+- one diagnosis-first overview and drill-down model that routes operators to the right native or bridge destination with context intact
+- one consistent preview, reason, refusal, and audit posture across bounded native mutation surfaces
+- support-truthful docs and proof that explain what the native shell owns versus what stays bridge-only or host-owned
+
+**Why now:** v1.2 froze the workflow semantics and recovery substrate, so the highest-leverage remaining adopter gap is operator cohesion, not another backend capability family.
 
 ## Recently Shipped
 
@@ -109,4 +128,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-25 after milestone v1.2 archival*
+*Last updated: 2026-05-25 after activating milestone v1.3 planning*

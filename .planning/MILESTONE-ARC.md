@@ -33,16 +33,18 @@ Oban Powertools should compound from a shipped v1 foundation into a host-friendl
 - **Why it shipped:** the repo now proves the workflow semantics contract end to end, including DB-first command legality, durable callback and recovery evidence, await/signal/expiry authority, diagnosis-first workflow and Lifeline surfaces, and bounded public support-truth claims.
 - **Unlocked:** a stable workflow substrate for cross-surface operator vocabulary, shared explainability, and later control-plane unification work.
 
-## Next Candidate Milestone
+## Active Milestone
 
 ### v1.3 Unified Control Plane & Explainability
 
-- **Status:** next candidate
+- **Status:** active 2026-05-25
 - **Priority:** high
 - **Why next:** v1.2 fixed workflow semantics and support truth, which removes a major moving target and makes shared operator vocabulary across cron, limits, workflows, queues, and Lifeline the highest-leverage follow-on.
 - **Includes:** shared operator vocabulary, common blocked/waiting/orphaned diagnostics, unified action policy, shared search/filter mental model.
 - **Pros:** reduces fragmentation; makes every later operator/API surface cheaper.
 - **Tradeoffs:** lower standalone glamour; can drift into abstract cleanup if not tied to concrete flows.
+
+**Activated scope guard:** keep the milestone centered on the native Powertools control plane plus Oban Web handoffs for generic job/queue inspection. Do not promise a full native replacement for generic queue or job screens inside v1.3.
 
 ## Candidate Milestones
 

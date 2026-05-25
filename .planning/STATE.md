@@ -1,46 +1,46 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Workflow Semantics & Recovery
-current_plan: 0
-status: milestone_shipped
-stopped_at: Milestone v1.2 archived and tagged
-last_updated: "2026-05-25T16:20:00Z"
+milestone: v1.3
+milestone_name: Unified Control Plane & Explainability
+current_plan: 3
+status: verifying
+stopped_at: Completed 29-03-PLAN.md
+last_updated: "2026-05-25T19:36:55.475Z"
 progress:
-  total_phases: 11
-  completed_phases: 11
-  total_plans: 31
-  completed_plans: 31
-  percent: 100
+  total_phases: 5
+  completed_phases: 3
+  total_plans: 15
+  completed_plans: 9
+  percent: 60
 ---
 
 # Project State
 
 ## Project Reference
 
-**Core Value:** Oban Powertools provides an "Ultimate Batteries-Included" background job operations layer for Phoenix applications in the szTheory ecosystem. It guarantees Ecto-native safety, transparent observability, and durable idempotency while rejecting per-worker limits and implicit magic.
-**Current Focus:** Ready for v1.3 milestone planning from a stabilized post-v1.2 base
+**Core Value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
+**Current Focus:** Phase 29 — shared-preview-reason-refusal-audit-contract (ready for verification)
 
 ## Current Position
 
-Phase: none active
-Plan: none active
+Phase: 29 (shared-preview-reason-refusal-audit-contract) — VERIFYING
+Plan: 3 of 3
 
-- **Phase:** None
-- **Plan:** None
-- **Current Plan:** 0
-- **Total Plans in Phase:** 0
-- **Status:** Milestone v1.2 shipped
+- **Phase:** 29
+- **Plan:** 3
+- **Current Plan:** 3
+- **Total Plans in Phase:** 3
+- **Status:** Phase complete — ready for verification
 - **Progress:** [██████████] 100%
 - **Canonical sequencing:** `.planning/ROADMAP.md`
-- **Historical failed audit snapshot:** `.planning/v1.2-MILESTONE-AUDIT.md`
-- **Current canonical milestone verdict:** `.planning/milestones/v1.2-rerun-MILESTONE-AUDIT.md`
+- **Milestone requirements:** `.planning/REQUIREMENTS.md`
+- **Strategic source of truth:** `.planning/MILESTONE-ARC.md`
 
 ## Performance Metrics
 
-- **Phases Complete:** 11/11
-- **Plans Complete:** 31/31
-- **Metrics:** Milestone v1.2 shipped on 2026-05-25 after 11 phases and 31 plans closed the workflow semantics, proof, traceability, and historical closeout chain.
+- **Phases Complete:** 3/5
+- **Plans Complete:** 9/15
+- **Metrics:** Milestone v1.3 planning opened on 2026-05-25 after an adopter-facing assessment concluded the library is already strong for serious Phoenix SaaS teams, with the main remaining high-leverage gap being cross-surface operator cohesion rather than missing foundational runtime capability.
 
 ## Accumulated Context
 
@@ -85,13 +85,18 @@ Plan: none active
   - Use the same supported/tested/best-effort/host-owned/intentionally unsupported vocabulary in every public support-truth entrypoint.
   - Keep production-hardening prose narrative, but anchor troubleshooting claims to the exact RuntimeConfig fail-fast errors.
   - Expand docs-contract coverage to hardening and troubleshooting guides while asserting markers only, not guide paragraphs.
+  - Treat the current public product story as a host-owned Oban operations layer, not as a generic orchestration platform or a mandatory Oban Web replacement.
+  - The highest-leverage next milestone after v1.2 is `v1.3 Unified Control Plane & Explainability`: unify operator vocabulary, diagnosis, action policy, and overview flow across cron, limits, workflows, Lifeline, and audit so the native shell feels like one coherent product.
+  - Defer full native generic job UI, broader automation/API surfaces, and feature-family expansion until the unified control-plane wedge proves real adopter leverage.
+  - Keep v1.3 honest about scope: native Powertools pages plus deliberate Oban Web handoffs for generic job and queue inspection, not a surprise queue-dashboard rewrite.
+  - Anchor the first concrete win on the `/ops/jobs` operator journey: what needs attention, why, and where to go next without vocabulary drift between pages.
 - **Todos:** None
 - **Blockers:** None
 
 ## Session Continuity
 
-- **Last session:** 2026-05-25T13:04:16.403Z
-- **Stopped At:** Milestone v1.2 archived and tagged
+- **Last session:** 2026-05-25T19:36:55.008Z
+- **Stopped At:** Completed 29-03-PLAN.md
 - **Resume File:** None
-- **Last Action:** Stabilized the post-v1.2 workflow implementation boundary, restored local proof lanes, and prepared the repo for the next milestone planning cycle.
-- **Next Action:** Start the next milestone with `$gsd-new-milestone` and define a fresh `REQUIREMENTS.md` from the now-clean committed base.
+- **Last Action:** Executed Phase 29 end-to-end, normalizing shared preview, reason, refusal, and audit follow-up contracts across cron, workflows, Lifeline, and the audit destination.
+- **Next Action:** Run `$gsd-verify-work 29` before advancing to Phase 30.

@@ -1,0 +1,122 @@
+# Requirements: Oban Powertools
+
+**Defined:** 2026-05-25
+**Milestone:** v1.3 Unified Control Plane & Explainability
+**Status:** Draft
+**Core Value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators.
+
+## v1.3 Goal
+
+Make the native `/ops/jobs` shell feel like one coherent operator control plane by unifying vocabulary, diagnosis, bounded action posture, and drill-down flow across the existing native Powertools pages and the bounded Oban Web bridge.
+
+## v1.3 Requirements
+
+### Unified Vocabulary & Ownership
+
+- [ ] **CTL-01**: Operators see one shared status taxonomy across overview, cron, limiters, workflows, Lifeline, audit, and Oban Web handoffs, with explicit meanings for concepts such as `needs_review`, `blocked`, `waiting`, `runnable`, `resolved`, and `bridge_only`.
+- [ ] **CTL-02**: Native pages use one diagnosis-first vocabulary for cause, refusal, and allowed next action so operators do not have to relearn language between surfaces.
+- [ ] **CTL-03**: The native shell, audit page, and Oban Web bridge expose an explicit ownership model for what Powertools can mutate, what it can only inspect, and what remains bridge-only or host-owned.
+
+### Overview, Triage & Drilldown
+
+- [x] **OVR-01**: `/ops/jobs` becomes the operator’s real starting point by surfacing durable attention buckets and next steps instead of mostly raw feature counts.
+- [x] **OVR-02**: Operators can move from overview to the right native page or Oban Web destination without losing the context that explained why attention was required.
+- [x] **OVR-03**: Native pages converge on one shared drill-down mental model so selected resource, diagnosis, and follow-up action state survive refresh, remount, and read-only access coherently.
+
+### Bounded Action Policy & Audit
+
+- [ ] **ACT-01**: Preview status, reason requirements, disabled-action/refusal wording, and audit consequence copy are consistent across every bounded native mutation surface.
+- [ ] **ACT-02**: Workflow-directed actions, Lifeline repairs, and cron mutations all present one shared policy story for what can happen next, why an action is unavailable, and where durable evidence will land.
+- [ ] **ACT-03**: The audit destination can be read as part of the same control plane, with resource links and event metadata that match the shared operator vocabulary used on native pages.
+
+### Support Truth, Docs & Proof
+
+- [ ] **DOC-04**: README, guides, and example-host material explain the unified native control plane honestly, including what remains generic-job or queue inspection through the bounded Oban Web bridge.
+- [ ] **VER-03**: Automated proof covers the overview-to-surface handoff model, shared vocabulary, read-only behavior, and cross-surface audit expectations under the supported host contract.
+- [ ] **HST-04**: Host apps can understand which control-plane promises are native Powertools guarantees, which depend on host-owned policy seams, and which remain explicitly bridge-only or intentionally unsupported.
+
+## Capability Selection Rubric
+
+| Capability Family | Route Owner Expectation | Bridge Frequency | Permission / Policy Sensitivity | Support-Matrix Impact | Proof Required | Package Classification |
+|-------------------|-------------------------|------------------|---------------------------------|-----------------------|----------------|------------------------|
+| Shared operator vocabulary and ownership contract | Native Powertools shell | Low-frequency semantic | High | High | Hermetic UI plus docs-contract proof | `core` |
+| Overview triage and context-preserving drilldowns | Native Powertools shell with bridge handoffs | Mixed native + bridge | Medium | High | Hermetic LiveView and route proof | `core` |
+| Shared preview/reason/refusal/audit posture | Native mutation surfaces | Native screen | High | High | Hermetic mutation and audit proof | `core` |
+| Audit read model and cross-surface linking | Native Powertools shell | Low-frequency semantic | Medium | Medium | Hermetic UI and event-shape proof | `core` |
+| Full native generic queue/job dashboard replacement | Generic job inspection | Native screen | Medium | High | Out of milestone | `defer` |
+| CLI/API automation surfaces | External integration | Defer | High | High | Out of milestone | `defer` |
+| Deep SRE forensics and runbooks | Native Powertools shell | Native screen | Medium | Medium | Advisory follow-on proof | `defer` |
+
+## Packaging Ledger
+
+| Surface | Classification | Scope Rule |
+|---------|----------------|------------|
+| Shared control-plane vocabulary, presenters, and permission/refusal helpers | `core` | Existing native pages must converge on one explicit operator contract. |
+| Native overview, drill-down state, and control-plane handoff flow | `core` | `/ops/jobs` becomes a diagnosis-first entrypoint rather than a count-only landing page. |
+| Cron, workflow-directed, and Lifeline bounded-action posture | `core` | Mutation scope stays bounded; v1.3 tightens consistency instead of broadening action families. |
+| Audit page resource linking and metadata normalization | `core` | Audit remains read-only but must tell the same cross-surface story as the acted-on pages. |
+| Oban Web bridge integration and ownership docs | `core` | Bridge remains read-only and generic-inspection-oriented, but handoffs must feel intentional. |
+| Full native generic job/queue UI | `defer` | Do not replace the bridge inside v1.3. |
+| Automation/API/CLI control-plane surfaces | `defer` | Reserve for later milestones after the operator vocabulary is stable. |
+
+## Future Requirements
+
+### Deferred From v1.3
+
+- **QRY-01**: Native queue and generic job inspection reach parity with the bounded bridge for the primary adopter flows that still require Oban Web today.
+- **SRE-01**: Operators get richer historical forensics, evidence bundles, and runbook-guided remediation beyond the unified control-plane baseline.
+- **API-02**: Control-plane diagnosis and bounded actions are available through explicit CLI or API contracts for automation use cases.
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Rebuilding the full generic Oban Web job or queue dashboard in native Powertools pages | Lower leverage than making the existing native pages and bridge feel coherent first. |
+| New workflow orchestration capabilities, broader callback surfaces, or another runtime capability family | The main remaining gap is operator cohesion, not missing foundational runtime semantics. |
+| Broad machine-facing API or CLI automation contracts | Freezes vocabulary before the operator control plane has settled. |
+| Non-Postgres or non-host-owned control-plane architecture changes | Conflicts with the core value and current support truth. |
+
+## Proof Posture Gate
+
+| Claim Area | Merge-Blocking Hermetic Proof | Advisory Proof | Support Obligation |
+|------------|-------------------------------|----------------|--------------------|
+| Shared vocabulary and ownership boundaries | LiveView assertions plus docs-contract markers across overview, cron, workflows, Lifeline, audit, and bridge docs | Manual maintainer review of copy coherence | Public docs must use the same control-plane language as the pages. |
+| Overview triage and drill-down continuity | LiveView tests covering attention buckets, handoffs, refresh, remount, and read-only behavior | Example-host walkthrough screenshots or manual smoke notes | `/ops/jobs` must remain the honest operator starting point. |
+| Shared preview/reason/refusal/audit posture | Cron and Lifeline mutation tests plus workflow-directed handoff assertions | Manual operator copy review | Every bounded native mutation must explain outcome, denial, and audit destination consistently. |
+| Audit destination coherence | UI tests and event-shape assertions for resource links and metadata | Manual chronology sanity check | Audit language must match the acted-on surfaces. |
+| Support-truth docs and example-host alignment | Docs-contract, router, and example-host proof | Maintainer-only fixture refresh notes | README/guides must not imply a native generic queue dashboard that the repo does not ship. |
+
+## Support Truth Gate
+
+| Surface | Denial / Fallback Behavior | Missing Prerequisite Behavior | Native Rebuild Required | Rough-Edge Docs To Publish |
+|---------|----------------------------|-------------------------------|-------------------------|----------------------------|
+| Native overview | Falls back to explicit “nothing needs review” or “no data yet” states instead of inventing hidden urgency | Missing repo/auth/display seams must still fail through current host-owned boundaries | No | Overview semantics and handoff expectations |
+| Cron, workflow-directed, and Lifeline actions | Show shared refusal or read-only wording instead of surfacing page-local surprises | Missing audit principal, reason, or authorization must remain explicit | No | Shared preview/reason/refusal contract |
+| Limiters and workflow drill-downs | Deep-link to Oban Web only for generic job inspection, not for Powertools-owned diagnosis | Missing bridge availability must degrade to native copy without implying unsupported mutation paths | No | Native versus bridge inspection boundaries |
+| Audit destination | Stay read-only and reflect durable evidence even when the acted-on resource is no longer active | Missing resource or bridge destination must remain explicit instead of linking blindly | No | Audit destination and follow-up expectations |
+| Example host and guides | Keep the canonical host honest about the bounded bridge and native control-plane scope | Host-owned auth/display policy remains a documented prerequisite | No | Support-truth vocabulary refresh |
+
+## Traceability
+
+| Requirement | Owner Phase | Closure Proof | Status |
+|-------------|-------------|---------------|--------|
+| CTL-01 | 27 | 27-VERIFICATION.md | Planned |
+| CTL-02 | 27 | 27-VERIFICATION.md | Planned |
+| CTL-03 | 27 | 27-VERIFICATION.md | Planned |
+| OVR-01 | 28 | 28-VERIFICATION.md | Planned |
+| OVR-02 | 28 | 28-VERIFICATION.md | Planned |
+| OVR-03 | 28 / 30 | 30-VERIFICATION.md | Planned |
+| ACT-01 | 29 | 29-VERIFICATION.md | Planned |
+| ACT-02 | 29 / 30 | 30-VERIFICATION.md | Planned |
+| ACT-03 | 29 / 30 | 30-VERIFICATION.md | Planned |
+| DOC-04 | 31 | 31-VERIFICATION.md | Planned |
+| VER-03 | 31 | 31-VERIFICATION.md | Planned |
+| HST-04 | 31 | 31-VERIFICATION.md | Planned |
+
+**Coverage:**
+- v1.3 requirements: 12 total
+- Mapped to phases: 12
+- Unmapped: 0
+
+---
+*Requirements defined: 2026-05-25*
