@@ -39,15 +39,6 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 - ✓ Supported archived-host upgrade lane (`PKG-02`) — v1.1 Phase 15
 - ✓ Explicit support-truth boundaries and host-owned hardening/troubleshooting guidance (`HST-03`, `DOC-02`) — v1.1 Phase 15
 
-### Active
-
-- [x] Finish the remaining await/signal/expiry contract surface (`SIG-01`, `SIG-02`, `SIG-03`).
-
-### Recently Validated
-
-- ✓ Narrow workflow callback contract and grouped recovery-session evidence (`REC-01`, `REC-02`, `POL-04`) — v1.2 Phase 18
-- ✓ Workflow-scoped await registration, canonical signal facts, and authoritative expiry proof (`SIG-01`, `SIG-02`, `SIG-03`, `VER-01`, `VER-02`) — v1.2 Phase 19
-
 ### Out of Scope
 
 - Per-worker ad hoc rate limiting outside the explicit global/partitioned limiter model.
@@ -86,11 +77,10 @@ Version `v1.1` shipped on 2026-05-23. All 12 host-contract milestone requirement
 - Stuck-graph diagnosis with explicit waiting, orphaned, and blocked-state explanations.
 - Signal/await, cancellation, and expiry contracts that preserve durable workflow truth and repair-safe operator behavior.
 
-**Phase 17 status:** complete. The workflow command core is now DB-first, writes durable accepted/rejected command evidence, gates legacy rows explicitly, keeps cancel-race outcomes durable, and exposes one shared diagnosis/refusal vocabulary to Lifeline and the native workflow screen.
-
-**Phase 18 status:** in progress in the working tree. Workflow callbacks now stay narrow and post-commit, use lease-safe outbox claiming, and attach recovery-complete rows to workflow-scoped recovery-session headers without widening the public API.
-
-**Phase 19 status:** complete in the working tree. Waiting steps now keep one explicit `active_await_id` mirror, canonical signal rows resolve through workflow-scoped authority instead of correlation-only wakeups, expiry stays DB-first, and the archived upgrade lane now exercises an in-flight waiting workflow under the supported host contract.
+**Canonical current-state sources:**
+- Requirement closure and owner-phase routing: `.planning/REQUIREMENTS.md`
+- Active phase ordering and plan progress: `.planning/ROADMAP.md`
+- Current milestone verdict: `.planning/milestones/v1.2-rerun-MILESTONE-AUDIT.md`
 
 **Why now:** v1.1 froze the host-owned install, auth, router, telemetry, and support-truth boundaries, which removes the main adoption churn and makes workflow semantics the highest-leverage next runtime capability to harden.
 
