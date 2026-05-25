@@ -64,33 +64,29 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 ## Current State
 
-Version `v1.1` shipped on 2026-05-23. All 12 host-contract milestone requirements are evidence-closed: fresh-host install, canonical first-session proof, native-only optional dependency support, bounded bridge support, repaired cross-phase traceability, and a real archived-host upgrade lane now align with the public docs and CI proof stack.
-
-## Current Milestone: v1.2 Workflow Semantics & Recovery
-
-**Goal:** Strengthen workflow orchestration semantics so recovery, diagnosis, and operator actions stay explicit and safe under real host-app runtime conditions.
-
-**Target features:**
-- One repo-local lifecycle contract with semantics version `2`, durable terminal-cause vocabulary, and explicit legal transition meanings for workflow and step rows.
-- An additive pre-v1.2 compatibility posture: new rows default to semantics version `2`, while historical rows stay on an explicit compatibility path until a v2 transition rewrites durable meaning.
-- Callback and recovery semantics for workflow completion, retry, and failure transitions, limited to the two post-commit events `workflow.terminal` and `workflow.recovery_completed`.
-- Stuck-graph diagnosis with explicit waiting, orphaned, and blocked-state explanations.
-- Signal/await, cancellation, and expiry contracts that preserve durable workflow truth and repair-safe operator behavior.
-
-**Canonical current-state sources:**
-- Requirement closure and owner-phase routing: `.planning/REQUIREMENTS.md`
-- Active phase ordering and plan progress: `.planning/ROADMAP.md`
-- Current milestone verdict: `.planning/milestones/v1.2-rerun-MILESTONE-AUDIT.md`
-
-**Why now:** v1.1 froze the host-owned install, auth, router, telemetry, and support-truth boundaries, which removes the main adoption churn and makes workflow semantics the highest-leverage next runtime capability to harden.
+Version `v1.2` shipped on 2026-05-25. Workflow semantics now have an explicit v2 lifecycle contract, one DB-first mutation path, durable callback/recovery/await/signal/cancel evidence, diagnosis-first workflow and Lifeline surfaces, and a repaired verification-plus-traceability chain that matches the public support story.
 
 ## Next Milestone Goals
 
-- Start `v1.2 Workflow Semantics & Recovery` as the next planned milestone.
-- Strengthen workflow callback/recovery semantics, stuck-graph diagnosis, signal/await behavior, and cancellation/expiry contracts on top of the now-stable host contract.
+- Start `v1.3 Unified Control Plane & Explainability` or another explicitly chosen candidate through `$gsd-new-milestone`.
+- Reuse the now-shipped workflow semantics contract as the stable substrate for cross-surface operator vocabulary, action policy, and explainability.
+- Create a fresh `.planning/REQUIREMENTS.md` for the next milestone before opening new active phases.
 - Keep `.planning/MILESTONE-ARC.md` as the source of truth for milestone ordering and pivots.
 
 ## Recently Shipped
+
+<details>
+<summary>v1.2 Workflow Semantics & Recovery</summary>
+
+Goal: make workflow recovery, diagnosis, signal handling, cancellation, expiry, and support-truth semantics explicit, durable, and explainable under real host-app runtime conditions.
+
+Delivered:
+- Explicit workflow semantics version `2`, durable terminal-cause vocabulary, and an additive compatibility path for historical rows.
+- One DB-first workflow command pipeline with durable command-attempt, callback, recovery, await, signal, cancel, and late-arrival evidence.
+- Shared workflow/Lifeline diagnosis vocabulary with bounded workflow actions routed through Lifeline instead of a second mutation surface.
+- Focused proof, upgrade, telemetry, docs, verification-backfill, traceability-repair, and historical closeout coverage sufficient for milestone archival.
+
+</details>
 
 <details>
 <summary>v1.1 Host Contract & Adoption Hardening</summary>
@@ -113,4 +109,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-24 after Phase 19 await, signal, and expiry contract execution*
+*Last updated: 2026-05-25 after milestone v1.2 archival*

@@ -27,26 +27,24 @@ Oban Powertools should compound from a shipped v1 foundation into a host-friendl
 - **Why it shipped:** the repo now proves the host-owned install path, native-first operator session, optional dependency boundaries, repaired cross-phase evidence chain, and supported archived-host upgrade lane end to end.
 - **Unlocked:** safer host adoption, trustworthy support-truth docs, stable extension seams, and lower churn for later workflow/control-plane milestones.
 
-## Active Milestone
-
 ### v1.2 Workflow Semantics & Recovery
 
-- **Status:** active
-- **Why now:** the host contract is now stable enough to support the next major capability milestone, which upgrades workflows from durable primitives into a stronger orchestration substrate.
-- **Unlocks:** callback/recovery semantics, stuck-graph diagnosis, signal/await behavior, cancellation and expiry contracts, and repair-safe workflow state transitions.
-- **Non-goals:** broad control-plane unification before workflow semantics settle, generic Oban Web replacement, ecosystem-specific integrations, mobile/operator companion surfaces.
-- **Activated:** 2026-05-23 via `$gsd-new-milestone`
+- **Status:** shipped 2026-05-25
+- **Why it shipped:** the repo now proves the workflow semantics contract end to end, including DB-first command legality, durable callback and recovery evidence, await/signal/expiry authority, diagnosis-first workflow and Lifeline surfaces, and bounded public support-truth claims.
+- **Unlocked:** a stable workflow substrate for cross-surface operator vocabulary, shared explainability, and later control-plane unification work.
 
-## Candidate Milestones
+## Next Candidate Milestone
 
 ### v1.3 Unified Control Plane & Explainability
 
-- **Status:** candidate
+- **Status:** next candidate
 - **Priority:** high
-- **Why now:** once workflow semantics are stronger, unify cron, limits, workflows, queues, and Lifeline under one action/audit/explainability model.
+- **Why next:** v1.2 fixed workflow semantics and support truth, which removes a major moving target and makes shared operator vocabulary across cron, limits, workflows, queues, and Lifeline the highest-leverage follow-on.
 - **Includes:** shared operator vocabulary, common blocked/waiting/orphaned diagnostics, unified action policy, shared search/filter mental model.
 - **Pros:** reduces fragmentation; makes every later operator/API surface cheaper.
 - **Tradeoffs:** lower standalone glamour; can drift into abstract cleanup if not tied to concrete flows.
+
+## Candidate Milestones
 
 ### v1.4 Operator Forensics & SRE Runbooks
 
@@ -75,7 +73,7 @@ Oban Powertools should compound from a shipped v1 foundation into a host-friendl
 
 ## Pull-Forward Rules
 
-- Pull v1.2 forward only if workflow semantics are the immediate product bottleneck and host-contract churn is acceptable.
+- Pull v1.3 forward only if cross-surface operator fragmentation is the immediate product bottleneck.
 - Pull v1.4 forward only if real operator debugging pain exceeds new runtime capability demand.
 - Pull v1.5 forward only after the public host contract and control-plane vocabulary feel stable.
 

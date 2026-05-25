@@ -35,15 +35,17 @@
 
 ## v1.2
 
-- **Status:** Active
-- **Phases:** 16-23
-- **Plans:** 0
-- **Timeline:** 2026-05-23 -> present
-- **Git range:** `4d22f81` -> current
+- **Status:** Shipped 2026-05-25
+- **Phases:** 16-26
+- **Plans:** 31
+- **Timeline:** 2026-05-23 -> 2026-05-25
+- **Git range:** `4d22f81` -> `afa1f11`
 
-### Intended Deliverables
+### Delivered
 
-- Freeze the workflow and step lifecycle contract with durable terminal causes and explicit pre-v1.2 compatibility rules.
-- Route workflow runtime and operator mutations through one DB-first transition engine with durable callback, recovery, cancel, and await/signal evidence.
-- Add shared workflow diagnosis vocabulary across native workflow and Lifeline surfaces.
-- Close the milestone with race-path fixtures, in-flight upgrade proof, low-cardinality telemetry markers, and support-truth docs that match the proven semantics.
+- Froze the v2 workflow and step lifecycle contract with explicit durable terminal causes and a compatibility path for pre-v1.2 rows.
+- Routed runtime and operator workflow mutations through one DB-first command pipeline with durable command-attempt, callback, recovery, cancel, await, signal, and expiry evidence.
+- Added shared diagnosis vocabulary across native workflow and Lifeline surfaces while keeping the workflow page diagnosis-first and bounded actions routed through Lifeline.
+- Closed the milestone with focused race-path proof, singular supported upgrade proof, low-cardinality telemetry markers, and support-truth docs aligned to the verified semantics.
+- Backfilled the missing phase verification artifacts, repaired requirement traceability, and preserved both the failed and passed v1.2 milestone audit chain.
+- Normalized the historical Phase 12 UAT artifact and cleared the remaining archival blocker so the milestone can ship from a clean closeout state.

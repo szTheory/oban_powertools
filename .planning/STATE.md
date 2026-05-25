@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Workflow Semantics & Recovery
-current_plan: 3
-status: ready_to_close
-stopped_at: Phase 26 complete (3/3) — ready for milestone closeout
-last_updated: "2026-05-25T14:02:31Z"
+current_plan: 0
+status: milestone_shipped
+stopped_at: Milestone v1.2 archived and tagged
+last_updated: "2026-05-25T16:20:00Z"
 progress:
   total_phases: 11
   completed_phases: 11
@@ -19,18 +19,18 @@ progress:
 ## Project Reference
 
 **Core Value:** Oban Powertools provides an "Ultimate Batteries-Included" background job operations layer for Phoenix applications in the szTheory ecosystem. It guarantees Ecto-native safety, transparent observability, and durable idempotency while rejecting per-worker limits and implicit magic.
-**Current Focus:** Milestone closeout — v1.2 canonical audit chain
+**Current Focus:** Post-v1.2 milestone planning
 
 ## Current Position
 
-Phase: 26 (historical-closeout-hygiene) — COMPLETE
-Plan: 3 of 3
+Phase: none active
+Plan: none active
 
-- **Phase:** 26
-- **Plan:** 3 of 3
-- **Current Plan:** 3
-- **Total Plans in Phase:** 3
-- **Status:** Phase 26 complete
+- **Phase:** None
+- **Plan:** None
+- **Current Plan:** 0
+- **Total Plans in Phase:** 0
+- **Status:** Milestone v1.2 shipped
 - **Progress:** [██████████] 100%
 - **Canonical sequencing:** `.planning/ROADMAP.md`
 - **Historical failed audit snapshot:** `.planning/v1.2-MILESTONE-AUDIT.md`
@@ -38,9 +38,9 @@ Plan: 3 of 3
 
 ## Performance Metrics
 
-- **Phases Complete:** 8/11
-- **Plans Complete:** 55/55
-- **Metrics:** Phase 23 Plans 01-03 completed on 2026-05-25 with focused workflow proof closure, singular upgrade-lane verification, bounded workflow telemetry, and support-truth docs aligned to the repo's proven semantics. Milestone audit on 2026-05-25 reopened requirement closure work through Phases 24-26.
+- **Phases Complete:** 11/11
+- **Plans Complete:** 31/31
+- **Metrics:** Milestone v1.2 shipped on 2026-05-25 after 11 phases and 31 plans closed the workflow semantics, proof, traceability, and historical closeout chain.
 
 ## Accumulated Context
 
@@ -91,7 +91,7 @@ Plan: 3 of 3
 ## Session Continuity
 
 - **Last session:** 2026-05-25T13:04:16.403Z
-- **Stopped At:** Phase 26 complete (3/3) — ready for milestone closeout
+- **Stopped At:** Milestone v1.2 archived and tagged
 - **Resume File:** None
-- **Last Action:** Completed Phase 26 historical closeout hygiene, including the canonical Phase 12 UAT normalization, narrow archival tooling hardening, and rerun-audit/roadmap/state cleanup.
-- **Next Action:** Run `$gsd-complete-milestone` from the repaired canonical audit set, keeping `.planning/milestones/v1.2-rerun-MILESTONE-AUDIT.md` as the current milestone verdict and `.planning/v1.2-MILESTONE-AUDIT.md` as the failed historical snapshot.
+- **Last Action:** Archived milestone v1.2, updated milestone planning artifacts, and created the `v1.2` release tag from the repaired canonical audit set.
+- **Next Action:** Start the next milestone with `$gsd-new-milestone` and define a fresh `REQUIREMENTS.md`.
