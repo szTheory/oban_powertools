@@ -33,7 +33,7 @@ Backfill note: This artifact is being added after Phase 21 shipped. The Phase 21
 | Requirement | Ownership | Status | Evidence |
 | --- | --- | --- | --- |
 | `DIA-01` | Primary | ✓ SATISFIED | Phase 21 is the canonical closeout for diagnosis-first workflow explanation and native workflow-surface rendering. |
-| `DIA-02` | Partial Primary | ✓ SATISFIED | Phase 21 closes the shared diagnosis vocabulary and evidence posture across workflow and Lifeline surfaces, but not the bounded action execution venue itself. |
+| `DIA-02` | Primary | ✓ SATISFIED | Phase 21 closes the shared diagnosis vocabulary and evidence posture across workflow and Lifeline surfaces, while leaving bounded action execution ownership to Phase 22. |
 | `VER-01` | Supporting | ✓ SUPPORTED | Focused explain and LiveView proof bundles verify the workflow-surface slice of the broader race and diagnosis proof chain. |
 
 ## Proof Topology Notes
@@ -41,4 +41,3 @@ Backfill note: This artifact is being added after Phase 21 shipped. The Phase 21
 - `21-VALIDATION.md` informed command selection and sampling strategy, but it is provenance only and does not count as proof by itself.
 - Present-tense proof in this backfill comes from the current split suites: `explain_test.exs`, `lifeline_test.exs`, `web/live/lifeline_live_test.exs`, and `web/live/workflows_live_test.exs`.
 - When this file references terminal-truth-first cancel or expiry posture, it cites Phase 20 as supporting evidence. Phase 21 owns workflow explanation and read-model projection, not the underlying race semantics.
-

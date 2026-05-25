@@ -40,6 +40,5 @@ Backfill note: This artifact is being added after Phase 19 shipped. The Phase 19
 ## Proof Topology Notes
 
 - Historical Phase 19 summaries and `19-VALIDATION.md` remain provenance. They explain what shipped, but the present-tense closure claim now rests on the current split test modules and upgrade-proof lane.
-- This backfill intentionally translates old references to the removed omnibus `workflow_runtime_test.exs` into the current proof seams: `workflow_runtime_signals_test.exs`, `workflow_coordinator_test.exs`, and `example_host_contract_test.exs --only upgrade-proof`.
+- This backfill records the current proof seams directly: `workflow_runtime_signals_test.exs`, `workflow_coordinator_test.exs`, and `example_host_contract_test.exs --only upgrade-proof`.
 - Upgrade continuity is supporting evidence only. The canonical ownership in this file stays on await registration, durable signal facts, and expiry authority rather than broad host-lane support truth.
-

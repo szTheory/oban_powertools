@@ -41,6 +41,5 @@ Backfill note: This artifact is being added after Phase 20 shipped. The Phase 20
 ## Proof Topology Notes
 
 - Historical Phase 20 summaries and `20-VALIDATION.md` remain provenance. This backfill converts that execution history into a current closure artifact built on the split proof suites now present in the repo.
-- Present-tense proof uses `workflow_runtime_commands_test.exs`, `workflow_runtime_signals_test.exs`, `workflow_coordinator_test.exs`, `explain_test.exs`, and `example_host_contract_test.exs --only upgrade-proof` rather than the removed omnibus `workflow_runtime_test.exs`.
+- Present-tense proof uses `workflow_runtime_commands_test.exs`, `workflow_runtime_signals_test.exs`, `workflow_coordinator_test.exs`, `explain_test.exs`, and `example_host_contract_test.exs --only upgrade-proof`.
 - Phase 20 intentionally does not re-own `SIG-03`. Phase 19 remains the canonical expiry-authority file; Phase 20 owns request-versus-outcome posture, cooperative cancellation, and terminal-truth-first diagnosis on top of that earlier authority.
-

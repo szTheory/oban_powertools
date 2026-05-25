@@ -40,6 +40,5 @@ Backfill note: This artifact is being added after Phase 17 shipped. The Phase 17
 ## Proof Topology Notes
 
 - Historical Phase 17 summaries and `17-PLAN-CHECK.md` remain provenance for what shipped and in what order; this file translates that history into the current split proof topology.
-- Present-tense proof uses the focused split suites such as `workflow_runtime_transitions_test.exs`, `workflow_runtime_commands_test.exs`, `workflow_coordinator_test.exs`, `lifeline_test.exs`, `workflows_live_test.exs`, `router_test.exs`, and `workflow_compatibility_test.exs` instead of the deleted omnibus `workflow_runtime_test.exs`.
+- Present-tense proof uses the focused split suites `workflow_runtime_transitions_test.exs`, `workflow_runtime_commands_test.exs`, `workflow_coordinator_test.exs`, `lifeline_test.exs`, `workflows_live_test.exs`, `router_test.exs`, and `workflow_compatibility_test.exs`.
 - Phase 17 intentionally does not claim canonical ownership of callback durability, await/signal authority, or late-arrival precedence. Those obligations stay with Phases 18, 19, and 20 even when this command-core proof appears in their supporting evidence chain.
-

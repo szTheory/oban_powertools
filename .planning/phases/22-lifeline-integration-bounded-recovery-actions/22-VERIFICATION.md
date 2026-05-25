@@ -34,8 +34,8 @@ Backfill note: This artifact is being added after Phase 22 shipped. The Phase 22
 | Requirement | Ownership | Status | Evidence |
 | --- | --- | --- | --- |
 | `DIA-02` | Primary | ✓ SATISFIED | Phase 22 is the canonical closeout for bounded workflow-to-Lifeline action parity over shared diagnosis vocabulary. |
-| `WFS-02` | Supporting Primary | ✓ SATISFIED | Phase 22 proves operator action routing re-enters the legal command core, but Phase 17 remains the canonical command-authority artifact. |
-| `REC-03` | Supporting Primary | ✓ SATISFIED | Phase 22 proves cooperative cancel handoff and workflow-native preview/execute copy, while Phase 20 remains the canonical semantics artifact. |
+| `WFS-02` | Supporting | ✓ SUPPORTED | Phase 22 proves operator action routing re-enters the legal command core, but Phase 17 remains the canonical command-authority artifact. |
+| `REC-03` | Supporting | ✓ SUPPORTED | Phase 22 proves cooperative cancel handoff and workflow-native preview/execute copy, while Phase 20 remains the canonical semantics artifact. |
 | `VER-01` | Primary | ✓ SATISFIED | The workflow-directed Lifeline preview and execute flow is proven directly through service-layer and LiveView suites. |
 
 ## Proof Topology Notes
@@ -44,4 +44,3 @@ Backfill note: This artifact is being added after Phase 22 shipped. The Phase 22
 - `22-VALIDATION.md` informed what to rerun, but it is provenance only and does not stand in for proof.
 - Present-tense proof uses the current service and LiveView seams: `explain_test.exs`, `lifeline_test.exs`, `web/live/lifeline_live_test.exs`, `web/live/workflows_live_test.exs`, and `workflow_runtime_commands_test.exs`.
 - Earlier backfills remain the authority chain beneath this surface file: Phase 17 for legal DB-first transitions and Phase 20 for cooperative cancel semantics.
-
