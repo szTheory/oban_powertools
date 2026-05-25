@@ -56,6 +56,7 @@ jobs:
           elixir-version: "1.19.5"
           otp-version: "27.3"
       - run: mix deps.get
+      - run: mix archive.install hex phx_new --force
       - run: mix test test/oban_powertools/fresh_host_contract_test.exs
 
   docs-contract:
