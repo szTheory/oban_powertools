@@ -115,7 +115,7 @@ Repair the v1.2 traceability table so original owner phases, canonical closure p
 
 Plans:
 - [x] 25-01-PLAN.md — Repair the v1.2 owner-phase traceability ledger and sync the active roadmap plan inventory.
-- [ ] 25-02-PLAN.md — Preserve the failed audit snapshot while adding the canonical passed v1.2 rerun audit.
+- [x] 25-02-PLAN.md — Preserve the failed audit snapshot while adding the canonical passed v1.2 rerun audit.
 - [ ] 25-03-PLAN.md — Narrow `PROJECT.md` and `STATE.md` back to stable posture and session continuity after the repair lands.
 
 ### Phase 26: Historical Closeout Hygiene
