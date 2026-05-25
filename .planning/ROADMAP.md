@@ -122,10 +122,15 @@ Plans:
 
 **Goal**: Remove the remaining non-milestone artifact noise that still blocks closeout.
 **Depends on**: Phase 25
-**Plans**: 0 plans
+**Plans**: 3 plans
 
 **Details:**
 Resolve the lingering Phase 12 UAT closeout signal and any related closeout metadata so milestone archiving no longer fails on stale historical artifacts.
+
+Plans:
+- [x] 26-01-PLAN.md — Normalize the historical Phase 12 UAT artifact to the current canonical schema without changing the 2026-05-23 verdict.
+- [x] 26-02-PLAN.md — Add narrow archival-tooling hardening for legacy fully-closed UAT aliases without weakening open-state detection.
+- [x] 26-03-PLAN.md — Clear the remaining current-state closeout metadata and route the repo to milestone completion from the repaired audit chain.
 
 ## Progress
 
@@ -133,4 +138,4 @@ Resolve the lingering Phase 12 UAT closeout signal and any related closeout meta
 |-----------|--------|-------|--------|---------|
 | v1 | 0-7 | 28/28 | Shipped | 2026-05-21 |
 | v1.1 | 8-15 | 27/27 | Shipped | 2026-05-23 |
-| v1.2 | 16-26 | 25/28 | Gap Closure Active | - |
+| v1.2 | 16-26 | 28/28 | Gap Closure Active | - |
