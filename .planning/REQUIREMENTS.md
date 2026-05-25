@@ -16,29 +16,29 @@
 ### Workflow Semantics
 
 - [x] **WFS-01**: A maintainer can rely on one explicit workflow and step lifecycle contract with durable terminal causes for `completed`, `failed`, `cancelled`, `expired`, and recovery-driven transitions.
-- [ ] **WFS-02**: Runtime and operator mutations can only move workflows through documented legal transitions that are recomputed from Postgres-backed truth rather than transient PubSub state.
+- [x] **WFS-02**: Runtime and operator mutations can only move workflows through documented legal transitions that are recomputed from Postgres-backed truth rather than transient PubSub state.
 - [x] **WFS-03**: In-flight workflows created before v1.2 can continue or reconcile under a documented semantics-compatibility strategy without silent meaning drift.
 
 ### Callbacks & Recovery
 
 - [x] **REC-01**: A host app can receive post-commit workflow callbacks through a durable outbox so workflow completion, failure, cancellation, expiry, and recovery side effects survive crashes and retries.
 - [x] **REC-02**: An operator or runtime can request scoped workflow recovery without silently re-running already successful side-effecting steps, and the new attempt evidence remains durable and auditable.
-- [ ] **REC-03**: Workflow cancellation is cooperative and explicit: operators can see request versus final outcome, and late step completion after a cancel request is preserved as durable evidence instead of hidden.
+- [x] **REC-03**: Workflow cancellation is cooperative and explicit: operators can see request versus final outcome, and late step completion after a cancel request is preserved as durable evidence instead of hidden.
 
 ### Await, Signal, And Expiry
 
-- [ ] **SIG-01**: A workflow step can durably register an await contract with signal name, correlation identity, dedupe behavior, and deadline so waiting survives restarts and cross-node execution.
-- [ ] **SIG-02**: Incoming workflow signals are stored as durable facts and reconciled idempotently whether they arrive before, during, or after a matching wait registration.
-- [ ] **SIG-03**: Expiry and late-arrival policy is explicit: a maintainer can tell whether an overdue wait failed, cancelled downstream work, remained recoverable, or ignored late signals by contract.
+- [x] **SIG-01**: A workflow step can durably register an await contract with signal name, correlation identity, dedupe behavior, and deadline so waiting survives restarts and cross-node execution.
+- [x] **SIG-02**: Incoming workflow signals are stored as durable facts and reconciled idempotently whether they arrive before, during, or after a matching wait registration.
+- [x] **SIG-03**: Expiry and late-arrival policy is explicit: a maintainer can tell whether an overdue wait failed, cancelled downstream work, remained recoverable, or ignored late signals by contract.
 
 ### Diagnosis & Operator Surfaces
 
-- [ ] **DIA-01**: A workflow screen can explain durable cause classes such as `waiting_on_signal`, `waiting_on_retryable_dependency`, `missing_dependency_result`, `orphaned_executor`, `cancel_requested`, and `expired_wait` without requiring direct database inspection.
-- [ ] **DIA-02**: Lifeline and workflow inspection surfaces consume the same workflow diagnosis vocabulary and expose only bounded, audited recovery actions that re-enter the workflow command pipeline.
+- [x] **DIA-01**: A workflow screen can explain durable cause classes such as `waiting_on_signal`, `waiting_on_retryable_dependency`, `missing_dependency_result`, `orphaned_executor`, `cancel_requested`, and `expired_wait` without requiring direct database inspection.
+- [x] **DIA-02**: Lifeline and workflow inspection surfaces consume the same workflow diagnosis vocabulary and expose only bounded, audited recovery actions that re-enter the workflow command pipeline.
 
 ### Verification, Telemetry, And Support Truth
 
-- [ ] **VER-01**: The repo proves duplicate, late, dropped, and race-path workflow events with automated fixtures covering signal replay, cancel-versus-complete races, expiry, and lost wakeup reconciliation.
+- [x] **VER-01**: The repo proves duplicate, late, dropped, and race-path workflow events with automated fixtures covering signal replay, cancel-versus-complete races, expiry, and lost wakeup reconciliation.
 - [x] **VER-02**: A maintainer can upgrade hosts with in-flight waiting, retrying, cancelling, or recovering workflows without breaking semantics or leaving support unable to explain stored state.
 - [x] **POL-04**: The public telemetry and support-truth docs describe the new workflow semantics with low-cardinality events, explicit non-goals, and no present-tense guarantees that lack durable proof.
 
@@ -108,22 +108,22 @@
 
 ## Traceability
 
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| WFS-01 | 16 | Complete |
-| WFS-02 | 24 | Pending |
-| WFS-03 | 16 | Complete |
-| REC-01 | 18 | Complete |
-| REC-02 | 17 | Complete |
-| REC-03 | 24 | Pending |
-| SIG-01 | 24 | Pending |
-| SIG-02 | 24 | Pending |
-| SIG-03 | 24 | Pending |
-| DIA-01 | 24 | Pending |
-| DIA-02 | 24 | Pending |
-| VER-01 | 24 | Pending |
-| VER-02 | 23 | Complete |
-| POL-04 | 23 | Complete |
+| Requirement | Owner Phase | Closure Proof | Status |
+|-------------|-------------|---------------|--------|
+| WFS-01 | 16 | 16-VERIFICATION.md | Complete |
+| WFS-02 | 17 | 17-VERIFICATION.md | Complete |
+| WFS-03 | 16 | 16-VERIFICATION.md | Complete |
+| REC-01 | 18 | 18-VERIFICATION.md | Complete |
+| REC-02 | 17 | 18-VERIFICATION.md | Complete |
+| REC-03 | 20 | 20-VERIFICATION.md | Complete |
+| SIG-01 | 19 | 19-VERIFICATION.md | Complete |
+| SIG-02 | 19 | 19-VERIFICATION.md | Complete |
+| SIG-03 | 19 | 19-VERIFICATION.md | Complete |
+| DIA-01 | 21 | 21-VERIFICATION.md | Complete |
+| DIA-02 | 22 | 22-VERIFICATION.md | Complete |
+| VER-01 | 23 | 23-VERIFICATION.md | Complete |
+| VER-02 | 23 | 18-VERIFICATION.md | Complete |
+| POL-04 | 23 | 18-VERIFICATION.md | Complete |
 
 **Coverage:**
 - v1.2 requirements: 14 total
