@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Workflow Semantics & Recovery
-current_plan: Not started
-status: planning
-stopped_at: Phase 23 context gathered
-last_updated: "2026-05-25T04:38:42.239Z"
+current_plan: 2
+status: executing
+stopped_at: Completed 24-01-PLAN.md
+last_updated: "2026-05-25T06:42:33.504Z"
 progress:
-  total_phases: 8
-  completed_phases: 7
-  total_plans: 19
-  completed_plans: 19
-  percent: 88
+  total_phases: 11
+  completed_phases: 8
+  total_plans: 25
+  completed_plans: 23
+  percent: 73
 ---
 
 # Project State
@@ -19,25 +19,25 @@ progress:
 ## Project Reference
 
 **Core Value:** Oban Powertools provides an "Ultimate Batteries-Included" background job operations layer for Phoenix applications in the szTheory ecosystem. It guarantees Ecto-native safety, transparent observability, and durable idempotency while rejecting per-worker limits and implicit magic.
-**Current Focus:** Phase 23 — verification upgrade proof telemetry support truth closure
+**Current Focus:** Phase 24 — verification-artifact-backfill
 
 ## Current Position
 
-Phase: 23 (verification-upgrade-proof-telemetry-support-truth-closure) — READY TO PLAN
-Plan: Not started
+Phase: 24 (verification-artifact-backfill) — EXECUTING
+Plan: 2 of 3
 
-- **Phase:** 23
+- **Phase:** 24
 - **Plan:** 0 of 0
-- **Current Plan:** Not started
-- **Total Plans in Phase:** 0
-- **Status:** Ready to plan
-- **Progress:** [██████████] 100%
+- **Current Plan:** 2
+- **Total Plans in Phase:** 3
+- **Status:** Ready to execute
+- **Progress:** [█████████░] 92%
 
 ## Performance Metrics
 
-- **Phases Complete:** 0/0
-- **Plans Complete:** 0/0
-- **Metrics:** Phase 0 Plan 01 completed in 15m (Tasks: 3, Files: 5); Phase 1 Plan 01 completed in 12m (Tasks: 3, Files: 6); Phase 2 Plans 01-05 completed on 2026-05-19 with persistence, limiter, explain, cron, and native UI verification; Phase 3 Plans 01-05 completed on 2026-05-19 with durable DAG persistence, runtime signaling, workflow telemetry, and native workflow inspection; Phase 4 Plans 01-05 completed on 2026-05-19 with durable lifeline persistence, heartbeat/incident services, repair preview/execute, archive-prune retention, and the native Lifeline operator UI; Phase 5 Plans 01-05 completed on 2026-05-20 with traceability repair, restored validation/verification artifacts, normalized summary metadata, and a refreshed milestone audit; Phase 6 Plans 01-03 completed on 2026-05-20 with centralized runtime config, explicit installer wiring, cron auth-before-preview enforcement, and milestone evidence closure for `FND-01`, `FND-02`, and `ENG-03`; Phase 7 Plans 01-03 completed on 2026-05-21 with atomic incident retirement, evidence-driven reprojection, resolved-view LiveView continuity, and closed `LIF-02` verification; Phase 8 Plans 01-03 completed on 2026-05-21 with explicit host-owned install/config/router guidance, deterministic heartbeat supervision gating, a frozen nested `oban_web` bridge contract, and a documented public telemetry schema; Phase 9 Plans 01-03 completed on 2026-05-21 with an explicit auth and audit-principal contract, a shared display-policy seam across native operator surfaces, and a bounded optional `oban_web` bridge plus proof artifacts; Phase 10 Plan 01 completed on 2026-05-21 with a shared durable preview contract, preview-token execution gating for cron mutations, and durable-preview LiveView coverage; Phase 10 Plan 02 completed on 2026-05-21 with centralized native operator vocabulary, consistent read-only framing, and aligned audit/workflow support-truth copy; Phase 10 Plan 03 completed on 2026-05-21 with a locked read-only `/ops/jobs/oban` bridge contract, route-level proof, and README support-truth aligned to native audited mutation ownership; Phase 11 Plans 01-04 completed on 2026-05-22 with ExDoc-backed day-0/day-2 guides, the canonical `examples/phoenix_host` fixture, a narrow compatibility promise, docs contract tests, and native-only / bridge-enabled / upgrade-proof host verification; Phase 12 Plan 01 completed on 2026-05-22 with repaired fresh-host installer config/router/seam generation, deterministic Powertools migrations, and a real `mix phx.new` install-to-boot proof lane; Phase 12 Plan 03 completed in 6min (Tasks: 2, Files: 3) with a native first-session proof lane and root host-contract harness for `ops-demo`, `nightly_sync`, and `pause_cron_entry`; Phase 12 Plan 04 completed in 17min (Tasks: 2, Files: 7) with repaired public docs, docs-contract enforcement, and a dedicated `fresh-host` CI lane aligned to the canonical proof stack; Phase 14 Plans 01-02 completed on 2026-05-23 with normalized Phase 8/9 closure metadata and a rebuilt Phase 9 REQ-ID verification chain for `POL-01` and `POL-02`; Phase 14 Plan 03 completed in 2min (Tasks: 2, Files: 2) with a new Phase 10 verification artifact that closes `HST-02` through fresh LiveView, router, and docs proof; Phase 14 Plan 04 completed in 3min (Tasks: 3, Files: 2) with a cross-phase closure memo and refreshed milestone audit that mark the repaired Phase 8-10 evidence chain satisfied without moving proof ownership into Phase 14; Phase 15 Plan 01 completed in 4min (Tasks: 2, Files: 52) with a frozen archived upgrade-source fixture and commit-pinned provenance helper for the supported upgrade lane; Phase 15 Plan 02 completed in 5min (Tasks: 3, Files: 3) with a real archived-host upgrade harness, native post-upgrade cron proof, and a rewritten host-shape upgrade guide; Phase 15 Plan 03 completed in 8min (Tasks: 3, Files: 7) with five-bucket support-truth docs, host-owned hardening/troubleshooting guidance, and narrowed docs-contract markers.
+- **Phases Complete:** 8/11
+- **Plans Complete:** 55/55
+- **Metrics:** Phase 23 Plans 01-03 completed on 2026-05-25 with focused workflow proof closure, singular upgrade-lane verification, bounded workflow telemetry, and support-truth docs aligned to the repo's proven semantics. Milestone audit on 2026-05-25 reopened requirement closure work through Phases 24-26.
 
 ## Accumulated Context
 
@@ -87,8 +87,8 @@ Plan: Not started
 
 ## Session Continuity
 
-- **Last session:** 2026-05-25T04:38:42.232Z
-- **Stopped At:** Phase 23 context gathered
-- **Resume File:** .planning/phases/23-verification-upgrade-proof-telemetry-support-truth-closure/23-CONTEXT.md
-- **Last Action:** Closed Phase 22 from a dirty working tree after the focused Lifeline and workflow action proof bundle passed.
-- **Next Action:** Run `$gsd-discuss-phase 23` and then `$gsd-plan-phase 23`.
+- **Last session:** 2026-05-25T06:42:33.287Z
+- **Stopped At:** Completed 24-01-PLAN.md
+- **Resume File:** None
+- **Last Action:** Added roadmap gap-closure phases and reopened unsatisfied v1.2 requirements pending verification artifact backfill.
+- **Next Action:** Run `$gsd-plan-phase 24` to define the verification backfill work, then continue through Phases 25 and 26 before re-running `$gsd-audit-milestone`.

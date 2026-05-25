@@ -4,7 +4,7 @@
 
 - ✅ **v1** — Phases 0-7 shipped 2026-05-21. Full archive: `.planning/milestones/v1-ROADMAP.md`
 - ✅ **v1.1** — Host Contract & Adoption Hardening. Phases 8-15 shipped 2026-05-23. Full archive: `.planning/milestones/v1.1-ROADMAP.md`
-- 🚧 **v1.2** — Workflow Semantics & Recovery. Phases 16-23 active. Working roadmap: `.planning/milestones/v1.2-ROADMAP.md`
+- 🚧 **v1.2** — Workflow Semantics & Recovery. Phases 16-26 active after audit gap discovery on 2026-05-25. Working roadmap: `.planning/milestones/v1.2-ROADMAP.md`
 
 ## Active Phases
 
@@ -80,10 +80,42 @@ Plans:
 
 **Goal**: Close the milestone with proof and docs that match the actual semantics.
 **Depends on**: Phase 22
-**Plans**: 0 plans
+**Plans**: 3 plans
 
 **Details:**
 Add duplicate/late/dropped/race-path fixtures, in-flight upgrade proof, low-cardinality telemetry markers, and support-truth documentation aligned to durable workflow behavior.
+
+Plans:
+- [x] 23-01-PLAN.md — Close the focused workflow-proof gaps and keep broader historical continuity in the repo-local compatibility lane.
+- [x] 23-02-PLAN.md — Keep the supported upgrade harness singular while separating repo-local compatibility proof and support-truth wording.
+- [x] 23-03-PLAN.md — Lock bounded workflow telemetry plus canonical docs-contract semantics to the verified proof topology.
+
+### Phase 24: Verification Artifact Backfill
+
+**Goal**: Restore milestone-auditable proof coverage for the shipped workflow semantics work.
+**Depends on**: Phase 23
+**Plans**: 0 plans
+
+**Details:**
+Backfill the missing phase-level `VERIFICATION.md` artifacts for Phases 17, 19, 20, 21, 22, and 23 so the existing proof commands, summaries, and requirement claims close `WFS-02`, `REC-03`, `SIG-01`, `SIG-02`, `SIG-03`, `DIA-01`, `DIA-02`, and `VER-01` explicitly.
+
+### Phase 25: Traceability & Audit Consistency Repair
+
+**Goal**: Align requirements traceability and milestone evidence bookkeeping with the actual verification chain.
+**Depends on**: Phase 24
+**Plans**: 0 plans
+
+**Details:**
+Repair the v1.2 traceability table, reset audit-failed requirements to pending until verification closes them again, and make the roadmap, requirements, and milestone audit tell the same present-tense story.
+
+### Phase 26: Historical Closeout Hygiene
+
+**Goal**: Remove the remaining non-milestone artifact noise that still blocks closeout.
+**Depends on**: Phase 25
+**Plans**: 0 plans
+
+**Details:**
+Resolve the lingering Phase 12 UAT closeout signal and any related closeout metadata so milestone archiving no longer fails on stale historical artifacts.
 
 ## Progress
 
@@ -91,4 +123,4 @@ Add duplicate/late/dropped/race-path fixtures, in-flight upgrade proof, low-card
 |-----------|--------|-------|--------|---------|
 | v1 | 0-7 | 28/28 | Shipped | 2026-05-21 |
 | v1.1 | 8-15 | 27/27 | Shipped | 2026-05-23 |
-| v1.2 | 16-23 | 0/0 | Active | - |
+| v1.2 | 16-26 | 22/22 | Gap Closure Active | - |
