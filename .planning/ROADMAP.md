@@ -12,7 +12,7 @@
 
 **Goal**: Freeze one explicit workflow and step lifecycle contract before adding broader mutation and recovery behavior.
 **Depends on**: v1.1 foundation
-**Plans**: 0 plans
+**Plans**: 3 plans
 
 **Details:**
 Persist workflow semantics versioning, define durable terminal-cause vocabulary, and document the compatibility path for pre-v1.2 in-flight workflows.
@@ -99,14 +99,24 @@ Plans:
 **Details:**
 Backfill the missing phase-level `VERIFICATION.md` artifacts for Phases 17, 19, 20, 21, 22, and 23 so the existing proof commands, summaries, and requirement claims close `WFS-02`, `REC-03`, `SIG-01`, `SIG-02`, `SIG-03`, `DIA-01`, `DIA-02`, and `VER-01` explicitly.
 
+Plans:
+- [x] 24-01-PLAN.md — Restore canonical verification artifacts for the command-core, signal, expiry, and cancellation ownership chain.
+- [x] 24-02-PLAN.md — Backfill workflow diagnosis and bounded Lifeline action verification without blurring surface ownership.
+- [x] 24-03-PLAN.md — Close the public-proof layer and normalize the six-file verification set for traceability repair.
+
 ### Phase 25: Traceability & Audit Consistency Repair
 
 **Goal**: Align requirements traceability and milestone evidence bookkeeping with the actual verification chain.
 **Depends on**: Phase 24
-**Plans**: 0 plans
+**Plans**: 3 plans
 
 **Details:**
-Repair the v1.2 traceability table, reset audit-failed requirements to pending until verification closes them again, and make the roadmap, requirements, and milestone audit tell the same present-tense story.
+Repair the v1.2 traceability table so original owner phases, canonical closure proof, and additive milestone-audit chronology all tell the same present-tense story.
+
+Plans:
+- [ ] 25-01-PLAN.md — Repair the v1.2 owner-phase traceability ledger and sync the active roadmap plan inventory.
+- [ ] 25-02-PLAN.md — Preserve the failed audit snapshot while adding the canonical passed v1.2 rerun audit.
+- [ ] 25-03-PLAN.md — Narrow `PROJECT.md` and `STATE.md` back to stable posture and session continuity after the repair lands.
 
 ### Phase 26: Historical Closeout Hygiene
 
@@ -123,4 +133,4 @@ Resolve the lingering Phase 12 UAT closeout signal and any related closeout meta
 |-----------|--------|-------|--------|---------|
 | v1 | 0-7 | 28/28 | Shipped | 2026-05-21 |
 | v1.1 | 8-15 | 27/27 | Shipped | 2026-05-23 |
-| v1.2 | 16-26 | 22/22 | Gap Closure Active | - |
+| v1.2 | 16-26 | 25/28 | Gap Closure Active | - |
