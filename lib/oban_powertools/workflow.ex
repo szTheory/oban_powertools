@@ -72,7 +72,8 @@ defmodule ObanPowertools.Workflow do
     edge = %{
       from: normalize_name(from_step),
       to: normalize_name(to_step),
-      policy: normalize_policy(Keyword.get(opts, :policy, Keyword.get(opts, :on_failure, :cancel)))
+      policy:
+        normalize_policy(Keyword.get(opts, :policy, Keyword.get(opts, :on_failure, :cancel)))
     }
 
     %{workflow | edges: workflow.edges ++ [edge]}
@@ -87,11 +88,24 @@ defmodule ObanPowertools.Workflow do
   end
 
   def insert(repo, %__MODULE__{} = workflow), do: insert(workflow, repo)
+
   def complete_step(repo, workflow_id, step_name, attrs \\ []),
-    do: ObanPowertools.Workflow.Runtime.complete_step(repo, workflow_id, step_name, Enum.into(attrs, %{}))
+    do:
+      ObanPowertools.Workflow.Runtime.complete_step(
+        repo,
+        workflow_id,
+        step_name,
+        Enum.into(attrs, %{})
+      )
 
   def await_step(repo, workflow_id, step_name, attrs \\ []),
-    do: ObanPowertools.Workflow.Runtime.await_step(repo, workflow_id, step_name, Enum.into(attrs, %{}))
+    do:
+      ObanPowertools.Workflow.Runtime.await_step(
+        repo,
+        workflow_id,
+        step_name,
+        Enum.into(attrs, %{})
+      )
 
   def deliver_signal(repo, attrs),
     do: ObanPowertools.Workflow.Runtime.deliver_signal(repo, Enum.into(attrs, %{}))
@@ -111,6 +125,15 @@ defmodule ObanPowertools.Workflow do
 
   def dispatch_callbacks(repo, opts \\ []),
     do: ObanPowertools.Workflow.Runtime.dispatch_callbacks(repo, opts)
+
+  def callback_contract do
+    %{
+      events: ["workflow.terminal", "workflow.recovery_completed"],
+      delivery: "post_commit_at_least_once",
+      payload_shape: "thin_versioned_envelope",
+      handler_requirement: "idempotent"
+    }
+  end
 
   defp normalize(%__MODULE__{} = workflow) do
     with {:ok, steps} <- normalize_steps(workflow.steps),
@@ -345,7 +368,9 @@ defmodule ObanPowertools.Workflow do
         Enum.reduce(edges, acc, fn edge, map -> Map.update!(map, edge.from, &[edge.to | &1]) end)
       end)
 
-    case Enum.find_value(names, fn name -> dfs_cycle(name, adjacency, MapSet.new(), MapSet.new()) end) do
+    case Enum.find_value(names, fn name ->
+           dfs_cycle(name, adjacency, MapSet.new(), MapSet.new())
+         end) do
       nil -> :ok
       node -> {:error, {:validation, {:cycle_detected, node}}}
     end
@@ -400,5 +425,7 @@ defmodule ObanPowertools.Workflow do
 
   defp normalize_policy(policy) when policy in [:cancel, :continue], do: Atom.to_string(policy)
   defp normalize_policy(policy) when policy in ["cancel", "continue"], do: policy
-  defp normalize_policy(policy), do: raise(ArgumentError, "invalid workflow edge policy: #{inspect(policy)}")
+
+  defp normalize_policy(policy),
+    do: raise(ArgumentError, "invalid workflow edge policy: #{inspect(policy)}")
 end

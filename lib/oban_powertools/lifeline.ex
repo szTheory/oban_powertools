@@ -6,17 +6,19 @@ defmodule ObanPowertools.Lifeline do
   import Ecto.Query
 
   alias Ecto.Multi
-  alias ObanPowertools.{Audit, Auth}
+  alias ObanPowertools.{Audit, Auth, Explain}
   alias ObanPowertools.Lifeline.{ArchiveRun, Heartbeat, Incident, RepairPreview}
   alias ObanPowertools.Telemetry
+  alias ObanPowertools.Workflow
   alias ObanPowertools.Workflow.{Runtime, Step}
+  alias ObanPowertools.Workflow.Workflow, as: WorkflowRecord
 
   @heartbeat_warning_ms 45_000
   @heartbeat_missing_ms 120_000
   @heartbeat_retention_seconds 6 * 60 * 60
   @preview_retention_seconds 7 * 24 * 60 * 60
   @audit_retention_seconds 90 * 24 * 60 * 60
-  @supported_actions ~w(job_rescue job_retry job_cancel workflow_step_retry workflow_step_cancel)
+  @supported_actions ~w(job_rescue job_retry job_cancel workflow_step_retry workflow_step_cancel workflow_request_cancel)
 
   def refresh_heartbeats(repo, executors, opts \\ []) when is_list(executors) do
     now = Keyword.get(opts, :now, DateTime.utc_now())
@@ -154,7 +156,8 @@ defmodule ObanPowertools.Lifeline do
           from(preview in RepairPreview,
             where:
               preview.incident_fingerprint == ^preview_attrs.incident_fingerprint and
-                preview.plan_hash == ^preview_attrs.plan_hash and preview.action == ^preview_attrs.action and
+                preview.plan_hash == ^preview_attrs.plan_hash and
+                preview.action == ^preview_attrs.action and
                 preview.target_type == ^preview_attrs.target_type and
                 preview.target_id == ^preview_attrs.target_id and preview.status == "ready",
             limit: 1
@@ -215,16 +218,25 @@ defmodule ObanPowertools.Lifeline do
     result =
       repo.transaction(fn ->
         archive_count =
-          archive_due_repair_audits(repo, run, now, batch_size, Keyword.get(opts, :force_archive_failure, false))
+          archive_due_repair_audits(
+            repo,
+            run,
+            now,
+            batch_size,
+            Keyword.get(opts, :force_archive_failure, false)
+          )
 
-        audit_cutoff = DateTime.add(now, -@audit_retention_seconds, :second) |> DateTime.to_naive()
+        audit_cutoff =
+          DateTime.add(now, -@audit_retention_seconds, :second) |> DateTime.to_naive()
+
         preview_cutoff = DateTime.add(now, -@preview_retention_seconds, :second)
         heartbeat_cutoff = DateTime.add(now, -@heartbeat_retention_seconds, :second)
 
         {deleted_audits, _} =
           repo.delete_all(
             from(event in Audit,
-              where: event.action == "lifeline.repair_executed" and event.inserted_at < ^audit_cutoff
+              where:
+                event.action == "lifeline.repair_executed" and event.inserted_at < ^audit_cutoff
             )
           )
 
@@ -310,8 +322,7 @@ defmodule ObanPowertools.Lifeline do
           :count,
           :id
         ),
-      archived_repairs:
-        archive_table_count(repo)
+      archived_repairs: archive_table_count(repo)
     }
   end
 
@@ -325,7 +336,8 @@ defmodule ObanPowertools.Lifeline do
       queue: Map.get(attrs, :queue) || Map.get(attrs, "queue") || "default",
       producer_scope: fetch_value!(attrs, :producer_scope),
       health_state: "healthy",
-      last_heartbeat_at: Map.get(attrs, :last_heartbeat_at) || Map.get(attrs, "last_heartbeat_at") || now,
+      last_heartbeat_at:
+        Map.get(attrs, :last_heartbeat_at) || Map.get(attrs, "last_heartbeat_at") || now,
       warning_threshold_ms:
         Map.get(attrs, :warning_threshold_ms) || Map.get(attrs, "warning_threshold_ms") ||
           @heartbeat_warning_ms,
@@ -352,7 +364,8 @@ defmodule ObanPowertools.Lifeline do
   end
 
   defp upsert_dead_executor_incident(repo, heartbeat, now) do
-    %{jobs: jobs, workflow_steps: workflow_steps} = dead_executor_evidence(repo, heartbeat.executor_id)
+    %{jobs: jobs, workflow_steps: workflow_steps} =
+      dead_executor_evidence(repo, heartbeat.executor_id)
 
     if jobs == [] and workflow_steps == [] do
       nil
@@ -386,7 +399,8 @@ defmodule ObanPowertools.Lifeline do
   end
 
   defp upsert_workflow_stuck_incident(repo, step, now) do
-    diagnosis = Runtime.step_diagnosis(step) || "blocked"
+    story = Explain.step_story(step, repo: repo)
+    diagnosis = story.diagnosis || "blocked"
 
     attrs = %{
       incident_class: "workflow_stuck",
@@ -407,7 +421,9 @@ defmodule ObanPowertools.Lifeline do
         "step_name" => step.step_name,
         "diagnosis" => diagnosis,
         "blocker_codes" => step.blocker_codes,
-        "dependency_snapshot" => step.dependency_snapshot
+        "blocker_summaries" => story.blocker_summaries,
+        "dependency_snapshot" => step.dependency_snapshot,
+        "latest_rejection" => story.rejection_summary
       },
       first_detected_at: now,
       last_detected_at: now,
@@ -580,6 +596,9 @@ defmodule ObanPowertools.Lifeline do
         when action in ["workflow_step_retry", "workflow_step_cancel"] ->
           build_workflow_step_preview(repo, incident, target_id, action, now)
 
+        {"workflow", "workflow_request_cancel"} ->
+          build_workflow_preview(repo, incident, target_id, action, now)
+
         _ ->
           {:error, :unsupported_target}
       end
@@ -599,7 +618,12 @@ defmodule ObanPowertools.Lifeline do
         {:error, :repair_requires_missing_executor}
 
       true ->
-        before_state = %{"job_id" => job.id, "state" => job.state, "executor_id" => get_in(job.meta, ["executor_id"])}
+        before_state = %{
+          "job_id" => job.id,
+          "state" => job.state,
+          "executor_id" => get_in(job.meta, ["executor_id"])
+        }
+
         after_state = %{"job_id" => job.id, "state" => next_job_state(action)}
 
         {:ok,
@@ -631,16 +655,34 @@ defmodule ObanPowertools.Lifeline do
 
   defp build_workflow_step_preview(repo, incident, target_id, action, now) do
     step = repo.get!(Step, target_id)
-    before_state = %{"step_id" => step.id, "state" => step.state, "blocker_codes" => step.blocker_codes}
+    story = Explain.step_story(step, repo: repo)
+
+    before_state = %{
+      "step_id" => step.id,
+      "state" => step.state,
+      "blocker_codes" => step.blocker_codes,
+      "diagnosis" => story.diagnosis,
+      "latest_rejection" => story.rejection_summary
+    }
+
     after_state = %{"step_id" => step.id, "state" => next_step_state(action)}
-    incident_fingerprint = (incident && incident.incident_fingerprint) || "workflow_step:#{step.id}"
+
+    incident_fingerprint =
+      (incident && incident.incident_fingerprint) || "workflow_step:#{step.id}"
 
     {:ok,
      %{
        incident_id: incident && incident.id,
        incident_class: (incident && incident.incident_class) || "workflow_stuck",
        incident_fingerprint: incident_fingerprint,
-       plan_hash: plan_hash(action, "workflow_step", target_id, before_state, incident && incident.health_state),
+       plan_hash:
+         plan_hash(
+           action,
+           "workflow_step",
+           target_id,
+           before_state,
+           incident && incident.health_state
+         ),
        preview_token: Ecto.UUID.generate(),
        action: action,
        target_type: "workflow_step",
@@ -656,7 +698,68 @@ defmodule ObanPowertools.Lifeline do
        metadata: %{
          "summary" => repair_summary(action, "workflow_step", target_id),
          "risk" => "high",
+         "diagnosis" => story.diagnosis,
+         "latest_rejection" => story.rejection_summary,
          "resource" => %{"type" => "workflow_step", "id" => to_string(target_id)}
+       }
+     }}
+  end
+
+  defp build_workflow_preview(repo, incident, target_id, action, now) do
+    workflow = repo.get!(WorkflowRecord, target_id)
+
+    steps =
+      repo.all(
+        from(step in Step,
+          where: step.workflow_id == ^workflow.id,
+          order_by: [asc: step.position]
+        )
+      )
+
+    story = Explain.workflow_story(workflow, steps, repo: repo)
+
+    before_state = %{
+      "workflow_id" => workflow.id,
+      "state" => workflow.state,
+      "diagnosis" => story.diagnosis,
+      "cancel_requested_at" => workflow.cancel_requested_at,
+      "latest_rejection" => story.rejection_summary
+    }
+
+    after_state = %{
+      "workflow_id" => workflow.id,
+      "state" => "cancel_requested",
+      "diagnosis" => "cancel_requested"
+    }
+
+    incident_fingerprint =
+      (incident && incident.incident_fingerprint) || "workflow:#{workflow.id}"
+
+    {:ok,
+     %{
+       incident_id: incident && incident.id,
+       incident_class: (incident && incident.incident_class) || "workflow_action",
+       incident_fingerprint: incident_fingerprint,
+       plan_hash:
+         plan_hash(action, "workflow", target_id, before_state, incident && incident.health_state),
+       preview_token: Ecto.UUID.generate(),
+       action: action,
+       target_type: "workflow",
+       target_id: to_string(target_id),
+       health_state: incident && incident.health_state,
+       status: "ready",
+       affected_counts: %{"jobs" => 0, "workflow_steps" => length(steps)},
+       before_snapshot: before_state,
+       after_snapshot: after_state,
+       evidence: %{"previewed_at" => now},
+       reason_required: true,
+       expires_at: DateTime.add(now, 7 * 24 * 60 * 60, :second),
+       metadata: %{
+         "summary" => repair_summary(action, "workflow", target_id),
+         "risk" => "medium",
+         "diagnosis" => story.diagnosis,
+         "latest_rejection" => story.rejection_summary,
+         "resource" => %{"type" => "workflow", "id" => to_string(target_id)}
        }
      }}
   end
@@ -675,6 +778,7 @@ defmodule ObanPowertools.Lifeline do
   end
 
   defp infer_incident_class("job_rescue"), do: "dead_executor"
+  defp infer_incident_class("workflow_request_cancel"), do: "workflow_action"
   defp infer_incident_class(_), do: "workflow_stuck"
 
   defp incident_fingerprint_for_job(job, nil),
@@ -737,13 +841,66 @@ defmodule ObanPowertools.Lifeline do
     case preview.target_type do
       "job" ->
         job = repo.get!(Oban.Job, preview.target_id)
-        before_state = %{"job_id" => job.id, "state" => job.state, "executor_id" => get_in(job.meta, ["executor_id"])}
-        {:ok, plan_hash(preview.action, "job", preview.target_id, before_state, preview.health_state)}
+
+        before_state = %{
+          "job_id" => job.id,
+          "state" => job.state,
+          "executor_id" => get_in(job.meta, ["executor_id"])
+        }
+
+        {:ok,
+         plan_hash(preview.action, "job", preview.target_id, before_state, preview.health_state)}
 
       "workflow_step" ->
         step = repo.get!(Step, preview.target_id)
-        before_state = %{"step_id" => step.id, "state" => step.state, "blocker_codes" => step.blocker_codes}
-        {:ok, plan_hash(preview.action, "workflow_step", preview.target_id, before_state, preview.health_state)}
+        story = Explain.step_story(step, repo: repo)
+
+        before_state = %{
+          "step_id" => step.id,
+          "state" => step.state,
+          "blocker_codes" => step.blocker_codes,
+          "diagnosis" => story.diagnosis,
+          "latest_rejection" => story.rejection_summary
+        }
+
+        {:ok,
+         plan_hash(
+           preview.action,
+           "workflow_step",
+           preview.target_id,
+           before_state,
+           preview.health_state
+         )}
+
+      "workflow" ->
+        workflow = repo.get!(WorkflowRecord, preview.target_id)
+
+        steps =
+          repo.all(
+            from(step in Step,
+              where: step.workflow_id == ^workflow.id,
+              order_by: [asc: step.position]
+            )
+          )
+
+        story = Explain.workflow_story(workflow, steps, repo: repo)
+
+        before_state = %{
+          "workflow_id" => workflow.id,
+          "state" => workflow.state,
+          "diagnosis" => story.diagnosis,
+          "cancel_requested_at" => workflow.cancel_requested_at,
+          "latest_rejection" => story.rejection_summary
+        }
+
+        {:ok,
+         plan_hash(
+           preview.action,
+           "workflow",
+           preview.target_id,
+           before_state,
+           preview.health_state
+         )}
     end
   end
 
@@ -768,8 +925,12 @@ defmodule ObanPowertools.Lifeline do
 
   defp apply_repair(repo, preview, actor, reason, now) do
     Multi.new()
-    |> Multi.run(:target, fn repo, _changes -> mutate_target(repo, preview, now) end)
-    |> Multi.run(:incident, fn repo, _changes -> resolve_incident_after_repair(repo, preview, now) end)
+    |> Multi.run(:target, fn repo, _changes ->
+      mutate_target(repo, preview, actor, reason, now)
+    end)
+    |> Multi.run(:incident, fn repo, _changes ->
+      resolve_incident_after_repair(repo, preview, now)
+    end)
     |> Multi.update(
       :preview,
       RepairPreview.changeset(preview, %{
@@ -815,7 +976,10 @@ defmodule ObanPowertools.Lifeline do
   end
 
   defp resolve_incident_after_repair(repo, preview, now) do
-    case resolve_incident(repo, %{incident_id: preview.incident_id, incident_fingerprint: preview.incident_fingerprint}) do
+    case resolve_incident(repo, %{
+           incident_id: preview.incident_id,
+           incident_fingerprint: preview.incident_fingerprint
+         }) do
       nil ->
         {:ok, nil}
 
@@ -828,7 +992,11 @@ defmodule ObanPowertools.Lifeline do
     end
   end
 
-  defp incident_still_active?(repo, %Incident{incident_class: "dead_executor"} = incident, preview) do
+  defp incident_still_active?(
+         repo,
+         %Incident{incident_class: "dead_executor"} = incident,
+         preview
+       ) do
     executor_id = incident.executor_id || get_in(preview.before_snapshot || %{}, ["executor_id"])
 
     case executor_id do
@@ -841,7 +1009,11 @@ defmodule ObanPowertools.Lifeline do
     end
   end
 
-  defp incident_still_active?(repo, %Incident{incident_class: "workflow_stuck"} = incident, preview) do
+  defp incident_still_active?(
+         repo,
+         %Incident{incident_class: "workflow_stuck"} = incident,
+         preview
+       ) do
     step_id = incident.workflow_step_id || preview.target_id
 
     case repo.get(Step, step_id) do
@@ -852,7 +1024,7 @@ defmodule ObanPowertools.Lifeline do
 
   defp incident_still_active?(_repo, _incident, _preview), do: true
 
-  defp mutate_target(repo, preview, now) do
+  defp mutate_target(repo, preview, actor, reason, now) do
     case {preview.target_type, preview.action} do
       {"job", action} when action in ["job_rescue", "job_retry"] ->
         job = repo.get!(Oban.Job, preview.target_id)
@@ -864,14 +1036,23 @@ defmodule ObanPowertools.Lifeline do
 
       {"workflow_step", "workflow_step_retry"} ->
         Runtime.recover_step_by_id(repo, preview.target_id, :retry,
-          actor_id: "lifeline",
-          reason: get_in(preview.metadata, ["reason"])
+          actor_id: Auth.actor_id(actor),
+          reason: String.trim(reason),
+          source: "lifeline"
         )
 
       {"workflow_step", "workflow_step_cancel"} ->
         Runtime.recover_step_by_id(repo, preview.target_id, :cancel,
-          actor_id: "lifeline",
-          reason: get_in(preview.metadata, ["reason"])
+          actor_id: Auth.actor_id(actor),
+          reason: String.trim(reason),
+          source: "lifeline"
+        )
+
+      {"workflow", "workflow_request_cancel"} ->
+        Workflow.request_cancel(repo, preview.target_id,
+          actor_id: Auth.actor_id(actor),
+          reason: String.trim(reason),
+          source: "lifeline"
         )
     end
   end
@@ -890,6 +1071,10 @@ defmodule ObanPowertools.Lifeline do
 
   defp repair_summary("workflow_step_cancel", "workflow_step", target_id),
     do: "Cancel workflow step #{target_id} from the native repair flow."
+
+  defp repair_summary("workflow_request_cancel", "workflow", target_id),
+    do:
+      "Request cancel for workflow #{target_id}. Idle work may stop immediately while in-flight work can still finish."
 
   defp fetch_value!(attrs, key) do
     Map.get(attrs, key) || Map.get(attrs, Atom.to_string(key)) ||

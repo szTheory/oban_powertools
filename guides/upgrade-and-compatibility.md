@@ -50,12 +50,20 @@ config :oban_powertools,
 The executable `upgrade-proof` lane performs those same host updates, then proves the native
 `ops-demo` -> `pause_cron_entry` on `nightly_sync` threshold.
 
+## Repo-Local Historical Compatibility Proof
+
+The singular supported host upgrade lane stays narrow on purpose. Broader continuity checks for
+legacy waiting, retrying, cancelling, and recovery evidence run as repo-local library proof only.
+
+Those checks verify stored workflow meaning remains explainable on the compatibility path without
+promoting additional host shapes or upgrade histories into the supported lane.
+
 ## Support Truth
 
 | Bucket | Meaning |
 |--------|---------|
 | supported | The native `/ops/jobs` shell, the host-owned integration contract, and this singular upgrade lane are supported. |
-| tested | CI proves the fresh-host install lane, the native-first lane, the first-session lane, the optional read-only bridge lane, docs markers, and this upgrade-proof lane. |
+| tested | CI proves the fresh-host install lane, the native-first lane, the first-session lane, the optional read-only bridge lane, docs markers, this upgrade-proof lane, and repo-local historical workflow compatibility proof. |
 | best-effort | Bridge-enabled source hosts, diverged hosts, partially adopted hosts, and hosts missing `repo`, `auth_module`, or `/ops/jobs` are best-effort. |
 | host-owned | Auth, session lookup, router scope, browser pipeline, reverse proxy behavior, actor seeding, and whether `/ops/jobs/oban` is exposed stay host-owned. |
 | intentionally unsupported | Bridge write parity, hidden fallback behavior when required config is missing, and broader compatibility claims outside tested lanes are intentionally unsupported. |

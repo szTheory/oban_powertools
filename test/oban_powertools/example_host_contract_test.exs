@@ -46,6 +46,11 @@ defmodule ObanPowertools.ExampleHostContractTest do
     assert result.proof_output =~ "ops-demo"
     assert result.proof_output =~ "nightly_sync"
     assert result.proof_output =~ "pause_cron_entry"
+    assert result.phase_19_output =~ "phase19-upgrade-proof"
+    assert result.phase_19_output =~ "active_await_id"
+    assert result.phase_19_output =~ "waiting_signal"
+    assert result.phase_19_output =~ "consumed"
+    assert result.phase_19_output =~ "resolved"
     assert result.reset_output =~ "Migrated"
   end
 

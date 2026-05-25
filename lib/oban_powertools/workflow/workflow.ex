@@ -32,7 +32,16 @@ defmodule ObanPowertools.Workflow.Workflow do
     has_many(:awaits, ObanPowertools.Workflow.Await, foreign_key: :workflow_id)
     has_many(:signal_records, ObanPowertools.Workflow.SignalRecord, foreign_key: :workflow_id)
     has_many(:callback_outbox, ObanPowertools.Workflow.CallbackOutbox, foreign_key: :workflow_id)
-    has_many(:recovery_attempts, ObanPowertools.Workflow.RecoveryAttempt, foreign_key: :workflow_id)
+
+    has_many(:recovery_sessions, ObanPowertools.Workflow.RecoverySession,
+      foreign_key: :workflow_id
+    )
+
+    has_many(:recovery_attempts, ObanPowertools.Workflow.RecoveryAttempt,
+      foreign_key: :workflow_id
+    )
+
+    has_many(:command_attempts, ObanPowertools.Workflow.CommandAttempt, foreign_key: :workflow_id)
 
     timestamps()
   end
@@ -57,7 +66,13 @@ defmodule ObanPowertools.Workflow.Workflow do
       :finished_at,
       :cancelled_at
     ])
-    |> validate_required([:name, :state, :workflow_context, :definition_version, :semantics_version])
+    |> validate_required([
+      :name,
+      :state,
+      :workflow_context,
+      :definition_version,
+      :semantics_version
+    ])
     |> validate_number(:definition_version, greater_than: 0)
     |> validate_number(:semantics_version, greater_than: 0)
     |> validate_number(:step_count, greater_than_or_equal_to: 0)

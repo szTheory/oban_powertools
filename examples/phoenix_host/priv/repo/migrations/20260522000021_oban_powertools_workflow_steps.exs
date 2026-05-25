@@ -21,6 +21,14 @@ defmodule PhoenixHost.Repo.Migrations.ObanPowertoolsWorkflowSteps do
       add :dependency_snapshot, :map, null: false, default: %{}
       add :blocker_codes, {:array, :string}, null: false, default: []
       add :blocker_details, :map, null: false, default: %{}
+      add :terminal_cause, :string
+      add :active_await_id, :uuid
+      add :awaiting_signal_name, :string
+      add :await_correlation_key, :string
+      add :await_dedupe_key, :string
+      add :await_deadline_at, :utc_datetime_usec
+      add :cancel_requested_at, :utc_datetime_usec
+      add :last_transition_at, :utc_datetime_usec
 
       add :nested_workflow_id,
           references(:oban_powertools_workflows, type: :uuid, on_delete: :nilify_all)

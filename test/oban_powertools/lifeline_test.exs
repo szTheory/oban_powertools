@@ -6,23 +6,39 @@ defmodule ObanPowertools.LifelineTest do
   alias ObanPowertools.Lifeline
   alias ObanPowertools.Lifeline.{Heartbeat, Incident}
   alias ObanPowertools.Workflow
-  alias ObanPowertools.Workflow.Step
+  alias ObanPowertools.Workflow.{CommandAttempt, Step}
   alias ObanPowertools.WorkflowFixtures
 
   test "refresh_heartbeats upserts one durable row per executor identity" do
     now = DateTime.utc_now()
 
     assert {:ok, [%Heartbeat{} = first]} =
-             Lifeline.refresh_heartbeats(repo(), [
-               %{executor_id: "app:oban:default:node-a:producer-1", node: "node-a", producer_scope: "producer-1"}
-             ], now: now)
+             Lifeline.refresh_heartbeats(
+               repo(),
+               [
+                 %{
+                   executor_id: "app:oban:default:node-a:producer-1",
+                   node: "node-a",
+                   producer_scope: "producer-1"
+                 }
+               ],
+               now: now
+             )
 
     later = DateTime.add(now, 30, :second)
 
     assert {:ok, [%Heartbeat{} = second]} =
-             Lifeline.refresh_heartbeats(repo(), [
-               %{executor_id: "app:oban:default:node-a:producer-1", node: "node-a", producer_scope: "producer-1"}
-             ], now: later)
+             Lifeline.refresh_heartbeats(
+               repo(),
+               [
+                 %{
+                   executor_id: "app:oban:default:node-a:producer-1",
+                   node: "node-a",
+                   producer_scope: "producer-1"
+                 }
+               ],
+               now: later
+             )
 
     assert first.id == second.id
     assert repo().aggregate(Heartbeat, :count, :id) == 1
@@ -57,7 +73,10 @@ defmodule ObanPowertools.LifelineTest do
     refute Enum.any?(incidents, &(&1.executor_id == "executor-late"))
 
     assert %Incident{} =
-             Enum.find(incidents, &(&1.executor_id == "executor-missing" and &1.incident_class == "dead_executor"))
+             Enum.find(
+               incidents,
+               &(&1.executor_id == "executor-missing" and &1.incident_class == "dead_executor")
+             )
   end
 
   test "project_incidents resolves repaired dead executor incidents on reprojection and reuses the same row on reopen" do
@@ -106,7 +125,9 @@ defmodule ObanPowertools.LifelineTest do
   end
 
   test "workflow stuck incidents surface durable evidence before any repair preview is requested" do
-    {:ok, workflow} = WorkflowFixtures.workflow_fixture(name: "stuck-flow") |> Workflow.insert(repo())
+    {:ok, workflow} =
+      WorkflowFixtures.workflow_fixture(name: "stuck-flow") |> Workflow.insert(repo())
+
     step = repo().get_by!(Step, workflow_id: workflow.id, step_name: "notify")
 
     {:ok, _step} =
@@ -125,10 +146,17 @@ defmodule ObanPowertools.LifelineTest do
     assert %Incident{incident_class: "workflow_stuck"} = incident
     assert incident.workflow_step_id == step.id
     assert incident.evidence["step_name"] == "notify"
+    assert incident.evidence["diagnosis"] == "waiting_on_retryable_dependency"
+
+    assert incident.evidence["blocker_summaries"] == [
+             "step is waiting on retryable upstream work"
+           ]
   end
 
   test "workflow stuck incidents resolve when the current step no longer qualifies as blocked" do
-    {:ok, workflow} = WorkflowFixtures.workflow_fixture(name: "stuck-flow") |> Workflow.insert(repo())
+    {:ok, workflow} =
+      WorkflowFixtures.workflow_fixture(name: "stuck-flow") |> Workflow.insert(repo())
+
     step = repo().get_by!(Step, workflow_id: workflow.id, step_name: "notify")
 
     {:ok, _step} =
@@ -288,7 +316,9 @@ defmodule ObanPowertools.LifelineTest do
   end
 
   test "execute_repair rejects drifted previews and supports workflow-step repair" do
-    {:ok, workflow} = WorkflowFixtures.workflow_fixture(name: "repair-flow") |> Workflow.insert(repo())
+    {:ok, workflow} =
+      WorkflowFixtures.workflow_fixture(name: "repair-flow") |> Workflow.insert(repo())
+
     step = repo().get_by!(Step, workflow_id: workflow.id, step_name: "notify")
     actor = %{id: "operator-1", permissions: [:preview_repair, :execute_repair]}
 
@@ -359,13 +389,69 @@ defmodule ObanPowertools.LifelineTest do
 
     assert cancelled_step.state == "cancelled"
 
+    command_attempt =
+      repo().get_by!(CommandAttempt,
+        workflow_id: workflow.id,
+        step_id: cancelled_step.id,
+        action: "recover_step:cancel",
+        source: "lifeline",
+        status: "completed"
+      )
+
+    assert command_attempt.actor_id == "operator-1"
+    assert command_attempt.reason_message == "Cancelling the stuck step after operator review"
+
     resolved_incident = repo().get!(Incident, workflow_incident.id)
     assert resolved_incident.status == "resolved"
     assert resolved_incident.resolved_at
   end
 
+  test "preview_repair and execute_repair support workflow_request_cancel without an incident row" do
+    {:ok, workflow} =
+      WorkflowFixtures.workflow_fixture(name: "workflow-request-cancel")
+      |> Workflow.insert(repo())
+
+    actor = %{id: "operator-1", permissions: [:preview_repair, :execute_repair]}
+
+    assert {:ok, preview} =
+             Lifeline.preview_repair(repo(), actor, %{
+               action: "workflow_request_cancel",
+               target_type: "workflow",
+               target_id: workflow.id
+             })
+
+    assert preview.status == "ready"
+    assert preview.incident_id == nil
+    assert preview.metadata["summary"] =~ "Request cancel"
+
+    assert {:ok, %{target: cancelled_workflow}} =
+             Lifeline.execute_repair(
+               repo(),
+               actor,
+               preview.preview_token,
+               "Requesting cooperative cancellation after operator review"
+             )
+
+    assert cancelled_workflow.cancel_requested_at
+    assert cancelled_workflow.state in ["cancel_requested", "cancelled"]
+
+    command_attempt =
+      repo().get_by!(CommandAttempt,
+        workflow_id: workflow.id,
+        action: "request_cancel",
+        source: "lifeline",
+        status: "completed"
+      )
+
+    assert command_attempt.actor_id == "operator-1"
+
+    assert command_attempt.reason_message ==
+             "Requesting cooperative cancellation after operator review"
+  end
+
   test "run_archive_prune archives manual repair evidence before deleting old audit rows" do
-    old_inserted_at = DateTime.utc_now() |> DateTime.add(-(91 * 24 * 60 * 60), :second) |> DateTime.to_naive()
+    old_inserted_at =
+      DateTime.utc_now() |> DateTime.add(-(91 * 24 * 60 * 60), :second) |> DateTime.to_naive()
 
     insert_old_repair_audit!("job:123", old_inserted_at)
 
@@ -382,7 +468,9 @@ defmodule ObanPowertools.LifelineTest do
     insert_heartbeat!("executor-old", DateTime.add(DateTime.utc_now(), -(7 * 60 * 60), :second))
 
     assert {:ok, run} =
-             Lifeline.run_archive_prune(repo(), %{id: "operator-1"}, reason: "prune heartbeat spam")
+             Lifeline.run_archive_prune(repo(), %{id: "operator-1"},
+               reason: "prune heartbeat spam"
+             )
 
     assert run.pruned_count >= 1
     assert repo().aggregate(Heartbeat, :count, :id) == 0
@@ -390,7 +478,9 @@ defmodule ObanPowertools.LifelineTest do
   end
 
   test "run_archive_prune blocks deletion when archive persistence fails" do
-    old_inserted_at = DateTime.utc_now() |> DateTime.add(-(91 * 24 * 60 * 60), :second) |> DateTime.to_naive()
+    old_inserted_at =
+      DateTime.utc_now() |> DateTime.add(-(91 * 24 * 60 * 60), :second) |> DateTime.to_naive()
+
     insert_old_repair_audit!("job:123", old_inserted_at)
 
     assert {:error, {:archive_failed, failed_run}} =
@@ -425,7 +515,11 @@ defmodule ObanPowertools.LifelineTest do
 
   defp insert_executing_job!(executor_id) do
     %{}
-    |> Oban.Job.new(worker: "Example.Worker", queue: :default, meta: %{"executor_id" => executor_id})
+    |> Oban.Job.new(
+      worker: "Example.Worker",
+      queue: :default,
+      meta: %{"executor_id" => executor_id}
+    )
     |> Changeset.change(state: "executing")
     |> repo().insert!()
   end

@@ -77,6 +77,16 @@ These are the important builder-facing rules:
 - duplicate PubSub delivery does not duplicate child release or stored results
 - DB-first reconciliation keeps the workflow correct even if no PubSub follow-up is observed
 
+<!-- workflow-semantics-contract:start -->
+## Canonical Workflow Semantics Contract
+
+- Semantics version `2` is the current workflow lifecycle contract.
+- Durable workflow, step, await, signal, callback, and recovery rows are the source of truth.
+- Duplicate, late, ambiguous, dropped, and replayed signal paths remain durable evidence instead of hidden retries.
+- Cancel requests remain durable request evidence, while final workflow outcome is recorded separately.
+- Public workflow telemetry stays under `[:oban_powertools, :workflow, *]` with bounded metadata only.
+<!-- workflow-semantics-contract:end -->
+
 ## Diagnose why a step is still blocked
 
 ```elixir

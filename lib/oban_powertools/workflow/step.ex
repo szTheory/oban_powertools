@@ -23,6 +23,7 @@ defmodule ObanPowertools.Workflow.Step do
     field(:blocker_codes, {:array, :string}, default: [])
     field(:blocker_details, :map, default: %{})
     field(:terminal_cause, :string)
+    field(:active_await_id, :binary_id)
     field(:awaiting_signal_name, :string)
     field(:await_correlation_key, :string)
     field(:await_dedupe_key, :string)
@@ -61,6 +62,7 @@ defmodule ObanPowertools.Workflow.Step do
       :blocker_codes,
       :blocker_details,
       :terminal_cause,
+      :active_await_id,
       :awaiting_signal_name,
       :await_correlation_key,
       :await_dedupe_key,

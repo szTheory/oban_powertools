@@ -20,7 +20,11 @@ defmodule ObanPowertools.Workflow.Signal do
     pubsub = Phoenix.PubSub
 
     if Code.ensure_loaded?(pubsub) and function_exported?(pubsub, :broadcast, 3) do
-      apply(pubsub, :broadcast, [ObanPowertools.PubSub, topic(), {:workflow_signal, event}])
+      try do
+        apply(pubsub, :broadcast, [ObanPowertools.PubSub, topic(), {:workflow_signal, event}])
+      rescue
+        ArgumentError -> :ok
+      end
     else
       :ok
     end

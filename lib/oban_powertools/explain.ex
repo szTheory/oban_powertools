@@ -8,7 +8,15 @@ defmodule ObanPowertools.Explain do
   import Ecto.Query
 
   alias ObanPowertools.Limits.{Resource, State}
-  alias ObanPowertools.Workflow.Step
+
+  alias ObanPowertools.Workflow.{
+    CallbackOutbox,
+    CommandAttempt,
+    RecoverySession,
+    Runtime,
+    Step,
+    Workflow
+  }
 
   @primary_key {:id, :binary_id, autogenerate: true}
 
@@ -126,6 +134,67 @@ defmodule ObanPowertools.Explain do
     }
   end
 
+  def workflow_story(%Workflow{} = workflow, steps, opts \\ []) when is_list(steps) do
+    repo = Keyword.get(opts, :repo, Application.get_env(:oban_powertools, :repo))
+    latest_rejection = latest_rejection(repo, workflow.id)
+
+    %{
+      diagnosis: Runtime.workflow_diagnosis(workflow, steps),
+      executable_actions: Runtime.workflow_executable_actions(workflow, steps),
+      semantics: Runtime.semantics_profile(workflow),
+      latest_rejection: latest_rejection,
+      rejection_summary: rejection_summary(latest_rejection),
+      callback_posture: callback_posture(repo, workflow.id),
+      latest_recovery_session: latest_recovery_session(repo, workflow.id)
+    }
+  end
+
+  def step_story(%Step{} = step, opts \\ []) do
+    repo = Keyword.get(opts, :repo, Application.get_env(:oban_powertools, :repo))
+    latest_rejection = latest_rejection(repo, step.workflow_id, step.id)
+
+    %{
+      diagnosis: Runtime.step_diagnosis(step),
+      blocker_codes: step.blocker_codes,
+      blocker_summaries: Enum.map(step.blocker_codes, &blocker_summary/1),
+      executable_actions: Runtime.step_executable_actions(step),
+      latest_rejection: latest_rejection,
+      rejection_summary: rejection_summary(latest_rejection)
+    }
+  end
+
+  def latest_rejection(repo, workflow_id, step_id \\ nil) do
+    query =
+      from(attempt in CommandAttempt,
+        where: attempt.workflow_id == ^workflow_id and attempt.status == "rejected",
+        order_by: [desc: attempt.requested_at, desc: attempt.inserted_at],
+        limit: 1
+      )
+
+    query =
+      if step_id do
+        from(attempt in query, where: attempt.step_id == ^step_id)
+      else
+        query
+      end
+
+    case repo.one(query) do
+      nil ->
+        nil
+
+      attempt ->
+        %{
+          action: attempt.action,
+          reason_code: attempt.reason_code,
+          message: attempt.reason_message,
+          legal_next_steps: Map.get(attempt.metadata || %{}, "legal_next_steps", []),
+          requested_at: attempt.requested_at,
+          actor_id: attempt.actor_id,
+          source: attempt.source
+        }
+    end
+  end
+
   defp latest_snapshot(_repo, _worker, nil), do: nil
 
   defp latest_snapshot(repo, worker, snapshot) do
@@ -213,9 +282,72 @@ defmodule ObanPowertools.Explain do
     }
   end
 
+  defp rejection_summary(nil), do: nil
+
+  defp rejection_summary(rejection) do
+    %{
+      code: rejection.reason_code,
+      message: rejection.message,
+      legal_next_steps: rejection.legal_next_steps
+    }
+  end
+
+  defp callback_posture(repo, workflow_id) do
+    rows =
+      from(callback in CallbackOutbox,
+        where: callback.workflow_id == ^workflow_id,
+        order_by: [desc: callback.inserted_at]
+      )
+      |> repo.all()
+
+    %{
+      total: length(rows),
+      pending: Enum.count(rows, &(&1.status == "pending")),
+      claimed: Enum.count(rows, &(&1.status == "claimed")),
+      failed: Enum.count(rows, &(&1.status == "failed")),
+      delivered: Enum.count(rows, &(&1.status == "delivered")),
+      latest_status: rows |> List.first() |> then(&(&1 && &1.status)),
+      latest_error: rows |> List.first() |> then(&(&1 && &1.last_error))
+    }
+  end
+
+  defp latest_recovery_session(repo, workflow_id) do
+    query =
+      from(session in RecoverySession,
+        where: session.workflow_id == ^workflow_id,
+        order_by: [desc: session.requested_at, desc: session.inserted_at],
+        limit: 1
+      )
+
+    case repo.one(query) do
+      nil ->
+        nil
+
+      session ->
+        %{
+          id: session.id,
+          status: session.status,
+          trigger: session.trigger,
+          requested_at: session.requested_at,
+          completed_at: session.completed_at
+        }
+    end
+  end
+
   defp blocker_summary("waiting_on_dependencies"), do: "step is waiting on required dependencies"
-  defp blocker_summary("waiting_on_retryable_dependency"), do: "step is waiting on retryable upstream work"
-  defp blocker_summary("missing_dependency_result"), do: "dependency completed without a durable result"
-  defp blocker_summary("cancelled_by_dependency"), do: "step was cancelled by a terminal dependency"
+  defp blocker_summary("waiting_on_signal"), do: "step is waiting on a durable signal"
+
+  defp blocker_summary("waiting_on_retryable_dependency"),
+    do: "step is waiting on retryable upstream work"
+
+  defp blocker_summary("missing_dependency_result"),
+    do: "dependency completed without a durable result"
+
+  defp blocker_summary("cancel_requested"), do: "workflow cancellation has been requested"
+  defp blocker_summary("expired_wait"), do: "step wait expired before a matching signal arrived"
+
+  defp blocker_summary("cancelled_by_dependency"),
+    do: "step was cancelled by a terminal dependency"
+
   defp blocker_summary(code), do: code
 end

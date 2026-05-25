@@ -82,7 +82,8 @@ passed and a real native mutation succeeds.
   `display_policy`.
 - `tested`: the repo proves the fresh-host install lane, the native-first fixture lane, the
   first-session lane, the optional bridge render lane, the docs-contract lane, and the supported
-  upgrade lane.
+  upgrade lane. Broader legacy workflow compatibility for waiting, retrying, cancelling, and
+  recovery evidence is repo-local `tested` proof, not an expansion of the supported host lane.
 - `best-effort`: best-effort outside tested lanes applies to semver-allowed combinations,
   bridge-enabled or diverged source hosts, bespoke shells, and unusual proxy or session setups.
 - `host-owned`: the host owns router scope, browser pipeline, auth, actor/session lookup,

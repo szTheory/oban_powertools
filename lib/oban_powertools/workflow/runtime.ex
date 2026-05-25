@@ -16,8 +16,10 @@ defmodule ObanPowertools.Workflow.Runtime do
   alias ObanPowertools.Workflow.{
     Await,
     CallbackOutbox,
+    CommandAttempt,
     Edge,
     RecoveryAttempt,
+    RecoverySession,
     Result,
     SignalRecord,
     Step,
@@ -72,6 +74,7 @@ defmodule ObanPowertools.Workflow.Runtime do
     "step_failed"
   ]
   @current_semantics_version 2
+  @callback_envelope_version 1
   @legacy_semantics_version 1
   @runtime_principal Audit.system_principal("workflow_runtime", label: "system workflow runtime")
 
@@ -123,17 +126,161 @@ defmodule ObanPowertools.Workflow.Runtime do
     end
   end
 
+  defp execute_command(repo, command) do
+    with {:ok, normalized} <- normalize_command(command),
+         {:ok, loaded} <- load_command_context(repo, normalized),
+         :ok <- validate_command(loaded) do
+      dispatch_command(repo, loaded)
+    else
+      {:error, %{status: :rejected} = rejection} ->
+        reject_command(repo, Map.get(rejection, :command, command), rejection)
+    end
+  end
+
+  defp normalize_command(command) do
+    attrs = Map.get(command, :attrs, %{})
+
+    {:ok,
+     command
+     |> Map.put(:attrs, attrs)
+     |> Map.put(:requested_at, command_timestamp(command, attrs))
+     |> Map.put(:source, Map.get(command, :source, "runtime"))
+     |> Map.put(:actor_id, blank_to_nil(read_value(attrs, :actor_id)))
+     |> Map.put(:step_name, Map.get(command, :step_name))
+     |> Map.put(:workflow_id, Map.get(command, :workflow_id))}
+  end
+
+  defp load_command_context(repo, command) do
+    workflow =
+      case Map.get(command, :workflow_id) do
+        nil -> nil
+        workflow_id -> repo.get(Workflow, workflow_id)
+      end
+
+    step =
+      case {workflow, Map.get(command, :step_name)} do
+        {%Workflow{id: workflow_id}, step_name} when is_binary(step_name) ->
+          repo.one(
+            from(step in Step,
+              where: step.workflow_id == ^workflow_id and step.step_name == ^step_name,
+              limit: 1
+            )
+          )
+
+        _ ->
+          nil
+      end
+
+    {:ok, Map.merge(command, %{workflow: workflow, step: step})}
+  end
+
+  defp validate_command(%{action: action, workflow: nil} = command)
+       when action in ["complete_step", "await_step", "request_cancel", "recover_step"] do
+    {:error,
+     rejection(command, "workflow_not_found",
+       message: "workflow mutation target was not found",
+       legal_next_steps: ["verify_workflow_id"]
+     )}
+  end
+
+  defp validate_command(%{scope: "step", step: nil} = command) do
+    {:error,
+     rejection(command, "step_not_found",
+       message: "workflow step mutation target was not found",
+       legal_next_steps: ["verify_step_name"]
+     )}
+  end
+
+  defp validate_command(%{workflow: %Workflow{} = workflow} = command)
+       when workflow.semantics_version < @current_semantics_version do
+    {:error,
+     rejection(command, "unsupported_legacy_semantics",
+       message:
+         "workflow rows with semantics_version < 2 require an explicit compatibility adapter and are not mutated through the Phase 17 command core",
+       legal_next_steps: ["migrate_via_compatibility_path"]
+     )}
+  end
+
+  defp validate_command(%{action: "recover_step", recovery_action: action} = command)
+       when action not in ["retry", "cancel"] do
+    {:error,
+     rejection(command, "unsupported_recovery_action",
+       message: "recovery action is not supported by the workflow command core",
+       legal_next_steps: ["retry", "cancel"]
+     )}
+  end
+
+  defp validate_command(_command), do: :ok
+
+  defp dispatch_command(repo, %{action: "complete_step"} = command),
+    do: run_complete_step(repo, command)
+
+  defp dispatch_command(repo, %{action: "await_step"} = command),
+    do: run_await_step(repo, command)
+
+  defp dispatch_command(repo, %{action: "deliver_signal"} = command),
+    do: run_deliver_signal(repo, command)
+
+  defp dispatch_command(repo, %{action: "request_cancel"} = command),
+    do: run_request_cancel(repo, command)
+
+  defp dispatch_command(repo, %{action: "recover_step"} = command),
+    do: run_recover_step(repo, command)
+
+  defp reject_command(repo, command, rejection) do
+    _ =
+      %CommandAttempt{}
+      |> CommandAttempt.changeset(
+        command_attempt_attrs(command, "rejected",
+          reason_code: rejection.reason_code,
+          reason_message: rejection.message,
+          after_snapshot: %{},
+          metadata: %{"legal_next_steps" => rejection.legal_next_steps}
+        )
+      )
+      |> repo.insert()
+
+    {:error,
+     %{
+       status: :rejected,
+       action: command.action,
+       scope: command.scope,
+       reason_code: rejection.reason_code,
+       message: rejection.message,
+       legal_next_steps: rejection.legal_next_steps,
+       requested_at: command.requested_at
+     }}
+  end
+
+  defp rejection(command, reason_code, opts) do
+    %{
+      status: :rejected,
+      command: command,
+      reason_code: reason_code,
+      message: Keyword.fetch!(opts, :message),
+      legal_next_steps: Keyword.get(opts, :legal_next_steps, [])
+    }
+  end
+
   def complete_step(repo, workflow_id, step_name, attrs \\ %{}) do
+    execute_command(repo, %{
+      action: "complete_step",
+      scope: "step",
+      workflow_id: workflow_id,
+      step_name: to_string(step_name),
+      attrs: attrs,
+      source: "runtime"
+    })
+  end
+
+  defp run_complete_step(repo, %{attrs: attrs, workflow: workflow, step: step} = command) do
     status = normalize_status(read_value(attrs, :status, "completed"))
     payload = read_value(attrs, :payload, %{})
     summary = read_value(attrs, :summary)
-    now = read_value(attrs, :recorded_at, DateTime.utc_now())
-
-    step = get_step!(repo, workflow_id, step_name)
-    workflow = repo.get!(Workflow, workflow_id)
+    now = command.requested_at
 
     result_attrs = %{
-      workflow_id: workflow_id,
+      workflow_id: workflow.id,
       step_id: step.id,
       attempt: step.attempt + 1,
       status: status,
@@ -151,6 +298,7 @@ defmodule ObanPowertools.Workflow.Runtime do
       blocker_codes: [],
       blocker_details: %{},
       terminal_cause: terminal_cause_for_status(status, workflow.cancel_requested_at),
+      active_await_id: nil,
       awaiting_signal_name: nil,
       await_correlation_key: nil,
       await_dedupe_key: nil,
@@ -163,23 +311,33 @@ defmodule ObanPowertools.Workflow.Runtime do
     }
 
     Multi.new()
+    |> Multi.insert(
+      :command_attempt,
+      CommandAttempt.changeset(
+        %CommandAttempt{},
+        command_attempt_attrs(command, "completed",
+          reason_code: terminal_cause_for_status(status, workflow.cancel_requested_at),
+          after_snapshot: Map.merge(step_snapshot(step), step_attrs_to_snapshot(step_attrs))
+        )
+      )
+    )
     |> Multi.insert(:result, Result.changeset(%Result{}, result_attrs))
     |> Multi.update(:step, Step.changeset(step, step_attrs))
-    |> Multi.run(:reconcile, fn repo, _changes -> reconcile_workflow(repo, workflow_id, now) end)
+    |> Multi.run(:reconcile, fn repo, _changes -> reconcile_workflow(repo, workflow.id, now) end)
     |> Multi.run(:workflow, fn repo, _changes ->
-      {:ok, refresh_workflow(repo, workflow_id, now)}
+      {:ok, refresh_workflow(repo, workflow.id, now)}
     end)
     |> Multi.run(:callback, fn repo, %{workflow: updated_workflow} ->
       maybe_enqueue_terminal_callback(repo, workflow, updated_workflow, now)
     end)
     |> repo.transaction()
     |> case do
-      {:ok, %{step: updated_step, workflow: _updated_workflow}} ->
+      {:ok, %{step: updated_step, workflow: updated_workflow}} ->
         Audit.record(
           "workflow.step_completed",
           %{type: :workflow_step, id: updated_step.id},
           %{
-            "workflow_id" => workflow_id,
+            "workflow_id" => workflow.id,
             "status" => status,
             "terminal_cause" => updated_step.terminal_cause
           },
@@ -187,7 +345,13 @@ defmodule ObanPowertools.Workflow.Runtime do
           principal: @runtime_principal
         )
 
-        Telemetry.execute_workflow_event(:step_completed, %{count: 1}, %{status: status})
+        Telemetry.execute_workflow_event(:step_completed, %{count: 1}, %{
+          outcome: status,
+          terminal_cause: updated_step.terminal_cause,
+          semantics_version: updated_workflow.semantics_version
+        })
+
+        emit_workflow_terminal_event(workflow, updated_workflow)
         {:ok, updated_step}
 
       {:error, _step, reason, _changes} ->
@@ -196,13 +360,22 @@ defmodule ObanPowertools.Workflow.Runtime do
   end
 
   def await_step(repo, workflow_id, step_name, attrs \\ %{}) do
-    now = read_value(attrs, :registered_at, DateTime.utc_now())
+    execute_command(repo, %{
+      action: "await_step",
+      scope: "step",
+      workflow_id: workflow_id,
+      step_name: to_string(step_name),
+      attrs: attrs,
+      source: "runtime"
+    })
+  end
+
+  defp run_await_step(repo, %{attrs: attrs, workflow: workflow, step: step} = command) do
+    now = command.requested_at
     signal_name = read_value!(attrs, :signal_name)
     correlation_key = to_string(read_value!(attrs, :correlation_key))
     dedupe_key = to_string(read_value(attrs, :dedupe_key, correlation_key))
     deadline_at = read_value(attrs, :deadline_at)
-
-    step = get_step!(repo, workflow_id, step_name)
 
     Multi.new()
     |> Multi.run(:await, fn repo, _changes ->
@@ -215,7 +388,7 @@ defmodule ObanPowertools.Workflow.Runtime do
         )
 
       await_attrs = %{
-        workflow_id: workflow_id,
+        workflow_id: workflow.id,
         step_id: step.id,
         signal_name: signal_name,
         correlation_key: correlation_key,
@@ -235,16 +408,38 @@ defmodule ObanPowertools.Workflow.Runtime do
         |> repo.insert()
       end
     end)
+    |> Multi.insert(
+      :command_attempt,
+      CommandAttempt.changeset(
+        %CommandAttempt{},
+        command_attempt_attrs(command, "completed",
+          after_snapshot:
+            Map.merge(step_snapshot(step), %{
+              "state" => "awaiting_signal",
+              "blocker_codes" => ["waiting_on_signal"],
+              "terminal_cause" => nil
+            }),
+          metadata: %{
+            "signal_name" => signal_name,
+            "correlation_key" => correlation_key,
+            "dedupe_key" => dedupe_key
+          }
+        )
+      )
+    )
     |> Multi.run(:step, fn repo, %{await: await_row} ->
       step
       |> Step.changeset(%{
         state: "awaiting_signal",
         blocker_codes: ["waiting_on_signal"],
         blocker_details: %{
+          "active_await_id" => await_row.id,
           "signal_name" => await_row.signal_name,
           "correlation_key" => await_row.correlation_key,
-          "deadline_at" => deadline_iso8601(await_row.deadline_at)
+          "deadline_at" => deadline_iso8601(await_row.deadline_at),
+          "dedupe_key" => await_row.dedupe_key
         },
+        active_await_id: await_row.id,
         awaiting_signal_name: signal_name,
         await_correlation_key: correlation_key,
         await_dedupe_key: dedupe_key,
@@ -253,33 +448,36 @@ defmodule ObanPowertools.Workflow.Runtime do
       })
       |> repo.update()
     end)
-    |> Multi.run(:reconcile, fn repo, _changes -> reconcile_workflow(repo, workflow_id, now) end)
+    |> Multi.run(:reconcile, fn repo, _changes -> reconcile_workflow(repo, workflow.id, now) end)
     |> Multi.run(:workflow, fn repo, _changes ->
-      {:ok, refresh_workflow(repo, workflow_id, now)}
+      {:ok, refresh_workflow(repo, workflow.id, now)}
     end)
     |> repo.transaction()
   end
 
   def deliver_signal(repo, attrs) do
-    now = read_value(attrs, :received_at, DateTime.utc_now())
+    execute_command(repo, %{
+      action: "deliver_signal",
+      scope: "signal",
+      attrs: attrs,
+      source: "signal_ingress"
+    })
+  end
+
+  defp run_deliver_signal(repo, %{attrs: attrs} = command) do
+    now = command.requested_at
     signal_name = read_value!(attrs, :signal_name)
     correlation_key = to_string(read_value!(attrs, :correlation_key))
     dedupe_key = to_string(read_value(attrs, :dedupe_key, correlation_key))
     payload = normalize_payload(read_value(attrs, :payload, %{}))
 
-    signal_attrs = %{
-      signal_name: signal_name,
-      correlation_key: correlation_key,
-      dedupe_key: dedupe_key,
-      payload: payload,
-      status: "pending",
-      received_at: now
-    }
+    signal_attrs =
+      canonical_signal_attrs(repo, signal_name, correlation_key, dedupe_key, payload, now)
 
     case repo.insert(SignalRecord.changeset(%SignalRecord{}, signal_attrs), returning: true) do
       {:ok, signal_record} ->
-        reconcile_signals_for_signal(repo, signal_name, correlation_key, now)
-        {:ok, mark_signal_late_if_expired(repo, signal_record)}
+        persist_signal_attempt(repo, command, signal_record, "completed")
+        {:ok, reconcile_signal_record(repo, signal_record, now)}
 
       {:error, reason} ->
         existing =
@@ -289,17 +487,58 @@ defmodule ObanPowertools.Workflow.Runtime do
             dedupe_key: dedupe_key
           )
 
-        if existing, do: {:ok, existing}, else: {:error, reason}
+        if existing do
+          {attempt_status, reason_code, reason_message} =
+            if existing.status == "consumed" do
+              {"already_consumed", "already_consumed_signal",
+               "signal dedupe key was already consumed by a workflow await"}
+            else
+              {"duplicate", "duplicate_signal", "signal dedupe key already exists"}
+            end
+
+          persist_signal_attempt(repo, command, existing, attempt_status,
+            reason_code: reason_code,
+            reason_message: reason_message
+          )
+
+          {:ok, existing}
+        else
+          {:error, reason}
+        end
     end
   end
 
   def request_cancel(repo, workflow_id, attrs \\ %{}) do
-    workflow = repo.get!(Workflow, workflow_id)
-    now = read_value(attrs, :requested_at, DateTime.utc_now())
+    execute_command(repo, %{
+      action: "request_cancel",
+      scope: "workflow",
+      workflow_id: workflow_id,
+      attrs: attrs,
+      source: command_source(attrs, "operator")
+    })
+  end
+
+  defp run_request_cancel(repo, %{attrs: attrs, workflow: workflow} = command) do
+    now = command.requested_at
     actor_id = read_value(attrs, :actor_id)
     reason = blank_to_nil(read_value(attrs, :reason))
 
     Multi.new()
+    |> Multi.insert(
+      :command_attempt,
+      CommandAttempt.changeset(
+        %CommandAttempt{},
+        command_attempt_attrs(command, "completed",
+          reason_code: "cancel_requested",
+          reason_message: reason,
+          after_snapshot: %{
+            "workflow_state" => terminal_or_requested_state(workflow),
+            "terminal_cause" => workflow.terminal_cause || "cancel_requested",
+            "cancel_requested_at" => datetime_or_nil(workflow.cancel_requested_at || now)
+          }
+        )
+      )
+    )
     |> Multi.update(
       :workflow,
       Workflow.changeset(workflow, %{
@@ -310,7 +549,7 @@ defmodule ObanPowertools.Workflow.Runtime do
       })
     )
     |> Multi.run(:steps, fn repo, _changes ->
-      repo.all(from(step in Step, where: step.workflow_id == ^workflow_id))
+      repo.all(from(step in Step, where: step.workflow_id == ^workflow.id))
       |> Enum.each(fn step ->
         if step.state in [
              "pending",
@@ -344,9 +583,9 @@ defmodule ObanPowertools.Workflow.Runtime do
 
       {:ok, :updated}
     end)
-    |> Multi.run(:reconcile, fn repo, _changes -> reconcile_workflow(repo, workflow_id, now) end)
+    |> Multi.run(:reconcile, fn repo, _changes -> reconcile_workflow(repo, workflow.id, now) end)
     |> Multi.run(:workflow_refresh, fn repo, _changes ->
-      {:ok, refresh_workflow(repo, workflow_id, now)}
+      {:ok, refresh_workflow(repo, workflow.id, now)}
     end)
     |> Multi.run(:callback, fn repo, %{workflow: old_workflow, workflow_refresh: new_workflow} ->
       maybe_enqueue_terminal_callback(repo, old_workflow, new_workflow, now)
@@ -356,12 +595,13 @@ defmodule ObanPowertools.Workflow.Runtime do
       {:ok, %{workflow_refresh: updated_workflow}} ->
         Audit.record(
           "workflow.cancel_requested",
-          %{type: :workflow, id: workflow_id},
+          %{type: :workflow, id: workflow.id},
           %{"reason" => reason, "actor_id" => actor_id},
           repo: repo,
           principal: @runtime_principal
         )
 
+        emit_workflow_terminal_event(workflow, updated_workflow)
         {:ok, updated_workflow}
 
       {:error, _step, reason, _changes} ->
@@ -370,26 +610,69 @@ defmodule ObanPowertools.Workflow.Runtime do
   end
 
   def recover_step(repo, workflow_id, step_name, action, attrs \\ %{}) do
-    now = read_value(attrs, :requested_at, DateTime.utc_now())
+    execute_command(repo, %{
+      action: "recover_step",
+      recovery_action: normalize_status(action),
+      scope: "step",
+      workflow_id: workflow_id,
+      step_name: to_string(step_name),
+      attrs: attrs,
+      source: command_source(attrs, "operator")
+    })
+  end
+
+  defp run_recover_step(
+         repo,
+         %{attrs: attrs, workflow: workflow, step: step, recovery_action: action} = command
+       ) do
+    now = command.requested_at
     reason = blank_to_nil(read_value(attrs, :reason))
     actor_id = read_value(attrs, :actor_id)
-    action = normalize_status(action)
-
-    step = get_step!(repo, workflow_id, step_name)
 
     if step.state in @success_states do
-      {:error, :already_completed}
+      reject_command(
+        repo,
+        command,
+        rejection(command, "illegal_transition",
+          message: "completed workflow steps cannot be recovered",
+          legal_next_steps: ["inspect_step_result"]
+        )
+      )
     else
-      workflow = repo.get!(Workflow, workflow_id)
       before_snapshot = step_snapshot(step)
       step_attrs = recovery_step_attrs(step, action, now)
 
       Multi.new()
       |> Multi.insert(
+        :command_attempt,
+        CommandAttempt.changeset(
+          %CommandAttempt{},
+          command_attempt_attrs(command, "completed",
+            reason_code: action,
+            reason_message: reason,
+            after_snapshot: Map.merge(before_snapshot, step_attrs_to_snapshot(step_attrs))
+          )
+        )
+      )
+      |> Multi.insert(
+        :recovery_session,
+        RecoverySession.changeset(%RecoverySession{}, %{
+          workflow_id: workflow.id,
+          status: "completed",
+          trigger: "recover_step",
+          reason: reason,
+          actor_id: actor_id,
+          requested_at: now,
+          completed_at: now,
+          metadata: %{"action" => action, "step_name" => step.step_name}
+        })
+      )
+      |> Multi.insert(
         :recovery_attempt,
         RecoveryAttempt.changeset(%RecoveryAttempt{}, %{
-          workflow_id: workflow_id,
+          workflow_id: workflow.id,
           step_id: step.id,
+          recovery_session_id: nil,
           scope: "step",
           action: action,
           status: "completed",
@@ -402,14 +685,24 @@ defmodule ObanPowertools.Workflow.Runtime do
           metadata: %{}
         })
       )
-      |> Multi.update(:step, Step.changeset(step, step_attrs))
-      |> Multi.run(:reconcile, fn repo, _changes -> reconcile_workflow(repo, workflow_id, now) end)
-      |> Multi.run(:workflow, fn repo, _changes ->
-        {:ok, refresh_workflow(repo, workflow_id, now)}
+      |> Multi.run(:recovery_attempt_linked, fn repo,
+                                                %{
+                                                  recovery_session: session,
+                                                  recovery_attempt: attempt
+                                                } ->
+        attempt
+        |> RecoveryAttempt.changeset(%{recovery_session_id: session.id})
+        |> repo.update()
       end)
-      |> Multi.run(:callback, fn repo, %{recovery_attempt: attempt} ->
+      |> Multi.update(:step, Step.changeset(step, step_attrs))
+      |> Multi.run(:reconcile, fn repo, _changes -> reconcile_workflow(repo, workflow.id, now) end)
+      |> Multi.run(:workflow, fn repo, _changes ->
+        {:ok, refresh_workflow(repo, workflow.id, now)}
+      end)
+      |> Multi.run(:callback, fn repo,
+                                 %{recovery_attempt_linked: attempt, recovery_session: session} ->
         enqueue_callback(repo, workflow, "workflow.recovery_completed", attempt.id, %{
-          "workflow_id" => workflow.id,
+          "recovery_session_id" => session.id,
           "step_id" => step.id,
           "step_name" => step.step_name,
           "action" => action,
@@ -422,7 +715,7 @@ defmodule ObanPowertools.Workflow.Runtime do
           Audit.record(
             "workflow.recovery_completed",
             %{type: :workflow_step, id: updated_step.id},
-            %{"workflow_id" => workflow_id, "action" => action},
+            %{"workflow_id" => workflow.id, "action" => action},
             repo: repo,
             principal: @runtime_principal
           )
@@ -442,19 +735,17 @@ defmodule ObanPowertools.Workflow.Runtime do
 
   def dispatch_callbacks(repo, opts \\ []) do
     now = Keyword.get(opts, :now, DateTime.utc_now())
+    limit = Keyword.get(opts, :limit, 25)
+    lease_seconds = Keyword.get(opts, :lease_seconds, 30)
 
     handler =
       Keyword.get(opts, :handler) || RuntimeConfig.workflow_callback_handler!(required: true)
 
-    rows =
-      repo.all(
-        from(callback in CallbackOutbox,
-          where:
-            callback.status in ["pending", "failed"] and
-              (is_nil(callback.available_at) or callback.available_at <= ^now),
-          order_by: [asc: callback.inserted_at]
-        )
-      )
+    dispatcher_id =
+      Keyword.get(opts, :dispatcher_id) ||
+        "runtime:#{node()}:#{System.get_env("USER") || "unknown"}"
+
+    rows = claim_callbacks(repo, now, dispatcher_id, lease_seconds, limit)
 
     Enum.reduce(rows, %{delivered: 0, failed: 0}, fn row, acc ->
       case handler.handle_workflow_callback(row.payload) do
@@ -464,6 +755,7 @@ defmodule ObanPowertools.Workflow.Runtime do
               status: "delivered",
               attempts: row.attempts + 1,
               delivered_at: now,
+              lease_expires_at: nil,
               last_error: nil
             })
           )
@@ -476,6 +768,7 @@ defmodule ObanPowertools.Workflow.Runtime do
               status: "failed",
               attempts: row.attempts + 1,
               available_at: DateTime.add(now, 30, :second),
+              lease_expires_at: nil,
               last_error: inspect(reason)
             })
           )
@@ -505,6 +798,25 @@ defmodule ObanPowertools.Workflow.Runtime do
 
       true ->
         workflow.state
+    end
+  end
+
+  def workflow_executable_actions(%Workflow{} = workflow, steps) do
+    step_actions =
+      steps
+      |> Enum.flat_map(&step_executable_actions/1)
+      |> Enum.uniq_by(& &1.id)
+
+    step_actions ++ workflow_level_actions(workflow)
+  end
+
+  def step_executable_actions(%Step{} = step) do
+    if step_terminal?(step) do
+      []
+    else
+      []
+      |> maybe_add_step_retry(step)
+      |> maybe_add_step_cancel(step)
     end
   end
 
@@ -541,8 +853,10 @@ defmodule ObanPowertools.Workflow.Runtime do
   end
 
   defp do_reconcile(repo, workflow_id, now, passes) do
+    claim_workflow_signals(repo, workflow_id)
     expire_waits(repo, workflow_id, now)
     reconcile_signals_for_workflow(repo, workflow_id, now)
+    mark_late_signals_for_workflow(repo, workflow_id)
 
     workflow = repo.get!(Workflow, workflow_id)
 
@@ -607,10 +921,12 @@ defmodule ObanPowertools.Workflow.Runtime do
   end
 
   defp maybe_transition_step(repo, workflow, %Step{} = step, by_name, edges, results_by_step, now) do
-    active_wait? =
-      repo.exists?(
+    active_wait =
+      repo.one(
         from(await in Await,
-          where: await.step_id == ^step.id and await.status == "waiting"
+          where: await.step_id == ^step.id and await.status == "waiting",
+          order_by: [asc: await.inserted_at],
+          limit: 1
         )
       )
 
@@ -640,10 +956,22 @@ defmodule ObanPowertools.Workflow.Runtime do
 
         :changed
 
-      active_wait? ->
+      active_wait ->
         attrs = %{
           state: "awaiting_signal",
           blocker_codes: ["waiting_on_signal"],
+          blocker_details: %{
+            "active_await_id" => active_wait.id,
+            "signal_name" => active_wait.signal_name,
+            "correlation_key" => active_wait.correlation_key,
+            "deadline_at" => deadline_iso8601(active_wait.deadline_at),
+            "dedupe_key" => active_wait.dedupe_key
+          },
+          active_await_id: active_wait.id,
+          awaiting_signal_name: active_wait.signal_name,
+          await_correlation_key: active_wait.correlation_key,
+          await_dedupe_key: active_wait.dedupe_key,
+          await_deadline_at: active_wait.deadline_at,
           terminal_cause: nil,
           last_transition_at: step.last_transition_at || now
         }
@@ -692,7 +1020,12 @@ defmodule ObanPowertools.Workflow.Runtime do
               principal: @runtime_principal
             )
 
-            Telemetry.execute_workflow_event(:step_unblocked, %{count: 1}, %{status: "available"})
+            Telemetry.execute_workflow_event(:step_unblocked, %{count: 1}, %{
+              scope: "dependency",
+              state: "available",
+              semantics_version: workflow.semantics_version
+            })
+
             :changed
 
           {:blocked, codes, details} ->
@@ -729,7 +1062,10 @@ defmodule ObanPowertools.Workflow.Runtime do
             )
 
             Telemetry.execute_workflow_event(:cascade_cancelled, %{count: 1}, %{
-              status: "cancelled"
+              scope: "dependency",
+              outcome: "cancelled",
+              terminal_cause: "cancelled_by_dependency",
+              semantics_version: workflow.semantics_version
             })
 
             :changed
@@ -792,9 +1128,13 @@ defmodule ObanPowertools.Workflow.Runtime do
           state: "expired",
           blocker_codes: ["expired_wait"],
           blocker_details: %{
+            "active_await_id" => await_row.id,
             "signal_name" => await_row.signal_name,
-            "correlation_key" => await_row.correlation_key
+            "correlation_key" => await_row.correlation_key,
+            "deadline_at" => deadline_iso8601(await_row.deadline_at),
+            "dedupe_key" => await_row.dedupe_key
           },
+          active_await_id: nil,
           terminal_cause: "expired_wait",
           finished_at: now,
           last_transition_at: now
@@ -813,16 +1153,39 @@ defmodule ObanPowertools.Workflow.Runtime do
     |> Enum.each(&resolve_wait_from_signal(repo, &1, now))
   end
 
-  defp reconcile_signals_for_signal(repo, signal_name, correlation_key, now) do
+  defp claim_workflow_signals(repo, workflow_id) do
     repo.all(
       from(await in Await,
-        where:
-          await.signal_name == ^signal_name and await.correlation_key == ^correlation_key and
-            await.status == "waiting",
+        where: await.workflow_id == ^workflow_id and await.status == "waiting",
         order_by: [asc: await.inserted_at]
       )
     )
-    |> Enum.each(&resolve_wait_from_signal(repo, &1, now))
+    |> Enum.each(fn await_row ->
+      repo.all(
+        from(signal in SignalRecord,
+          where:
+            signal.signal_name == ^await_row.signal_name and
+              signal.correlation_key == ^await_row.correlation_key and
+              signal.status in ^["unmatched", "ambiguous"] and is_nil(signal.workflow_id),
+          order_by: [asc: signal.inserted_at]
+        )
+      )
+      |> Enum.each(fn signal_record ->
+        if signal_authority_workflow_id(
+             repo,
+             signal_record.signal_name,
+             signal_record.correlation_key
+           ) ==
+             {:ok, workflow_id} do
+          repo.update!(
+            SignalRecord.changeset(signal_record, %{
+              workflow_id: workflow_id,
+              status: "recorded"
+            })
+          )
+        end
+      end)
+    end)
   end
 
   defp resolve_wait_from_signal(repo, %Await{} = await_row, now) do
@@ -830,8 +1193,10 @@ defmodule ObanPowertools.Workflow.Runtime do
       repo.one(
         from(signal in SignalRecord,
           where:
-            signal.signal_name == ^await_row.signal_name and
-              signal.correlation_key == ^await_row.correlation_key and signal.status == "pending",
+            signal.workflow_id == ^await_row.workflow_id and
+              signal.signal_name == ^await_row.signal_name and
+              signal.correlation_key == ^await_row.correlation_key and
+              signal.status == "recorded",
           order_by: [asc: signal.inserted_at],
           limit: 1
         )
@@ -869,6 +1234,7 @@ defmodule ObanPowertools.Workflow.Runtime do
             state: "available",
             blocker_codes: [],
             blocker_details: %{},
+            active_await_id: nil,
             awaiting_signal_name: nil,
             await_correlation_key: nil,
             await_dedupe_key: nil,
@@ -880,22 +1246,27 @@ defmodule ObanPowertools.Workflow.Runtime do
     end
   end
 
-  defp mark_signal_late_if_expired(repo, %SignalRecord{} = signal_record) do
-    expired_wait? =
-      repo.exists?(
+  defp mark_late_signals_for_workflow(repo, workflow_id) do
+    expired_pairs =
+      repo.all(
         from(await in Await,
-          where:
-            await.signal_name == ^signal_record.signal_name and
-              await.correlation_key == ^signal_record.correlation_key and
-              await.status == "expired"
+          where: await.workflow_id == ^workflow_id and await.status == "expired",
+          select: {await.signal_name, await.correlation_key}
         )
       )
+      |> MapSet.new()
 
-    if expired_wait? and signal_record.status == "pending" do
-      repo.update!(SignalRecord.changeset(signal_record, %{status: "late"}))
-    else
-      signal_record
-    end
+    repo.all(
+      from(signal in SignalRecord,
+        where: signal.workflow_id == ^workflow_id and signal.status == "recorded",
+        order_by: [asc: signal.inserted_at]
+      )
+    )
+    |> Enum.each(fn signal_record ->
+      if MapSet.member?(expired_pairs, {signal_record.signal_name, signal_record.correlation_key}) do
+        repo.update!(SignalRecord.changeset(signal_record, %{status: "late"}))
+      end
+    end)
   end
 
   defp refresh_workflow(repo, workflow_id, now) do
@@ -1012,6 +1383,7 @@ defmodule ObanPowertools.Workflow.Runtime do
       blocker_codes: [],
       blocker_details: %{},
       terminal_cause: nil,
+      active_await_id: nil,
       awaiting_signal_name: nil,
       await_correlation_key: nil,
       await_dedupe_key: nil,
@@ -1054,10 +1426,8 @@ defmodule ObanPowertools.Workflow.Runtime do
         "workflow.terminal",
         "#{new_workflow.state}:#{new_workflow.terminal_cause}",
         %{
-          "workflow_id" => new_workflow.id,
           "state" => new_workflow.state,
           "terminal_cause" => new_workflow.terminal_cause,
-          "semantics_version" => new_workflow.semantics_version,
           "cancel_requested_at" => datetime_or_nil(new_workflow.cancel_requested_at),
           "finished_at" => datetime_or_nil(new_workflow.finished_at)
         },
@@ -1068,14 +1438,40 @@ defmodule ObanPowertools.Workflow.Runtime do
     end
   end
 
+  defp emit_workflow_terminal_event(%Workflow{} = old_workflow, %Workflow{} = new_workflow) do
+    if new_workflow.state in ["completed", "cancelled", "expired", "failed"] and
+         (old_workflow.state != new_workflow.state or
+            old_workflow.terminal_cause != new_workflow.terminal_cause) do
+      Telemetry.execute_workflow_event(:workflow_terminal, %{count: 1}, %{
+        state: new_workflow.state,
+        outcome: "terminal",
+        terminal_cause: new_workflow.terminal_cause,
+        semantics_version: new_workflow.semantics_version
+      })
+    end
+  end
+
   defp enqueue_callback(repo, workflow, event, dedupe_suffix, payload, now \\ DateTime.utc_now()) do
-    %CallbackOutbox{}
+    callback_id = Ecto.UUID.generate()
+
+    %CallbackOutbox{id: callback_id}
     |> CallbackOutbox.changeset(%{
       workflow_id: workflow.id,
       event: event,
       dedupe_key: "#{workflow.id}:#{event}:#{dedupe_suffix}",
       status: "pending",
-      payload: payload,
+      payload:
+        Map.merge(
+          %{
+            "callback_id" => callback_id,
+            "event" => event,
+            "workflow_id" => workflow.id,
+            "semantics_version" => workflow.semantics_version,
+            "envelope_version" => @callback_envelope_version,
+            "occurred_at" => datetime_or_nil(now)
+          },
+          payload
+        ),
       attempts: 0,
       available_at: now
     })
@@ -1091,14 +1487,6 @@ defmodule ObanPowertools.Workflow.Runtime do
       else: "cancel_requested"
   end
 
-  defp get_step!(repo, workflow_id, step_name) do
-    repo.one!(
-      from(step in Step,
-        where: step.workflow_id == ^workflow_id and step.step_name == ^to_string(step_name)
-      )
-    )
-  end
-
   defp snapshot_for(dependencies) do
     %{
       "dependencies" =>
@@ -1112,6 +1500,8 @@ defmodule ObanPowertools.Workflow.Runtime do
         end)
     }
   end
+
+  defp step_snapshot(nil), do: nil
 
   defp step_snapshot(step) do
     %{
@@ -1131,6 +1521,136 @@ defmodule ObanPowertools.Workflow.Runtime do
     }
   end
 
+  defp command_attempt_attrs(command, status, opts) do
+    workflow = Map.get(command, :workflow)
+    step = Map.get(command, :step)
+    signal_record = Keyword.get(opts, :signal_record)
+
+    %{
+      workflow_id: workflow && workflow.id,
+      step_id: step && step.id,
+      signal_record_id: signal_record && signal_record.id,
+      scope: command.scope,
+      action: command_action_name(command),
+      status: status,
+      reason_code: Keyword.get(opts, :reason_code),
+      reason_message: Keyword.get(opts, :reason_message),
+      actor_id: command.actor_id,
+      source: command.source,
+      requested_at: command.requested_at,
+      completed_at: Keyword.get(opts, :completed_at, command.requested_at),
+      before_snapshot: command_before_snapshot(command),
+      after_snapshot: Keyword.get(opts, :after_snapshot, %{}),
+      metadata: Keyword.get(opts, :metadata, %{})
+    }
+  end
+
+  defp command_before_snapshot(%{scope: "signal"}), do: %{}
+
+  defp command_before_snapshot(command) do
+    %{}
+    |> maybe_put("workflow", workflow_snapshot(Map.get(command, :workflow)))
+    |> maybe_put("step", step_snapshot(Map.get(command, :step)))
+  end
+
+  defp workflow_snapshot(nil), do: nil
+
+  defp workflow_snapshot(%Workflow{} = workflow) do
+    %{
+      "workflow_id" => workflow.id,
+      "workflow_state" => workflow.state,
+      "semantics_version" => workflow.semantics_version,
+      "terminal_cause" => workflow.terminal_cause
+    }
+  end
+
+  defp command_action_name(%{action: "recover_step", recovery_action: action}),
+    do: "recover_step:#{action}"
+
+  defp command_action_name(%{action: action}), do: action
+
+  defp canonical_signal_attrs(repo, signal_name, correlation_key, dedupe_key, payload, now) do
+    case signal_authority_workflow_id(repo, signal_name, correlation_key) do
+      {:ok, workflow_id} ->
+        %{
+          workflow_id: workflow_id,
+          signal_name: signal_name,
+          correlation_key: correlation_key,
+          dedupe_key: dedupe_key,
+          payload: payload,
+          status: "recorded",
+          received_at: now
+        }
+
+      :ambiguous ->
+        %{
+          signal_name: signal_name,
+          correlation_key: correlation_key,
+          dedupe_key: dedupe_key,
+          payload: payload,
+          status: "ambiguous",
+          received_at: now
+        }
+
+      :unmatched ->
+        %{
+          signal_name: signal_name,
+          correlation_key: correlation_key,
+          dedupe_key: dedupe_key,
+          payload: payload,
+          status: "unmatched",
+          received_at: now
+        }
+    end
+  end
+
+  defp reconcile_signal_record(_repo, %SignalRecord{workflow_id: nil} = signal_record, _now),
+    do: signal_record
+
+  defp reconcile_signal_record(repo, %SignalRecord{workflow_id: workflow_id, id: signal_id}, now) do
+    _ = reconcile_workflow(repo, workflow_id, now)
+    repo.get!(SignalRecord, signal_id)
+  end
+
+  defp signal_authority_workflow_id(repo, signal_name, correlation_key) do
+    workflow_ids =
+      repo.all(
+        from(await in Await,
+          where:
+            await.signal_name == ^signal_name and await.correlation_key == ^correlation_key and
+              await.status in ^["waiting", "expired"],
+          select: await.workflow_id,
+          distinct: true
+        )
+      )
+
+    case workflow_ids do
+      [workflow_id] -> {:ok, workflow_id}
+      [] -> :unmatched
+      _ -> :ambiguous
+    end
+  end
+
+  defp persist_signal_attempt(repo, command, signal_record, status, opts \\ []) do
+    %CommandAttempt{}
+    |> CommandAttempt.changeset(
+      command_attempt_attrs(command, status,
+        signal_record: signal_record,
+        reason_code: Keyword.get(opts, :reason_code),
+        reason_message: Keyword.get(opts, :reason_message),
+        metadata: %{
+          "signal_name" => signal_record.signal_name,
+          "correlation_key" => signal_record.correlation_key,
+          "dedupe_key" => signal_record.dedupe_key
+        }
+      )
+    )
+    |> repo.insert()
+  end
+
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
+
   defp deadline_iso8601(nil), do: nil
   defp deadline_iso8601(%DateTime{} = value), do: DateTime.to_iso8601(value)
   defp datetime_or_nil(nil), do: nil
@@ -1139,6 +1659,139 @@ defmodule ObanPowertools.Workflow.Runtime do
 
   defp semantics_version_of(%Workflow{semantics_version: version}) when is_integer(version),
     do: version
+
+  defp command_timestamp(%{action: "complete_step"}, attrs),
+    do: read_value(attrs, :recorded_at, DateTime.utc_now())
+
+  defp command_timestamp(%{action: "await_step"}, attrs),
+    do: read_value(attrs, :registered_at, DateTime.utc_now())
+
+  defp command_timestamp(%{action: "deliver_signal"}, attrs),
+    do: read_value(attrs, :received_at, DateTime.utc_now())
+
+  defp command_timestamp(%{action: "request_cancel"}, attrs),
+    do: read_value(attrs, :requested_at, DateTime.utc_now())
+
+  defp command_timestamp(%{action: "recover_step"}, attrs),
+    do: read_value(attrs, :requested_at, DateTime.utc_now())
+
+  defp claim_callbacks(repo, now, dispatcher_id, lease_seconds, limit) do
+    repo.transaction(fn ->
+      lease_expires_at = DateTime.add(now, lease_seconds, :second)
+
+      rows =
+        repo.all(
+          from(callback in CallbackOutbox,
+            where:
+              callback.status in ["pending", "failed", "claimed"] and
+                (is_nil(callback.available_at) or callback.available_at <= ^now) and
+                (is_nil(callback.lease_expires_at) or callback.lease_expires_at <= ^now),
+            order_by: [asc: callback.available_at, asc: callback.inserted_at],
+            limit: ^limit,
+            lock: "FOR UPDATE SKIP LOCKED"
+          )
+        )
+
+      Enum.map(rows, fn row ->
+        {:ok, claimed} =
+          row
+          |> CallbackOutbox.changeset(%{
+            status: "claimed",
+            claimed_at: now,
+            claimed_by: dispatcher_id,
+            lease_expires_at: lease_expires_at
+          })
+          |> repo.update()
+
+        claimed
+      end)
+    end)
+    |> case do
+      {:ok, rows} -> rows
+      {:error, _reason} -> []
+    end
+  end
+
+  defp command_source(attrs, fallback) do
+    cond do
+      source = blank_to_nil(read_value(attrs, :source)) -> source
+      blank_to_nil(read_value(attrs, :actor_id)) -> "operator"
+      true -> fallback
+    end
+  end
+
+  defp workflow_level_actions(%Workflow{} = workflow) do
+    if workflow_cancel_legal?(workflow) do
+      [
+        %{
+          id: "workflow_request_cancel",
+          label: "Request cancel",
+          target_type: "workflow",
+          target_id: workflow.id
+        }
+      ]
+    else
+      []
+    end
+  end
+
+  defp maybe_add_step_retry(actions, %Step{} = step) do
+    if step_retry_legal?(step) do
+      [
+        %{
+          id: "workflow_step_retry",
+          label: "Retry step",
+          target_type: "workflow_step",
+          target_id: step.id,
+          step_name: step.step_name
+        }
+        | actions
+      ]
+    else
+      actions
+    end
+  end
+
+  defp maybe_add_step_cancel(actions, %Step{} = step) do
+    if step_cancel_legal?(step) do
+      actions ++
+        [
+          %{
+            id: "workflow_step_cancel",
+            label: "Cancel step",
+            target_type: "workflow_step",
+            target_id: step.id,
+            step_name: step.step_name
+          }
+        ]
+    else
+      actions
+    end
+  end
+
+  defp workflow_cancel_legal?(%Workflow{} = workflow) do
+    workflow.state in ["available", "pending", "running"] and
+      is_nil(workflow.cancel_requested_at) and is_nil(workflow.terminal_cause)
+  end
+
+  defp step_retry_legal?(%Step{} = step) do
+    diagnosis = step_diagnosis(step)
+
+    diagnosis in [
+      "waiting_on_dependencies",
+      "waiting_on_retryable_dependency",
+      "waiting_on_signal",
+      "cancel_requested"
+    ] or step.state in ["retryable", "pending", "available", "awaiting_signal"]
+  end
+
+  defp step_cancel_legal?(%Step{} = step) do
+    step.state in ["pending", "available", "retryable", "executing", "running", "awaiting_signal"] and
+      is_nil(step.cancelled_at)
+  end
+
+  defp step_terminal?(%Step{} = step),
+    do: step.state in @terminal_states or step.state in @success_states
 
   defp normalize_status(status) when is_atom(status), do: Atom.to_string(status)
   defp normalize_status(status) when is_binary(status), do: status

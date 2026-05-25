@@ -7,7 +7,12 @@ defmodule ObanPowertools.TelemetryTest do
       operator_action: [:action, :source],
       limiter: [:action, :blocker_code, :resource, :scope],
       cron: [:action, :source, :overlap_policy, :catch_up_policy],
-      workflow: [:status, :state],
+      workflow: %{
+        step_completed: [:outcome, :terminal_cause, :semantics_version],
+        step_unblocked: [:scope, :state, :semantics_version],
+        cascade_cancelled: [:scope, :outcome, :terminal_cause, :semantics_version],
+        workflow_terminal: [:state, :outcome, :terminal_cause, :semantics_version]
+      },
       lifeline: [:action, :incident_class, :target_type, :outcome, :archived_count, :pruned_count]
     }
   }
@@ -62,7 +67,7 @@ defmodule ObanPowertools.TelemetryTest do
     :telemetry.detach("limiter-handler")
   end
 
-  test "emits workflow events" do
+  test "emits workflow step_completed events with bounded metadata" do
     :telemetry.attach(
       "workflow-handler",
       [:oban_powertools, :workflow, :step_completed],
@@ -72,12 +77,45 @@ defmodule ObanPowertools.TelemetryTest do
       nil
     )
 
-    ObanPowertools.Telemetry.execute_workflow_event(:step_completed, %{count: 1}, %{status: "completed"})
+    metadata = %{outcome: "completed", terminal_cause: "completed", semantics_version: 2}
+
+    ObanPowertools.Telemetry.execute_workflow_event(:step_completed, %{count: 1}, metadata)
 
     assert_receive {:workflow_event, [:oban_powertools, :workflow, :step_completed], %{count: 1},
-                    %{status: "completed"}}
+                    ^metadata}
+
+    assert Map.keys(metadata) |> Enum.sort() ==
+             Enum.sort(@expected_contract.families.workflow.step_completed)
   after
     :telemetry.detach("workflow-handler")
+  end
+
+  test "emits workflow_terminal events with bounded metadata" do
+    :telemetry.attach(
+      "workflow-terminal-handler",
+      [:oban_powertools, :workflow, :workflow_terminal],
+      fn name, measurements, metadata, _config ->
+        send(self(), {:workflow_terminal_event, name, measurements, metadata})
+      end,
+      nil
+    )
+
+    metadata = %{
+      state: "completed",
+      outcome: "terminal",
+      terminal_cause: "completed_after_cancel_request",
+      semantics_version: 2
+    }
+
+    ObanPowertools.Telemetry.execute_workflow_event(:workflow_terminal, %{count: 1}, metadata)
+
+    assert_receive {:workflow_terminal_event, [:oban_powertools, :workflow, :workflow_terminal],
+                    %{count: 1}, ^metadata}
+
+    assert Map.keys(metadata) |> Enum.sort() ==
+             Enum.sort(@expected_contract.families.workflow.workflow_terminal)
+  after
+    :telemetry.detach("workflow-terminal-handler")
   end
 
   test "emits cron events within documented metadata boundaries" do
@@ -126,8 +164,8 @@ defmodule ObanPowertools.TelemetryTest do
 
     ObanPowertools.Telemetry.execute_lifeline_event(:repair_completed, %{count: 1}, metadata)
 
-    assert_receive {:lifeline_event, [:oban_powertools, :lifeline, :repair_completed], %{count: 1},
-                    ^metadata}
+    assert_receive {:lifeline_event, [:oban_powertools, :lifeline, :repair_completed],
+                    %{count: 1}, ^metadata}
 
     assert Map.keys(metadata) |> Enum.sort() == Enum.sort(@expected_contract.families.lifeline)
   after

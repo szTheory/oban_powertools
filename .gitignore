@@ -13,6 +13,10 @@
 # Temporary files, for example, from tests.
 /tmp/
 
+# Local agent and Finder scratch.
+.DS_Store
+/_build_phase23/
+
 # If the VM crashes, it generates a dump, let's ignore it too.
 erl_crash.dump
 
@@ -21,4 +25,3 @@ erl_crash.dump
 
 # Ignore package tarball (built via "mix hex.build").
 oban_powertools-*.tar
-

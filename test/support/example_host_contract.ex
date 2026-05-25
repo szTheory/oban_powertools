@@ -9,6 +9,12 @@ defmodule ObanPowertools.ExampleHostContract do
   @first_session_test_rel_path "test/phoenix_host_web/oban_powertools_first_session_test.exs"
   @conn_case_rel_path "test/support/conn_case.ex"
   @data_case_rel_path "test/support/data_case.ex"
+  @workflow_migration_rel_paths [
+    "priv/repo/migrations/20260522000020_oban_powertools_workflows.exs",
+    "priv/repo/migrations/20260522000021_oban_powertools_workflow_steps.exs",
+    "priv/repo/migrations/20260522000024_oban_powertools_workflow_semantics.exs",
+    "priv/repo/migrations/20260522000025_oban_powertools_workflow_command_attempts.exs"
+  ]
 
   def prepare_host!(lane) do
     fixture_dir =
@@ -65,6 +71,7 @@ defmodule ObanPowertools.ExampleHostContract do
     reset_output = run!(dir, [{"MIX_ENV", "test"}], "mix", ["ecto.reset"])
     seeds_output = run!(dir, [{"MIX_ENV", "test"}], "mix", ["run", "priv/repo/seeds.exs"])
     render_output = maybe_run_bridge_smoke(dir, lane)
+    phase_19_output = maybe_run_phase_19_upgrade_proof(dir, lane)
     proof_output = maybe_run_upgrade_proof(dir, lane)
 
     %{
@@ -73,6 +80,7 @@ defmodule ObanPowertools.ExampleHostContract do
       reset_output: reset_output,
       seeds_output: seeds_output,
       render_output: render_output,
+      phase_19_output: phase_19_output,
       proof_output: proof_output
     }
   end
@@ -146,9 +154,60 @@ defmodule ObanPowertools.ExampleHostContract do
 
   defp maybe_run_upgrade_proof(_dir, _lane), do: nil
 
+  defp maybe_run_phase_19_upgrade_proof(dir, "upgrade") do
+    script = """
+    alias ObanPowertools.Workflow
+    alias ObanPowertools.Workflow.{Await, SignalRecord, Step}
+    alias PhoenixHost.Repo
+
+    workflow =
+      Workflow.new(name: "phase19-upgrade-proof")
+      |> Workflow.add(:approval, %{worker: "ApprovalWorker", input: %{}, queue: "default"})
+
+    {:ok, workflow} = Workflow.insert(workflow, Repo)
+
+    {:ok, _await} =
+      Workflow.await_step(Repo, workflow.id, :approval,
+        signal_name: "approval_received",
+        correlation_key: workflow.id,
+        dedupe_key: "phase19-upgrade-proof"
+      )
+
+    step = Repo.get_by!(Step, workflow_id: workflow.id, step_name: "approval")
+    await_row = Repo.get_by!(Await, workflow_id: workflow.id, step_id: step.id)
+
+    if step.state != "awaiting_signal" or step.active_await_id != await_row.id do
+      raise "expected upgrade proof wait registration to keep an active await pointer"
+    end
+
+    {:ok, _signal} =
+      Workflow.deliver_signal(Repo,
+        signal_name: "approval_received",
+        correlation_key: workflow.id,
+        dedupe_key: "phase19-upgrade-proof",
+        payload: %{approved_by: "ops-demo"}
+      )
+
+    step = Repo.get_by!(Step, workflow_id: workflow.id, step_name: "approval")
+    await_row = Repo.get!(Await, await_row.id)
+    signal = Repo.get_by!(SignalRecord, dedupe_key: "phase19-upgrade-proof")
+
+    if step.state != "available" or signal.status != "consumed" or await_row.status != "resolved" do
+      raise "expected upgrade proof wait rows to reconcile under the phase19 contract"
+    end
+
+    IO.puts("phase19-upgrade-proof active_await_id waiting_signal consumed resolved")
+    """
+
+    run!(dir, [{"MIX_ENV", "test"}], "mix", ["run", "-e", script])
+  end
+
+  defp maybe_run_phase_19_upgrade_proof(_dir, _lane), do: nil
+
   defp prepare_upgrade_lane!(dir) do
     add_display_policy_config!(dir)
     restore_display_policy_file!(dir)
+    restore_current_workflow_migrations!(dir)
     materialize_native_proof_files!(dir)
   end
 
@@ -185,6 +244,12 @@ defmodule ObanPowertools.ExampleHostContract do
     copy_from_current_fixture!(@first_session_test_rel_path, Path.join(dir, @first_session_test_rel_path))
     copy_from_current_fixture!(@conn_case_rel_path, Path.join(dir, @conn_case_rel_path))
     copy_from_current_fixture!(@data_case_rel_path, Path.join(dir, @data_case_rel_path))
+  end
+
+  defp restore_current_workflow_migrations!(dir) do
+    Enum.each(@workflow_migration_rel_paths, fn relative_path ->
+      copy_from_current_fixture!(relative_path, Path.join(dir, relative_path))
+    end)
   end
 
   defp copy_from_current_fixture!(relative_path, target) do

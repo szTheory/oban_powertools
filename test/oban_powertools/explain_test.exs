@@ -66,5 +66,42 @@ defmodule ObanPowertools.ExplainTest do
            ]
   end
 
+  test "workflow story surfaces callback posture and latest recovery session" do
+    {:ok, workflow} =
+      WorkflowFixtures.workflow_fixture(name: "story-workflow") |> Workflow.insert(repo())
+
+    assert {:ok, _step} =
+             Workflow.recover_step(repo(), workflow.id, :sync_billing, :retry,
+               actor_id: "ops-1",
+               reason: "manual retry"
+             )
+
+    steps =
+      repo().all(
+        Ecto.Query.from(step in ObanPowertools.Workflow.Step,
+          where: step.workflow_id == ^workflow.id,
+          order_by: step.position
+        )
+      )
+
+    story =
+      Explain.workflow_story(
+        repo().get!(ObanPowertools.Workflow.Workflow, workflow.id),
+        steps,
+        repo: repo()
+      )
+
+    assert story.callback_posture.total >= 1
+    assert story.latest_recovery_session.id
+    assert story.latest_recovery_session.trigger == "recover_step"
+    assert Enum.any?(story.executable_actions, &(&1.id == "workflow_request_cancel"))
+
+    step = Enum.find(steps, &(&1.step_name == "sync_billing"))
+    step_story = Explain.step_story(step, repo: repo())
+
+    assert Enum.any?(step_story.executable_actions, &(&1.id == "workflow_step_retry"))
+    assert Enum.any?(step_story.executable_actions, &(&1.id == "workflow_step_cancel"))
+  end
+
   defp repo, do: ObanPowertools.TestRepo
 end

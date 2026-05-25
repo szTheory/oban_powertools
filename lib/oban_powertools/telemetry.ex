@@ -18,7 +18,11 @@ defmodule ObanPowertools.Telemetry do
   - `:operator_action` -> `[:action, :source]`
   - `:limiter` -> `[:action, :blocker_code, :resource, :scope]`
   - `:cron` -> `[:action, :source, :overlap_policy, :catch_up_policy]`
-  - `:workflow` -> `[:status, :state]`
+  - `:workflow` ->
+    - `:step_completed` -> `[:outcome, :terminal_cause, :semantics_version]`
+    - `:step_unblocked` -> `[:scope, :state, :semantics_version]`
+    - `:cascade_cancelled` -> `[:scope, :outcome, :terminal_cause, :semantics_version]`
+    - `:workflow_terminal` -> `[:state, :outcome, :terminal_cause, :semantics_version]`
   - `:lifeline` -> `[:action, :incident_class, :target_type, :outcome, :archived_count, :pruned_count]`
 
   IDs, job args, preview tokens, and free-form reasons are intentionally excluded from this
@@ -31,7 +35,12 @@ defmodule ObanPowertools.Telemetry do
       operator_action: [:action, :source],
       limiter: [:action, :blocker_code, :resource, :scope],
       cron: [:action, :source, :overlap_policy, :catch_up_policy],
-      workflow: [:status, :state],
+      workflow: %{
+        step_completed: [:outcome, :terminal_cause, :semantics_version],
+        step_unblocked: [:scope, :state, :semantics_version],
+        cascade_cancelled: [:scope, :outcome, :terminal_cause, :semantics_version],
+        workflow_terminal: [:state, :outcome, :terminal_cause, :semantics_version]
+      },
       lifeline: [:action, :incident_class, :target_type, :outcome, :archived_count, :pruned_count]
     }
   }

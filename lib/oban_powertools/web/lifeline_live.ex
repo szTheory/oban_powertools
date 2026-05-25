@@ -6,10 +6,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     import Ecto.Query
 
-    alias ObanPowertools.{Audit, DisplayPolicy, Lifeline}
+    alias ObanPowertools.{Audit, DisplayPolicy, Explain, Lifeline}
     alias ObanPowertools.Lifeline.{ArchiveRun, Incident, RepairPreview}
     alias ObanPowertools.Web.LiveAuth
-    alias ObanPowertools.Workflow.Step
+    alias ObanPowertools.Workflow.{Step, Workflow}
 
     @impl true
     def mount(_params, %{"oban_dashboard_path" => dashboard_path}, socket) do
@@ -30,6 +30,14 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       else
         {:error, socket} -> {:ok, socket}
       end
+    end
+
+    @impl true
+    def handle_params(params, _uri, socket) do
+      {:noreply,
+       socket
+       |> assign(:success_message, nil)
+       |> load_data(selection_from_params(params))}
     end
 
     @impl true
@@ -82,17 +90,19 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
          |> assign(:target_detail, load_target_detail(row))}
       else
         {:error, :preview_not_available} ->
-          {:noreply, assign(socket, :error_message, LiveAuth.mutation_error(:preview_not_available))}
+          {:noreply,
+           assign(socket, :error_message, LiveAuth.mutation_error(:preview_not_available))}
 
         {:error, :heartbeat_late} ->
-          {:noreply, assign(socket, :error_message, LiveAuth.mutation_error(:preview_not_available))}
+          {:noreply,
+           assign(socket, :error_message, LiveAuth.mutation_error(:preview_not_available))}
 
         {:error, :repair_requires_missing_executor} ->
-          {:noreply, assign(socket, :error_message, LiveAuth.mutation_error(:preview_not_available))}
+          {:noreply,
+           assign(socket, :error_message, LiveAuth.mutation_error(:preview_not_available))}
 
         {:error, :unauthorized} ->
-          {:noreply,
-           assign(socket, :error_message, LiveAuth.permission_message(:preview_repair))}
+          {:noreply, assign(socket, :error_message, LiveAuth.permission_message(:preview_repair))}
 
         {:error, reason} ->
           {:noreply, assign(socket, :error_message, error_message(reason))}
@@ -123,17 +133,26 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                preview.preview_token,
                socket.assigns.reason
              ) do
-         {:noreply,
+        next_selection =
+          if row.incident.id do
+            %{view: "resolved", incident_fingerprint: preview.incident_fingerprint}
+          else
+            %{
+              view: "active",
+              workflow_id: row.workflow_id,
+              step_name: row.step_name,
+              action: row.action
+            }
+          end
+
+        {:noreply,
          socket
          |> assign(:reason, "")
          |> assign(:error_message, nil)
          |> assign(:success_message, "Repair executed and audit evidence was written.")
          |> assign(:preview, nil)
          |> assign(:preview_state, :idle)
-         |> load_data(%{
-           view: "resolved",
-           incident_fingerprint: preview.incident_fingerprint
-         })}
+         |> load_data(next_selection)}
       else
         {:error, :preview_drifted} ->
           drifted_preview = repo().get_by!(RepairPreview, preview_token: preview.preview_token)
@@ -158,8 +177,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           {:noreply, assign(socket, :error_message, LiveAuth.mutation_error(:preview_consumed))}
 
         {:error, :unauthorized} ->
-          {:noreply,
-           assign(socket, :error_message, LiveAuth.permission_message(:execute_repair))}
+          {:noreply, assign(socket, :error_message, LiveAuth.permission_message(:execute_repair))}
 
         {:error, reason} ->
           {:noreply, assign(socket, :error_message, error_message(reason))}
@@ -325,6 +343,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                   <h3 class="text-sm font-medium">Proposed State Changes</h3>
                   <div class="mt-2 rounded border bg-slate-50 p-3 text-sm">
                     <%= if @preview do %>
+                      <p><strong>Plan Summary:</strong> <%= get_in(@preview.metadata, ["summary"]) %></p>
+                      <p :if={get_in(@preview.metadata, ["diagnosis"])} class="mt-1">
+                        <strong>Diagnosis:</strong> <%= get_in(@preview.metadata, ["diagnosis"]) %>
+                      </p>
                       <div><strong>Before:</strong> <%= state_copy(@preview.before_snapshot) %></div>
                       <div class="mt-1"><strong>After:</strong> <%= state_copy(@preview.after_snapshot) %></div>
                     <% else %>
@@ -486,6 +508,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         |> Lifeline.list_incidents(status: "active")
         |> then(&expand_rows(repo, &1))
 
+      workflow_handoff_row = workflow_handoff_row(repo, selection)
+      active_incident_rows = prepend_handoff_row(active_incident_rows, workflow_handoff_row)
+
       resolved_incident_rows =
         repo
         |> Lifeline.list_incidents(status: "resolved")
@@ -507,7 +532,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           find_pending_preview(repo, selected_row)
         end
 
-      preview_state = preview && preview_state(preview) || :idle
+      preview_state = (preview && preview_state(preview)) || :idle
       retention = Lifeline.retention_status(repo)
 
       socket
@@ -520,8 +545,11 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> assign(:preview, preview)
       |> assign(:preview_state, preview_state)
       |> assign(:read_only?, read_only_page?(socket.assigns.current_actor, visible_incident_rows))
-      |> assign(:audit_events, selected_row && audit_events_for_row(selected_row) || [])
-      |> assign(:target_detail, selected_row && load_target_detail(selected_row) || %{job_id: nil})
+      |> assign(:audit_events, (selected_row && audit_events_for_row(selected_row)) || [])
+      |> assign(
+        :target_detail,
+        (selected_row && load_target_detail(selected_row)) || %{job_id: nil}
+      )
       |> assign(:retention, retention)
     end
 
@@ -533,7 +561,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp expand_rows(repo, incidents) do
       incidents
       |> Enum.flat_map(&incident_rows(repo, &1))
-      |> Enum.sort_by(fn row -> {severity_rank(row.incident), -(DateTime.to_unix(row.incident.last_detected_at || row.incident.inserted_at, :second))} end)
+      |> Enum.sort_by(fn row ->
+        {severity_rank(row.incident),
+         -DateTime.to_unix(row.incident.last_detected_at || row.incident.inserted_at, :second)}
+      end)
     end
 
     defp incident_rows(_repo, %Incident{incident_class: "dead_executor"} = incident) do
@@ -570,26 +601,40 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       end
     end
 
-    defp incident_rows(repo, %Incident{incident_class: "workflow_stuck", workflow_step_id: step_id} = incident) do
+    defp incident_rows(
+           repo,
+           %Incident{incident_class: "workflow_stuck", workflow_step_id: step_id} = incident
+         ) do
       step = repo.get(Step, step_id)
-      step_name = step && step.step_name || Map.get(incident.evidence || %{}, "step_name", "workflow step")
+
+      step_name =
+        (step && step.step_name) ||
+          Map.get(incident.evidence || %{}, "step_name", "workflow step")
+
+      story = step && Explain.step_story(step, repo: repo)
+      action = primary_workflow_action((story && story.executable_actions) || [])
 
       [
         %{
           id: "#{incident.id}:workflow_step:#{step_id}",
           incident: incident,
-          action: "workflow_step_retry",
+          action: action.id,
           target_type: "workflow_step",
           target_id: to_string(step_id),
           target_summary: "#{step_name} in workflow #{incident.workflow_id}",
           previewable?: true,
-          resource: %{type: :workflow_step, id: to_string(step_id)}
+          resource: %{type: :workflow_step, id: to_string(step_id)},
+          workflow_id: incident.workflow_id,
+          step_name: step_name,
+          action_label: action.label
         }
       ]
     end
 
     defp pick_view_and_row(active_rows, resolved_rows, nil, current_view) do
-      default_view = if current_view == "resolved" and resolved_rows != [], do: "resolved", else: "active"
+      default_view =
+        if current_view == "resolved" and resolved_rows != [], do: "resolved", else: "active"
+
       rows = rows_for_view(default_view, active_rows, resolved_rows)
       {default_view, List.first(rows)}
     end
@@ -647,19 +692,30 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp find_pending_preview(repo, row) do
-      repo.one(
+      base_query =
         from(preview in RepairPreview,
           where:
-            preview.incident_id == ^row.incident.id and preview.action == ^row.action and
-              preview.target_type == ^row.target_type and preview.target_id == ^row.target_id and
-              preview.status in ["pending", "drifted"],
+            preview.action == ^row.action and preview.target_type == ^row.target_type and
+              preview.target_id == ^row.target_id and
+              preview.status in ["ready", "drifted", "expired", "consumed"],
           order_by: [desc: preview.inserted_at],
           limit: 1
         )
-      )
+
+      query =
+        if row.incident.id do
+          from(preview in base_query, where: preview.incident_id == ^row.incident.id)
+        else
+          from(preview in base_query,
+            where: preview.incident_fingerprint == ^row.incident.incident_fingerprint
+          )
+        end
+
+      repo.one(query)
     end
 
-    defp load_target_detail(%{target_type: "job", target_id: target_id}), do: %{job_id: String.to_integer(target_id)}
+    defp load_target_detail(%{target_type: "job", target_id: target_id}),
+      do: %{job_id: String.to_integer(target_id)}
 
     defp load_target_detail(%{target_type: "workflow_step", target_id: target_id}) do
       case repo().get(Step, target_id) do
@@ -667,6 +723,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         step -> %{job_id: step.job_id}
       end
     end
+
+    defp load_target_detail(%{target_type: "workflow"}), do: %{job_id: nil}
 
     defp audit_events_for_row(row) do
       Audit.list_all(repo: repo())
@@ -680,7 +738,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp ensure_previewable(%{previewable?: true}), do: :ok
     defp ensure_previewable(_row), do: {:error, :preview_not_available}
 
-    defp find_row!(rows, row_id), do: Enum.find(rows, &(&1.id == row_id)) || raise("incident row not found")
+    defp find_row!(rows, row_id),
+      do: Enum.find(rows, &(&1.id == row_id)) || raise("incident row not found")
 
     defp selected_fingerprint(nil), do: nil
     defp selected_fingerprint(row), do: row.incident.incident_fingerprint
@@ -715,7 +774,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         not LiveAuth.authorized?(actor, :execute_repair, row.resource) ->
           %{enabled?: false, disabled_reason: LiveAuth.permission_message(:execute_repair)}
 
-        preview.status != "pending" ->
+        preview.status != "ready" ->
           %{enabled?: false, disabled_reason: LiveAuth.mutation_error(:mutation_conflict)}
 
         String.trim(reason) == "" ->
@@ -730,13 +789,30 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp preview_state(%RepairPreview{status: "drifted"}), do: :drifted
+    defp preview_state(%RepairPreview{status: "expired"}), do: :expired
+    defp preview_state(%RepairPreview{status: "consumed"}), do: :consumed
     defp preview_state(%RepairPreview{}), do: :ready
 
-    defp preview_badge_class(:ready), do: "rounded border border-indigo-300 bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700"
-    defp preview_badge_class(:drifted), do: "rounded border border-amber-300 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-800"
+    defp preview_badge_class(:ready),
+      do:
+        "rounded border border-indigo-300 bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700"
+
+    defp preview_badge_class(:drifted),
+      do:
+        "rounded border border-amber-300 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-800"
+
+    defp preview_badge_class(:expired),
+      do:
+        "rounded border border-slate-300 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700"
+
+    defp preview_badge_class(:consumed),
+      do:
+        "rounded border border-emerald-300 bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700"
 
     defp preview_badge_copy(:ready), do: "Preview Ready"
     defp preview_badge_copy(:drifted), do: "Preview Drifted"
+    defp preview_badge_copy(:expired), do: "Preview Expired"
+    defp preview_badge_copy(:consumed), do: "Preview Consumed"
 
     defp severity_rank(%Incident{incident_class: "dead_executor", health_state: "missing"}), do: 0
     defp severity_rank(%Incident{incident_class: "workflow_stuck"}), do: 1
@@ -745,10 +821,20 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp health_label(nil), do: "Needs Review"
     defp health_label(state), do: Lifeline.health_label(state)
 
-    defp badge_class(_health_state, "resolved"), do: "rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700"
-    defp badge_class("missing", _status), do: "rounded border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700"
-    defp badge_class("late", _status), do: "rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700"
-    defp badge_class(_health_state, _status), do: "rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700"
+    defp badge_class(_health_state, "resolved"),
+      do:
+        "rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700"
+
+    defp badge_class("missing", _status),
+      do: "rounded border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700"
+
+    defp badge_class("late", _status),
+      do:
+        "rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700"
+
+    defp badge_class(_health_state, _status),
+      do:
+        "rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700"
 
     defp incident_view_heading("resolved"), do: "Resolved Incidents"
     defp incident_view_heading(_view), do: "Needs Review"
@@ -757,19 +843,28 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       do: "Resolved incidents preserve repair outcomes and inline audit evidence after execution."
 
     defp incident_view_copy(_view),
-      do: "Active incidents keep preview, reason, and audit evidence close to the affected resource."
+      do:
+        "Active incidents keep preview, reason, and audit evidence close to the affected resource."
 
     defp empty_view_copy("resolved"), do: "No resolved incidents are available yet."
     defp empty_view_copy(_view), do: "No active incidents need review right now."
 
     defp view_toggle_class(true),
-      do: "rounded border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700"
+      do:
+        "rounded border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700"
 
     defp view_toggle_class(false),
       do: "rounded border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600"
 
-    defp detection_basis(%Incident{incident_class: "dead_executor"}), do: "Executor heartbeat evidence"
-    defp detection_basis(%Incident{incident_class: "workflow_stuck"}), do: "Workflow blocker evidence"
+    defp detection_basis(%Incident{incident_class: "dead_executor"}),
+      do: "Executor heartbeat evidence"
+
+    defp detection_basis(%Incident{incident_class: "workflow_stuck"}),
+      do: "Workflow blocker evidence"
+
+    defp detection_basis(%Incident{incident_class: "workflow_action"}),
+      do: "Workflow diagnosis evidence"
+
     defp detection_basis(_incident), do: "Incident evidence"
 
     defp heartbeat_copy(%Incident{incident_class: "dead_executor"} = incident) do
@@ -796,10 +891,17 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> Enum.join(" | ")
     end
 
-    defp affected_records_copy(%Incident{workflow_step_id: step_id, evidence: evidence}) do
+    defp affected_records_copy(%Incident{workflow_step_id: step_id, evidence: evidence})
+         when not is_nil(step_id) do
       step_name = Map.get(evidence || %{}, "step_name", "workflow step")
       blocker_codes = Map.get(evidence || %{}, "blocker_codes", [])
       "#{step_name} (#{step_id}) blocked by #{Enum.join(blocker_codes, ", ")}"
+    end
+
+    defp affected_records_copy(%Incident{workflow_id: workflow_id, evidence: evidence}) do
+      workflow_name = Map.get(evidence || %{}, "workflow_name", workflow_id)
+      diagnosis = Map.get(evidence || %{}, "diagnosis", "unknown")
+      "#{workflow_name} is currently telling the durable story #{diagnosis}"
     end
 
     defp affected_records_copy(_incident), do: "No raw records available."
@@ -816,11 +918,17 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp state_copy(%{"step_id" => id, "state" => state}),
       do: "workflow step #{id} is #{state}"
 
+    defp state_copy(%{"workflow_id" => id, "state" => state} = snapshot) do
+      diagnosis = snapshot["diagnosis"] || "none"
+      "workflow #{id} is #{state} with diagnosis #{diagnosis}"
+    end
+
     defp state_copy(snapshot) when is_map(snapshot), do: inspect(snapshot)
 
     defp resource_copy(row), do: "#{row.target_type}:#{row.target_id}"
 
-    defp count_label(counts, key), do: "#{Map.get(counts || %{}, key, 0)} #{Phoenix.Naming.humanize(key)}"
+    defp count_label(counts, key),
+      do: "#{Map.get(counts || %{}, key, 0)} #{Phoenix.Naming.humanize(key)}"
 
     defp archive_summary(nil), do: "No archive or prune runs recorded yet."
 
@@ -873,13 +981,18 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp preview_status_copy(nil), do: "preview_not_available"
-    defp preview_status_copy(%RepairPreview{status: "pending"}), do: "ready"
-    defp preview_status_copy(%RepairPreview{status: status}), do: status
+
+    defp preview_status_copy(%RepairPreview{status: status}),
+      do: RepairPreview.canonical_status(status)
 
     defp event_actor_label(event) do
       event
       |> Audit.event_principal()
-      |> DisplayPolicy.actor_label(%{surface: :lifeline, section: :audit_history, event: event.action})
+      |> DisplayPolicy.actor_label(%{
+        surface: :lifeline,
+        section: :audit_history,
+        event: event.action
+      })
     end
 
     defp event_reason(event) do
@@ -889,13 +1002,20 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp error_message(:preview_not_found), do: LiveAuth.mutation_error(:preview_not_available)
-    defp error_message(:preview_not_available), do: LiveAuth.mutation_error(:preview_not_available)
+
+    defp error_message(:preview_not_available),
+      do: LiveAuth.mutation_error(:preview_not_available)
+
     defp error_message(:preview_drifted), do: LiveAuth.mutation_error(:preview_drifted)
     defp error_message(:preview_expired), do: LiveAuth.mutation_error(:preview_expired)
     defp error_message(:preview_consumed), do: LiveAuth.mutation_error(:preview_consumed)
     defp error_message(:reason_required), do: LiveAuth.mutation_error(:reason_required)
     defp error_message(:reason_too_short), do: LiveAuth.mutation_error(:reason_too_short)
-    defp error_message(:incident_still_active), do: "The repair target changed, but the incident still has live evidence. Refresh and review the remaining active records."
+
+    defp error_message(:incident_still_active),
+      do:
+        "The repair target changed, but the incident still has live evidence. Refresh and review the remaining active records."
+
     defp error_message(:unauthorized), do: LiveAuth.mutation_error(:unauthorized)
     defp error_message(reason), do: inspect(reason)
 
@@ -912,5 +1032,122 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp repo, do: Application.fetch_env!(:oban_powertools, :repo)
+
+    defp selection_from_params(params) do
+      %{
+        view: params["view"],
+        row_id: params["row-id"],
+        incident_fingerprint: params["incident_fingerprint"],
+        workflow_id: params["workflow_id"],
+        step_name: params["step"],
+        action: params["action"]
+      }
+    end
+
+    defp workflow_handoff_row(_repo, nil), do: nil
+
+    defp workflow_handoff_row(repo, %{workflow_id: workflow_id, action: action} = selection)
+         when is_binary(workflow_id) and is_binary(action) do
+      workflow = repo.get(Workflow, workflow_id)
+      step = resolve_step(repo, workflow, Map.get(selection, :step_name))
+
+      with %Workflow{} = workflow <- workflow,
+           {:ok, row} <- build_workflow_handoff_row(repo, workflow, step, action) do
+        row
+      else
+        _ -> nil
+      end
+    end
+
+    defp workflow_handoff_row(_repo, _selection), do: nil
+
+    defp build_workflow_handoff_row(repo, workflow, step, action) do
+      steps =
+        repo.all(
+          from(workflow_step in Step,
+            where: workflow_step.workflow_id == ^workflow.id,
+            order_by: [asc: workflow_step.position]
+          )
+        )
+
+      workflow_story = Explain.workflow_story(workflow, steps, repo: repo)
+      step_story = step && Explain.step_story(step, repo: repo)
+
+      available_actions =
+        ((step_story && step_story.executable_actions) || []) ++ workflow_story.executable_actions
+
+      case Enum.find(available_actions, &(&1.id == action)) do
+        nil ->
+          :error
+
+        action_info ->
+          incident = %Incident{
+            id: nil,
+            incident_class: "workflow_action",
+            status: "active",
+            workflow_id: workflow.id,
+            workflow_step_id: step && step.id,
+            incident_fingerprint:
+              "workflow_action:#{workflow.id}:#{(step && step.id) || "workflow"}:#{action}",
+            summary: handoff_summary(workflow, step, action_info),
+            affected_counts: %{
+              "jobs" => 0,
+              "workflow_steps" => if(step, do: 1, else: workflow.step_count)
+            },
+            evidence: %{
+              "workflow_name" => workflow.name,
+              "step_name" => step && step.step_name,
+              "diagnosis" => (step_story && step_story.diagnosis) || workflow_story.diagnosis
+            }
+          }
+
+          {:ok,
+           %{
+             id: "workflow_action:#{workflow.id}:#{(step && step.id) || "workflow"}:#{action}",
+             incident: incident,
+             action: action,
+             action_label: action_info.label,
+             target_type: action_info.target_type,
+             target_id: to_string(action_info.target_id),
+             target_summary: handoff_summary(workflow, step, action_info),
+             previewable?: true,
+             resource: %{
+               type: String.to_atom(action_info.target_type),
+               id: to_string(action_info.target_id)
+             },
+             workflow_id: workflow.id,
+             step_name: step && step.step_name
+           }}
+      end
+    end
+
+    defp prepend_handoff_row(rows, nil), do: rows
+
+    defp prepend_handoff_row(rows, row) do
+      [row | Enum.reject(rows, &(&1.id == row.id))]
+    end
+
+    defp resolve_step(_repo, _workflow, nil), do: nil
+
+    defp resolve_step(repo, workflow, step_name) do
+      repo.one(
+        from(step in Step,
+          where: step.workflow_id == ^workflow.id and step.step_name == ^step_name,
+          limit: 1
+        )
+      )
+    end
+
+    defp primary_workflow_action(actions) do
+      Enum.find(actions, &(&1.id == "workflow_step_retry")) ||
+        Enum.find(actions, &(&1.id == "workflow_step_cancel")) ||
+        %{id: "workflow_step_retry", label: "Retry step"}
+    end
+
+    defp handoff_summary(workflow, nil, action_info),
+      do: "#{action_info.label} for workflow #{workflow.name || workflow.id}"
+
+    defp handoff_summary(workflow, step, action_info),
+      do: "#{action_info.label} for #{step.step_name} in workflow #{workflow.name || workflow.id}"
   end
 end

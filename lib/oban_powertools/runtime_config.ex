@@ -29,6 +29,14 @@ defmodule ObanPowertools.RuntimeConfig do
     display_policy(opts ++ [required: true])
   end
 
+  def workflow_callback_handler(opts \\ []) do
+    Keyword.get(opts, :workflow_callback_handler) || configured(:workflow_callback_handler, opts)
+  end
+
+  def workflow_callback_handler!(opts \\ []) do
+    workflow_callback_handler(opts ++ [required: true])
+  end
+
   defp configured(key, opts) do
     case Application.get_env(@app, key) do
       nil ->
@@ -54,6 +62,12 @@ defmodule ObanPowertools.RuntimeConfig do
   defp setup_error(:display_policy) do
     "Oban Powertools requires :display_policy in config :oban_powertools, " <>
       "display_policy: MyAppWeb.ObanPowertoolsDisplayPolicy before mounting policy-sensitive native operator pages."
+  end
+
+  defp setup_error(:workflow_callback_handler) do
+    "Oban Powertools requires :workflow_callback_handler in config :oban_powertools, " <>
+      "workflow_callback_handler: MyApp.ObanPowertoolsWorkflowCallbacks before dispatching " <>
+      "the post-commit, at-least-once workflow callbacks. Handlers must be idempotent."
   end
 end
 
@@ -84,6 +98,7 @@ defmodule ObanPowertools.DisplayPolicy do
   end
 
   def workflow_result(result_input, context \\ %{})
+
   def workflow_result(nil, _context) do
     %{
       available?: false,
@@ -103,7 +118,8 @@ defmodule ObanPowertools.DisplayPolicy do
           available?: true,
           summary: read_key(rendered, :summary) || default.summary,
           payload: read_key(rendered, :payload) || default.payload,
-          redacted?: read_key(rendered, :redacted?) || read_key(rendered, :redacted) || default.redacted?,
+          redacted?:
+            read_key(rendered, :redacted?) || read_key(rendered, :redacted) || default.redacted?,
           status: read_key(rendered, :status) || default.status
         }
 
@@ -171,7 +187,10 @@ defmodule ObanPowertools.DisplayPolicy do
   defp default_workflow_result(result_input) do
     summary =
       read_key(result_input, :summary) ||
-        if(read_key(result_input, :redacted), do: "Result stored with redaction metadata", else: "Result available")
+        if(read_key(result_input, :redacted),
+          do: "Result stored with redaction metadata",
+          else: "Result available"
+        )
 
     payload =
       if read_key(result_input, :redacted) do

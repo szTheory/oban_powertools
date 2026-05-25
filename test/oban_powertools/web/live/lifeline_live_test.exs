@@ -46,7 +46,8 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     assert {:error, {:redirect, %{to: "/"}}} = live(conn, "/ops/jobs/lifeline")
   end
 
-  test "renders incident-first page with preview as the only primary row action and archive activity read-only", %{conn: conn} do
+  test "renders incident-first page with preview as the only primary row action and archive activity read-only",
+       %{conn: conn} do
     insert_missing_heartbeat!("executor-missing")
     incident = insert_dead_executor_incident!("executor-missing")
     job = insert_executing_job!("executor-missing")
@@ -67,7 +68,8 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     refute has_element?(view, "button[phx-click='execute']")
   end
 
-  test "creates durable preview, requires reason for execute, and deep-links generic job inspection", %{conn: conn} do
+  test "creates durable preview, requires reason for execute, and deep-links generic job inspection",
+       %{conn: conn} do
     insert_missing_heartbeat!("executor-missing")
     incident = insert_dead_executor_incident!("executor-missing")
     job = insert_executing_job!("executor-missing")
@@ -75,7 +77,10 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
 
     conn =
       Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_lifeline, :preview_repair, :execute_repair]}
+        current_actor: %{
+          id: "ops-1",
+          permissions: [:view_lifeline, :preview_repair, :execute_repair]
+        }
       )
 
     {:ok, view, _html} = live(conn, "/ops/jobs/lifeline")
@@ -104,13 +109,18 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
   test "shows shared preview_drifted wording when target state changes after preview", %{
     conn: conn
   } do
-    {:ok, workflow} = WorkflowFixtures.workflow_fixture(name: "repair-flow") |> Workflow.insert(TestRepo)
+    {:ok, workflow} =
+      WorkflowFixtures.workflow_fixture(name: "repair-flow") |> Workflow.insert(TestRepo)
+
     step = TestRepo.get_by!(Step, workflow_id: workflow.id, step_name: "notify")
     _incident = insert_workflow_incident!(workflow.id, step.id)
 
     conn =
       Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_lifeline, :preview_repair, :execute_repair]}
+        current_actor: %{
+          id: "ops-1",
+          permissions: [:view_lifeline, :preview_repair, :execute_repair]
+        }
       )
 
     {:ok, view, _html} = live(conn, "/ops/jobs/lifeline")
@@ -134,7 +144,78 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     assert has_element?(view, "button[phx-click='execute'][disabled]")
   end
 
-  test "executes repair, moves the incident into resolved view, and preserves inline audit history across remount", %{conn: conn} do
+  test "opens directly into a workflow-directed handoff and uses the canonical ready preview status",
+       %{
+         conn: conn
+       } do
+    {:ok, workflow} =
+      WorkflowFixtures.workflow_fixture(name: "workflow-directed-lifeline")
+      |> Workflow.insert(TestRepo)
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{
+          id: "ops-1",
+          permissions: [:view_lifeline, :preview_repair, :execute_repair]
+        }
+      )
+
+    {:ok, view, html} =
+      live(
+        conn,
+        "/ops/jobs/lifeline?workflow_id=#{workflow.id}&step=sync_billing&action=workflow_step_retry"
+      )
+
+    step = TestRepo.get_by!(Step, workflow_id: workflow.id, step_name: "sync_billing")
+
+    assert html =~ "Retry step for sync_billing"
+    assert html =~ "Workflow blocker evidence"
+
+    preview_html =
+      view
+      |> element(
+        "button[phx-value-row-id='workflow_action:#{workflow.id}:#{step.id}:workflow_step_retry'][phx-click='preview']"
+      )
+      |> render_click()
+
+    assert preview_html =~ "Preview Ready"
+    assert preview_html =~ "Preview Status:"
+    assert preview_html =~ "<strong>Preview Status:</strong> ready"
+  end
+
+  test "supports workflow-level request-cancel handoff copy without incident ownership", %{
+    conn: conn
+  } do
+    {:ok, workflow} =
+      WorkflowFixtures.workflow_fixture(name: "request-cancel-handoff")
+      |> Workflow.insert(TestRepo)
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{
+          id: "ops-1",
+          permissions: [:view_lifeline, :preview_repair, :execute_repair]
+        }
+      )
+
+    {:ok, view, html} =
+      live(conn, "/ops/jobs/lifeline?workflow_id=#{workflow.id}&action=workflow_request_cancel")
+
+    assert html =~ "Request cancel for workflow"
+
+    preview_html =
+      view
+      |> element(
+        "button[phx-value-row-id='workflow_action:#{workflow.id}:workflow:workflow_request_cancel'][phx-click='preview']"
+      )
+      |> render_click()
+
+    assert preview_html =~ "Request cancel"
+    assert preview_html =~ "Idle work may stop immediately while in-flight work can still finish."
+  end
+
+  test "executes repair, moves the incident into resolved view, and preserves inline audit history across remount",
+       %{conn: conn} do
     insert_missing_heartbeat!("executor-missing")
     incident = insert_dead_executor_incident!("executor-missing")
     job = insert_executing_job!("executor-missing")
@@ -142,7 +223,10 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
 
     conn =
       Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_lifeline, :preview_repair, :execute_repair]}
+        current_actor: %{
+          id: "ops-1",
+          permissions: [:view_lifeline, :preview_repair, :execute_repair]
+        }
       )
 
     {:ok, view, _html} = live(conn, "/ops/jobs/lifeline")
@@ -163,14 +247,21 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
 
     remounted_conn =
       Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_lifeline, :preview_repair, :execute_repair]}
+        current_actor: %{
+          id: "ops-1",
+          permissions: [:view_lifeline, :preview_repair, :execute_repair]
+        }
       )
 
     {:ok, remounted_view, remounted_html} = live(remounted_conn, "/ops/jobs/lifeline")
 
     assert remounted_html =~ "Needs Review"
     refute remounted_html =~ "Rescuing orphaned job after node loss"
-    refute has_element?(remounted_view, "button[phx-value-row-id$=':job:#{job.id}'][phx-click='preview']")
+
+    refute has_element?(
+             remounted_view,
+             "button[phx-value-row-id$=':job:#{job.id}'][phx-click='preview']"
+           )
 
     resolved_html =
       remounted_view
@@ -185,7 +276,8 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     assert event.action == "lifeline.repair_executed"
   end
 
-  test "unauthorized execute keeps the incident in Needs Review instead of moving it into resolved", %{conn: conn} do
+  test "unauthorized execute keeps the incident in Needs Review instead of moving it into resolved",
+       %{conn: conn} do
     insert_missing_heartbeat!("executor-missing")
     incident = insert_dead_executor_incident!("executor-missing")
     job = insert_executing_job!("executor-missing")
@@ -206,8 +298,10 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     html = render_click(view, "execute", %{})
 
     assert html =~ "Permission: read-only."
+
     assert html =~
              "Permission: read-only. You can inspect this preview, but you do not have permission to execute this repair."
+
     assert html =~ "Needs Review"
 
     resolved_html =
@@ -235,15 +329,20 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     {:ok, view, html} = live(conn, "/ops/jobs/lifeline")
 
     assert html =~ "Permission: read-only."
-    assert has_element?(view, "button[phx-value-row-id$=':job:#{job.id}'][phx-click='preview'][disabled]")
+
+    assert has_element?(
+             view,
+             "button[phx-value-row-id$=':job:#{job.id}'][phx-click='preview'][disabled]"
+           )
 
     assert html =~
              "Permission: read-only. You can inspect this incident, but you do not have permission to preview this repair."
   end
 
-  test "authorized but unattributable operators cannot create durable preview or execute writes", %{
-    conn: conn
-  } do
+  test "authorized but unattributable operators cannot create durable preview or execute writes",
+       %{
+         conn: conn
+       } do
     insert_missing_heartbeat!("executor-missing")
     incident = insert_dead_executor_incident!("executor-missing")
     job = insert_executing_job!("executor-missing")
@@ -265,14 +364,18 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
       |> element("button[phx-value-row-id$=':job:#{job.id}'][phx-click='preview']")
       |> render_click()
 
-    assert preview_html =~ "Oban Powertools could not derive a durable audit principal for this action."
+    assert preview_html =~
+             "Oban Powertools could not derive a durable audit principal for this action."
+
     refute preview_html =~ "Preview Ready"
     assert TestRepo.all(ObanPowertools.Lifeline.RepairPreview) == []
 
     render_change(view, "reason", %{"reason" => "Rescuing orphaned job after node loss"})
     execute_html = render_click(view, "execute", %{})
 
-    assert execute_html =~ "Oban Powertools could not derive a durable audit principal for this action."
+    assert execute_html =~
+             "Oban Powertools could not derive a durable audit principal for this action."
+
     refute execute_html =~ "Repair executed and audit evidence was written."
     assert Audit.list(%{type: :job, id: Integer.to_string(job.id)}, repo: TestRepo) == []
   end
@@ -299,7 +402,11 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     incident
     |> Incident.changeset(%{
       affected_counts: %{"jobs" => length(job_ids), "workflow_steps" => 0},
-      evidence: %{"job_ids" => job_ids, "workflow_step_ids" => [], "last_heartbeat_at" => DateTime.utc_now()}
+      evidence: %{
+        "job_ids" => job_ids,
+        "workflow_step_ids" => [],
+        "last_heartbeat_at" => DateTime.utc_now()
+      }
     })
     |> TestRepo.update!()
   end
@@ -343,7 +450,11 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
 
   defp insert_executing_job!(executor_id) do
     %{}
-    |> Oban.Job.new(worker: "Example.Worker", queue: :default, meta: %{"executor_id" => executor_id})
+    |> Oban.Job.new(
+      worker: "Example.Worker",
+      queue: :default,
+      meta: %{"executor_id" => executor_id}
+    )
     |> Changeset.change(state: "executing")
     |> TestRepo.insert!()
   end

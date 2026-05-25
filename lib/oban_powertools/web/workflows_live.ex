@@ -6,8 +6,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     import Ecto.Query
 
-    alias ObanPowertools.DisplayPolicy
-    alias ObanPowertools.Workflow.{Edge, Result, Runtime, Step, Workflow}
+    alias ObanPowertools.{DisplayPolicy, Explain}
+    alias ObanPowertools.Workflow.{Edge, Result, Step, Workflow}
     alias ObanPowertools.Web.LiveAuth
 
     @impl true
@@ -28,7 +28,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
          |> assign(:steps, [])
          |> assign(:edges, [])
          |> assign(:results, %{})
+         |> assign(:workflow_story, nil)
+         |> assign(:step_stories, %{})
          |> assign(:selected_step, nil)
+         |> assign(:selected_step_story, nil)
          |> load_workflows()}
       else
         {:error, socket} -> {:ok, socket}
@@ -47,7 +50,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
            |> assign(:steps, [])
            |> assign(:edges, [])
            |> assign(:results, %{})
-           |> assign(:selected_step, nil)}
+           |> assign(:workflow_story, nil)
+           |> assign(:step_stories, %{})
+           |> assign(:selected_step, nil)
+           |> assign(:selected_step_story, nil)}
 
         workflow_id ->
           {:noreply, load_workflow_detail(socket, workflow_id, Map.get(params, "step"))}
@@ -57,7 +63,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     @impl true
     def handle_info({:workflow_signal, %{workflow_id: workflow_id}}, socket) do
       if socket.assigns.workflow && socket.assigns.workflow.id == workflow_id do
-        {:noreply, load_workflow_detail(socket, workflow_id, socket.assigns.selected_step && socket.assigns.selected_step.step_name)}
+        {:noreply,
+         load_workflow_detail(
+           socket,
+           workflow_id,
+           socket.assigns.selected_step && socket.assigns.selected_step.step_name
+         )}
       else
         {:noreply, load_workflows(socket)}
       end
@@ -117,16 +128,32 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <%= if @workflow do %>
               <h2 class="text-base font-semibold"><%= @workflow.name %></h2>
               <p class="mt-2 text-sm text-zinc-600">State: <%= @workflow.state %></p>
-              <p class="mt-1 text-sm text-zinc-600">Diagnosis: <%= workflow_diagnosis(@workflow, @steps) %></p>
+              <p class="mt-1 text-sm text-zinc-600">Diagnosis: <%= @workflow_story.diagnosis %></p>
               <p class="mt-1 text-sm text-zinc-600">Runnable now: <%= @workflow.runnable_step_count %></p>
+              <p class="mt-1 text-sm text-zinc-600">
+                Semantics: <%= @workflow_story.semantics.label %> (<%= @workflow_story.semantics.mode %>)
+              </p>
+              <p class="mt-1 text-sm text-zinc-600">
+                Callback posture:
+                delivered <%= @workflow_story.callback_posture.delivered %>,
+                failed <%= @workflow_story.callback_posture.failed %>,
+                pending <%= @workflow_story.callback_posture.pending %>
+              </p>
+              <p :if={@workflow_story.latest_recovery_session} class="mt-1 text-sm text-zinc-600">
+                Latest recovery session: <%= @workflow_story.latest_recovery_session.id %>
+              </p>
+              <p :if={@workflow_story.rejection_summary} class="mt-1 text-sm text-amber-700">
+                Latest refusal: <%= @workflow_story.rejection_summary.code %> - <%= @workflow_story.rejection_summary.message %>
+              </p>
 
               <div class="mt-4 space-y-3">
                 <div :for={step <- @steps} class={["rounded border p-3", highlight_class(step, @selected_step)]}>
+                  <% story = Map.fetch!(@step_stories, step.id) %>
                   <div class="flex items-center justify-between gap-3">
                     <div>
                       <p class="font-medium"><%= step.step_name %></p>
                       <p class="text-xs text-zinc-500"><%= step.state %></p>
-                      <p class="text-xs text-zinc-500">diagnosis: <%= step_diagnosis(step) || "none" %></p>
+                      <p class="text-xs text-zinc-500">diagnosis: <%= story.diagnosis || "none" %></p>
                     </div>
                     <.link
                       patch={selected_step_path(@workflow.id, step.step_name)}
@@ -137,6 +164,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                   </div>
                   <p :if={step.blocker_codes != []} class="mt-2 text-xs text-amber-700">
                     blocked: <%= Enum.join(step.blocker_codes, ", ") %>
+                  </p>
+                  <p :if={story.blocker_summaries != []} class="mt-1 text-xs text-zinc-500">
+                    why: <%= Enum.join(story.blocker_summaries, "; ") %>
+                  </p>
+                  <p :if={story.rejection_summary} class="mt-1 text-xs text-amber-700">
+                    latest refusal: <%= story.rejection_summary.code %>
                   </p>
                 </div>
               </div>
@@ -153,11 +186,34 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           <h2 class="text-base font-semibold"><%= @selected_step.step_name %></h2>
           <p class="mt-2 text-sm text-zinc-600">Worker: <%= @selected_step.worker %></p>
           <p class="mt-1 text-sm text-zinc-600">State: <%= @selected_step.state %></p>
-          <p class="mt-1 text-sm text-zinc-600">Diagnosis: <%= step_diagnosis(@selected_step) || "none" %></p>
+          <p class="mt-1 text-sm text-zinc-600">Diagnosis: <%= @selected_step_story.diagnosis || "none" %></p>
           <p class="mt-1 text-sm text-zinc-600">
             Result available:
             <%= if result_display.available?, do: "yes", else: "no" %>
           </p>
+          <p :if={@selected_step_story.rejection_summary} class="mt-1 text-sm text-amber-700">
+            Latest refusal: <%= @selected_step_story.rejection_summary.code %> - <%= @selected_step_story.rejection_summary.message %>
+          </p>
+          <p
+            :if={@selected_step_story.rejection_summary && @selected_step_story.rejection_summary.legal_next_steps != []}
+            class="mt-1 text-sm text-zinc-600"
+          >
+            Legal next steps: <%= Enum.join(@selected_step_story.rejection_summary.legal_next_steps, ", ") %>
+          </p>
+          <div :if={lifeline_handoff(@workflow, @selected_step, @workflow_story, @selected_step_story)} class="mt-3 rounded border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900">
+            <p class="font-medium">
+              Review the bounded action in Lifeline.
+            </p>
+            <p class="mt-1">
+              Diagnose workflow causality here. Powertools-native pages own preview, reason, and audited mutations.
+            </p>
+            <.link
+              navigate={lifeline_handoff(@workflow, @selected_step, @workflow_story, @selected_step_story).path}
+              class="mt-3 inline-flex rounded bg-indigo-600 px-3 py-2 text-white"
+            >
+              <%= lifeline_handoff(@workflow, @selected_step, @workflow_story, @selected_step_story).label %>
+            </.link>
+          </div>
 
           <div class="mt-4 space-y-3">
             <div :if={result_display.available?}>
@@ -175,7 +231,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 <p class="mt-2 text-sm text-zinc-600">Runnable or already resolved.</p>
               <% else %>
                 <ul class="mt-2 space-y-2 text-sm">
-                  <li :for={code <- @selected_step.blocker_codes}><%= code %></li>
+                  <li :for={{code, summary} <- Enum.zip(@selected_step_story.blocker_codes, @selected_step_story.blocker_summaries)}>
+                    <%= code %>: <%= summary %>
+                  </li>
                 </ul>
               <% end %>
             </div>
@@ -226,12 +284,19 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           List.first(Enum.filter(steps, &(&1.blocker_codes != []))) ||
           List.first(steps)
 
+      workflow_story = Explain.workflow_story(workflow, steps, repo: repo())
+      step_stories = Map.new(steps, &{&1.id, Explain.step_story(&1, repo: repo())})
+      selected_step_story = selected_step && Map.fetch!(step_stories, selected_step.id)
+
       socket
       |> assign(:workflow, workflow)
       |> assign(:steps, steps)
       |> assign(:edges, edges)
       |> assign(:results, results)
+      |> assign(:workflow_story, workflow_story)
+      |> assign(:step_stories, step_stories)
       |> assign(:selected_step, selected_step)
+      |> assign(:selected_step_story, selected_step_story)
     end
 
     defp dependency_rows(step) do
@@ -263,10 +328,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       })
     end
 
-    defp workflow_diagnosis(workflow, steps), do: Runtime.workflow_diagnosis(workflow, steps)
-    defp step_diagnosis(step), do: Runtime.step_diagnosis(step)
+    defp highlight_class(step, nil),
+      do: if(step.blocker_codes != [], do: "border-amber-400 bg-amber-50", else: "")
 
-    defp highlight_class(step, nil), do: if(step.blocker_codes != [], do: "border-amber-400 bg-amber-50", else: "")
     defp highlight_class(step, selected_step) do
       cond do
         step.id == selected_step.id -> "border-indigo-500 bg-indigo-50"
@@ -277,6 +341,31 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp selected_step_path(workflow_id, step_name),
       do: "/ops/jobs/workflows/#{workflow_id}?step=#{step_name}"
+
+    defp lifeline_handoff(workflow, selected_step, workflow_story, selected_step_story) do
+      step_actions =
+        selected_step_story.executable_actions
+        |> Enum.filter(&(&1.target_type == "workflow_step"))
+
+      workflow_actions =
+        workflow_story.executable_actions
+        |> Enum.filter(&(&1.target_type == "workflow"))
+
+      action = List.first(step_actions) || List.first(workflow_actions)
+
+      if action do
+        params =
+          [
+            {"workflow_id", workflow.id},
+            {"step", selected_step && selected_step.step_name},
+            {"action", action.id}
+          ]
+          |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+          |> URI.encode_query()
+
+        %{label: "Review in Lifeline: #{action.label}", path: "/ops/jobs/lifeline?#{params}"}
+      end
+    end
 
     defp build_job_path(base, job_id), do: Path.join([base, "jobs", Integer.to_string(job_id)])
     defp repo, do: Application.fetch_env!(:oban_powertools, :repo)

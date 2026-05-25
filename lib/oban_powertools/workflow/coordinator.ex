@@ -30,6 +30,8 @@ defmodule ObanPowertools.Workflow.Coordinator do
       Runtime.reconcile_workflow(repo, workflow_id)
     rescue
       Ecto.StaleEntryError -> :ok
+      Ecto.NoResultsError -> :ok
+      DBConnection.ConnectionError -> :ok
     end
 
     {:noreply, state}

@@ -18,6 +18,17 @@ defmodule ObanPowertools.DocsContractTest do
     "guides/troubleshooting.md"
   ]
   @workflow_file ".github/workflows/host-contract-proof.yml"
+  @workflow_semantics_block """
+  <!-- workflow-semantics-contract:start -->
+  ## Canonical Workflow Semantics Contract
+
+  - Semantics version `2` is the current workflow lifecycle contract.
+  - Durable workflow, step, await, signal, callback, and recovery rows are the source of truth.
+  - Duplicate, late, ambiguous, dropped, and replayed signal paths remain durable evidence instead of hidden retries.
+  - Cancel requests remain durable request evidence, while final workflow outcome is recorded separately.
+  - Public workflow telemetry stays under `[:oban_powertools, :workflow, *]` with bounded metadata only.
+  <!-- workflow-semantics-contract:end -->
+  """
 
   test "day-0 docs keep the repaired install contract markers" do
     source = joined_docs()
@@ -72,6 +83,12 @@ defmodule ObanPowertools.DocsContractTest do
     assert source =~ "Lifeline.execute_repair"
   end
 
+  test "workflow docs keep the canonical semantics block exact" do
+    source = File.read!("guides/workflows.md")
+
+    assert source =~ @workflow_semantics_block
+  end
+
   test "policy docs keep host-owned auth and display seams explicit" do
     source = joined_docs()
 
@@ -93,8 +110,10 @@ defmodule ObanPowertools.DocsContractTest do
     assert source =~ "first-session:"
     assert source =~ "optional-bridge:"
     assert source =~ "upgrade-proof:"
+    assert source =~ "workflow-compatibility:"
     assert source =~ "test/oban_powertools/fresh_host_contract_test.exs"
     assert source =~ "test/oban_powertools/example_host_contract_test.exs"
+    assert source =~ "test/oban_powertools/workflow_compatibility_test.exs"
     assert source =~ "--only first_session"
     assert source =~ "--only upgrade-proof"
   end

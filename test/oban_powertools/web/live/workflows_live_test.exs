@@ -21,6 +21,7 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
   alias ObanPowertools.Workflow
   alias ObanPowertools.Workflow.Result
   alias ObanPowertools.Workflow.Step
+  alias ObanPowertools.Workflow.Workflow, as: WorkflowRecord
   alias ObanPowertools.WorkflowFixtures
 
   setup do
@@ -68,7 +69,8 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
   end
 
   test "renders workflow result details through the shared display policy seam", %{conn: conn} do
-    {:ok, workflow} = WorkflowFixtures.workflow_fixture(name: "policy-workflow") |> Workflow.insert(TestRepo)
+    {:ok, workflow} =
+      WorkflowFixtures.workflow_fixture(name: "policy-workflow") |> Workflow.insert(TestRepo)
 
     assert {:ok, _step} =
              Workflow.complete_step(TestRepo, workflow.id, :fetch_customer,
@@ -108,6 +110,75 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
     Process.sleep(20)
 
     assert render(view) =~ "notify"
+  end
+
+  test "renders shared rejection vocabulary for refused workflow mutations", %{conn: conn} do
+    {:ok, workflow} =
+      WorkflowFixtures.workflow_fixture(name: "legacy-visible") |> Workflow.insert(TestRepo)
+
+    workflow
+    |> WorkflowRecord.changeset(%{semantics_version: 1})
+    |> TestRepo.update!()
+
+    assert {:error, rejection} =
+             Workflow.complete_step(TestRepo, workflow.id, :fetch_customer,
+               status: :completed,
+               payload: %{customer_id: 1}
+             )
+
+    assert rejection.reason_code == "unsupported_legacy_semantics"
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_workflows]}
+      )
+
+    {:ok, _view, html} = live(conn, "/ops/jobs/workflows/#{workflow.id}?step=fetch_customer")
+
+    assert html =~ "Latest refusal: unsupported_legacy_semantics"
+    assert html =~ "migrate_via_compatibility_path"
+    assert html =~ "Semantics: legacy_v1 (compatibility_path)"
+  end
+
+  test "renders callback posture and recovery session identity", %{conn: conn} do
+    {:ok, workflow} =
+      WorkflowFixtures.workflow_fixture(name: "callback-contract") |> Workflow.insert(TestRepo)
+
+    assert {:ok, _step} =
+             Workflow.recover_step(TestRepo, workflow.id, :sync_billing, :retry,
+               actor_id: "ops-1",
+               reason: "manual retry"
+             )
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_workflows]}
+      )
+
+    {:ok, _view, html} = live(conn, "/ops/jobs/workflows/#{workflow.id}?step=sync_billing")
+
+    assert html =~ "Callback posture:"
+    assert html =~ "Latest recovery session:"
+  end
+
+  test "renders a diagnosis-first Lifeline handoff without inline mutation controls", %{
+    conn: conn
+  } do
+    {:ok, workflow} =
+      WorkflowFixtures.workflow_fixture(name: "lifeline-handoff") |> Workflow.insert(TestRepo)
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_workflows]}
+      )
+
+    {:ok, view, html} = live(conn, "/ops/jobs/workflows/#{workflow.id}?step=sync_billing")
+
+    assert html =~ "Review the bounded action in Lifeline."
+    assert html =~ "Review in Lifeline: Retry step"
+    assert has_element?(view, "a[href*='/ops/jobs/lifeline?']")
+    refute html =~ "Execute Repair Plan"
+    refute has_element?(view, "input[name='reason']")
   end
 
   test "redirects unauthorized viewers", %{conn: conn} do

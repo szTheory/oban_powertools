@@ -19,7 +19,7 @@ progress:
 ## Project Reference
 
 **Core Value:** Oban Powertools provides an "Ultimate Batteries-Included" background job operations layer for Phoenix applications in the szTheory ecosystem. It guarantees Ecto-native safety, transparent observability, and durable idempotency while rejecting per-worker limits and implicit magic.
-**Current Focus:** Post-v1.2 milestone planning
+**Current Focus:** Ready for v1.3 milestone planning from a stabilized post-v1.2 base
 
 ## Current Position
 
@@ -93,5 +93,5 @@ Plan: none active
 - **Last session:** 2026-05-25T13:04:16.403Z
 - **Stopped At:** Milestone v1.2 archived and tagged
 - **Resume File:** None
-- **Last Action:** Archived milestone v1.2, updated milestone planning artifacts, and created the `v1.2` release tag from the repaired canonical audit set.
-- **Next Action:** Start the next milestone with `$gsd-new-milestone` and define a fresh `REQUIREMENTS.md`.
+- **Last Action:** Stabilized the post-v1.2 workflow implementation boundary, restored local proof lanes, and prepared the repo for the next milestone planning cycle.
+- **Next Action:** Start the next milestone with `$gsd-new-milestone` and define a fresh `REQUIREMENTS.md` from the now-clean committed base.
