@@ -8,6 +8,8 @@ on:
 jobs:
   structural:
     runs-on: ubuntu-latest
+    env:
+      OBAN_POWERTOOLS_SKIP_DB_BOOT: "1"
     services:
       postgres:
         image: postgres:16
@@ -56,6 +58,8 @@ jobs:
 
   docs-contract:
     runs-on: ubuntu-latest
+    env:
+      OBAN_POWERTOOLS_SKIP_DB_BOOT: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: erlef/setup-beam@v1
@@ -67,6 +71,8 @@ jobs:
 
   native-first:
     runs-on: ubuntu-latest
+    env:
+      OBAN_POWERTOOLS_SKIP_DB_BOOT: "1"
     services:
       postgres:
         image: postgres:16
@@ -91,6 +97,8 @@ jobs:
 
   first-session:
     runs-on: ubuntu-latest
+    env:
+      OBAN_POWERTOOLS_SKIP_DB_BOOT: "1"
     services:
       postgres:
         image: postgres:16
@@ -115,6 +123,8 @@ jobs:
 
   optional-bridge:
     runs-on: ubuntu-latest
+    env:
+      OBAN_POWERTOOLS_SKIP_DB_BOOT: "1"
     services:
       postgres:
         image: postgres:16
@@ -139,6 +149,8 @@ jobs:
 
   upgrade-proof:
     runs-on: ubuntu-latest
+    env:
+      OBAN_POWERTOOLS_SKIP_DB_BOOT: "1"
     services:
       postgres:
         image: postgres:16
@@ -163,6 +175,9 @@ jobs:
 
   workflow-compatibility:
     runs-on: ubuntu-latest
+    env:
+      PGUSER: postgres
+      PGPASSWORD: postgres
     services:
       postgres:
         image: postgres:16
