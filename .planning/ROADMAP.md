@@ -66,10 +66,15 @@ Project durable diagnosis classes from workflow evidence and render cause, evide
 
 **Goal**: Unify diagnosis vocabulary and bounded workflow actions across workflow and Lifeline surfaces.
 **Depends on**: Phase 21
-**Plans**: 0 plans
+**Plans**: 3 plans
 
 **Details:**
 Route Lifeline workflow repairs back through the workflow command pipeline and keep all workflow recovery actions audited and bounded.
+
+Plans:
+- [x] 22-01-PLAN.md — Project runtime-owned workflow actions and preserve cooperative cancel routing through `Workflow.request_cancel/3`.
+- [x] 22-02-PLAN.md — Extend Lifeline to review, preview, and execute incident-backed and workflow-directed bounded actions through the shared preview envelope.
+- [x] 22-03-PLAN.md — Add the diagnosis-first workflow-to-Lifeline handoff and prove cross-surface parity after execute and remount.
 
 ### Phase 23: Verification, Upgrade Proof, Telemetry & Support-Truth Closure
 

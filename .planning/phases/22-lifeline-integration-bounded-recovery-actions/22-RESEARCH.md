@@ -340,17 +340,15 @@ Phase 22 should reuse this lifecycle instead of creating workflow-specific statu
 |---|-------|---------|---------------|
 | A1 | The preview schema can be generalized by naming/seam refactor without requiring a breaking storage migration. `[ASSUMED]` | Architecture Patterns | If wrong, Phase 22 needs explicit migration work and compatibility handling for existing preview rows. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should Lifeline show workflow-directed rows when there is no incident at all?**
-   - What we know: locked decisions D-05 to D-09 and D-12 to D-16 require legality to be workflow-owned while Lifeline remains the sole execute venue. [VERIFIED: codebase grep]
-   - What's unclear: whether the UX should synthesize rows from query params only, or also support browsing such rows without coming from a workflow deep-link. [VERIFIED: codebase grep]
-   - Recommendation: Phase 22 planning should cover deep-link entry as required scope and generic browse/discovery as discretionary follow-on within the same row model. [VERIFIED: codebase grep]
+   - Decision: yes, but Phase 22 required scope is the workflow-driven handoff and review path, not a new generic browse-first discovery surface. Lifeline must be able to materialize a workflow-directed review row from durable workflow truth plus URL-selected context even when there is no active incident row. Generic browsing of such rows may reuse the same row model later, but it is discretionary follow-on rather than merge-blocking Phase 22 scope. [VERIFIED: codebase grep]
+   - Why: this satisfies D-05 to D-09 and D-12 to D-16 by keeping legality workflow-owned while still making Lifeline the sole native execute venue. [VERIFIED: codebase grep]
 
 2. **How far should preview copy be renamed away from “repair”?**
-   - What we know: current Lifeline UI still says “Preview Repair Plan” and “Execute Repair Plan,” but locked decisions require workflow-native copy. [VERIFIED: codebase grep]
-   - What's unclear: whether Phase 22 should fully neutralize the shared envelope copy across all existing surfaces or only for workflow-directed rows. [VERIFIED: codebase grep]
-   - Recommendation: neutralize service/seam naming first, then apply workflow-native visible copy to workflow actions in this phase; cross-surface copy harmonization can be additive. [VERIFIED: codebase grep]
+   - Decision: Phase 22 must make workflow-directed visible copy workflow-native now, while broader cross-surface copy harmonization remains additive follow-on work. Internal seam or helper renaming may be generalized in this phase where it reduces distortion, but existing non-workflow surfaces do not need a full copy rewrite to ship Phase 22. [VERIFIED: codebase grep]
+   - Why: this satisfies D-25 and D-29 without turning the phase into a repo-wide copy sweep, and it preserves support-truthful `Request cancel` wording for workflow-level cancel semantics. [VERIFIED: codebase grep]
 
 ## Environment Availability
 
