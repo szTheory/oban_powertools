@@ -169,7 +169,7 @@ The primary data flow is “phase-local proof exists” -> “traceability point
 ├── STATE.md                                # Current session continuity and next-step pointer
 ├── v1.2-MILESTONE-AUDIT.md                 # Preserved failed 2026-05-25 snapshot
 ├── milestones/
-│   └── v1.2-<rerun-name>-MILESTONE-AUDIT.md  # New current canonical rerun verdict
+│   └── v1.2-rerun-MILESTONE-AUDIT.md         # New current canonical rerun verdict
 └── phases/17|19|20|21|22|23-.../XX-VERIFICATION.md  # Canonical proof artifacts
 ```
 
@@ -179,7 +179,7 @@ The primary data flow is “phase-local proof exists” -> “traceability point
 **Example:**
 ```markdown
 <!-- Source: .planning/phases/25-traceability-audit-consistency-repair/25-CONTEXT.md -->
-| Requirement | Owner Phase | Proof Pointer | Status |
+| Requirement | Owner Phase | Closure Proof | Status |
 |-------------|-------------|---------------|--------|
 | WFS-02 | 17 | 17-VERIFICATION.md | Complete |
 | REC-03 | 20 | 20-VERIFICATION.md | Complete |
@@ -192,7 +192,7 @@ The primary data flow is “phase-local proof exists” -> “traceability point
 **Example:**
 ```markdown
 <!-- Source: .planning/phases/25-traceability-audit-consistency-repair/25-CONTEXT.md -->
-> Superseded for current milestone status by `.planning/milestones/v1.2-<rerun-name>-MILESTONE-AUDIT.md`.
+> Superseded for current milestone status by `.planning/milestones/v1.2-rerun-MILESTONE-AUDIT.md`.
 > This file remains the failed 2026-05-25 snapshot.
 ```
 
@@ -205,7 +205,7 @@ The primary data flow is “phase-local proof exists” -> “traceability point
 ## Current Position
 
 - Phase 25 is the active planning target.
-- Canonical milestone verdict: `.planning/milestones/v1.2-<rerun-name>-MILESTONE-AUDIT.md`
+- Canonical milestone verdict: `.planning/milestones/v1.2-rerun-MILESTONE-AUDIT.md`
 - Historical failed snapshot: `.planning/v1.2-MILESTONE-AUDIT.md`
 ```
 
@@ -310,17 +310,15 @@ and does not act as the canonical closure record.
 | A2 | Duplicate milestone verdict prose across top-level files will create maintainability churn after the repair. | Common Pitfalls / Pitfall 3 | Low; the repo already prefers one canonical source per truth, so the main impact would be unnecessary plan breadth. |
 | A3 | Summary files are likely to be over-edited unless the plan sets an explicit “only if objectively misleading” threshold. | Common Pitfalls / Pitfall 4 | Medium; uncontrolled summary edits would expand scope into historical normalization. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **What should the rerun audit filename be?**
-   - What we know: The context locks “separate successor artifact” but leaves the exact name to agent discretion. [CITED: .planning/phases/25-traceability-audit-consistency-repair/25-CONTEXT.md]
-   - What's unclear: Whether the project prefers `v1.2-RERUN-MILESTONE-AUDIT.md`, a dated form, or `v1.2-current-MILESTONE-AUDIT.md`. [ASSUMED]
-   - Recommendation: Pick the shortest name that is obviously “current canonical rerun” and easy to grep from the failed snapshot.
+1. **Rerun audit filename**
+   - Resolution: Use `.planning/milestones/v1.2-rerun-MILESTONE-AUDIT.md` as the successor artifact name. [CITED: .planning/phases/25-traceability-audit-consistency-repair/25-CONTEXT.md]
+   - Why: It is the shortest grep-friendly filename that still reads as the current canonical rerun, and it matches the Phase 25 plan set's existing cross-links. [CITED: .planning/phases/25-traceability-audit-consistency-repair/25-02-PLAN.md]
 
-2. **Should any old summary receive a retrospective correction note in Phase 25?**
-   - What we know: The context allows notes only for objectively misleading summaries and cites `.planning/phases/0-01-SUMMARY.md` as the local pattern. [CITED: .planning/phases/25-traceability-audit-consistency-repair/25-CONTEXT.md] [CITED: .planning/phases/0-01-SUMMARY.md]
-   - What's unclear: Which, if any, current summary actually traps readers after the top-level repairs land. [ASSUMED]
-   - Recommendation: Treat summary edits as optional Wave 2 work only if a concrete misleading file is identified during the top-level consistency pass.
+2. **Summary-note decision**
+   - Resolution: Plan Phase 25 with a zero-summary-edit default. Only add a retrospective correction note if execution finds a concrete misleading-summary trap after the top-level canonical docs are repaired. [CITED: .planning/phases/25-traceability-audit-consistency-repair/25-CONTEXT.md]
+   - Why: This honors D-15 through D-19 by preserving history, keeps Phase 25 scoped to the canonical audit and traceability artifacts, and leaves summary intervention as a narrow exception rather than planned cleanup. [CITED: .planning/phases/25-traceability-audit-consistency-repair/25-03-PLAN.md]
 
 ## Environment Availability
 
