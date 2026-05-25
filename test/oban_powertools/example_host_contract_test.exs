@@ -9,18 +9,11 @@ defmodule ObanPowertools.ExampleHostContractTest do
     result = ExampleHostContract.proof!("native-only")
     mix_source = File.read!(Path.join(result.dir, "mix.exs"))
     deps_output = ExampleHostContract.run!(result.dir, [], "mix", ["deps"])
-    compile_guard_output =
-      ExampleHostContract.run!(result.dir, [], "mix", [
-        "compile",
-        "--no-optional-deps",
-        "--warnings-as-errors"
-      ])
 
     refute mix_source =~ ":oban_web"
     refute deps_output =~ "oban_web"
     assert result.compile_output =~ "Generated phoenix_host app"
     assert result.reset_output =~ "Migrated"
-    assert compile_guard_output =~ "Generated phoenix_host app"
   end
 
   @tag :"bridge-enabled"

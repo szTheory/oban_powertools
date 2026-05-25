@@ -67,6 +67,7 @@ end|
         "--no-agents-md"
       ])
 
+    ensure_postgres_password_config!(target)
     target
   end
 
@@ -161,6 +162,31 @@ end|
       end
       """
     )
+  end
+
+  defp ensure_postgres_password_config!(dir) do
+    ["dev.exs", "test.exs"]
+    |> Enum.map(&Path.join([dir, "config", &1]))
+    |> Enum.each(fn path ->
+      source = File.read!(path)
+
+      updated =
+        if String.contains?(source, ~s(password: "postgres")) do
+          source
+        else
+          String.replace(
+            source,
+            ~s(username: "postgres",),
+            ~s(username: "postgres",\n  password: "postgres",)
+          )
+        end
+
+      if updated == source and not String.contains?(source, ~s(password: "postgres")) do
+        raise "failed to inject postgres password into generated config: #{path}"
+      end
+
+      File.write!(path, updated)
+    end)
   end
 
   defp run!(dir, env, command, args) do

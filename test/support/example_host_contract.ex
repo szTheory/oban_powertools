@@ -89,6 +89,9 @@ defmodule ObanPowertools.ExampleHostContract do
     dir = prepare_host!("first_session")
 
     _ = run!(dir, [], "mix", ["deps.get"])
+    _ = run!(dir, [], "mix", ["compile"])
+    _ = run!(dir, [{"MIX_ENV", "test"}], "mix", ["ecto.reset"])
+    _ = run!(dir, [{"MIX_ENV", "test"}], "mix", ["run", "priv/repo/seeds.exs"])
 
     output =
       run!(dir, [{"MIX_ENV", "test"}], "mix", [
@@ -241,7 +244,12 @@ defmodule ObanPowertools.ExampleHostContract do
 
   defp materialize_native_proof_files!(dir) do
     copy_from_current_fixture!(@test_helper_rel_path, Path.join(dir, @test_helper_rel_path))
-    copy_from_current_fixture!(@first_session_test_rel_path, Path.join(dir, @first_session_test_rel_path))
+
+    copy_from_current_fixture!(
+      @first_session_test_rel_path,
+      Path.join(dir, @first_session_test_rel_path)
+    )
+
     copy_from_current_fixture!(@conn_case_rel_path, Path.join(dir, @conn_case_rel_path))
     copy_from_current_fixture!(@data_case_rel_path, Path.join(dir, @data_case_rel_path))
   end
