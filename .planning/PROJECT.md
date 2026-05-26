@@ -39,6 +39,13 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 - ✓ Supported archived-host upgrade lane (`PKG-02`) — v1.1 Phase 15
 - ✓ Explicit support-truth boundaries and host-owned hardening/troubleshooting guidance (`HST-03`, `DOC-02`) — v1.1 Phase 15
 
+### Active
+
+- [ ] `FRN-01` through `FRN-03` — cross-surface forensic timelines, evidence bundles, and durable investigative context
+- [ ] `OPS-01` through `OPS-03` — limiter history, missed-fire diagnosis, and attention-first operational projections
+- [ ] `RNB-01` through `RNB-03` — runbook-guided remediation with explicit native, bridge-only, and host-owned follow-up boundaries
+- [ ] `DOC-05`, `VER-04`, and `HST-05` — support-truthful docs, proof, and host integration guidance for the new forensics surfaces
+
 ### Out of Scope
 
 - Per-worker ad hoc rate limiting outside the explicit global/partitioned limiter model.
@@ -78,18 +85,19 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 ## Current State
 
-Version `v1.3` shipped on 2026-05-26. The native `/ops/jobs` shell now reads as one coherent operator control plane: shared vocabulary and ownership boundaries span overview, cron, limiters, workflows, Lifeline, audit, and bounded Oban Web handoffs; the overview is diagnosis-first; drilldowns preserve durable context; and the public docs plus example-host proof tell the same native-shell versus bridge-only story. The next highest-leverage gap is deeper operator forensics and runbook-guided remediation, not broader queue-dashboard scope or machine-facing automation.
+Version `v1.3` shipped on 2026-05-26. The native `/ops/jobs` shell now reads as one coherent operator control plane: shared vocabulary and ownership boundaries span overview, cron, limiters, workflows, Lifeline, audit, and bounded Oban Web handoffs; the overview is diagnosis-first; drilldowns preserve durable context; and the public docs plus example-host proof tell the same native-shell versus bridge-only story. Milestone `v1.4` is now active and focuses on making that stable control plane materially better for incident investigation, remediation guidance, and day-2 trust.
 
-## Next Milestone Goals
+## Current Milestone: v1.4 Operator Forensics & SRE Runbooks
 
-The default next candidate is `v1.4 Operator Forensics & SRE Runbooks`.
+**Goal:** deepen historical evidence, incident investigation, and runbook-guided remediation on top of the now-stable control-plane contract.
 
 **Target features:**
 - richer historical timelines, limiter history, missed-fire views, and cross-surface evidence bundles
 - runbook-guided remediation flows that build on the now-stable control-plane vocabulary
 - operator-grade investigative UX that deepens day-2 trust without widening into a generic dashboard rewrite
+- explicit alert, support-truth, and proof posture for the new forensics and runbook surfaces
 
-**Why next:** the control-plane contract is now stable enough that deeper forensics and remediation guidance should produce more operator leverage than another public capability family.
+**Why now:** the control-plane contract is now stable enough that deeper forensics and remediation guidance should produce more operator leverage than another public capability family, while still keeping automation/API surface expansion deferred until the operator semantics feel settled.
 
 ## Recently Shipped
 
@@ -140,4 +148,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-26 after shipping milestone v1.3*
+*Last updated: 2026-05-26 after opening milestone v1.4*

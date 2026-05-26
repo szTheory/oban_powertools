@@ -43,7 +43,7 @@ Oban Powertools should compound from a shipped v1 foundation into a host-friendl
 
 ### v1.4 Operator Forensics & SRE Runbooks
 
-- **Status:** next candidate
+- **Status:** active
 - **Priority:** medium-high
 - **Why now:** after semantics and control-plane contracts settle, deepen incident timelines, limiter history, missed-fire views, repair evidence, and runbook-guided remediation.
 - **Includes:** richer diagnostics, evidence bundles, alert/runbook hooks, operator-grade investigative UX.
@@ -52,7 +52,7 @@ Oban Powertools should compound from a shipped v1 foundation into a host-friendl
 
 ### v1.5 Automation Surfaces & Ecosystem Hooks
 
-- **Status:** candidate
+- **Status:** next candidate
 - **Priority:** medium
 - **Why now:** expose machine-facing and ecosystem-facing surfaces only after the core contracts stop moving.
 - **Includes:** CLI/API surfaces, deeper Parapet/Threadline/Scoria hooks, automation-oriented admin actions.

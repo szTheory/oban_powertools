@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Operator Forensics & SRE Runbooks
-current_plan: 0
-status: ready_for_planning
-stopped_at: v1.3 archived and tagged; awaiting next milestone kickoff
-last_updated: "2026-05-26T17:00:00.000Z"
+current_plan: 32
+status: ready_for_discussion
+stopped_at: roadmap created; phase 32 ready for discuss-phase
+last_updated: "2026-05-26T17:30:00.000Z"
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
-  total_plans: 0
+  total_plans: 15
   completed_plans: 0
   percent: 0
 ---
@@ -19,25 +19,25 @@ progress:
 ## Project Reference
 
 **Core Value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-**Current Focus:** v1.3 shipped; next default candidate is v1.4 for operator forensics and runbook depth
+**Current Focus:** v1.4 operator forensics, historical evidence, and runbook-guided remediation
 
 ## Current Position
 
-- **Phase:** None
+- **Phase:** 32
 - **Plan:** None
-- **Current Plan:** Start next milestone planning
-- **Total Plans in Phase:** 0
-- **Status:** v1.3 archived; no active milestone opened yet
+- **Current Plan:** Discuss and plan Phase 32
+- **Total Plans in Phase:** 3
+- **Status:** Milestone opened; requirements and roadmap are active
 - **Progress:** [----------] 0%
 - **Canonical sequencing:** `.planning/ROADMAP.md`
-- **Milestone requirements:** None active
+- **Milestone requirements:** `.planning/REQUIREMENTS.md`
 - **Strategic source of truth:** `.planning/MILESTONE-ARC.md`
 
 ## Performance Metrics
 
-- **Phases Complete:** 0/0 active
-- **Plans Complete:** 0/0 active
-- **Metrics:** v1.3 shipped on 2026-05-26 after closing phases 27-31 with one coherent control-plane vocabulary, diagnosis-first overview, continuity-safe drilldowns, and support-truthful proof.
+- **Phases Complete:** 0/5 active
+- **Plans Complete:** 0/15 active
+- **Metrics:** v1.4 opened on 2026-05-26 with five phases covering forensic projections, limiter and cron history, runbook-guided remediation, and support-truth closure on top of the shipped v1.3 control plane.
 
 ## Accumulated Context
 
@@ -88,13 +88,16 @@ progress:
   - Keep v1.3 honest about scope: native Powertools pages plus deliberate Oban Web handoffs for generic job and queue inspection, not a surprise queue-dashboard rewrite.
   - Anchor the first concrete win on the `/ops/jobs` operator journey: what needs attention, why, and where to go next without vocabulary drift between pages.
   - With v1.3 shipped, the default next candidate is `v1.4 Operator Forensics & SRE Runbooks`: deepen historical evidence, investigative UX, and runbook-guided remediation on top of the now-stable control-plane contract.
+  - Keep the v1.4 wedge focused on investigative leverage and support truth, not on broad native queue-dashboard replacement or machine-facing automation contracts.
+  - Treat missed-fire history, limiter history, evidence bundles, and remediation runbooks as Powertools-owned operator surfaces that must reuse the shared v1.3 vocabulary instead of inventing a parallel incident language.
+  - Preserve explicit host-owned seams for alert delivery, escalation routing, and provider-specific runbook destinations; Powertools should explain and link, not pretend to own every downstream SRE system.
 - **Todos:** None
 - **Blockers:** None
 
 ## Session Continuity
 
 - **Last session:** 2026-05-25T19:36:55.008Z
-- **Stopped At:** v1.3 archived and tagged
+- **Stopped At:** roadmap created; phase 32 ready for discussion
 - **Resume File:** None
-- **Last Action:** Archived milestone v1.3, collapsed roadmap and requirements into milestone archives, and advanced the strategic state toward the next candidate milestone.
-- **Next Action:** Run `$gsd-new-milestone` to open v1.4 requirements and roadmap planning, or intentionally choose a different candidate from `.planning/MILESTONE-ARC.md`.
+- **Last Action:** Opened milestone v1.4, activated requirements, updated the strategic arc, and created the phase 32-36 roadmap.
+- **Next Action:** Run `$gsd-discuss-phase 32` or `$gsd-plan-phase 32` to start Phase 32.
