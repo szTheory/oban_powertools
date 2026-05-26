@@ -63,9 +63,10 @@ assert [%{code: "limit_reached"}] = explanation.blockers
 
 `Explain.explain/3` gives you:
 
+- one shared operator status such as `Blocked`, `Waiting`, or `Runnable`
 - `live_now` blockers from current limiter state
 - `snapshot_at_block_start` from the persisted blocker snapshot
-- one stable shape for rendering diagnostic surfaces
+- one stable shape for rendering diagnosis-first surfaces with venue and evidence
 
 ## Administrative limiter actions
 

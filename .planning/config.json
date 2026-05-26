@@ -1,5 +1,9 @@
 {
+  "preferences": {
+    "vendor_philosophy": "thorough-evaluator"
+  },
   "workflow": {
-    "_auto_chain_active": false
+    "_auto_chain_active": false,
+    "research_before_questions": true
   }
 }

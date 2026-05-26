@@ -91,7 +91,9 @@ defmodule ObanPowertools.Web.RouterTest do
 
   test "bridge docs state the phase 10 support truth" do
     assert moduledoc(ObanWebBridge) =~ "read-only"
-    assert moduledoc(ObanWebBridge) =~ "native Powertools pages"
+    assert moduledoc(ObanWebBridge) =~ "Powertools-native pages"
+    assert moduledoc(ObanWebBridge) =~ "Inspection only"
+    assert moduledoc(ObanWebBridge) =~ "Audited action"
     assert moduledoc(ObanPowertools.Web.Router) =~ "audited mutations"
   end
 

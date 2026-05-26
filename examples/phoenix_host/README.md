@@ -4,6 +4,8 @@
 contract.
 It is not a polished showcase app. It exists to prove one honest install-to-first-session
 lane and to keep the host/library ownership boundary reviewable.
+It is also the canonical host for the unified native `/ops/jobs` control plane and the bounded
+read-only `/ops/jobs/oban` bridge.
 
 `examples/phoenix_host_upgrade_source` is a separate frozen historical fixture. It exists only
 for the singular supported upgrade lane and should not replace this current-state fixture when
@@ -12,6 +14,7 @@ you want to inspect the live public host contract.
 ## What this fixture proves
 
 - a canonical host-owned `/ops/jobs` shell around Powertools routes
+- the diagnosis-first overview and `/ops/jobs/audit` as native control-plane surfaces
 - a migration-complete fixture that resets into base Oban plus Powertools tables
 - explicit `auth_module: PhoenixHostWeb.ObanPowertoolsAuth`
 - explicit `display_policy: PhoenixHostWeb.ObanPowertoolsDisplayPolicy`

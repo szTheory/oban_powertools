@@ -100,7 +100,7 @@ defmodule ObanPowertools.Web.CronLiveTest do
     assert render(view) =~ "policy reason: MAINTENANCE"
     html = render_click(view, "confirm", %{})
 
-    assert html =~ "Paused"
+    assert html =~ "Waiting"
     assert_receive {:telemetry_event, [:oban_powertools, :cron, :paused], %{count: 1}, _}
 
     assert_receive {:telemetry_event, [:oban_powertools, :operator_action, :complete],
@@ -111,6 +111,9 @@ defmodule ObanPowertools.Web.CronLiveTest do
     assert event.actor_id == "ops-1"
     assert event.metadata["reason"] == "maintenance"
     assert event.metadata["preview_token"]
+
+    assert html =~
+             "/ops/jobs/audit?resource_type=cron_entry&amp;resource_id=nightly&amp;event_type=cron.paused"
   end
 
   test "blocks unauthorized cron mutation before preview state", %{conn: conn} do
@@ -130,8 +133,9 @@ defmodule ObanPowertools.Web.CronLiveTest do
 
     assert html =~ "Permission: read-only."
     assert html =~ "disabled"
+
     assert html =~
-             "Permission: read-only. You can inspect this cron entry, but you do not have permission to preview or execute pause mutations."
+             "Permission: read-only. You can inspect this Powertools-native cron entry, but you do not have permission to preview or execute this Audited action."
 
     refute has_element?(view, "h2", "Preview Action")
   end
@@ -153,8 +157,9 @@ defmodule ObanPowertools.Web.CronLiveTest do
 
     assert html =~ "Permission: read-only."
     assert html =~ "disabled"
+
     assert html =~
-             "Permission: read-only. You can inspect this cron entry, but you do not have permission to preview or execute pause mutations."
+             "Permission: read-only. You can inspect this Powertools-native cron entry, but you do not have permission to preview or execute this Audited action."
 
     html =
       render_click(view, "preview", %{
@@ -163,7 +168,8 @@ defmodule ObanPowertools.Web.CronLiveTest do
       })
 
     assert html =~
-             "Permission: read-only. You can inspect this cron entry, but you do not have permission to preview or execute pause mutations."
+             "Permission: read-only. You can inspect this Powertools-native cron entry, but you do not have permission to preview or execute this Audited action."
+
     refute has_element?(view, "h2", "Preview Action")
     refute_receive {:telemetry_event, [:oban_powertools, :operator_action, :previewed], _, _}
     refute_receive {:telemetry_event, [:oban_powertools, :operator_action, :complete], _, _}
@@ -200,19 +206,59 @@ defmodule ObanPowertools.Web.CronLiveTest do
 
     assert html =~ "Permission: read-only."
 
-    assert has_element?(view, "button[phx-value-entry='#{runnable_entry.name}'][phx-value-action='pause_cron_entry'][disabled]")
-    assert has_element?(view, "button[phx-value-entry='#{runnable_entry.name}'][phx-value-action='run_cron_entry'][disabled]")
-    assert has_element?(view, "button[phx-value-entry='#{paused_entry.name}'][phx-value-action='resume_cron_entry'][disabled]")
-    assert has_element?(view, "button[phx-value-entry='#{paused_entry.name}'][phx-value-action='run_cron_entry'][disabled]")
+    assert has_element?(
+             view,
+             "button[phx-value-entry='#{runnable_entry.name}'][phx-value-action='pause_cron_entry'][disabled]"
+           )
+
+    assert has_element?(
+             view,
+             "button[phx-value-entry='#{runnable_entry.name}'][phx-value-action='run_cron_entry'][disabled]"
+           )
+
+    assert has_element?(
+             view,
+             "button[phx-value-entry='#{paused_entry.name}'][phx-value-action='resume_cron_entry'][disabled]"
+           )
+
+    assert has_element?(
+             view,
+             "button[phx-value-entry='#{paused_entry.name}'][phx-value-action='run_cron_entry'][disabled]"
+           )
 
     assert html =~
-             "Permission: read-only. You can inspect this cron entry, but you do not have permission to preview or execute pause mutations."
+             "Permission: read-only. You can inspect this Powertools-native cron entry, but you do not have permission to preview or execute this Audited action."
 
     assert html =~
-             "Permission: read-only. You can inspect this cron entry, but you do not have permission to preview or execute resume mutations."
+             "Permission: read-only. You can inspect this Powertools-native cron entry, but you do not have permission to preview or execute this Audited action."
 
     assert html =~
-             "Permission: read-only. You can inspect this cron entry, but you do not have permission to preview or execute run-now mutations."
+             "Permission: read-only. You can inspect this Powertools-native cron entry, but you do not have permission to preview or execute this Audited action."
+  end
+
+  test "restores selected cron entry from entry param without restoring preview state", %{
+    conn: conn
+  } do
+    {:ok, entry} =
+      Cron.sync_entry(TestRepo, %{
+        name: "selected-entry",
+        source: "runtime",
+        worker: "DemoWorker",
+        queue: "default",
+        expression: "* * * * *"
+      })
+
+    conn =
+      Plug.Test.init_test_session(conn, current_actor: %{id: "ops-5", permissions: [:view_cron]})
+
+    {:ok, _view, html} = live(conn, "/ops/jobs/cron?entry=#{entry.name}")
+    assert html =~ "selected-entry"
+    assert html =~ "entry="
+    refute html =~ "Preview Token"
+
+    {:ok, _remounted_view, remounted_html} = live(conn, "/ops/jobs/cron?entry=#{entry.name}")
+    assert remounted_html =~ "selected-entry"
+    refute remounted_html =~ "Preview Token"
   end
 
   test "fails explicitly when an authorized cron operator has no durable audit principal", %{
@@ -246,7 +292,7 @@ defmodule ObanPowertools.Web.CronLiveTest do
     html = render_click(view, "confirm", %{})
 
     assert html =~ "Oban Powertools could not derive a durable audit principal for this action."
-    refute html =~ "Paused"
+    refute html =~ "Waiting"
     refute_receive {:telemetry_event, [:oban_powertools, :cron, :paused], _, _}
     refute_receive {:telemetry_event, [:oban_powertools, :operator_action, :complete], _, _}
     assert Audit.list(%{type: :cron_entry, id: "missing-principal"}, repo: TestRepo) == []
@@ -255,7 +301,9 @@ defmodule ObanPowertools.Web.CronLiveTest do
     assert is_nil(entry.paused_at)
   end
 
-  test "renders explicit shared preview-state failures from persisted cron previews", %{conn: conn} do
+  test "renders explicit shared preview-state failures from persisted cron previews", %{
+    conn: conn
+  } do
     {:ok, _} =
       Cron.sync_entry(TestRepo, %{
         name: "preview-states",
@@ -283,8 +331,12 @@ defmodule ObanPowertools.Web.CronLiveTest do
     assert expired_html =~ "preview_expired"
 
     refreshed_preview = TestRepo.get!(RepairPreview, preview.id)
+
     TestRepo.update!(
-      RepairPreview.changeset(refreshed_preview, %{status: "drifted", metadata: %{"drift_reason" => "entry changed"}})
+      RepairPreview.changeset(refreshed_preview, %{
+        status: "drifted",
+        metadata: %{"drift_reason" => "entry changed"}
+      })
     )
 
     drifted_html = render_click(view, "confirm", %{})
@@ -293,7 +345,10 @@ defmodule ObanPowertools.Web.CronLiveTest do
     drifted_preview = TestRepo.get!(RepairPreview, preview.id)
 
     TestRepo.update!(
-      RepairPreview.changeset(drifted_preview, %{status: "consumed", consumed_at: DateTime.utc_now()})
+      RepairPreview.changeset(drifted_preview, %{
+        status: "consumed",
+        consumed_at: DateTime.utc_now()
+      })
     )
 
     consumed_html = render_click(view, "confirm", %{})

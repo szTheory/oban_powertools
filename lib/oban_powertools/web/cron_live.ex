@@ -4,9 +4,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     use Phoenix.LiveView
 
-    alias ObanPowertools.{Audit, Cron, DisplayPolicy, Telemetry}
+    alias ObanPowertools.{Audit, ControlPlane, Cron, DisplayPolicy, Telemetry}
     alias ObanPowertools.Lifeline.RepairPreview
-    alias ObanPowertools.Web.LiveAuth
+    alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth}
 
     @impl true
     def mount(_params, _session, socket) do
@@ -17,12 +17,28 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         {:ok,
          socket
          |> assign_entries(Cron.list_entries(repo()))
+         |> assign(:selected_entry, nil)
          |> assign(:preview, nil)
          |> assign(:reason, "")
          |> assign(:error_message, nil)}
       else
         {:error, socket} -> {:ok, socket}
       end
+    end
+
+    @impl true
+    def handle_params(params, _uri, socket) do
+      entries = Cron.list_entries(repo())
+
+      {:noreply,
+       socket
+       |> assign_entries(entries)
+       |> assign(:selected_entry, Enum.find(entries, &(&1.name == params["entry"])))}
+    end
+
+    @impl true
+    def handle_event("select_entry", %{"entry" => entry_name}, socket) do
+      {:noreply, push_patch(socket, to: entry_path(entry_name))}
     end
 
     @impl true
@@ -42,6 +58,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
         {:noreply,
          socket
+         |> assign(:selected_entry, entry)
          |> assign(:preview, preview)
          |> assign(:reason, "")
          |> assign(:error_message, nil)}
@@ -108,7 +125,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         <div>
           <h1 class="text-2xl font-semibold">Cron</h1>
           <p class="text-sm text-zinc-600">
-            Preview, reason, and audit stay aligned here for every cron entry mutation.
+            <%= ControlPlanePresenter.native_banner() %> Preview, reason, venue, and audit stay aligned for every cron entry mutation.
           </p>
         </div>
 
@@ -127,7 +144,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 <th class="px-4 py-3 font-medium">Entry</th>
                 <th class="px-4 py-3 font-medium">Source</th>
                 <th class="px-4 py-3 font-medium">Policies</th>
-                <th class="px-4 py-3 font-medium">State</th>
+                <th class="px-4 py-3 font-medium">Operator Status</th>
                 <th class="px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>
@@ -141,9 +158,17 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                   <div><%= overlap_label(entry.overlap_policy) %></div>
                   <div class="text-zinc-500"><%= catch_up_label(entry.catch_up_policy) %></div>
                 </td>
-                <td class="px-4 py-3"><%= if entry.paused_at, do: "Paused", else: "Runnable" %></td>
+                <td class="px-4 py-3"><%= entry_status_label(entry) %></td>
                 <td class="px-4 py-3">
                   <div class="space-y-3">
+                    <button
+                      type="button"
+                      phx-click="select_entry"
+                      phx-value-entry={entry.name}
+                      class="rounded border px-3 py-2"
+                    >
+                      Review Entry
+                    </button>
                     <div :for={action <- entry_actions(entry, @current_actor)} class="space-y-1">
                       <button
                         type="button"
@@ -164,6 +189,17 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <div :if={@selected_entry} class="rounded-lg border bg-white p-4">
+          <h2 class="text-base font-semibold"><%= @selected_entry.name %></h2>
+          <p class="mt-2 text-sm text-zinc-600">
+            Operator Status: <%= entry_status_label(@selected_entry) %>
+          </p>
+          <p class="mt-1 text-sm text-zinc-600">Source: <%= source_label(@selected_entry.source) %></p>
+          <p class="mt-1 text-sm text-zinc-600">
+            Exact selected context survives remount through <code>entry=</code> while preview state stays off the URL.
+          </p>
         </div>
 
         <div :if={@preview} class="rounded-lg border bg-slate-50 p-4">
@@ -221,10 +257,13 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         </div>
 
         <div class="rounded-lg border bg-white p-4">
-          <h2 class="text-base font-semibold">Recent Audit</h2>
+          <h2 class="text-base font-semibold">Recent Audit Evidence</h2>
           <ul class="mt-3 space-y-2 text-sm">
             <li :for={event <- recent_audit(@entries)}>
-              <strong><%= event.action %></strong> <span class="text-zinc-500"><%= event.resource %></span>
+              <strong><%= ControlPlanePresenter.audit_event_label(event) %></strong> <span class="text-zinc-500"><%= ControlPlanePresenter.audit_resource_label(event) %></span>
+              <.link navigate={ControlPlanePresenter.audit_follow_up_path(event)} class="ml-2 text-indigo-700 underline">
+                Open in Audit
+              </.link>
             </li>
           </ul>
         </div>
@@ -233,13 +272,22 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp perform_action(%RepairPreview{action: "pause_cron_entry"} = preview, principal, reason),
-      do: Cron.pause_cron_entry(repo(), preview.preview_token, principal.id, reason: blank_to_nil(reason))
+      do:
+        Cron.pause_cron_entry(repo(), preview.preview_token, principal.id,
+          reason: blank_to_nil(reason)
+        )
 
     defp perform_action(%RepairPreview{action: "resume_cron_entry"} = preview, principal, reason),
-      do: Cron.resume_cron_entry(repo(), preview.preview_token, principal.id, reason: blank_to_nil(reason))
+      do:
+        Cron.resume_cron_entry(repo(), preview.preview_token, principal.id,
+          reason: blank_to_nil(reason)
+        )
 
     defp perform_action(%RepairPreview{action: "run_cron_entry"} = preview, principal, reason),
-      do: Cron.run_cron_entry(repo(), preview.preview_token, principal.id, reason: blank_to_nil(reason))
+      do:
+        Cron.run_cron_entry(repo(), preview.preview_token, principal.id,
+          reason: blank_to_nil(reason)
+        )
 
     defp assign_entries(socket, entries) do
       assign(socket, :entries, entries)
@@ -258,7 +306,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp auth_action("resume_cron_entry"), do: :resume_cron_entry
     defp auth_action("run_cron_entry"), do: :run_cron_entry
 
-    defp preview_summary(preview), do: get_in(preview.metadata, ["summary"]) || preview_action_label(preview.action)
+    defp preview_summary(preview),
+      do: get_in(preview.metadata, ["summary"]) || preview_action_label(preview.action)
 
     defp preview_action_label("pause_cron_entry"), do: "pause cron entry"
     defp preview_action_label("resume_cron_entry"), do: "resume cron entry"
@@ -272,6 +321,13 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp preview_effect(%RepairPreview{after_snapshot: %{"effect" => effect}}), do: effect
     defp preview_effect(_preview), do: "See preview details."
 
+    defp entry_status_label(entry),
+      do:
+        entry
+        |> ControlPlane.cron_status()
+        |> Map.fetch!(:operator_status)
+        |> ControlPlanePresenter.status_label()
+
     defp entry_actions(entry, actor) do
       entry
       |> base_actions()
@@ -279,7 +335,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         Map.put(
           action,
           :enabled?,
-          LiveAuth.authorized?(actor, auth_action(action.action), %{type: :cron_entry, id: entry.name})
+          LiveAuth.authorized?(actor, auth_action(action.action), %{
+            type: :cron_entry,
+            id: entry.name
+          })
         )
       end)
       |> Enum.map(fn action ->
@@ -302,9 +361,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp disabled_reason(%{enabled?: true}), do: nil
-    defp disabled_reason(%{action: "pause_cron_entry"}), do: unauthorized_preview_message("pause_cron_entry")
-    defp disabled_reason(%{action: "resume_cron_entry"}), do: unauthorized_preview_message("resume_cron_entry")
-    defp disabled_reason(%{action: "run_cron_entry"}), do: unauthorized_preview_message("run_cron_entry")
+
+    defp disabled_reason(%{action: "pause_cron_entry"}),
+      do: unauthorized_preview_message("pause_cron_entry")
+
+    defp disabled_reason(%{action: "resume_cron_entry"}),
+      do: unauthorized_preview_message("resume_cron_entry")
+
+    defp disabled_reason(%{action: "run_cron_entry"}),
+      do: unauthorized_preview_message("run_cron_entry")
 
     defp action_button_class(%{enabled?: true, emphasis: :primary}),
       do: "rounded bg-indigo-600 px-3 py-2 text-white"
@@ -366,6 +431,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp catch_up_label(policy), do: Phoenix.Naming.humanize(policy)
     defp blank_to_nil(""), do: nil
     defp blank_to_nil(value), do: value
+    defp entry_path(entry_name), do: "/ops/jobs/cron?entry=#{URI.encode_www_form(entry_name)}"
     defp repo, do: Application.fetch_env!(:oban_powertools, :repo)
   end
 end

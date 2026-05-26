@@ -30,6 +30,33 @@ unless skip_db_boot? do
         Ecto.Migrator.up(repo, 0, ObanPowertools.TestRepo.Migrations.CreateTables, log: false)
       end
 
+      Ecto.Adapters.SQL.query!(
+        repo,
+        """
+        ALTER TABLE oban_powertools_audit_events
+        ADD COLUMN IF NOT EXISTS command_key text,
+        ADD COLUMN IF NOT EXISTS event_type text,
+        ADD COLUMN IF NOT EXISTS resource_type text,
+        ADD COLUMN IF NOT EXISTS resource_id text
+        """
+      )
+
+      Ecto.Adapters.SQL.query!(
+        repo,
+        """
+        CREATE INDEX IF NOT EXISTS oban_powertools_audit_events_event_type_index
+        ON oban_powertools_audit_events (event_type)
+        """
+      )
+
+      Ecto.Adapters.SQL.query!(
+        repo,
+        """
+        CREATE INDEX IF NOT EXISTS oban_powertools_audit_events_resource_identity_index
+        ON oban_powertools_audit_events (resource_type, resource_id)
+        """
+      )
+
       phase_2_tables? =
         repo
         |> Ecto.Adapters.SQL.query!(

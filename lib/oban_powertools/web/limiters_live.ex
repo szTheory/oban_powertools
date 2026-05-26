@@ -6,9 +6,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     import Ecto.Query
 
-    alias ObanPowertools.Explain
+    alias ObanPowertools.{ControlPlane, Explain}
     alias ObanPowertools.Limits.{Resource, State}
-    alias ObanPowertools.Web.LiveAuth
+    alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth}
 
     @impl true
     def mount(_params, %{"oban_dashboard_path" => dashboard_path}, socket) do
@@ -23,6 +23,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
          |> assign(:oban_dashboard_path, dashboard_path)
          |> assign(:selected_resource, nil)
          |> assign(:detail, nil)
+         |> assign(:read_only?, true)
          |> load_resources()}
       else
         {:error, socket} -> {:ok, socket}
@@ -30,35 +31,16 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     @impl true
-    def handle_event("inspect", %{"resource" => name}, socket) do
-      snapshot =
-        repo().one(
-          from(event in Explain,
-            where: event.scope_id == ^name,
-            order_by: [desc: event.captured_at],
-            limit: 1
-          )
-        )
-
-      detail =
-        case snapshot do
-          nil ->
-            %{snapshot: nil, live_now: [], oban_job_path: nil}
-
-          snapshot ->
-            explanation = Explain.explain_snapshot(snapshot, repo: repo())
-
-            %{
-              snapshot: snapshot,
-              live_now: explanation.live_now,
-              oban_job_path: build_job_path(socket.assigns.oban_dashboard_path, snapshot.job_id)
-            }
-        end
-
+    def handle_params(params, _uri, socket) do
       {:noreply,
        socket
-       |> assign(:selected_resource, name)
-       |> assign(:detail, detail)}
+       |> load_resources()
+       |> load_selection(Map.get(params, "resource"))}
+    end
+
+    @impl true
+    def handle_event("inspect", %{"resource" => name}, socket) do
+      {:noreply, push_patch(socket, to: limiter_path(name))}
     end
 
     @impl true
@@ -68,7 +50,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         <div>
           <h1 class="text-2xl font-semibold">Limiters</h1>
           <p class="text-sm text-zinc-600">
-            Saturation and cooldown stay visible in the table. Blocker evidence stays explanation-first.
+            <%= ControlPlanePresenter.native_banner() %> Saturation and cooldown stay visible beneath the shared status layer.
           </p>
         </div>
 
@@ -94,13 +76,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 <tr :for={resource <- @resources}>
                   <td class="px-4 py-3 font-medium"><%= resource.name %></td>
                   <td class="px-4 py-3"><%= resource.scope_kind %></td>
-                  <td class="px-4 py-3">
-                    <%= if resource.cooling_down? do %>
-                      Cooling Down
-                    <% else %>
-                      <%= resource.saturation_label %>
-                    <% end %>
-                  </td>
+                  <td class="px-4 py-3"><%= ControlPlanePresenter.status_label(ControlPlane.limiter_status(resource)) %></td>
                   <td class="px-4 py-3">
                     <button
                       type="button"
@@ -124,6 +100,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 <div>
                   <div class="flex gap-2 text-sm font-medium">
                     <span class="rounded bg-indigo-600 px-2 py-1 text-white">Live Now</span>
+                    <span class="rounded border px-2 py-1"><%= ControlPlanePresenter.ownership_badge(:powertools_native) %></span>
                   </div>
                   <%= if @detail.live_now == [] do %>
                     <p class="mt-2 text-sm text-zinc-600">Runnable</p>
@@ -150,7 +127,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                       Captured <%= format_dt(@detail.snapshot.captured_at) %>
                     </p>
                     <a :if={@detail.oban_job_path} href={@detail.oban_job_path} class="mt-3 inline-block text-sm text-indigo-700 underline">
-                      Open generic job inspection in Oban Web
+                      Open generic job inspection in Oban Web bridge
                     </a>
                   <% else %>
                     <p class="mt-2 text-sm text-zinc-600">No blocked-job snapshot is available for this limiter yet.</p>
@@ -169,33 +146,79 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp load_resources(socket) do
-      resources =
-        for resource <- repo().all(from(resource in Resource, order_by: [asc: resource.name])) do
-          states = repo().all(from(state in State, where: state.resource_id == ^resource.id))
+      assign(socket, :resources, resources())
+      |> assign(
+        :read_only?,
+        not LiveAuth.authorized?(socket.assigns.current_actor, :preview_repair, %{
+          type: :job,
+          id: "selection"
+        })
+      )
+    end
 
-          cooling_down? =
-            Enum.any?(states, fn state ->
-              match?(%DateTime{}, state.cooldown_until) and
-                DateTime.compare(state.cooldown_until, DateTime.utc_now()) == :gt
-            end)
+    defp load_selection(socket, nil) do
+      socket
+      |> assign(:selected_resource, nil)
+      |> assign(:detail, nil)
+    end
 
-          saturation_label =
-            if Enum.any?(states, &(&1.tokens_used >= resource.bucket_capacity)) do
-              "Blocked"
-            else
-              "Runnable"
-            end
+    defp load_selection(socket, name) do
+      socket
+      |> assign(:selected_resource, name)
+      |> assign(:detail, load_detail(name, socket.assigns.oban_dashboard_path))
+    end
 
-          Map.merge(resource, %{cooling_down?: cooling_down?, saturation_label: saturation_label})
-        end
+    defp resources do
+      for resource <- repo().all(from(resource in Resource, order_by: [asc: resource.name])) do
+        states = repo().all(from(state in State, where: state.resource_id == ^resource.id))
 
-      assign(socket, :resources, resources)
+        cooling_down? =
+          Enum.any?(states, fn state ->
+            match?(%DateTime{}, state.cooldown_until) and
+              DateTime.compare(state.cooldown_until, DateTime.utc_now()) == :gt
+          end)
+
+        saturation_label =
+          if Enum.any?(states, &(&1.tokens_used >= resource.bucket_capacity)) do
+            ControlPlanePresenter.status_label(:blocked)
+          else
+            ControlPlanePresenter.status_label(:runnable)
+          end
+
+        Map.merge(resource, %{cooling_down?: cooling_down?, saturation_label: saturation_label})
+      end
+    end
+
+    defp load_detail(name, dashboard_path) do
+      snapshot =
+        repo().one(
+          from(event in Explain,
+            where: event.scope_id == ^name,
+            order_by: [desc: event.captured_at],
+            limit: 1
+          )
+        )
+
+      case snapshot do
+        nil ->
+          %{snapshot: nil, live_now: [], oban_job_path: nil}
+
+        snapshot ->
+          explanation = Explain.explain_snapshot(snapshot, repo: repo())
+
+          %{
+            snapshot: snapshot,
+            live_now: explanation.live_now,
+            oban_job_path: build_job_path(dashboard_path, snapshot.job_id)
+          }
+      end
     end
 
     defp blocker_snapshot(snapshot), do: get_in(snapshot.details, ["live_now"]) || []
     defp repo, do: Application.fetch_env!(:oban_powertools, :repo)
     defp build_job_path(_base, nil), do: nil
     defp build_job_path(base, job_id), do: Path.join([base, "jobs", Integer.to_string(job_id)])
+    defp limiter_path(name), do: "/ops/jobs/limiters?resource=#{URI.encode_www_form(name)}"
     defp format_dt(nil), do: "unknown"
     defp format_dt(%DateTime{} = dt), do: Calendar.strftime(dt, "%Y-%m-%d %H:%M:%S UTC")
   end

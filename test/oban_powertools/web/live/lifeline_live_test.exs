@@ -97,7 +97,7 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     assert html =~ "One immutable operator event will be written."
     assert html =~ "policy actor: operator:ops-1"
     assert html =~ "policy reason: none provided"
-    assert html =~ "Open Generic Job Inspection in Oban Web"
+    assert html =~ "Open Generic Job Inspection in Oban Web bridge"
     assert html =~ "/oban/jobs/#{job.id}"
 
     assert [%{status: "ready"}] = TestRepo.all(ObanPowertools.Lifeline.RepairPreview)
@@ -242,6 +242,10 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     assert html =~ "Resolved Incidents"
     assert html =~ "Manual Intervention History"
     assert html =~ "policy reason: RESCUING ORPHANED JOB AFTER NODE LOSS"
+
+    assert html =~
+             "/ops/jobs/audit?resource_type=job&amp;resource_id=#{job.id}&amp;event_type=lifeline.repair_executed"
+
     refute html =~ "Preview Repair Plan"
     refute has_element?(view, "button[phx-value-row-id$=':job:#{job.id}'][phx-click='preview']")
 
@@ -300,7 +304,7 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     assert html =~ "Permission: read-only."
 
     assert html =~
-             "Permission: read-only. You can inspect this preview, but you do not have permission to execute this repair."
+             "Permission: read-only. You can inspect this Powertools-native preview, but you do not have permission to execute this Audited action."
 
     assert html =~ "Needs Review"
 
@@ -336,7 +340,66 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
            )
 
     assert html =~
-             "Permission: read-only. You can inspect this incident, but you do not have permission to preview this repair."
+             "Permission: read-only. You can inspect this Powertools-native incident, but you do not have permission to preview this Audited action."
+  end
+
+  test "patches durable params for selected incidents and resolved continuity", %{conn: conn} do
+    insert_missing_heartbeat!("patch-missing")
+    active_incident = insert_dead_executor_incident!("patch-missing")
+    active_job = insert_executing_job!("patch-missing")
+    update_incident_job_ids!(active_incident, [active_job.id])
+
+    resolved_incident =
+      %Incident{}
+      |> Incident.changeset(%{
+        incident_class: "dead_executor",
+        status: "resolved",
+        executor_id: "patch-resolved",
+        incident_fingerprint: "dead_executor:patch-resolved",
+        health_state: "resolved",
+        summary: "resolved executor patch-resolved",
+        affected_counts: %{"jobs" => 1, "workflow_steps" => 0},
+        evidence: %{"job_ids" => [999], "workflow_step_ids" => []},
+        first_detected_at: DateTime.utc_now(),
+        last_detected_at: DateTime.utc_now(),
+        resolved_at: DateTime.utc_now(),
+        metadata: %{}
+      })
+      |> TestRepo.insert!()
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-viewer", permissions: [:view_lifeline]}
+      )
+
+    {:ok, view, _html} = live(conn, "/ops/jobs/lifeline")
+
+    view
+    |> element("button[phx-value-row-id$=':job:#{active_job.id}'][phx-click='select_incident']")
+    |> render_click()
+
+    assert_patch(
+      view,
+      "/ops/jobs/lifeline?view=active&incident_fingerprint=#{URI.encode_www_form(active_incident.incident_fingerprint)}&row-id=#{URI.encode_www_form("#{active_incident.id}:job:#{active_job.id}")}"
+    )
+
+    view
+    |> element("button[phx-click='toggle_view'][phx-value-view='resolved']")
+    |> render_click()
+
+    assert_patch(
+      view,
+      "/ops/jobs/lifeline?view=resolved&incident_fingerprint=#{URI.encode_www_form(active_incident.incident_fingerprint)}&row-id=#{URI.encode_www_form("#{active_incident.id}:job:#{active_job.id}")}"
+    )
+
+    {:ok, _remounted_view, remounted_html} =
+      live(
+        conn,
+        "/ops/jobs/lifeline?view=resolved&incident_fingerprint=#{resolved_incident.incident_fingerprint}"
+      )
+
+    assert remounted_html =~ "Resolved Incidents"
+    assert remounted_html =~ "resolved executor patch-resolved"
   end
 
   test "authorized but unattributable operators cannot create durable preview or execute writes",

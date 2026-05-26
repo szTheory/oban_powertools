@@ -99,6 +99,8 @@ ObanPowertools.Explain.workflow_step(
 
 That returns the step state, blocker codes, and dependency snapshot that explain why a step is
 still pending.
+Rendered operator surfaces should lead with shared control-plane language such as `Needs Review`,
+`Blocked`, `Waiting`, or `Runnable`, then preserve raw workflow semantics underneath.
 
 ## Good fit
 

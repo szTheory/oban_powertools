@@ -8,7 +8,10 @@ and `intentionally unsupported`.
 
 - the native `/ops/jobs` shell is the supported operator surface
 - native Powertools pages are the supported mutation surface
+- `Powertools-native` pages are the diagnosis-first and `Audited action` surface
+- overview and audit are part of the same unified native `/ops/jobs` control plane
 - the optional `/ops/jobs/oban` bridge is supported only as a read-only inspection annex
+- the `Oban Web bridge` remains `Inspection only`
 - the host-owned integration contract is supported when the documented seams are explicit
 - the singular upgrade lane from `examples/phoenix_host_upgrade_source` to the current contract
   is supported

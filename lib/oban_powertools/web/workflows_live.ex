@@ -6,9 +6,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     import Ecto.Query
 
-    alias ObanPowertools.{DisplayPolicy, Explain}
+    alias ObanPowertools.{ControlPlane, DisplayPolicy, Explain}
     alias ObanPowertools.Workflow.{Edge, Result, Step, Workflow}
-    alias ObanPowertools.Web.LiveAuth
+    alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth}
 
     @impl true
     def mount(_params, %{"oban_dashboard_path" => dashboard_path}, socket) do
@@ -83,7 +83,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         <div>
           <h1 class="text-2xl font-semibold">Workflows</h1>
           <p class="text-sm text-zinc-600">
-            Diagnose workflow causality here. Powertools-native pages own preview, reason, and audited mutations.
+            Diagnose workflow causality here. <%= ControlPlanePresenter.native_banner() %>
           </p>
         </div>
 
@@ -104,7 +104,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               <thead class="bg-slate-50 text-left text-sm">
                 <tr>
                   <th class="px-4 py-3 font-medium">Workflow</th>
-                  <th class="px-4 py-3 font-medium">State</th>
+                  <th class="px-4 py-3 font-medium">Operator Status</th>
                   <th class="px-4 py-3 font-medium">Steps</th>
                   <th class="px-4 py-3 font-medium">Open</th>
                 </tr>
@@ -112,7 +112,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               <tbody class="divide-y text-sm">
                 <tr :for={workflow <- @workflows}>
                   <td class="px-4 py-3 font-medium"><%= workflow.name %></td>
-                  <td class="px-4 py-3"><%= workflow.state %></td>
+                  <td class="px-4 py-3"><%= workflow_status_label(workflow) %></td>
                   <td class="px-4 py-3"><%= workflow.step_count %></td>
                   <td class="px-4 py-3">
                     <.link navigate={"/ops/jobs/workflows/#{workflow.id}"} class="rounded bg-indigo-600 px-3 py-2 text-white">
@@ -127,7 +127,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           <div class="rounded-lg border bg-white p-4">
             <%= if @workflow do %>
               <h2 class="text-base font-semibold"><%= @workflow.name %></h2>
-              <p class="mt-2 text-sm text-zinc-600">State: <%= @workflow.state %></p>
+              <p class="mt-2 text-sm text-zinc-600">Operator Status: <%= workflow_status_label(@workflow, @workflow_story) %></p>
               <p class="mt-1 text-sm text-zinc-600">Diagnosis: <%= @workflow_story.diagnosis %></p>
               <p class="mt-1 text-sm text-zinc-600">Runnable now: <%= @workflow.runnable_step_count %></p>
               <p class="mt-1 text-sm text-zinc-600">
@@ -142,9 +142,14 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               <p :if={@workflow_story.latest_recovery_session} class="mt-1 text-sm text-zinc-600">
                 Latest recovery session: <%= @workflow_story.latest_recovery_session.id %>
               </p>
-              <p :if={@workflow_story.rejection_summary} class="mt-1 text-sm text-amber-700">
-                Latest refusal: <%= @workflow_story.rejection_summary.code %> - <%= @workflow_story.rejection_summary.message %>
-              </p>
+              <% workflow_refusal = ControlPlanePresenter.workflow_refusal(@workflow_story.rejection_summary) %>
+              <div :if={workflow_refusal} class="mt-2 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                <p><strong>Outcome:</strong> <%= workflow_refusal.outcome %></p>
+                <p class="mt-1"><strong>Reason:</strong> <%= workflow_refusal.reason %></p>
+                <p class="mt-1"><strong>Legal next move:</strong> <%= workflow_refusal.next_move %></p>
+                <p class="mt-1"><strong>Venue:</strong> <%= workflow_refusal.venue %></p>
+                <p class="mt-1 text-xs text-amber-700">Machine code: <%= workflow_refusal.code %></p>
+              </div>
 
               <div class="mt-4 space-y-3">
                 <div :for={step <- @steps} class={["rounded border p-3", highlight_class(step, @selected_step)]}>
@@ -152,7 +157,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                   <div class="flex items-center justify-between gap-3">
                     <div>
                       <p class="font-medium"><%= step.step_name %></p>
-                      <p class="text-xs text-zinc-500"><%= step.state %></p>
+                      <p class="text-xs text-zinc-500"><%= step_status_label(story) %></p>
                       <p class="text-xs text-zinc-500">diagnosis: <%= story.diagnosis || "none" %></p>
                     </div>
                     <.link
@@ -168,8 +173,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                   <p :if={story.blocker_summaries != []} class="mt-1 text-xs text-zinc-500">
                     why: <%= Enum.join(story.blocker_summaries, "; ") %>
                   </p>
-                  <p :if={story.rejection_summary} class="mt-1 text-xs text-amber-700">
-                    latest refusal: <%= story.rejection_summary.code %>
+                  <% step_refusal = ControlPlanePresenter.workflow_refusal(story.rejection_summary) %>
+                  <p :if={step_refusal} class="mt-1 text-xs text-amber-700">
+                    next move: <%= step_refusal.next_move %>
                   </p>
                 </div>
               </div>
@@ -185,27 +191,26 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           <% result_display = workflow_result_display(@selected_step, @results, @workflow) %>
           <h2 class="text-base font-semibold"><%= @selected_step.step_name %></h2>
           <p class="mt-2 text-sm text-zinc-600">Worker: <%= @selected_step.worker %></p>
-          <p class="mt-1 text-sm text-zinc-600">State: <%= @selected_step.state %></p>
+          <p class="mt-1 text-sm text-zinc-600">Operator Status: <%= step_status_label(@selected_step_story) %></p>
           <p class="mt-1 text-sm text-zinc-600">Diagnosis: <%= @selected_step_story.diagnosis || "none" %></p>
           <p class="mt-1 text-sm text-zinc-600">
             Result available:
             <%= if result_display.available?, do: "yes", else: "no" %>
           </p>
-          <p :if={@selected_step_story.rejection_summary} class="mt-1 text-sm text-amber-700">
-            Latest refusal: <%= @selected_step_story.rejection_summary.code %> - <%= @selected_step_story.rejection_summary.message %>
-          </p>
-          <p
-            :if={@selected_step_story.rejection_summary && @selected_step_story.rejection_summary.legal_next_steps != []}
-            class="mt-1 text-sm text-zinc-600"
-          >
-            Legal next steps: <%= Enum.join(@selected_step_story.rejection_summary.legal_next_steps, ", ") %>
-          </p>
+          <% selected_step_refusal = ControlPlanePresenter.workflow_refusal(@selected_step_story.rejection_summary) %>
+          <div :if={selected_step_refusal} class="mt-2 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <p><strong>Outcome:</strong> <%= selected_step_refusal.outcome %></p>
+            <p class="mt-1"><strong>Reason:</strong> <%= selected_step_refusal.reason %></p>
+            <p class="mt-1"><strong>Legal next move:</strong> <%= selected_step_refusal.next_move %></p>
+            <p class="mt-1"><strong>Venue:</strong> <%= selected_step_refusal.venue %></p>
+            <p class="mt-1 text-xs text-amber-700">Machine code: <%= selected_step_refusal.code %></p>
+          </div>
           <div :if={lifeline_handoff(@workflow, @selected_step, @workflow_story, @selected_step_story)} class="mt-3 rounded border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900">
             <p class="font-medium">
               Review the bounded action in Lifeline.
             </p>
             <p class="mt-1">
-              Diagnose workflow causality here. Powertools-native pages own preview, reason, and audited mutations.
+              Diagnose workflow causality here. Powertools-native pages own preview, reason, venue, and Audited action controls.
             </p>
             <.link
               navigate={lifeline_handoff(@workflow, @selected_step, @workflow_story, @selected_step_story).path}
@@ -249,7 +254,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             </div>
 
             <a :if={@selected_step.job_id} href={build_job_path(@oban_dashboard_path, @selected_step.job_id)} class="text-sm text-indigo-700 underline">
-              Open generic job inspection in Oban Web
+              Open generic job inspection in Oban Web bridge
             </a>
           </div>
         </div>
@@ -368,6 +373,24 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp build_job_path(base, job_id), do: Path.join([base, "jobs", Integer.to_string(job_id)])
+
+    defp workflow_status_label(workflow),
+      do: workflow_status_label(workflow, %{diagnosis: workflow.state, latest_rejection: nil})
+
+    defp workflow_status_label(_workflow, story) do
+      story
+      |> ControlPlane.workflow_status()
+      |> Map.fetch!(:operator_status)
+      |> ControlPlanePresenter.status_label()
+    end
+
+    defp step_status_label(story) do
+      story
+      |> ControlPlane.workflow_status()
+      |> Map.fetch!(:operator_status)
+      |> ControlPlanePresenter.status_label()
+    end
+
     defp repo, do: Application.fetch_env!(:oban_powertools, :repo)
   end
 end

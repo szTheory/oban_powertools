@@ -279,6 +279,10 @@ defmodule ObanPowertools.LifelineTest do
 
     [audit_event] = Audit.list(%{type: :job, id: Integer.to_string(job.id)}, repo: repo())
     assert audit_event.action == "lifeline.repair_executed"
+    assert audit_event.event_type == "lifeline.repair_executed"
+    assert audit_event.command_key == "execute_repair"
+    assert audit_event.resource_type == "job"
+    assert audit_event.resource_id == Integer.to_string(job.id)
     assert audit_event.metadata["reason"] =~ "orphaned job"
 
     assert {:error, :preview_consumed} =

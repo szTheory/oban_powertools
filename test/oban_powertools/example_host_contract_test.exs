@@ -28,6 +28,21 @@ defmodule ObanPowertools.ExampleHostContractTest do
     assert result.render_output =~ "Oban Web"
   end
 
+  @tag :"control-plane"
+  test "control-plane lane proves overview, audit, and bridge-only follow-up through the canonical fixture" do
+    result = ExampleHostContract.proof!("control-plane")
+
+    assert result.compile_output =~ "Generated phoenix_host app"
+    assert result.seeds_output =~ "ops-demo"
+    assert result.control_plane_output =~ "PhoenixHostWeb.ObanPowertoolsControlPlaneSmokeTest"
+    assert result.control_plane_output =~ "1 test, 0 failures"
+    assert result.control_plane_output =~ "/ops/jobs"
+    assert result.control_plane_output =~ "Diagnosis-first overview"
+    assert result.control_plane_output =~ "/ops/jobs/audit"
+    assert result.control_plane_output =~ "/ops/jobs/oban"
+    assert result.control_plane_output =~ "Inspection only"
+  end
+
   @tag :"upgrade-proof"
   test "upgrade lane proves ops-demo pauses nightly_sync with pause_cron_entry after the documented host updates" do
     result = ExampleHostContract.proof!("upgrade")

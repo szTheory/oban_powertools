@@ -59,9 +59,49 @@ defmodule ObanPowertools.Web.AuditLiveTest do
     assert html =~ "policy reason: MAINTENANCE WINDOW RESCUE"
     assert html =~ "Archive Activity"
     assert html =~ "Event Time"
+    assert html =~ "Event Type"
+    assert html =~ "Resource Identity"
     assert html =~ "Permission: read-only."
     assert html =~ "cross-surface audit destination"
-    assert html =~ "Native pages keep preview, reason, and local audit evidence close to the acted-on resource."
+
+    assert html =~
+             "Powertools-native pages keep preview, reason, and local audit evidence close to the acted-on resource."
+
+    assert html =~ "Inspection only"
+  end
+
+  test "scopes audit history with durable read-only filters", %{conn: conn} do
+    Audit.record(
+      "lifeline.repair_executed",
+      %{type: :job, id: "123"},
+      %{"event_type" => "lifeline.repair_executed", "reason" => "maintenance"},
+      repo: TestRepo,
+      actor_id: "ops-1"
+    )
+
+    Audit.record(
+      "cron.paused",
+      %{type: :cron_entry, id: "nightly"},
+      %{"event_type" => "cron.paused", "reason" => "maintenance"},
+      repo: TestRepo,
+      actor_id: "ops-1"
+    )
+
+    conn =
+      Plug.Test.init_test_session(conn, current_actor: %{id: "ops-1", permissions: [:view_audit]})
+
+    {:ok, _view, html} =
+      live(
+        conn,
+        "/ops/jobs/audit?resource_type=job&resource_id=123&event_type=lifeline.repair_executed"
+      )
+
+    assert html =~ "Scoped Audit Filter"
+    assert html =~ "resource_type=job"
+    assert html =~ "resource_id=123"
+    assert html =~ "event_type=lifeline.repair_executed"
+    assert html =~ "job:123"
+    refute html =~ "cron_entry:nightly"
   end
 
   test "redirects unauthorized viewers", %{conn: conn} do

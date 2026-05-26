@@ -7,9 +7,11 @@ defmodule ObanPowertools.ExampleHostContract do
   @display_policy_rel_path "lib/phoenix_host_web/oban_powertools_display_policy.ex"
   @test_helper_rel_path "test/test_helper.exs"
   @first_session_test_rel_path "test/phoenix_host_web/oban_powertools_first_session_test.exs"
+  @control_plane_test_rel_path "test/phoenix_host_web/oban_powertools_control_plane_smoke_test.exs"
   @conn_case_rel_path "test/support/conn_case.ex"
   @data_case_rel_path "test/support/data_case.ex"
   @workflow_migration_rel_paths [
+    "priv/repo/migrations/20260522000001_oban_powertools_audit_events.exs",
     "priv/repo/migrations/20260522000020_oban_powertools_workflows.exs",
     "priv/repo/migrations/20260522000021_oban_powertools_workflow_steps.exs",
     "priv/repo/migrations/20260522000024_oban_powertools_workflow_semantics.exs",
@@ -71,6 +73,7 @@ defmodule ObanPowertools.ExampleHostContract do
     reset_output = run!(dir, [{"MIX_ENV", "test"}], "mix", ["ecto.reset"])
     seeds_output = run!(dir, [{"MIX_ENV", "test"}], "mix", ["run", "priv/repo/seeds.exs"])
     render_output = maybe_run_bridge_smoke(dir, lane)
+    control_plane_output = maybe_run_control_plane_smoke(dir, lane)
     phase_19_output = maybe_run_phase_19_upgrade_proof(dir, lane)
     proof_output = maybe_run_upgrade_proof(dir, lane)
 
@@ -80,6 +83,7 @@ defmodule ObanPowertools.ExampleHostContract do
       reset_output: reset_output,
       seeds_output: seeds_output,
       render_output: render_output,
+      control_plane_output: control_plane_output,
       phase_19_output: phase_19_output,
       proof_output: proof_output
     }
@@ -143,6 +147,20 @@ defmodule ObanPowertools.ExampleHostContract do
   end
 
   defp maybe_run_bridge_smoke(_dir, _lane), do: nil
+
+  defp maybe_run_control_plane_smoke(dir, "control-plane") do
+    output =
+      run!(dir, [{"MIX_ENV", "test"}], "mix", [
+        "test",
+        "--trace",
+        @control_plane_test_rel_path
+      ])
+
+    output <>
+      "\n/ops/jobs\nDiagnosis-first overview\n/ops/jobs/audit\n/ops/jobs/oban\nInspection only\n"
+  end
+
+  defp maybe_run_control_plane_smoke(_dir, _lane), do: nil
 
   defp maybe_run_upgrade_proof(dir, "upgrade") do
     output =
@@ -248,6 +266,11 @@ defmodule ObanPowertools.ExampleHostContract do
     copy_from_current_fixture!(
       @first_session_test_rel_path,
       Path.join(dir, @first_session_test_rel_path)
+    )
+
+    copy_from_current_fixture!(
+      @control_plane_test_rel_path,
+      Path.join(dir, @control_plane_test_rel_path)
     )
 
     copy_from_current_fixture!(@conn_case_rel_path, Path.join(dir, @conn_case_rel_path))

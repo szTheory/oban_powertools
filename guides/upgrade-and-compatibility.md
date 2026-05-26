@@ -3,6 +3,7 @@
 This guide documents one supported upgrade lane. It starts from a real Phoenix host shape that
 already runs Oban Powertools natively at `/ops/jobs`, then upgrades that host to the current
 public contract without guessing at hidden seam changes.
+That contract is the unified native `/ops/jobs` control plane, with `/ops/jobs/oban` kept as a narrower read-only bridge.
 
 ## Supported Source Lane
 

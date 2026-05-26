@@ -8,7 +8,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     alias ObanPowertools.{Audit, DisplayPolicy, Explain, Lifeline}
     alias ObanPowertools.Lifeline.{ArchiveRun, Incident, RepairPreview}
-    alias ObanPowertools.Web.LiveAuth
+    alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth}
     alias ObanPowertools.Workflow.{Step, Workflow}
 
     @impl true
@@ -42,20 +42,33 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     @impl true
     def handle_event("select_incident", %{"row-id" => row_id}, socket) do
+      row = find_row!(socket.assigns.visible_incident_rows, row_id)
+
       {:noreply,
        socket
        |> assign(:success_message, nil)
-       |> load_data(%{row_id: row_id})}
+       |> push_patch(
+         to:
+           selection_path(%{
+             view: socket.assigns.current_view,
+             row_id: row.id,
+             incident_fingerprint: row.incident.incident_fingerprint
+           })
+       )}
     end
 
     def handle_event("toggle_view", %{"view" => view}, socket) do
       {:noreply,
        socket
        |> assign(:success_message, nil)
-       |> load_data(%{
-         view: view,
-         incident_fingerprint: selected_fingerprint(socket.assigns.selected_row)
-       })}
+       |> push_patch(
+         to:
+           selection_path(%{
+             view: view,
+             row_id: socket.assigns.selected_row && socket.assigns.selected_row.id,
+             incident_fingerprint: selected_fingerprint(socket.assigns.selected_row)
+           })
+       )}
     end
 
     def handle_event("preview", %{"row-id" => row_id}, socket) do
@@ -191,7 +204,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         <div>
           <h1 class="text-2xl font-semibold">Lifeline</h1>
           <p class="text-sm text-zinc-600">
-            Incident review, preview, reason, and audit stay aligned here. Generic job internals still deep-link into Oban Web.
+            <%= ControlPlanePresenter.native_banner() %> Generic job internals still deep-link into the Oban Web bridge.
           </p>
         </div>
 
@@ -413,7 +426,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                     href={build_job_path(@oban_dashboard_path, @target_detail.job_id)}
                     class="rounded border px-3 py-2 text-sm"
                   >
-                    Open Generic Job Inspection in Oban Web
+                    Open Generic Job Inspection in Oban Web bridge
                   </a>
                 </div>
                 <p :if={not is_nil(@preview) and not is_nil(execute_action.disabled_reason)} class="text-xs text-zinc-500">
@@ -432,10 +445,13 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 <div class="mt-3 space-y-3">
                   <div :for={event <- @audit_events} class="rounded border bg-slate-50 p-3 text-sm">
                     <div><strong>Actor:</strong> <%= event_actor_label(event) %></div>
-                    <div class="mt-1"><strong>Action:</strong> <%= event.action %></div>
-                    <div class="mt-1"><strong>Resource:</strong> <%= event.resource %></div>
+                    <div class="mt-1"><strong>Action:</strong> <%= ControlPlanePresenter.audit_event_label(event) %></div>
+                    <div class="mt-1"><strong>Resource:</strong> <%= ControlPlanePresenter.audit_resource_label(event) %></div>
                     <div class="mt-1"><strong>Reason:</strong> <%= event_reason(event) %></div>
                     <div class="mt-1"><strong>Event Time:</strong> <%= timestamp_copy(event.inserted_at) %></div>
+                    <.link navigate={ControlPlanePresenter.audit_follow_up_path(event)} class="mt-2 inline-flex text-indigo-700 underline">
+                      Open in Audit
+                    </.link>
                   </div>
                 </div>
               <% end %>
@@ -479,7 +495,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               </div>
             </div>
             <p class="mt-3 text-sm text-zinc-600">
-              Archive and prune visibility is read-only here. Retention policy editing stays out of scope for this phase.
+              Archive and prune visibility is read-only here. <%= ControlPlanePresenter.bridge_banner() %> Retention policy editing stays out of scope for this phase.
             </p>
           </div>
         </div>
@@ -743,6 +759,22 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp selected_fingerprint(nil), do: nil
     defp selected_fingerprint(row), do: row.incident.incident_fingerprint
+
+    defp selection_path(selection) do
+      query =
+        selection
+        |> Enum.reject(fn {_key, value} -> is_nil(value) or value == "" end)
+        |> Enum.map(fn
+          {:row_id, value} -> {"row-id", value}
+          {:incident_fingerprint, value} -> {"incident_fingerprint", value}
+          {:workflow_id, value} -> {"workflow_id", value}
+          {:step_name, value} -> {"step", value}
+          {key, value} -> {to_string(key), value}
+        end)
+        |> URI.encode_query()
+
+      "/ops/jobs/lifeline?#{query}"
+    end
 
     defp preview_action(row, actor) do
       cond do

@@ -45,6 +45,18 @@ Yes: the feature set should intentionally cover the same class of batteries-incl
 
 No: the implementation should not copy their proprietary internals, private code, assets, exact docs, or branding. Build from public behavior, public docs, community feedback, and clean-room architecture.
 
+1.4 Research and Decision Posture
+
+For this repo, planning and discussion agents should default to research-first narrowing rather than interactive option shopping.
+
+That means:
+
+* Read repo-local planning artifacts, prompts, nearby phase context, and implementation surfaces before asking the user to resolve a gray area.
+* Prefer one coherent, research-backed recommendation set over broad menus of plausible options.
+* Use Phoenix/LiveView/Ecto/Postgres norms, current codebase reality, and ecosystem lessons from comparable operator/admin systems to settle ordinary implementation choices automatically.
+* Escalate only when a fork still has no clear winner after research and would materially affect product semantics, support truth, architecture boundaries, operator trust, or long-term maintainer burden.
+* When escalation is necessary, present the recommended path first and ask the narrowest possible question.
+
 ⸻
 
 2. Primary Personas and Jobs-to-Be-Done

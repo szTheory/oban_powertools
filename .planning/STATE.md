@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: Unified Control Plane & Explainability
-current_plan: 3
-status: verifying
-stopped_at: Completed 29-03-PLAN.md
-last_updated: "2026-05-25T19:36:55.475Z"
+milestone: v1.4
+milestone_name: Operator Forensics & SRE Runbooks
+current_plan: 0
+status: ready_for_planning
+stopped_at: v1.3 archived and tagged; awaiting next milestone kickoff
+last_updated: "2026-05-26T17:00:00.000Z"
 progress:
-  total_phases: 5
-  completed_phases: 3
-  total_plans: 15
-  completed_plans: 9
-  percent: 60
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -19,28 +19,25 @@ progress:
 ## Project Reference
 
 **Core Value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-**Current Focus:** Phase 29 — shared-preview-reason-refusal-audit-contract (ready for verification)
+**Current Focus:** v1.3 shipped; next default candidate is v1.4 for operator forensics and runbook depth
 
 ## Current Position
 
-Phase: 29 (shared-preview-reason-refusal-audit-contract) — VERIFYING
-Plan: 3 of 3
-
-- **Phase:** 29
-- **Plan:** 3
-- **Current Plan:** 3
-- **Total Plans in Phase:** 3
-- **Status:** Phase complete — ready for verification
-- **Progress:** [██████████] 100%
+- **Phase:** None
+- **Plan:** None
+- **Current Plan:** Start next milestone planning
+- **Total Plans in Phase:** 0
+- **Status:** v1.3 archived; no active milestone opened yet
+- **Progress:** [----------] 0%
 - **Canonical sequencing:** `.planning/ROADMAP.md`
-- **Milestone requirements:** `.planning/REQUIREMENTS.md`
+- **Milestone requirements:** None active
 - **Strategic source of truth:** `.planning/MILESTONE-ARC.md`
 
 ## Performance Metrics
 
-- **Phases Complete:** 3/5
-- **Plans Complete:** 9/15
-- **Metrics:** Milestone v1.3 planning opened on 2026-05-25 after an adopter-facing assessment concluded the library is already strong for serious Phoenix SaaS teams, with the main remaining high-leverage gap being cross-surface operator cohesion rather than missing foundational runtime capability.
+- **Phases Complete:** 0/0 active
+- **Plans Complete:** 0/0 active
+- **Metrics:** v1.3 shipped on 2026-05-26 after closing phases 27-31 with one coherent control-plane vocabulary, diagnosis-first overview, continuity-safe drilldowns, and support-truthful proof.
 
 ## Accumulated Context
 
@@ -90,13 +87,14 @@ Plan: 3 of 3
   - Defer full native generic job UI, broader automation/API surfaces, and feature-family expansion until the unified control-plane wedge proves real adopter leverage.
   - Keep v1.3 honest about scope: native Powertools pages plus deliberate Oban Web handoffs for generic job and queue inspection, not a surprise queue-dashboard rewrite.
   - Anchor the first concrete win on the `/ops/jobs` operator journey: what needs attention, why, and where to go next without vocabulary drift between pages.
+  - With v1.3 shipped, the default next candidate is `v1.4 Operator Forensics & SRE Runbooks`: deepen historical evidence, investigative UX, and runbook-guided remediation on top of the now-stable control-plane contract.
 - **Todos:** None
 - **Blockers:** None
 
 ## Session Continuity
 
 - **Last session:** 2026-05-25T19:36:55.008Z
-- **Stopped At:** Completed 29-03-PLAN.md
+- **Stopped At:** v1.3 archived and tagged
 - **Resume File:** None
-- **Last Action:** Executed Phase 29 end-to-end, normalizing shared preview, reason, refusal, and audit follow-up contracts across cron, workflows, Lifeline, and the audit destination.
-- **Next Action:** Run `$gsd-verify-work 29` before advancing to Phase 30.
+- **Last Action:** Archived milestone v1.3, collapsed roadmap and requirements into milestone archives, and advanced the strategic state toward the next candidate milestone.
+- **Next Action:** Run `$gsd-new-milestone` to open v1.4 requirements and roadmap planning, or intentionally choose a different candidate from `.planning/MILESTONE-ARC.md`.

@@ -4,8 +4,10 @@ Oban Powertools is a host-owned operations layer for Oban-backed Phoenix applica
 library owns internal runtime helpers, native pages, and bridge adapters. The host app owns
 router scope, browser pipeline, auth, display policy, runtime config, and seeded operator data.
 
-Oban Powertools ships a native, host-owned operator shell at `/ops/jobs`.
+Oban Powertools ships a unified native `/ops/jobs` control plane at `/ops/jobs`.
 `oban_web` is optional; when installed, Powertools mounts a nested read-only Oban Web bridge at `/ops/jobs/oban` for additional inspection.
+The native pages are `Powertools-native` surfaces for `Audited action`, while the bridge remains `Inspection only`.
+The diagnosis-first overview, cross-surface audit follow-up, and bounded native actions all belong to that same native control plane story.
 
 ## 60-Second Install
 
@@ -75,8 +77,9 @@ passed and a real native mutation succeeds.
 
 - `supported`: the native `/ops/jobs` shell is the supported operator surface, and native
   Powertools pages are the supported mutation surface.
+- `supported`: `Powertools-native` surfaces own diagnosis-first wording, legal next action, venue, and durable audit evidence.
 - `supported`: the optional `/ops/jobs/oban` bridge is supported only as a narrower read-only
-  inspection annex.
+  inspection annex and stays explicitly `Inspection only`.
 - `supported`: one singular upgrade lane is supported for hosts that already have Postgres/Ecto,
   `repo`, `auth_module`, `/ops/jobs`, and Powertools migrations in place and still need to add
   `display_policy`.
@@ -98,7 +101,7 @@ passed and a real native mutation succeeds.
 - [Installation](guides/installation.md) covers the exact host-owned setup path, including
   `ObanPowertoolsAuth`, `ObanPowertoolsDisplayPolicy`, and the compile/migrate/boot threshold.
 - [First Operator Session](guides/first-operator-session.md) walks from install to the canonical
-  `ops-demo` -> `pause_cron_entry` on `nightly_sync` proof and the read-only bridge.
+  `ops-demo` -> `pause_cron_entry` on `nightly_sync` proof, the overview entrypoint, and the read-only bridge.
 - [Example App Walkthrough](guides/example-app-walkthrough.md) points to the canonical fixture at
   `examples/phoenix_host`.
 - [Workers And Idempotency](guides/workers-and-idempotency.md) shows how to build typed workers
@@ -112,7 +115,7 @@ passed and a real native mutation succeeds.
 - [Policy Integration Patterns](guides/policy-integration-patterns.md) shows how the host auth
   and display seams should be shaped in a real Phoenix app.
 - [Optional Oban Web Bridge](guides/optional-oban-web-bridge.md) defines the bounded
-  `/ops/jobs/oban` read-only annex.
+  `/ops/jobs/oban` read-only annex for generic inspection only.
 - [Support Truth And Ownership Boundaries](guides/support-truth-and-ownership-boundaries.md)
   expands the shared supported/tested/best-effort/host-owned/intentionally unsupported
   vocabulary.

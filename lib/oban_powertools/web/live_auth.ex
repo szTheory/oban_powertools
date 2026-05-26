@@ -6,6 +6,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     import Phoenix.LiveView
 
     alias ObanPowertools.Auth
+    alias ObanPowertools.Web.ControlPlanePresenter
 
     @missing_principal_message "Oban Powertools could not derive a durable audit principal for this action."
     @audit_consequence "One immutable operator event will be written."
@@ -22,25 +23,25 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     }
     @permission_messages %{
       pause_cron_entry:
-        "Permission: read-only. You can inspect this cron entry, but you do not have permission to preview or execute pause mutations.",
+        "Permission: read-only. You can inspect this Powertools-native cron entry, but you do not have permission to preview or execute this Audited action.",
       resume_cron_entry:
-        "Permission: read-only. You can inspect this cron entry, but you do not have permission to preview or execute resume mutations.",
+        "Permission: read-only. You can inspect this Powertools-native cron entry, but you do not have permission to preview or execute this Audited action.",
       run_cron_entry:
-        "Permission: read-only. You can inspect this cron entry, but you do not have permission to preview or execute run-now mutations.",
+        "Permission: read-only. You can inspect this Powertools-native cron entry, but you do not have permission to preview or execute this Audited action.",
       preview_repair:
-        "Permission: read-only. You can inspect this incident, but you do not have permission to preview this repair.",
+        "Permission: read-only. You can inspect this Powertools-native incident, but you do not have permission to preview this Audited action.",
       execute_repair:
-        "Permission: read-only. You can inspect this preview, but you do not have permission to execute this repair."
+        "Permission: read-only. You can inspect this Powertools-native preview, but you do not have permission to execute this Audited action."
     }
     @page_read_only_banners %{
       cron:
-        "Permission: read-only. You can inspect cron state, but preview, reason, and audited mutations stay disabled until you receive broader permission.",
+        "Permission: read-only. Powertools-native cron stays visible, but preview, reason, and Audited action controls stay disabled until you receive broader permission.",
       lifeline:
-        "Permission: read-only. You can inspect incident evidence, but preview, reason, and audited repairs stay disabled until you receive broader permission.",
+        "Permission: read-only. Powertools-native incident evidence stays visible, but preview, reason, and Audited action controls stay disabled until you receive broader permission.",
       audit:
-        "Permission: read-only. This page is the cross-surface audit destination. Native pages keep preview, reason, and local audit evidence close to the acted-on resource.",
+        "Permission: read-only. This page is the cross-surface audit destination. Powertools-native pages keep preview, reason, and local audit evidence close to the acted-on resource.",
       workflows:
-        "Permission: read-only. Diagnose workflow causality here, but use Powertools-native pages for preview, reason, and audited mutations."
+        "Permission: read-only. Diagnose workflow causality here, but use Powertools-native pages for preview, reason, and Audited action controls."
     }
 
     def on_mount(:default, _params, session, socket) do
@@ -94,7 +95,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       Map.get(@mutation_errors, reason, inspect(reason))
     end
 
-    def audit_consequence_copy, do: @audit_consequence
+    def audit_consequence_copy, do: @audit_consequence <> " " <> ControlPlanePresenter.native_banner()
 
     def page_read_only_banner(surface) do
       Map.fetch!(@page_read_only_banners, surface)

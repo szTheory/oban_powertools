@@ -64,10 +64,17 @@ defmodule ObanPowertools.DocsContractTest do
     assert source =~ "host-owned"
     assert source =~ "intentionally unsupported"
     assert source =~ "best-effort outside tested lanes"
+    assert source =~ "unified native `/ops/jobs` control plane"
     assert source =~ "native `/ops/jobs` shell"
     assert source =~ "/ops/jobs/oban"
     assert source =~ "read-only"
     assert source =~ "supported mutation surface"
+    assert source =~ "Powertools-native"
+    assert source =~ "Oban Web bridge"
+    assert source =~ "Inspection only"
+    assert source =~ "Audited action"
+    assert source =~ "overview"
+    assert source =~ "audit"
   end
 
   test "builder docs keep the core primitive contract explicit" do
@@ -109,12 +116,14 @@ defmodule ObanPowertools.DocsContractTest do
     assert source =~ "native-first:"
     assert source =~ "first-session:"
     assert source =~ "optional-bridge:"
+    assert source =~ "control-plane:"
     assert source =~ "upgrade-proof:"
     assert source =~ "workflow-compatibility:"
     assert source =~ "test/oban_powertools/fresh_host_contract_test.exs"
     assert source =~ "test/oban_powertools/example_host_contract_test.exs"
     assert source =~ "test/oban_powertools/workflow_compatibility_test.exs"
     assert source =~ "--only first_session"
+    assert source =~ "--only control-plane"
     assert source =~ "--only upgrade-proof"
   end
 

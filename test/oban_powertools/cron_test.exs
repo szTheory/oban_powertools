@@ -164,12 +164,17 @@ defmodule ObanPowertools.CronTest do
 
     actions =
       Cron.latest_audit(repo(), entry.name)
-      |> Enum.map(& &1.action)
+      |> Enum.map(& &1.event_type)
 
     assert "cron.paused" in actions
     assert "cron.resumed" in actions
     assert "cron.run_now_previewed" in actions
     assert "cron.run_now" in actions
+
+    [latest | _] = Cron.latest_audit(repo(), entry.name)
+    assert latest.resource_type == "cron_entry"
+    assert latest.resource_id == entry.name
+    assert latest.command_key in ["run_cron_entry", "resume_cron_entry", "pause_cron_entry"]
   end
 
   defp runtime_entry(overrides) do

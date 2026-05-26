@@ -19,7 +19,7 @@ defmodule PhoenixHostWeb.ObanPowertoolsFirstSessionTest do
     {:ok, view, html} = live(conn, "/ops/jobs/cron")
 
     assert html =~ "Cron"
-    assert html =~ "Preview, reason, and audit stay aligned here for every cron entry mutation."
+    assert html =~ "Preview, reason, venue, and audit stay aligned for every cron entry mutation."
     assert html =~ "nightly_sync"
     assert html =~ "Runtime"
     assert html =~ "Queue One"
@@ -60,8 +60,10 @@ defmodule PhoenixHostWeb.ObanPowertoolsFirstSessionTest do
     render_change(view, "reason", %{"reason" => reason})
     html = render_click(view, "confirm", %{})
 
-    assert html =~ "Paused"
-    assert html =~ "Recent Audit"
+    assert html =~ "Waiting"
+    assert html =~ "Resume Cron Entry"
+    assert html =~ "Recent Audit Evidence"
+    assert html =~ "Open in Audit"
     assert html =~ "cron.paused"
 
     entry = Repo.get_by!(Entry, name: "nightly_sync")

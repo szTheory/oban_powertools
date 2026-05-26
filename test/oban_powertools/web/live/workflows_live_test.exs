@@ -55,7 +55,7 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
     assert html =~ "Workflows"
     assert html =~ "Permission: read-only."
     assert html =~ "Powertools-native pages"
-    assert html =~ "Open generic job inspection in Oban Web"
+    assert html =~ "Open generic job inspection in Oban Web bridge"
     assert html =~ "sync_billing"
     assert html =~ "waiting_on_dependencies"
 
@@ -135,8 +135,16 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
 
     {:ok, _view, html} = live(conn, "/ops/jobs/workflows/#{workflow.id}?step=fetch_customer")
 
-    assert html =~ "Latest refusal: unsupported_legacy_semantics"
-    assert html =~ "migrate_via_compatibility_path"
+    assert html =~ "Outcome:"
+    assert html =~ "Needs Review"
+    assert html =~ "Reason:"
+    assert html =~ "workflow rows with semantics_version"
+    assert html =~ "explicit compatibility adapter"
+    assert html =~ "Legal next move:"
+    assert html =~ "Migrate via compatibility path"
+    assert html =~ "Venue:"
+    assert html =~ "Workflow diagnosis"
+    assert html =~ "Machine code: unsupported_legacy_semantics"
     assert html =~ "Semantics: legacy_v1 (compatibility_path)"
   end
 
@@ -176,6 +184,7 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
 
     assert html =~ "Review the bounded action in Lifeline."
     assert html =~ "Review in Lifeline: Retry step"
+    assert html =~ "Audited action"
     assert has_element?(view, "a[href*='/ops/jobs/lifeline?']")
     refute html =~ "Execute Repair Plan"
     refute has_element?(view, "input[name='reason']")

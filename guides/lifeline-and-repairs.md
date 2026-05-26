@@ -2,6 +2,7 @@
 
 `ObanPowertools.Lifeline` is the operator-facing runtime for executor health, projected
 incidents, preview-backed repairs, and retention reporting.
+It is a `Powertools-native` venue: diagnosis first, then `Audited action`, with the bridge kept separate as `Inspection only`.
 
 Use it when you need a durable answer to “what looks broken right now?” and “what exact repair
 will we execute if an operator confirms it?”

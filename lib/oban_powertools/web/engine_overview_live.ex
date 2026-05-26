@@ -4,13 +4,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     use Phoenix.LiveView
 
-    import Ecto.Query
-
-    alias ObanPowertools.Cron.{Entry, Slot}
-    alias ObanPowertools.Lifeline
-    alias ObanPowertools.Limits.Resource
-    alias ObanPowertools.Workflow.Workflow
-    alias ObanPowertools.Web.LiveAuth
+    alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth, OverviewReadModel}
 
     @impl true
     def mount(_params, %{"oban_dashboard_path" => dashboard_path}, socket) do
@@ -31,83 +25,104 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       ~H"""
       <div class="space-y-6 p-6">
         <div>
-          <h1 class="text-2xl font-semibold">Smart Engine Overview</h1>
+          <h1 class="text-2xl font-semibold">Unified /ops/jobs Control Plane</h1>
           <p class="text-sm text-zinc-600">
-            Native Powertools surfaces stay narrow here. Generic job inspection lives in Oban Web.
+            <%= ControlPlanePresenter.native_banner() %> <%= ControlPlanePresenter.bridge_banner() %>
           </p>
         </div>
 
-        <div class="grid gap-4 md:grid-cols-3 xl:grid-cols-4">
-          <.metric_card label="Limiter Resources" value={@metrics.resources} />
-          <.metric_card label="Blocked Jobs" value={@metrics.blocked_jobs} />
-          <.metric_card label="Paused Cron Entries" value={@metrics.paused_entries} />
-          <.metric_card label="Missed Slots" value={@metrics.missed_slots} />
-          <.metric_card label="Workflows" value={@metrics.workflows} />
-          <.metric_card label="Lifeline Incidents" value={@metrics.lifeline_incidents} />
-          <.metric_card label="Pending Repair Previews" value={@metrics.pending_previews} />
-          <.metric_card label="Archived Repairs" value={@metrics.archived_repairs} />
+        <div class="rounded-lg border bg-slate-50 p-4">
+          <h2 class="text-base font-semibold">Diagnosis-first overview</h2>
+          <p class="mt-2 text-sm text-zinc-600">
+            Each card answers what needs attention, why it matters, where to go next, and whether the next venue is Powertools-native or bridge-only.
+          </p>
         </div>
 
-        <div class="rounded-lg border bg-white p-4">
-          <h2 class="text-base font-semibold">Next Steps</h2>
-          <div class="mt-3 flex flex-wrap gap-3 text-sm">
-            <.link navigate="/ops/jobs/lifeline" class="rounded bg-indigo-600 px-3 py-2 text-white">
-              Review Lifeline Incidents
-            </.link>
-            <.link navigate="/ops/jobs/limiters" class="rounded bg-indigo-600 px-3 py-2 text-white">
-              Inspect Job Blockers
-            </.link>
-            <.link navigate="/ops/jobs/cron" class="rounded border px-3 py-2">
-              Review Cron State
-            </.link>
-            <.link navigate="/ops/jobs/audit" class="rounded border px-3 py-2">
-              Review Audit Trail
-            </.link>
-            <.link navigate="/ops/jobs/workflows" class="rounded border px-3 py-2">
-              Inspect Workflows
-            </.link>
-            <a href={@oban_jobs_path} class="rounded border px-3 py-2">Open Oban Web Jobs</a>
+        <div class="grid gap-4 xl:grid-cols-2">
+          <div :for={bucket <- active_buckets(@overview_buckets)} class="rounded-lg border bg-white p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <h2 class="text-base font-semibold"><%= bucket.status %></h2>
+                <p class="mt-1 text-2xl font-semibold"><%= bucket.count %></p>
+              </div>
+              <div class="space-y-1 text-right text-xs">
+                <div class="rounded border px-2 py-1"><%= bucket.venue %></div>
+                <div class="rounded border px-2 py-1"><%= bucket.posture %></div>
+              </div>
+            </div>
+
+            <p class="mt-3 text-sm text-zinc-700"><%= bucket.diagnosis %></p>
+
+            <div class="mt-4 space-y-3">
+              <div :for={exemplar <- bucket.exemplars} class="rounded border bg-slate-50 p-3 text-sm">
+                <div class="font-medium"><%= exemplar.label %></div>
+                <div class="mt-1 text-zinc-600"><%= exemplar.fact %></div>
+                <.link navigate={exemplar.path} class="mt-2 inline-block text-indigo-700 underline">
+                  Review exemplar
+                </.link>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <.link navigate={bucket.next_step_path} class={cta_class(bucket)}>
+                <%= bucket.next_step_label %>
+              </.link>
+            </div>
+          </div>
+
+          <div :for={bucket <- resolved_buckets(@overview_buckets)} class="rounded-lg border bg-emerald-50 p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <h2 class="text-base font-semibold"><%= bucket.status %></h2>
+                <p class="mt-1 text-2xl font-semibold"><%= bucket.count %></p>
+              </div>
+              <div class="space-y-1 text-right text-xs">
+                <div class="rounded border px-2 py-1"><%= bucket.venue %></div>
+                <div class="rounded border px-2 py-1"><%= bucket.posture %></div>
+              </div>
+            </div>
+
+            <p class="mt-3 text-sm text-zinc-700"><%= bucket.diagnosis %></p>
+
+            <div class="mt-4 space-y-3">
+              <div :for={exemplar <- bucket.exemplars} class="rounded border bg-white p-3 text-sm">
+                <div class="font-medium"><%= exemplar.label %></div>
+                <div class="mt-1 text-zinc-600"><%= exemplar.fact %></div>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <.link navigate={bucket.next_step_path} class="rounded border px-3 py-2 text-sm">
+                <%= bucket.next_step_label %>
+              </.link>
+            </div>
           </div>
         </div>
       </div>
       """
     end
 
-    attr(:label, :string, required: true)
-    attr(:value, :any, required: true)
-
-    defp metric_card(assigns) do
-      ~H"""
-      <div class="rounded-lg border bg-white p-4">
-        <p class="text-sm text-zinc-500"><%= @label %></p>
-        <p class="mt-2 text-3xl font-semibold"><%= @value %></p>
-      </div>
-      """
-    end
-
     defp assign_metrics(socket, dashboard_path) do
-      repo = repo()
-
-      metrics = %{
-        resources: repo.aggregate(Resource, :count, :id),
-        blocked_jobs: repo.aggregate(ObanPowertools.Explain, :count, :id),
-        paused_entries:
-          repo.aggregate(from(entry in Entry, where: not is_nil(entry.paused_at)), :count, :id),
-        missed_slots:
-          repo.aggregate(from(slot in Slot, where: slot.state == "skipped"), :count, :id),
-        workflows: repo.aggregate(Workflow, :count, :id),
-        lifeline_incidents: repo.aggregate(ObanPowertools.Lifeline.Incident, :count, :id),
-        pending_previews: Lifeline.retention_status(repo).pending_previews,
-        archived_repairs: Lifeline.retention_status(repo).archived_repairs
-      }
-
       socket
-      |> assign(:metrics, metrics)
-      |> assign(:oban_jobs_path, build_dashboard_path(dashboard_path, "jobs"))
+      |> assign(
+        :overview_buckets,
+        OverviewReadModel.build(repo: repo(), dashboard_path: dashboard_path)
+      )
     end
 
     defp repo, do: Application.fetch_env!(:oban_powertools, :repo)
 
-    defp build_dashboard_path(base, page), do: Path.join([base, page])
+    defp active_buckets(buckets) do
+      Enum.reject(buckets, &(&1.status == "Resolved Recently"))
+    end
+
+    defp resolved_buckets(buckets) do
+      Enum.filter(buckets, &(&1.status == "Resolved Recently"))
+    end
+
+    defp cta_class(%{status: "Bridge-only Follow-up"}),
+      do: "rounded border px-3 py-2 text-sm"
+
+    defp cta_class(_bucket), do: "rounded bg-indigo-600 px-3 py-2 text-sm text-white"
   end
 end

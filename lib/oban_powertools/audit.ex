@@ -14,7 +14,11 @@ defmodule ObanPowertools.Audit do
   schema "oban_powertools_audit_events" do
     field(:actor_id, :string)
     field(:action, :string)
+    field(:command_key, :string)
+    field(:event_type, :string)
     field(:resource, :string)
+    field(:resource_type, :string)
+    field(:resource_id, :string)
     field(:metadata, :map, default: %{})
 
     timestamps(updated_at: false)
@@ -22,7 +26,16 @@ defmodule ObanPowertools.Audit do
 
   def changeset(struct, params) do
     struct
-    |> cast(params, [:actor_id, :action, :resource, :metadata])
+    |> cast(params, [
+      :actor_id,
+      :action,
+      :command_key,
+      :event_type,
+      :resource,
+      :resource_type,
+      :resource_id,
+      :metadata
+    ])
     |> validate_required([:action, :resource])
   end
 
@@ -31,12 +44,23 @@ defmodule ObanPowertools.Audit do
     principal = Keyword.get(opts, :principal)
     actor_id = Keyword.get(opts, :actor_id) || principal_id(principal)
 
+    resource_parts = normalize_resource_parts(resource)
+    metadata = attach_principal(metadata, principal)
+    event_type = metadata["event_type"] || metadata[:event_type] || action
+
+    command_key =
+      metadata["command_key"] || metadata[:command_key] || infer_command_key(event_type)
+
     %__MODULE__{}
     |> changeset(%{
       actor_id: actor_id,
       action: action,
-      resource: normalize_resource(resource),
-      metadata: attach_principal(metadata, principal)
+      command_key: command_key,
+      event_type: event_type,
+      resource: resource_parts.resource,
+      resource_type: resource_parts.resource_type,
+      resource_id: resource_parts.resource_id,
+      metadata: metadata
     })
     |> repo.insert()
   end
@@ -63,6 +87,15 @@ defmodule ObanPowertools.Audit do
     )
   end
 
+  def list_all(filters, opts) when is_map(filters) and is_list(opts) do
+    repo = RuntimeConfig.repo(opts)
+
+    __MODULE__
+    |> filter_query(filters)
+    |> order_by([event], desc: event.inserted_at)
+    |> repo.all()
+  end
+
   def event_principal(%__MODULE__{} = event) do
     metadata_principal = get_in(event.metadata || %{}, ["principal"])
 
@@ -86,12 +119,34 @@ defmodule ObanPowertools.Audit do
     get_in(event.metadata || %{}, ["reason"])
   end
 
+  def event_label(%__MODULE__{} = event) do
+    event.event_type || event.action
+  end
+
+  def event_resource_identity(%__MODULE__{} = event) do
+    %{
+      type: event.resource_type || legacy_resource_type(event.resource),
+      id: event.resource_id || legacy_resource_id(event.resource),
+      label: event.resource
+    }
+  end
+
   def system_principal(name, opts \\ []) do
     %{id: "system:#{name}", type: :system, label: Keyword.get(opts, :label)}
   end
 
   defp normalize_resource(%{type: type, id: id}), do: "#{type}:#{id}"
   defp normalize_resource(resource) when is_binary(resource), do: resource
+
+  defp normalize_resource_parts(resource) do
+    normalized = normalize_resource(resource)
+
+    %{
+      resource: normalized,
+      resource_type: resource_type(resource, normalized),
+      resource_id: resource_id(resource, normalized)
+    }
+  end
 
   defp attach_principal(metadata, nil), do: metadata
 
@@ -118,6 +173,68 @@ defmodule ObanPowertools.Audit do
 
   defp inferred_type(nil), do: :system
   defp inferred_type(_actor_id), do: :user
+
+  defp infer_command_key("cron.paused"), do: "pause_cron_entry"
+  defp infer_command_key("cron.resumed"), do: "resume_cron_entry"
+  defp infer_command_key("cron.run_now"), do: "run_cron_entry"
+  defp infer_command_key("cron.run_now_previewed"), do: "run_cron_entry"
+  defp infer_command_key("lifeline.repair_executed"), do: "execute_repair"
+  defp infer_command_key("workflow.cancel_requested"), do: "request_cancel"
+  defp infer_command_key("workflow.recovery_completed"), do: "recover_step"
+  defp infer_command_key("workflow.step_completed"), do: "complete_step"
+  defp infer_command_key(_event_type), do: nil
+
+  defp filter_query(query, filters) do
+    Enum.reduce(filters, query, fn
+      {_key, value}, query when value in [nil, ""] ->
+        query
+
+      {"resource_type", value}, query ->
+        where(query, [event], event.resource_type == ^value)
+
+      {"resource_id", value}, query ->
+        where(query, [event], event.resource_id == ^value)
+
+      {"event_type", value}, query ->
+        where(query, [event], event.event_type == ^value)
+
+      {:resource_type, value}, query ->
+        where(query, [event], event.resource_type == ^value)
+
+      {:resource_id, value}, query ->
+        where(query, [event], event.resource_id == ^value)
+
+      {:event_type, value}, query ->
+        where(query, [event], event.event_type == ^value)
+
+      _, query ->
+        query
+    end)
+  end
+
+  defp resource_type(%{type: type}, _normalized), do: to_string(type)
+
+  defp resource_type(resource, normalized) when is_binary(resource),
+    do: legacy_resource_type(normalized)
+
+  defp resource_id(%{id: id}, _normalized), do: to_string(id)
+
+  defp resource_id(resource, normalized) when is_binary(resource),
+    do: legacy_resource_id(normalized)
+
+  defp legacy_resource_type(resource) do
+    case String.split(resource || "", ":", parts: 2) do
+      [type, _id] -> type
+      _ -> nil
+    end
+  end
+
+  defp legacy_resource_id(resource) do
+    case String.split(resource || "", ":", parts: 2) do
+      [_type, id] -> id
+      _ -> nil
+    end
+  end
 
   defp read_key(map, key) when is_map(map) do
     if Map.has_key?(map, key) do

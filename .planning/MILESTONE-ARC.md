@@ -33,24 +33,17 @@ Oban Powertools should compound from a shipped v1 foundation into a host-friendl
 - **Why it shipped:** the repo now proves the workflow semantics contract end to end, including DB-first command legality, durable callback and recovery evidence, await/signal/expiry authority, diagnosis-first workflow and Lifeline surfaces, and bounded public support-truth claims.
 - **Unlocked:** a stable workflow substrate for cross-surface operator vocabulary, shared explainability, and later control-plane unification work.
 
-## Active Milestone
-
 ### v1.3 Unified Control Plane & Explainability
 
-- **Status:** active 2026-05-25
-- **Priority:** high
-- **Why next:** v1.2 fixed workflow semantics and support truth, which removes a major moving target and makes shared operator vocabulary across cron, limits, workflows, queues, and Lifeline the highest-leverage follow-on.
-- **Includes:** shared operator vocabulary, common blocked/waiting/orphaned diagnostics, unified action policy, shared search/filter mental model.
-- **Pros:** reduces fragmentation; makes every later operator/API surface cheaper.
-- **Tradeoffs:** lower standalone glamour; can drift into abstract cleanup if not tied to concrete flows.
-
-**Activated scope guard:** keep the milestone centered on the native Powertools control plane plus Oban Web handoffs for generic job/queue inspection. Do not promise a full native replacement for generic queue or job screens inside v1.3.
+- **Status:** shipped 2026-05-26
+- **Why it shipped:** the repo now proves one shared control-plane vocabulary, a diagnosis-first `/ops/jobs` overview, continuity-safe native and bridge handoffs, unified bounded-action posture, and support-truthful docs plus example-host proof for the native-shell versus bridge-only contract.
+- **Unlocked:** a stable operator language and navigation model that makes deeper forensics, runbooks, and later automation surfaces cheaper to design honestly.
 
 ## Candidate Milestones
 
 ### v1.4 Operator Forensics & SRE Runbooks
 
-- **Status:** candidate
+- **Status:** next candidate
 - **Priority:** medium-high
 - **Why now:** after semantics and control-plane contracts settle, deepen incident timelines, limiter history, missed-fire views, repair evidence, and runbook-guided remediation.
 - **Includes:** richer diagnostics, evidence bundles, alert/runbook hooks, operator-grade investigative UX.

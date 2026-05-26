@@ -41,6 +41,7 @@ mix phx.server
 
 Visit `/ops/jobs`. This is the native Powertools shell. It should render through your host-owned
 browser pipeline, your host-owned auth module, and your host-owned display policy.
+That first render is the diagnosis-first overview for the unified native `/ops/jobs` control plane.
 
 ## 4. Complete One Native Audited Mutation
 
@@ -52,6 +53,7 @@ This matters because the native pages are the supported mutation surface:
 - every audited mutation goes through the host-owned auth seam
 - display and redaction still flow through your `display_policy`
 - audit evidence stays with the native Powertools operator flow
+- follow-up stays visible in the cross-surface audit destination at `/ops/jobs/audit`
 
 ## 5. Check the Optional Bridge Boundary
 
@@ -67,6 +69,7 @@ mutation work on the native Powertools pages.
 Your first operator session is successful when:
 
 - `/ops/jobs` renders for the seeded operator
+- the overview and audit pages stay inside the same native control plane story
 - operator `ops-demo` completes native action `pause_cron_entry` on `nightly_sync`
 - durable audit evidence records that native mutation
 - `/ops/jobs/oban` is available only when `oban_web` is installed

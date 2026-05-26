@@ -49,3 +49,19 @@
 - Closed the milestone with focused race-path proof, singular supported upgrade proof, low-cardinality telemetry markers, and support-truth docs aligned to the verified semantics.
 - Backfilled the missing phase verification artifacts, repaired requirement traceability, and preserved both the failed and passed v1.2 milestone audit chain.
 - Normalized the historical Phase 12 UAT artifact and cleared the remaining archival blocker so the milestone can ship from a clean closeout state.
+
+## v1.3
+
+- **Status:** Shipped 2026-05-26
+- **Phases:** 27-31
+- **Plans:** 15
+- **Timeline:** 2026-05-25 -> 2026-05-26
+- **Git range:** `1f92965` -> `b5c3aab`
+
+### Delivered
+
+- Froze one shared control-plane vocabulary and ownership contract across overview, cron, limiters, workflows, Lifeline, audit, and bounded Oban Web handoffs.
+- Rebuilt `/ops/jobs` into a diagnosis-first operator overview with durable attention buckets and context-preserving drilldowns.
+- Unified preview, reason, refusal, and audit posture across bounded native mutation surfaces without widening scope into a native generic queue or job dashboard.
+- Aligned limiters, workflows, Lifeline, cron, and audit follow-up around one continuity-safe operator story and shared resource identity.
+- Closed the milestone with support-truthful docs, repo-local proof, and example-host proof that keep the native-shell versus bridge-only contract honest.

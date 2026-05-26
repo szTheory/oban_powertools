@@ -48,7 +48,7 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 
 ## Context
 
-Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes installer/runtime wiring, typed worker contracts, limiter and cron control planes, workflow persistence and signaling, and a native Lifeline operator flow with durable repair auditability and resolved-incident continuity.
+Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes installer/runtime wiring, typed worker contracts, limiter and cron control planes, workflow persistence and signaling, a native Lifeline operator flow with durable repair auditability and resolved-incident continuity, and a unified native control plane story across the existing operator surfaces.
 
 ## Key Decisions
 
@@ -78,21 +78,33 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 ## Current State
 
-Version `v1.2` shipped on 2026-05-25. Workflow semantics now have an explicit v2 lifecycle contract, one DB-first mutation path, durable callback/recovery/await/signal/cancel evidence, diagnosis-first workflow and Lifeline surfaces, and a repaired verification-plus-traceability chain that matches the public support story. A same-day adopter-focused assessment judged the library strong and already useful for serious Phoenix SaaS teams, with the main remaining gap being cross-surface operator cohesion rather than missing foundational capabilities.
+Version `v1.3` shipped on 2026-05-26. The native `/ops/jobs` shell now reads as one coherent operator control plane: shared vocabulary and ownership boundaries span overview, cron, limiters, workflows, Lifeline, audit, and bounded Oban Web handoffs; the overview is diagnosis-first; drilldowns preserve durable context; and the public docs plus example-host proof tell the same native-shell versus bridge-only story. The next highest-leverage gap is deeper operator forensics and runbook-guided remediation, not broader queue-dashboard scope or machine-facing automation.
 
-## Current Milestone: v1.3 Unified Control Plane & Explainability
+## Next Milestone Goals
 
-**Goal:** make the native `/ops/jobs` shell feel like one coherent operator control plane rather than a set of adjacent feature pages.
+The default next candidate is `v1.4 Operator Forensics & SRE Runbooks`.
 
 **Target features:**
-- shared operator vocabulary, status taxonomy, and ownership boundaries across overview, cron, limiters, workflows, Lifeline, audit, and Oban Web handoffs
-- one diagnosis-first overview and drill-down model that routes operators to the right native or bridge destination with context intact
-- one consistent preview, reason, refusal, and audit posture across bounded native mutation surfaces
-- support-truthful docs and proof that explain what the native shell owns versus what stays bridge-only or host-owned
+- richer historical timelines, limiter history, missed-fire views, and cross-surface evidence bundles
+- runbook-guided remediation flows that build on the now-stable control-plane vocabulary
+- operator-grade investigative UX that deepens day-2 trust without widening into a generic dashboard rewrite
 
-**Why now:** v1.2 froze the workflow semantics and recovery substrate, so the highest-leverage remaining adopter gap is operator cohesion, not another backend capability family.
+**Why next:** the control-plane contract is now stable enough that deeper forensics and remediation guidance should produce more operator leverage than another public capability family.
 
 ## Recently Shipped
+
+<details>
+<summary>v1.3 Unified Control Plane & Explainability</summary>
+
+Goal: make the native `/ops/jobs` shell feel like one coherent operator control plane rather than a set of adjacent feature pages.
+
+Delivered:
+- One shared operator vocabulary, status taxonomy, and ownership model across overview, cron, limiters, workflows, Lifeline, audit, and Oban Web handoffs.
+- A diagnosis-first overview and continuity-safe drill-down model that preserves durable context across native and bridge destinations.
+- One consistent preview, reason, refusal, and audit posture across bounded native mutation surfaces.
+- Support-truthful docs, example-host proof, and merge-blocking verification for the native-shell versus bridge-only contract.
+
+</details>
 
 <details>
 <summary>v1.2 Workflow Semantics & Recovery</summary>
@@ -128,4 +140,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-25 after activating milestone v1.3 planning*
+*Last updated: 2026-05-26 after shipping milestone v1.3*
