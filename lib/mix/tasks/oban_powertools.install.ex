@@ -334,6 +334,51 @@ defmodule Mix.Tasks.ObanPowertools.Install do
         end
       """
     )
+    |> Igniter.Libs.Ecto.gen_migration(
+      repo_module(igniter),
+      "oban_powertools_limiter_history_facts",
+      timestamp: migration_timestamp(15),
+      body: """
+        def change do
+          create table(:oban_powertools_limiter_history_facts, primary_key: false) do
+            add :id, :uuid, primary_key: true
+            add :resource_name, :string, null: false
+            add :partition_key, :string, null: false, default: "__global__"
+            add :event_type, :string, null: false
+            add :cause_kind, :string
+            add :occurred_at, :utc_datetime_usec, null: false
+            add :eligible_at, :utc_datetime_usec
+            add :metadata, :map, null: false, default: %{}
+
+            timestamps(updated_at: false)
+          end
+
+          create index(:oban_powertools_limiter_history_facts, [:resource_name, :occurred_at])
+          create index(:oban_powertools_limiter_history_facts, [:event_type])
+        end
+      """
+    )
+    |> Igniter.Libs.Ecto.gen_migration(
+      repo_module(igniter),
+      "oban_powertools_cron_coverages",
+      timestamp: migration_timestamp(16),
+      body: """
+        def change do
+          create table(:oban_powertools_cron_coverages, primary_key: false) do
+            add :id, :uuid, primary_key: true
+            add :entry_id, references(:oban_powertools_cron_entries, type: :uuid, on_delete: :delete_all), null: false
+            add :slot_at, :utc_datetime_usec, null: false
+            add :status, :string, null: false, default: "healthy"
+            add :metadata, :map, null: false, default: %{}
+
+            timestamps(updated_at: false)
+          end
+
+          create unique_index(:oban_powertools_cron_coverages, [:entry_id, :slot_at])
+          create index(:oban_powertools_cron_coverages, [:status])
+        end
+      """
+    )
   end
 
   defp setup_workflow_migrations(igniter) do

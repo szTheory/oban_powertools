@@ -19,6 +19,8 @@ defmodule ObanPowertools.Web.AuditLiveTest do
   use ObanPowertools.LiveCase, async: false
 
   alias ObanPowertools.Audit
+  alias ObanPowertools.Workflow
+  alias ObanPowertools.WorkflowFixtures
 
   setup do
     original_display_policy = Application.get_env(:oban_powertools, :display_policy)
@@ -102,6 +104,39 @@ defmodule ObanPowertools.Web.AuditLiveTest do
     assert html =~ "event_type=lifeline.repair_executed"
     assert html =~ "job:123"
     refute html =~ "cron_entry:nightly"
+  end
+
+  test "forensic audit follow-up preserves scoped resource and event filters", %{conn: conn} do
+    {:ok, workflow} =
+      WorkflowFixtures.workflow_fixture(name: "forensic-audit-follow-up") |> Workflow.insert(TestRepo)
+
+    Audit.record(
+      "workflow.step_completed",
+      %{type: :workflow, id: workflow.id},
+      %{"event_type" => "workflow.step_completed", "reason" => "follow-up"},
+      repo: TestRepo,
+      actor_id: "ops-1"
+    )
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_audit, :view_forensics]}
+      )
+
+    {:ok, _forensic_view, forensic_html} = live(conn, "/ops/jobs/forensics?workflow_id=#{workflow.id}")
+
+    assert forensic_html =~
+             "/ops/jobs/audit?resource_type=workflow&amp;resource_id=#{workflow.id}&amp;event_type=workflow.step_completed"
+
+    {:ok, _audit_view, audit_html} =
+      live(
+        conn,
+        "/ops/jobs/audit?resource_type=workflow&resource_id=#{workflow.id}&event_type=workflow.step_completed"
+      )
+
+    assert audit_html =~ "Scoped Audit Filter"
+    assert audit_html =~ "resource_type=workflow"
+    assert audit_html =~ "event_type=workflow.step_completed"
   end
 
   test "redirects unauthorized viewers", %{conn: conn} do

@@ -83,6 +83,7 @@ defmodule ObanPowertools.Web.ControlPlaneCopyCoherenceTest do
             :preview_repair,
             :execute_repair,
             :view_workflows,
+            :view_forensics,
             :view_audit
           ]
         }
@@ -148,6 +149,25 @@ defmodule ObanPowertools.Web.ControlPlaneCopyCoherenceTest do
 
     assert workflow_html =~
              "Powertools-native pages own preview, reason, venue, and Audited action controls."
+
+    {:ok, _forensics_view, forensics_html} =
+      live(conn, "/ops/jobs/forensics?workflow_id=#{workflow.id}&step=fetch_customer")
+
+    assert_occurs_in_order(forensics_html, [
+      "Diagnosis Summary",
+      "Timeline",
+      "Related Evidence",
+      "Linked Resources",
+      "Legal Next Paths",
+      "Evidence Completeness"
+    ])
+
+    assert forensics_html =~ "supporting evidence"
+    assert forensics_html =~ "Inspection only"
+    refute forensics_html =~ "preview_token="
+    refute forensics_html =~ "reason="
+    refute forensics_html =~ "diagnosis="
+    refute forensics_html =~ "refusal="
 
     {:ok, _audit_view, audit_html} = live(conn, "/ops/jobs/audit")
 

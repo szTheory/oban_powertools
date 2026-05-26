@@ -18,9 +18,9 @@ Oban Powertools v1.4 deepens the now-stable native control plane into a stronger
 
 Plans:
 
-- [ ] 32-01-PLAN.md — Freeze the forensic vocabulary, evidence bundle shape, and cross-surface timeline semantics that build directly on the v1.3 control-plane language.
-- [ ] 32-02-PLAN.md — Add the projection and presentation seams needed to assemble durable investigative context from existing workflow, Lifeline, limiter, cron, and audit evidence.
-- [ ] 32-03-PLAN.md — Prove chronology, linked-resource continuity, and honest partial-evidence fallback behavior before wider operational history work begins.
+- [x] 32-01-PLAN.md — Freeze the forensic vocabulary, evidence bundle shape, and cross-surface timeline semantics that build directly on the v1.3 control-plane language.
+- [x] 32-02-PLAN.md — Add the projection and presentation seams needed to assemble durable investigative context from existing workflow, Lifeline, limiter, cron, and audit evidence.
+- [x] 32-03-PLAN.md — Prove chronology, linked-resource continuity, and honest partial-evidence fallback behavior before wider operational history work begins.
 
 **Details:**
 This phase establishes one investigative contract so later history and runbook work reuses the same vocabulary instead of inventing page-local incident language.
@@ -101,7 +101,7 @@ The milestone closes only when the investigative UX, support-truth language, and
 
 | Phase | Goal | Requirements | Success Criteria |
 |-------|------|--------------|------------------|
-| 32 | Forensic timeline and evidence bundle foundation | FRN-01, FRN-02, FRN-03 | 3 |
+| 32 | 3/3 | Complete    | 2026-05-26 |
 | 33 | Limiter history and cron missed-fire diagnostics | OPS-01, OPS-02 | 3 |
 | 34 | Historical attention projection and runbook entry surfaces | OPS-03, RNB-01, RNB-02 | 3 |
 | 35 | Runbook-guided remediation and alert hook boundaries | RNB-03 | 3 |

@@ -339,6 +339,19 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               <p :if={@error_message} class="mt-3 text-sm text-red-700"><%= @error_message %></p>
               <p :if={@success_message} class="mt-3 text-sm text-emerald-700"><%= @success_message %></p>
 
+              <div class="mt-4 rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
+                <p class="font-medium">Open the forensic bundle.</p>
+                <p class="mt-1">
+                  Lifeline remains a first-class Phase 32 forensic entry surface. Audit follow-up stays Inspection only and limiter or cron facts remain supporting evidence.
+                </p>
+                <.link
+                  navigate={forensic_path(@selected_row, @current_view)}
+                  class="mt-3 inline-flex rounded bg-slate-900 px-3 py-2 text-white"
+                >
+                  Open forensic timeline
+                </.link>
+              </div>
+
               <div class="mt-4 space-y-4">
                 <section>
                   <h3 class="text-sm font-medium">Detection Summary</h3>
@@ -762,15 +775,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp selection_path(selection) do
       query =
-        selection
+        [
+          {"view", Map.get(selection, :view)},
+          {"incident_fingerprint", Map.get(selection, :incident_fingerprint)},
+          {"row-id", Map.get(selection, :row_id)},
+          {"workflow_id", Map.get(selection, :workflow_id)},
+          {"step", Map.get(selection, :step_name)},
+          {"action", Map.get(selection, :action)}
+        ]
         |> Enum.reject(fn {_key, value} -> is_nil(value) or value == "" end)
-        |> Enum.map(fn
-          {:row_id, value} -> {"row-id", value}
-          {:incident_fingerprint, value} -> {"incident_fingerprint", value}
-          {:workflow_id, value} -> {"workflow_id", value}
-          {:step_name, value} -> {"step", value}
-          {key, value} -> {to_string(key), value}
-        end)
         |> URI.encode_query()
 
       "/ops/jobs/lifeline?#{query}"
@@ -1074,6 +1087,18 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         step_name: params["step"],
         action: params["action"]
       }
+    end
+
+    defp forensic_path(row, current_view) do
+      [
+        {"incident_fingerprint", row.incident.incident_fingerprint},
+        {"view", current_view},
+        {"resource_type", row.target_type},
+        {"resource_id", row.target_id}
+      ]
+      |> Enum.reject(fn {_key, value} -> is_nil(value) or value == "" end)
+      |> URI.encode_query()
+      |> then(&"/ops/jobs/forensics?#{&1}")
     end
 
     defp workflow_handoff_row(_repo, nil), do: nil

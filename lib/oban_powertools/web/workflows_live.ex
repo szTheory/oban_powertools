@@ -220,6 +220,19 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             </.link>
           </div>
 
+          <div class="mt-3 rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
+            <p class="font-medium">Open the forensic bundle.</p>
+            <p class="mt-1">
+              Workflows remain a first-class Phase 32 forensic entry surface. Supporting limiter and cron context stays labeled as supporting evidence.
+            </p>
+            <.link
+              navigate={forensic_path(@workflow, @selected_step)}
+              class="mt-3 inline-flex rounded bg-slate-900 px-3 py-2 text-white"
+            >
+              Open forensic timeline
+            </.link>
+          </div>
+
           <div class="mt-4 space-y-3">
             <div :if={result_display.available?}>
               <h3 class="text-sm font-medium">Result Summary</h3>
@@ -346,6 +359,18 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp selected_step_path(workflow_id, step_name),
       do: "/ops/jobs/workflows/#{workflow_id}?step=#{step_name}"
+
+    defp forensic_path(workflow, selected_step) do
+      [
+        {"workflow_id", workflow.id},
+        {"step", selected_step && selected_step.step_name},
+        {"resource_type", if(selected_step, do: "workflow_step", else: "workflow")},
+        {"resource_id", selected_step && selected_step.id}
+      ]
+      |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+      |> URI.encode_query()
+      |> then(&"/ops/jobs/forensics?#{&1}")
+    end
 
     defp lifeline_handoff(workflow, selected_step, workflow_story, selected_step_story) do
       step_actions =

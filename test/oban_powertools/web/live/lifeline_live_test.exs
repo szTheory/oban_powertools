@@ -443,6 +443,35 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     assert Audit.list(%{type: :job, id: Integer.to_string(job.id)}, repo: TestRepo) == []
   end
 
+  test "renders a forensic entry link that preserves incident scope and view selectors", %{
+    conn: conn
+  } do
+    insert_missing_heartbeat!("forensics-link-executor")
+    incident = insert_dead_executor_incident!("forensics-link-executor")
+    job = insert_executing_job!("forensics-link-executor")
+    update_incident_job_ids!(incident, [job.id])
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_lifeline, :view_forensics]}
+      )
+
+    {:ok, view, _html} = live(conn, "/ops/jobs/lifeline")
+
+    view
+    |> element("button[phx-value-row-id$=':job:#{job.id}'][phx-click='select_incident']")
+    |> render_click()
+
+    selected_html = render(view)
+
+    assert selected_html =~ "Open the forensic bundle."
+    assert selected_html =~ "Inspection only"
+    assert has_element?(view, "a[href*='/ops/jobs/forensics?']")
+    assert has_element?(view, "a[href*='incident_fingerprint=#{URI.encode_www_form(incident.incident_fingerprint)}']")
+    assert has_element?(view, "a[href*='view=active']")
+    assert has_element?(view, "a[href*='resource_type=job']")
+  end
+
   defp insert_dead_executor_incident!(executor_id, health_state \\ "missing") do
     %Incident{}
     |> Incident.changeset(%{

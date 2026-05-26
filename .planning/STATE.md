@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Operator Forensics & SRE Runbooks
-current_plan: 32
-status: ready_for_discussion
-stopped_at: roadmap created; phase 32 ready for discuss-phase
-last_updated: "2026-05-26T17:30:00.000Z"
+current_plan: 1
+status: ready_to_plan
+stopped_at: Phase 32 complete (3/3) — ready to discuss Phase 33
+last_updated: 2026-05-26T14:23:19.662Z
 progress:
   total_phases: 5
-  completed_phases: 0
-  total_plans: 15
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 3
+  completed_plans: 82
+  percent: 20
 ---
 
 # Project State
@@ -19,15 +19,18 @@ progress:
 ## Project Reference
 
 **Core Value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-**Current Focus:** v1.4 operator forensics, historical evidence, and runbook-guided remediation
+**Current Focus:** Phase 33 — limiter history & cron missed fire diagnostics
 
 ## Current Position
 
-- **Phase:** 32
+Phase: 32 (forensic-timeline-evidence-bundle-foundation) — EXECUTING
+Plan: 1 of 3
+
+- **Phase:** 33
 - **Plan:** None
-- **Current Plan:** Discuss and plan Phase 32
+- **Current Plan:** Not started
 - **Total Plans in Phase:** 3
-- **Status:** Milestone opened; requirements and roadmap are active
+- **Status:** Ready to plan
 - **Progress:** [----------] 0%
 - **Canonical sequencing:** `.planning/ROADMAP.md`
 - **Milestone requirements:** `.planning/REQUIREMENTS.md`

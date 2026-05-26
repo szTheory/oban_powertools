@@ -41,7 +41,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       audit:
         "Permission: read-only. This page is the cross-surface audit destination. Powertools-native pages keep preview, reason, and local audit evidence close to the acted-on resource.",
       workflows:
-        "Permission: read-only. Diagnose workflow causality here, but use Powertools-native pages for preview, reason, and Audited action controls."
+        "Permission: read-only. Diagnose workflow causality here, but use Powertools-native pages for preview, reason, and Audited action controls.",
+      forensics:
+        "Permission: read-only. Powertools-native forensic bundles stay visible, while scoped audit follow-up remains Inspection only."
     }
 
     def on_mount(:default, _params, session, socket) do

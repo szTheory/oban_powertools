@@ -8,6 +8,7 @@ defmodule ObanPowertools.Cron do
   alias Ecto.Multi
   alias ObanPowertools.{Audit, Telemetry}
   alias ObanPowertools.Cron.{Entry, Slot}
+  alias ObanPowertools.Forensics.CronHistory
   alias ObanPowertools.Lifeline.RepairPreview
 
   @default_queue "default"
@@ -30,9 +31,19 @@ defmodule ObanPowertools.Cron do
         {:error, :code_managed_entry}
 
       %Entry{} = entry ->
+        config_diff = cron_config_diff(entry, attrs)
+
         entry
         |> Entry.changeset(normalize_entry_attrs(attrs))
         |> repo.update()
+        |> case do
+          {:ok, updated_entry} = result ->
+            maybe_record_reconfiguration(repo, entry, updated_entry, config_diff)
+            result
+
+          error ->
+            error
+        end
     end
   end
 
@@ -40,6 +51,7 @@ defmodule ObanPowertools.Cron do
     now = Keyword.get(opts, :now, DateTime.utc_now())
     args = normalize_job_args(entry.args)
     source = entry.source
+    manual? = Keyword.get(opts, :manual?, false)
 
     Multi.new()
     |> Multi.insert(
@@ -51,7 +63,7 @@ defmodule ObanPowertools.Cron do
         claimed_at: now,
         attempt_count: 0,
         policy_snapshot: policy_snapshot(entry),
-        metadata: %{"source" => source}
+        metadata: %{"source" => source, "manual" => manual?}
       }),
       on_conflict: :nothing,
       conflict_target: [:entry_id, :slot_at],
@@ -79,6 +91,7 @@ defmodule ObanPowertools.Cron do
     |> repo.transaction()
     |> case do
       {:ok, %{decision: decision, job: job, updated_slot: slot}} ->
+        maybe_record_coverage(repo, entry, slot_at, manual?)
         emit_claim_telemetry(entry, slot, decision)
         {:ok, %{slot: slot, job: job, decision: decision}}
 
@@ -114,7 +127,8 @@ defmodule ObanPowertools.Cron do
           from(preview in RepairPreview,
             where:
               preview.incident_fingerprint == ^preview_attrs.incident_fingerprint and
-                preview.plan_hash == ^preview_attrs.plan_hash and preview.action == ^preview_attrs.action and
+                preview.plan_hash == ^preview_attrs.plan_hash and
+                preview.action == ^preview_attrs.action and
                 preview.target_type == ^preview_attrs.target_type and
                 preview.target_id == ^preview_attrs.target_id and preview.status == "ready",
             limit: 1
@@ -169,6 +183,10 @@ defmodule ObanPowertools.Cron do
 
   def latest_audit(repo, entry_name) do
     Audit.list(%{type: :cron_entry, id: entry_name}, repo: repo)
+  end
+
+  def record_coverage(repo, %Entry{} = entry, slot_at, opts \\ []) do
+    CronHistory.record_coverage(repo, entry, slot_at, opts)
   end
 
   defp execute_preview_action(repo, action, preview_token, actor_id, opts) do
@@ -226,7 +244,9 @@ defmodule ObanPowertools.Cron do
   end
 
   defp apply_preview_action(repo, "resume_cron_entry", entry, actor_id, preview, reason, now) do
-    entry_changeset = Entry.changeset(entry, %{paused_at: nil, last_run_at: entry.last_run_at || now})
+    entry_changeset =
+      Entry.changeset(entry, %{paused_at: nil, last_run_at: entry.last_run_at || now})
+
     event_metadata = execution_metadata(entry, preview, reason)
 
     Multi.new()
@@ -335,10 +355,11 @@ defmodule ObanPowertools.Cron do
         {:error, :paused}
 
       entry.overlap_policy == "allow" ->
-        {:ok, %{decision: "allow", args: args, active_job: nil}}
+        {:ok, %{decision: "allow", args: args, active_job: nil, active_job_id: nil}}
 
       entry.overlap_policy == "skip" and active_job ->
-        {:ok, %{decision: "skipped", args: args, active_job: active_job}}
+        {:ok,
+         %{decision: "skipped", args: args, active_job: active_job, active_job_id: active_job.id}}
 
       entry.overlap_policy == "queue_one" and active_job ->
         pending_exists? =
@@ -351,9 +372,21 @@ defmodule ObanPowertools.Cron do
           )
 
         if pending_exists? do
-          {:ok, %{decision: "skipped", args: args, active_job: active_job}}
+          {:ok,
+           %{
+             decision: "skipped",
+             args: args,
+             active_job: active_job,
+             active_job_id: active_job.id
+           }}
         else
-          {:ok, %{decision: "queued_follow_up", args: args, active_job: active_job}}
+          {:ok,
+           %{
+             decision: "queued_follow_up",
+             args: args,
+             active_job: active_job,
+             active_job_id: active_job.id
+           }}
         end
 
       entry.overlap_policy == "cancel_previous" and active_job ->
@@ -362,10 +395,22 @@ defmodule ObanPowertools.Cron do
           set: [state: "cancelled", cancelled_at: now]
         )
 
-        {:ok, %{decision: "cancelled_previous", args: args, active_job: active_job}}
+        {:ok,
+         %{
+           decision: "cancelled_previous",
+           args: args,
+           active_job: active_job,
+           active_job_id: active_job.id
+         }}
 
       true ->
-        {:ok, %{decision: "enqueued", args: args, active_job: active_job}}
+        {:ok,
+         %{
+           decision: "enqueued",
+           args: args,
+           active_job: active_job,
+           active_job_id: active_job && active_job.id
+         }}
     end
   end
 
@@ -377,10 +422,12 @@ defmodule ObanPowertools.Cron do
     repo.insert(Oban.Job.new(args, worker: entry.worker, queue: String.to_atom(entry.queue)))
   end
 
-  defp update_slot(repo, slot, %{decision: decision}, job, now) do
+  defp update_slot(repo, slot, %{decision: decision} = decision_data, job, now) do
     if decision == "duplicate" do
       {:ok, slot}
     else
+      active_job_id = decision_data[:active_job_id]
+
       state =
         case decision do
           "skipped" -> "skipped"
@@ -396,7 +443,11 @@ defmodule ObanPowertools.Cron do
         claim_token: slot.claim_token || Ecto.UUID.generate(),
         claimed_at: slot.claimed_at || now,
         attempt_count: slot.attempt_count + 1,
-        metadata: Map.put(slot.metadata || %{}, "decision", decision)
+        metadata:
+          slot.metadata
+          |> Kernel.||(%{})
+          |> Map.put("decision", decision)
+          |> maybe_put("active_job_id", active_job_id)
       })
       |> repo.update()
     end
@@ -505,7 +556,10 @@ defmodule ObanPowertools.Cron do
 
   defp validate_preview_action("pause_cron_entry", %Entry{paused_at: nil}), do: :ok
   defp validate_preview_action("pause_cron_entry", _entry), do: {:error, :preview_not_available}
-  defp validate_preview_action("resume_cron_entry", %Entry{paused_at: nil}), do: {:error, :preview_not_available}
+
+  defp validate_preview_action("resume_cron_entry", %Entry{paused_at: nil}),
+    do: {:error, :preview_not_available}
+
   defp validate_preview_action("resume_cron_entry", _entry), do: :ok
   defp validate_preview_action("run_cron_entry", _entry), do: :ok
   defp validate_preview_action(_action, _entry), do: {:error, :preview_not_available}
@@ -611,6 +665,47 @@ defmodule ObanPowertools.Cron do
 
   defp truncate_to_minute(%DateTime{} = dt) do
     %DateTime{dt | second: 0, microsecond: {0, 0}}
+  end
+
+  defp maybe_record_coverage(_repo, _entry, _slot_at, true), do: :ok
+
+  defp maybe_record_coverage(repo, entry, slot_at, false) do
+    case record_coverage(repo, entry, slot_at, status: "healthy") do
+      {:ok, _coverage} -> :ok
+      {:error, _reason} -> :ok
+    end
+  end
+
+  defp cron_config_diff(entry, attrs) do
+    normalized = normalize_entry_attrs(attrs)
+
+    tracked = [:expression, :timezone, :overlap_policy, :catch_up_policy, :max_catch_up, :queue]
+
+    Enum.reduce(tracked, %{}, fn key, acc ->
+      current = Map.get(entry, key)
+      next_value = Map.get(normalized, key)
+
+      if current != next_value do
+        Map.put(acc, Atom.to_string(key), %{"before" => current, "after" => next_value})
+      else
+        acc
+      end
+    end)
+  end
+
+  defp maybe_record_reconfiguration(_repo, _before, _after, diff) when diff == %{}, do: :ok
+
+  defp maybe_record_reconfiguration(repo, before_entry, updated_entry, diff) do
+    Audit.record(
+      "cron.reconfigured",
+      %{type: :cron_entry, id: updated_entry.name},
+      %{
+        "event_type" => "cron.reconfigured",
+        "before_name" => before_entry.name,
+        "config_diff" => diff
+      },
+      repo: repo
+    )
   end
 
   defp timestamp_or_nil(nil), do: nil

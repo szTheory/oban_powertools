@@ -58,6 +58,7 @@ defmodule ObanPowertools.Web.Router do
           live("/limiters", ObanPowertools.Web.LimitersLive, :index)
           live("/cron", ObanPowertools.Web.CronLive, :index)
           live("/audit", ObanPowertools.Web.AuditLive, :index)
+          live("/forensics", ObanPowertools.Web.ForensicsLive, :index)
           live("/workflows", ObanPowertools.Web.WorkflowsLive, :index)
           live("/workflows/:id", ObanPowertools.Web.WorkflowsLive, :show)
         end

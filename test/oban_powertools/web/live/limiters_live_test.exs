@@ -2,6 +2,7 @@ defmodule ObanPowertools.Web.LimitersLiveTest do
   use ObanPowertools.LiveCase, async: false
 
   alias ObanPowertools.Explain
+  alias ObanPowertools.Forensics.LimiterHistoryFact
   alias ObanPowertools.Limits.{Resource, State}
 
   test "renders Live Now and Snapshot at Block Start with job deep link", %{conn: conn} do
@@ -112,5 +113,50 @@ defmodule ObanPowertools.Web.LimitersLiveTest do
     conn = Plug.Test.init_test_session(conn, current_actor: %{id: "ops-2", permissions: []})
 
     assert {:error, {:redirect, %{to: "/"}}} = live(conn, "/ops/jobs/limiters")
+  end
+
+  test "renders history summary and forensic handoff for limiter detail", %{conn: conn} do
+    resource =
+      TestRepo.insert!(%Resource{
+        name: "payments-api",
+        scope_kind: "global",
+        algorithm: "token_bucket",
+        bucket_span_ms: 60_000,
+        bucket_capacity: 5,
+        default_weight: 1,
+        partition_strategy: "global",
+        partition_config: %{},
+        cooldown_enabled: true,
+        metadata: %{}
+      })
+
+    TestRepo.insert!(%State{
+      resource_id: resource.id,
+      partition_key: "__global__",
+      tokens_used: 0,
+      bucket_started_at: DateTime.utc_now(),
+      reservation_snapshot: %{}
+    })
+
+    TestRepo.insert!(%LimiterHistoryFact{
+      resource_name: resource.name,
+      partition_key: "__global__",
+      event_type: "limiter.reconfigured",
+      cause_kind: "policy",
+      occurred_at: DateTime.utc_now(),
+      metadata: %{"config_diff" => %{"bucket_capacity" => %{"before" => 3, "after" => 5}}}
+    })
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-3", permissions: [:view_limiters, :view_forensics]}
+      )
+
+    {:ok, _view, html} = live(conn, "/ops/jobs/limiters?resource=#{resource.name}")
+
+    assert html =~ "History Summary"
+    assert html =~ "Open forensic timeline"
+    assert html =~ "Limiter reconfigured"
+    assert html =~ "/ops/jobs/forensics?resource_type=limiter&amp;resource_id=payments-api"
   end
 end

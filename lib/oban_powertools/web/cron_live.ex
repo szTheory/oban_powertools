@@ -5,6 +5,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     use Phoenix.LiveView
 
     alias ObanPowertools.{Audit, ControlPlane, Cron, DisplayPolicy, Telemetry}
+    alias ObanPowertools.Forensics.CronHistory
     alias ObanPowertools.Lifeline.RepairPreview
     alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth}
 
@@ -33,7 +34,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       {:noreply,
        socket
        |> assign_entries(entries)
-       |> assign(:selected_entry, Enum.find(entries, &(&1.name == params["entry"])))}
+       |> assign_selected_entry(Enum.find(entries, &(&1.name == params["entry"])))}
     end
 
     @impl true
@@ -58,7 +59,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
         {:noreply,
          socket
-         |> assign(:selected_entry, entry)
+         |> assign_selected_entry(entry)
          |> assign(:preview, preview)
          |> assign(:reason, "")
          |> assign(:error_message, nil)}
@@ -100,12 +101,16 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       with :ok <- LiveAuth.authorize_action(socket, auth_action(preview.action), resource),
            {:ok, principal} <- LiveAuth.principal_for_action(socket),
            {:ok, _result} <- perform_action(preview, principal, socket.assigns.reason) do
+        entries = Cron.list_entries(repo())
+        selected_entry = Enum.find(entries, &(&1.name == entry_name))
+
         {:noreply,
          socket
          |> assign(:preview, nil)
          |> assign(:reason, "")
          |> assign(:error_message, nil)
-         |> assign_entries(Cron.list_entries(repo()))}
+         |> assign_entries(entries)
+         |> assign_selected_entry(selected_entry)}
       else
         {:error, message} when is_binary(message) ->
           {:noreply, assign(socket, :error_message, message)}
@@ -200,6 +205,30 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           <p class="mt-1 text-sm text-zinc-600">
             Exact selected context survives remount through <code>entry=</code> while preview state stays off the URL.
           </p>
+
+          <div :if={@history_summary} class="mt-4 rounded border bg-slate-50 p-4">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="text-sm font-semibold">History Summary</h3>
+              <a
+                :if={can_view_forensics?(@current_actor)}
+                href={forensics_path(@selected_entry.name)}
+                class="text-sm text-indigo-700 underline"
+              >
+                Open forensic timeline
+              </a>
+            </div>
+            <p class="mt-2 text-sm text-zinc-700"><%= @history_summary.detail %></p>
+            <p class="mt-1 text-xs text-zinc-500">
+              <%= ControlPlanePresenter.forensic_completeness_label(@history_summary.completeness.state) %>
+            </p>
+
+            <div :if={@history_summary.slots != []} class="mt-3 space-y-2">
+              <div :for={slot <- @history_summary.slots} class="rounded border bg-white p-3 text-sm">
+                <p class="font-medium"><%= history_label(slot.classification) %></p>
+                <p class="mt-1 text-zinc-600"><%= slot.detail %></p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div :if={@preview} class="rounded-lg border bg-slate-50 p-4">
@@ -292,6 +321,18 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp assign_entries(socket, entries) do
       assign(socket, :entries, entries)
       |> assign(:read_only?, read_only_page?(entries, socket.assigns.current_actor))
+    end
+
+    defp assign_selected_entry(socket, nil) do
+      socket
+      |> assign(:selected_entry, nil)
+      |> assign(:history_summary, nil)
+    end
+
+    defp assign_selected_entry(socket, entry) do
+      socket
+      |> assign(:selected_entry, entry)
+      |> assign(:history_summary, CronHistory.summary(repo(), entry.name))
     end
 
     defp maybe_reload_preview(socket, preview_token) do
@@ -429,6 +470,21 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp overlap_label(policy), do: Phoenix.Naming.humanize(policy)
     defp catch_up_label("latest"), do: "Latest Only"
     defp catch_up_label(policy), do: Phoenix.Naming.humanize(policy)
+    defp history_label(:manual_run), do: "Manual run"
+    defp history_label(:missed_fire), do: "Missed fire"
+    defp history_label(:delayed_claim), do: "Delayed claim"
+    defp history_label(:overlap_relevant), do: "Overlap-relevant"
+    defp history_label(:partial_evidence), do: "Partial evidence"
+    defp history_label(:unknown), do: "Unknown"
+    defp history_label(:on_time), do: "On-time"
+
+    defp can_view_forensics?(actor),
+      do: LiveAuth.authorized?(actor, :view_forensics, %{type: :page, id: "forensics"})
+
+    defp forensics_path(entry_name),
+      do:
+        "/ops/jobs/forensics?resource_type=cron_entry&resource_id=#{URI.encode_www_form(entry_name)}"
+
     defp blank_to_nil(""), do: nil
     defp blank_to_nil(value), do: value
     defp entry_path(entry_name), do: "/ops/jobs/cron?entry=#{URI.encode_www_form(entry_name)}"

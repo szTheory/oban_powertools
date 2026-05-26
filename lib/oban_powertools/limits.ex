@@ -4,6 +4,7 @@ defmodule ObanPowertools.Limits do
   """
 
   alias ObanPowertools.{Audit, Telemetry}
+  alias ObanPowertools.Forensics.LimiterHistory
   alias ObanPowertools.Limits.{Resource, State}
 
   @global_partition "__global__"
@@ -37,6 +38,25 @@ defmodule ObanPowertools.Limits do
     |> repo.update()
     |> case do
       {:ok, updated_state} ->
+        eligible_at =
+          updated_state.bucket_started_at &&
+            DateTime.add(
+              updated_state.bucket_started_at,
+              reservation.bucket_span_ms,
+              :millisecond
+            )
+
+        :ok =
+          record_history_fact(repo, %{
+            resource_name: reservation.snapshot.resource_name,
+            partition_key: reservation.partition_key,
+            event_type: "limiter.released",
+            cause_kind: "pressure",
+            occurred_at: now,
+            eligible_at: eligible_at,
+            metadata: %{"weight" => reservation.weight}
+          })
+
         Telemetry.execute_limiter_event(:released, %{count: 1}, %{
           action: "released",
           resource: reservation.snapshot.resource_name,
@@ -70,6 +90,17 @@ defmodule ObanPowertools.Limits do
       |> repo.update()
       |> case do
         {:ok, updated_state} ->
+          :ok =
+            record_history_fact(repo, %{
+              resource_name: resource.name,
+              partition_key: partition_key,
+              event_type: "limiter.cooled_down",
+              cause_kind: "policy",
+              occurred_at: now,
+              eligible_at: until_at,
+              metadata: %{"reason" => reason}
+            })
+
           Telemetry.execute_limiter_event(:cooled_down, %{count: 1}, %{
             action: "cooled_down",
             resource: resource.name,
@@ -131,9 +162,30 @@ defmodule ObanPowertools.Limits do
         |> repo.insert()
 
       resource ->
+        config_diff = config_diff(resource, attrs)
+
         resource
         |> Resource.changeset(attrs)
         |> repo.update()
+        |> case do
+          {:ok, updated_resource} = result ->
+            if config_diff != %{} do
+              :ok =
+                record_history_fact(repo, %{
+                  resource_name: updated_resource.name,
+                  partition_key: @global_partition,
+                  event_type: "limiter.reconfigured",
+                  cause_kind: "policy",
+                  occurred_at: DateTime.utc_now(),
+                  metadata: %{"config_diff" => config_diff}
+                })
+            end
+
+            result
+
+          error ->
+            error
+        end
     end
   end
 
@@ -241,14 +293,65 @@ defmodule ObanPowertools.Limits do
     end
   end
 
-  defp blocked(_repo, snapshot, blockers, _now) do
+  defp blocked(repo, snapshot, blockers, now) do
+    blocker = hd(blockers)
+
     Telemetry.execute_limiter_event(:blocked, %{count: 1}, %{
       action: "blocked",
-      blocker_code: hd(blockers).code,
+      blocker_code: blocker.code,
       resource: snapshot.resource_name,
       scope: snapshot.scope_kind
     })
 
+    _ =
+      record_history_fact(repo, %{
+        resource_name: snapshot.resource_name,
+        partition_key: snapshot.partition_key,
+        event_type: "limiter.blocked",
+        cause_kind: blocker_cause_kind(blocker.code),
+        occurred_at: now,
+        eligible_at: blocker.retry_at,
+        metadata: %{
+          "blocker_code" => blocker.code,
+          "summary" => blocker.summary
+        }
+      })
+
     {:blocked, blockers}
+  end
+
+  defp config_diff(resource, attrs) do
+    tracked = [
+      :scope_kind,
+      :bucket_span_ms,
+      :bucket_capacity,
+      :default_weight,
+      :partition_strategy,
+      :partition_config,
+      :cooldown_enabled
+    ]
+
+    Enum.reduce(tracked, %{}, fn key, acc ->
+      current = Map.get(resource, key)
+      next_value = Map.get(attrs, key)
+
+      if current != next_value do
+        Map.put(acc, Atom.to_string(key), %{"before" => current, "after" => next_value})
+      else
+        acc
+      end
+    end)
+  end
+
+  defp blocker_cause_kind("cooldown"), do: "policy"
+  defp blocker_cause_kind(_code), do: "pressure"
+
+  defp record_history_fact(nil, _attrs), do: :ok
+
+  defp record_history_fact(repo, attrs) do
+    case LimiterHistory.record_fact(repo, attrs) do
+      {:ok, _fact} -> :ok
+      {:error, _reason} -> :ok
+    end
   end
 end

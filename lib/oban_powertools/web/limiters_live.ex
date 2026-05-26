@@ -7,6 +7,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     import Ecto.Query
 
     alias ObanPowertools.{ControlPlane, Explain}
+    alias ObanPowertools.Forensics.LimiterHistory
     alias ObanPowertools.Limits.{Resource, State}
     alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth}
 
@@ -133,6 +134,30 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                     <p class="mt-2 text-sm text-zinc-600">No blocked-job snapshot is available for this limiter yet.</p>
                   <% end %>
                 </div>
+
+                <div :if={@history_summary}>
+                  <div class="flex items-center justify-between gap-3 text-sm font-medium">
+                    <span class="rounded border px-2 py-1">History Summary</span>
+                    <a
+                      :if={can_view_forensics?(@current_actor)}
+                      href={forensics_path(@selected_resource)}
+                      class="text-sm text-indigo-700 underline"
+                    >
+                      Open forensic timeline
+                    </a>
+                  </div>
+                  <p class="mt-2 text-sm text-zinc-600"><%= @history_summary.detail %></p>
+                  <p class="mt-1 text-xs text-zinc-500">
+                    <%= ControlPlanePresenter.forensic_completeness_label(@history_summary.completeness.state) %>
+                  </p>
+
+                  <div :if={@history_summary.episodes != []} class="mt-3 space-y-2">
+                    <div :for={episode <- @history_summary.episodes} class="rounded border bg-slate-50 p-3 text-sm">
+                      <p class="font-medium"><%= episode.label %></p>
+                      <p :if={episode.notes} class="mt-1 text-zinc-600"><%= episode.notes %></p>
+                    </div>
+                  </div>
+                </div>
               </div>
             <% else %>
               <p class="text-sm text-zinc-600">
@@ -160,12 +185,14 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       socket
       |> assign(:selected_resource, nil)
       |> assign(:detail, nil)
+      |> assign(:history_summary, nil)
     end
 
     defp load_selection(socket, name) do
       socket
       |> assign(:selected_resource, name)
       |> assign(:detail, load_detail(name, socket.assigns.oban_dashboard_path))
+      |> assign(:history_summary, LimiterHistory.summary(repo(), name))
     end
 
     defp resources do
@@ -219,6 +246,13 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp build_job_path(_base, nil), do: nil
     defp build_job_path(base, job_id), do: Path.join([base, "jobs", Integer.to_string(job_id)])
     defp limiter_path(name), do: "/ops/jobs/limiters?resource=#{URI.encode_www_form(name)}"
+
+    defp forensics_path(name),
+      do: "/ops/jobs/forensics?resource_type=limiter&resource_id=#{URI.encode_www_form(name)}"
+
+    defp can_view_forensics?(actor),
+      do: LiveAuth.authorized?(actor, :view_forensics, %{type: :page, id: "forensics"})
+
     defp format_dt(nil), do: "unknown"
     defp format_dt(%DateTime{} = dt), do: Calendar.strftime(dt, "%Y-%m-%d %H:%M:%S UTC")
   end

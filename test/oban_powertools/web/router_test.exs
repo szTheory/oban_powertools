@@ -42,6 +42,12 @@ defmodule ObanPowertools.Web.RouterTest do
 
     assert %{
              plug: Phoenix.LiveView.Plug,
+             phoenix_live_view: {ObanPowertools.Web.ForensicsLive, :index, _, _}
+           } =
+             Phoenix.Router.route_info(TestRouter, "GET", "/ops/jobs/forensics", "localhost")
+
+    assert %{
+             plug: Phoenix.LiveView.Plug,
              phoenix_live_view: {ObanPowertools.Web.WorkflowsLive, :index, _, _}
            } =
              Phoenix.Router.route_info(TestRouter, "GET", "/ops/jobs/workflows", "localhost")

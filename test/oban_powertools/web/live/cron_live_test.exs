@@ -357,4 +357,32 @@ defmodule ObanPowertools.Web.CronLiveTest do
     entry = Enum.find(Cron.list_entries(TestRepo), &(&1.name == "preview-states"))
     assert is_nil(entry.paused_at)
   end
+
+  test "renders history summary and forensic handoff for selected entries", %{conn: conn} do
+    {:ok, entry} =
+      Cron.sync_entry(TestRepo, %{
+        name: "forensic-entry",
+        source: "runtime",
+        worker: "DemoWorker",
+        queue: "default",
+        expression: "* * * * *"
+      })
+
+    slot_at = truncate_minute(DateTime.add(DateTime.utc_now(), -120, :second))
+    assert {:ok, _coverage} = Cron.record_coverage(TestRepo, entry, slot_at, status: "healthy")
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-9", permissions: [:view_cron, :view_forensics]}
+      )
+
+    {:ok, _view, html} = live(conn, "/ops/jobs/cron?entry=#{entry.name}")
+
+    assert html =~ "History Summary"
+    assert html =~ "Open forensic timeline"
+    assert html =~ "Missed fire"
+    assert html =~ "/ops/jobs/forensics?resource_type=cron_entry&amp;resource_id=forensic-entry"
+  end
+
+  defp truncate_minute(%DateTime{} = dt), do: %DateTime{dt | second: 0, microsecond: {0, 0}}
 end

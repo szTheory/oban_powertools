@@ -17,7 +17,9 @@ unless skip_db_boot? do
       Ecto.Migrator.run(
         repo,
         Application.app_dir(:oban_powertools, "test/support/migrations"),
-        :up, all: true)
+        :up,
+        all: true
+      )
 
       audit_tables? =
         repo
@@ -116,6 +118,91 @@ unless skip_db_boot? do
 
       if is_nil(phase_6_tables?) do
         Ecto.Migrator.up(repo, 5, ObanPowertools.TestRepo.Migrations.Phase6Tables, log: false)
+      end
+
+      limiter_history_tables? =
+        repo
+        |> Ecto.Adapters.SQL.query!(
+          "SELECT to_regclass('public.oban_powertools_limiter_history_facts')"
+        )
+        |> Map.fetch!(:rows)
+        |> List.first()
+        |> List.first()
+
+      if is_nil(limiter_history_tables?) do
+        Ecto.Adapters.SQL.query!(
+          repo,
+          """
+          CREATE TABLE oban_powertools_limiter_history_facts (
+            id uuid PRIMARY KEY,
+            resource_name text NOT NULL,
+            partition_key text NOT NULL DEFAULT '__global__',
+            event_type text NOT NULL,
+            cause_kind text,
+            occurred_at timestamp(6) without time zone NOT NULL,
+            eligible_at timestamp(6) without time zone,
+            metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+            inserted_at timestamp(0) without time zone NOT NULL,
+            updated_at timestamp(0) without time zone
+          )
+          """
+        )
+
+        Ecto.Adapters.SQL.query!(
+          repo,
+          """
+          CREATE INDEX oban_powertools_limiter_history_facts_resource_name_occurred_at_index
+          ON oban_powertools_limiter_history_facts (resource_name, occurred_at)
+          """
+        )
+
+        Ecto.Adapters.SQL.query!(
+          repo,
+          """
+          CREATE INDEX oban_powertools_limiter_history_facts_event_type_index
+          ON oban_powertools_limiter_history_facts (event_type)
+          """
+        )
+      end
+
+      cron_coverage_tables? =
+        repo
+        |> Ecto.Adapters.SQL.query!("SELECT to_regclass('public.oban_powertools_cron_coverages')")
+        |> Map.fetch!(:rows)
+        |> List.first()
+        |> List.first()
+
+      if is_nil(cron_coverage_tables?) do
+        Ecto.Adapters.SQL.query!(
+          repo,
+          """
+          CREATE TABLE oban_powertools_cron_coverages (
+            id uuid PRIMARY KEY,
+            entry_id uuid NOT NULL REFERENCES oban_powertools_cron_entries(id) ON DELETE CASCADE,
+            slot_at timestamp(6) without time zone NOT NULL,
+            status text NOT NULL DEFAULT 'healthy',
+            metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+            inserted_at timestamp(0) without time zone NOT NULL,
+            updated_at timestamp(0) without time zone
+          )
+          """
+        )
+
+        Ecto.Adapters.SQL.query!(
+          repo,
+          """
+          CREATE UNIQUE INDEX oban_powertools_cron_coverages_entry_id_slot_at_index
+          ON oban_powertools_cron_coverages (entry_id, slot_at)
+          """
+        )
+
+        Ecto.Adapters.SQL.query!(
+          repo,
+          """
+          CREATE INDEX oban_powertools_cron_coverages_status_index
+          ON oban_powertools_cron_coverages (status)
+          """
+        )
       end
     end)
 

@@ -190,6 +190,24 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
     refute has_element?(view, "input[name='reason']")
   end
 
+  test "renders a forensic entry link that preserves workflow and step selectors", %{conn: conn} do
+    {:ok, workflow} =
+      WorkflowFixtures.workflow_fixture(name: "forensics-entry-workflow") |> Workflow.insert(TestRepo)
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_workflows, :view_forensics]}
+      )
+
+    {:ok, view, html} = live(conn, "/ops/jobs/workflows/#{workflow.id}?step=sync_billing")
+
+    assert html =~ "Open the forensic bundle."
+    assert html =~ "supporting evidence"
+    assert has_element?(view, "a[href*='/ops/jobs/forensics?']")
+    assert has_element?(view, "a[href*='workflow_id=#{workflow.id}']")
+    assert has_element?(view, "a[href*='step=sync_billing']")
+  end
+
   test "redirects unauthorized viewers", %{conn: conn} do
     conn = Plug.Test.init_test_session(conn, current_actor: %{id: "ops-2", permissions: []})
 

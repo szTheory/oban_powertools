@@ -35,6 +35,22 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     "#{ownership_badge(:oban_web_bridge)} remains #{ownership_posture(:oban_web_bridge) |> String.downcase()} and read-only."
   end
 
+  def forensic_provenance_label(provenance) when is_binary(provenance),
+    do: provenance |> String.to_atom() |> forensic_provenance_label()
+
+  def forensic_provenance_label(:durable), do: "durable"
+  def forensic_provenance_label(:supporting), do: "supporting evidence"
+  def forensic_provenance_label(:bridge_only), do: "Inspection only"
+  def forensic_provenance_label(:missing), do: "unknown"
+
+  def forensic_completeness_label(completeness) when is_binary(completeness),
+    do: completeness |> String.to_atom() |> forensic_completeness_label()
+
+  def forensic_completeness_label(:complete), do: "complete"
+  def forensic_completeness_label(:partial_evidence), do: "partial evidence"
+  def forensic_completeness_label(:history_unavailable), do: "history unavailable"
+  def forensic_completeness_label(:unknown), do: "unknown"
+
   def venue_label(venue), do: ControlPlane.venue_label(venue)
 
   def audit_event_label(event), do: Audit.event_label(event)
