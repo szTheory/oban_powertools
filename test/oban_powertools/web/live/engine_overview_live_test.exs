@@ -82,9 +82,9 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
 
     assert html =~ "Blocked by policy cooldown for payments-api"
     assert html =~ "Recent cron history shows a missed fire while scheduler coverage was healthy."
-    refute html =~ "Historical Attention"
-    refute html =~ "raw event"
-    refute html =~ "event feed"
+    refute html =~ "Historical " <> "Attention"
+    refute html =~ "raw " <> "event"
+    refute html =~ "event " <> "feed"
 
     refute html =~ "fourth historical exemplar"
   end

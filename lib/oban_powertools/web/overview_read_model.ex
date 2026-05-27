@@ -5,6 +5,7 @@ defmodule ObanPowertools.Web.OverviewReadModel do
 
   alias ObanPowertools.{Audit, ControlPlane, Explain}
   alias ObanPowertools.Cron.Entry
+  alias ObanPowertools.Forensics.{AttentionProjection, CronHistory, LimiterHistory}
   alias ObanPowertools.Lifeline
   alias ObanPowertools.Lifeline.Incident
   alias ObanPowertools.Limits.{Resource, State}
@@ -65,7 +66,7 @@ defmodule ObanPowertools.Web.OverviewReadModel do
         posture: ControlPlanePresenter.ownership_posture(:powertools_native),
         next_step_label: "Review Blocked Limiters",
         next_step_path: first_resource_path(blocked_resources, "/ops/jobs/limiters"),
-        exemplars: limiter_exemplars(blocked_resources)
+        exemplars: limiter_exemplars(blocked_resources, repo, "Blocked")
       },
       %{
         status: "Waiting",
@@ -76,7 +77,7 @@ defmodule ObanPowertools.Web.OverviewReadModel do
         posture: ControlPlanePresenter.ownership_posture(:powertools_native),
         next_step_label: waiting_next_step_label(waiting_resources, paused_entries),
         next_step_path: waiting_next_step_path(waiting_resources, paused_entries),
-        exemplars: waiting_exemplars(waiting_resources, paused_entries)
+        exemplars: waiting_exemplars(waiting_resources, paused_entries, repo)
       },
       %{
         status: "Runnable",
@@ -87,7 +88,7 @@ defmodule ObanPowertools.Web.OverviewReadModel do
         posture: ControlPlanePresenter.ownership_posture(:powertools_native),
         next_step_label: "Review Runnable Capacity",
         next_step_path: first_resource_path(runnable_resources, "/ops/jobs/limiters"),
-        exemplars: runnable_exemplars(runnable_resources, runnable_entries)
+        exemplars: runnable_exemplars(runnable_resources, runnable_entries, repo)
       },
       %{
         status: "Bridge-only Follow-up",
@@ -201,38 +202,48 @@ defmodule ObanPowertools.Web.OverviewReadModel do
   defp needs_review_path([]), do: "/ops/jobs/lifeline"
 
   defp needs_review_exemplars(incidents) do
-    incidents
-    |> Enum.take(3)
-    |> Enum.map(fn incident ->
-      %{
-        label: incident.summary || incident.incident_class,
-        fact: incident.health_state || incident.incident_class,
-        path:
-          "/ops/jobs/lifeline?view=active&incident_fingerprint=#{incident.incident_fingerprint}"
-      }
-    end)
+    candidates =
+      Enum.map(incidents, fn incident ->
+        %{
+          bucket: "Needs Review",
+          family: :lifeline,
+          label: incident.summary || incident.incident_class,
+          fact: incident.health_state || incident.incident_class,
+          status: incident.status,
+          attention_reason: incident.summary || incident.incident_class,
+          evidence_completeness: :complete,
+          path:
+            "/ops/jobs/lifeline?view=active&incident_fingerprint=#{incident.incident_fingerprint}",
+          evidence_path:
+            "/ops/jobs/forensics?incident_fingerprint=#{incident.incident_fingerprint}",
+          venue: ControlPlanePresenter.venue_label(:powertools_native),
+          ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
+          source: "lifeline"
+        }
+      end)
+
+    AttentionProjection.project_bucket("Needs Review", candidates)
   end
 
-  defp limiter_exemplars(resources) do
-    resources
-    |> Enum.take(3)
-    |> Enum.map(fn resource ->
-      %{
-        label: resource.name,
-        fact: limiter_fact(resource),
-        path: "/ops/jobs/limiters?resource=#{URI.encode_www_form(resource.name)}"
-      }
-    end)
+  defp limiter_exemplars(resources, repo, bucket) do
+    bucket
+    |> limiter_candidates(resources, repo)
+    |> then(&AttentionProjection.project_bucket(bucket, &1))
   end
 
-  defp waiting_exemplars(resources, entries) do
-    (limiter_exemplars(resources) ++ cron_exemplars(entries))
-    |> Enum.take(3)
+  defp waiting_exemplars(resources, entries, repo) do
+    candidates =
+      limiter_candidates("Waiting", resources, repo) ++ cron_candidates("Waiting", entries, repo)
+
+    AttentionProjection.project_bucket("Waiting", candidates)
   end
 
-  defp runnable_exemplars(resources, entries) do
-    (limiter_exemplars(resources) ++ cron_exemplars(entries))
-    |> Enum.take(3)
+  defp runnable_exemplars(resources, entries, repo) do
+    candidates =
+      limiter_candidates("Runnable", resources, repo) ++
+        cron_candidates("Runnable", entries, repo)
+
+    AttentionProjection.project_bucket("Runnable", candidates)
   end
 
   defp bridge_exemplars(rows), do: rows
@@ -240,13 +251,22 @@ defmodule ObanPowertools.Web.OverviewReadModel do
   defp resolved_exemplars(incidents, events) do
     resolved_rows =
       incidents
-      |> Enum.take(2)
       |> Enum.map(fn incident ->
         %{
+          bucket: "Resolved Recently",
+          family: :lifeline,
           label: incident.summary || incident.incident_class,
           fact: "resolved incident",
+          status: :resolved,
+          attention_reason: "Resolved Lifeline incident remains visible as continuity evidence.",
+          evidence_completeness: :complete,
           path:
-            "/ops/jobs/lifeline?view=resolved&incident_fingerprint=#{incident.incident_fingerprint}"
+            "/ops/jobs/lifeline?view=resolved&incident_fingerprint=#{incident.incident_fingerprint}",
+          evidence_path:
+            "/ops/jobs/forensics?incident_fingerprint=#{incident.incident_fingerprint}",
+          venue: ControlPlanePresenter.venue_label(:powertools_native),
+          ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
+          source: "lifeline"
         }
       end)
 
@@ -256,36 +276,108 @@ defmodule ObanPowertools.Web.OverviewReadModel do
       |> Enum.take(1)
       |> Enum.map(fn event ->
         %{
+          bucket: "Resolved Recently",
+          family: :audit,
           label: ControlPlanePresenter.audit_resource_label(event),
           fact: ControlPlanePresenter.audit_event_label(event),
+          status: :resolved,
+          attention_reason: ControlPlanePresenter.audit_event_label(event),
+          evidence_completeness: :complete,
           path:
             "/ops/jobs/audit?" <>
               URI.encode_query(%{
                 "resource_type" => event.resource_type,
                 "resource_id" => event.resource_id,
                 "event_type" => event.event_type
-              })
+              }),
+          venue: ControlPlanePresenter.venue_label(:powertools_native),
+          ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
+          source: "audit"
         }
       end)
 
-    Enum.take(resolved_rows ++ audit_rows, 3)
+    AttentionProjection.project_bucket("Resolved Recently", resolved_rows ++ audit_rows)
   end
 
-  defp cron_exemplars(entries) do
-    entries
-    |> Enum.take(3)
-    |> Enum.map(fn entry ->
+  defp limiter_candidates(bucket, resources, repo) do
+    Enum.map(resources, fn resource ->
+      summary = LimiterHistory.summary(repo, resource.name)
+
       %{
+        bucket: bucket,
+        family: :limiter,
+        label: resource.name,
+        fact: limiter_fact(resource),
+        status: limiter_projection_status(resource),
+        attention_reason: limiter_attention_reason(resource, summary),
+        evidence_completeness: summary.completeness.state,
+        path: "/ops/jobs/limiters?resource=#{URI.encode_www_form(resource.name)}",
+        evidence_path:
+          "/ops/jobs/forensics?resource_type=limiter&resource_id=#{URI.encode_www_form(resource.name)}",
+        venue: ControlPlanePresenter.venue_label(:powertools_native),
+        ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
+        source: "limiter-history"
+      }
+    end)
+  end
+
+  defp cron_candidates(bucket, entries, repo) do
+    Enum.map(entries, fn entry ->
+      summary = CronHistory.summary(repo, entry.name)
+
+      %{
+        bucket: bucket,
+        family: :cron,
         label: entry.name,
         fact:
           entry
           |> ControlPlane.cron_status()
           |> Map.fetch!(:operator_status)
           |> ControlPlanePresenter.status_label(),
-        path: "/ops/jobs/cron?entry=#{URI.encode_www_form(entry.name)}"
+        status: cron_projection_status(summary),
+        attention_reason: cron_attention_reason(summary),
+        evidence_completeness: summary.completeness.state,
+        path: "/ops/jobs/cron?entry=#{URI.encode_www_form(entry.name)}",
+        evidence_path:
+          "/ops/jobs/forensics?resource_type=cron_entry&resource_id=#{URI.encode_www_form(entry.name)}",
+        venue: ControlPlanePresenter.venue_label(:powertools_native),
+        ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
+        source: "cron-history"
       }
     end)
   end
+
+  defp limiter_projection_status(resource) do
+    case ControlPlane.limiter_status(resource) do
+      :blocked -> :blocked
+      :waiting -> :cooling_down
+      status -> status
+    end
+  end
+
+  defp limiter_attention_reason(_resource, %{detail: detail}) when is_binary(detail), do: detail
+  defp limiter_attention_reason(resource, _summary), do: limiter_fact(resource)
+
+  defp cron_projection_status(%{slots: [%{classification: :missed_fire} | _]}), do: :missed_fire
+  defp cron_projection_status(%{slots: [%{classification: :unknown} | _]}), do: :unknown
+  defp cron_projection_status(%{current: current}) when is_binary(current), do: current
+  defp cron_projection_status(_summary), do: :unknown
+
+  defp cron_attention_reason(%{slots: slots}) do
+    cond do
+      Enum.any?(slots, &(&1.classification == :missed_fire)) ->
+        "Recent cron history shows a missed fire while scheduler coverage was healthy."
+
+      Enum.any?(slots, &(&1.classification == :unknown)) ->
+        "unknown: retained cron windows cannot prove what happened."
+
+      true ->
+        nil
+    end
+  end
+
+  defp cron_attention_reason(%{detail: detail}) when is_binary(detail), do: detail
+  defp cron_attention_reason(_summary), do: nil
 
   defp limiter_fact(resource) do
     cond do

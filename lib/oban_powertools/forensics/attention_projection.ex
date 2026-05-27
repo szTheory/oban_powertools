@@ -44,7 +44,7 @@ defmodule ObanPowertools.Forensics.AttentionProjection do
 
       %{
         label: field(candidate, :label),
-        fact: field(candidate, :fact) || field(candidate, :attention_reason),
+        fact: field(candidate, :attention_reason) || field(candidate, :fact),
         attention_reason: field(candidate, :attention_reason),
         evidence_completeness: completeness_label(completeness),
         path: path,
