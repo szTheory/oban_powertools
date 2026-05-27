@@ -103,7 +103,7 @@ The milestone closes only when the investigative UX, support-truth language, and
 |-------|------|--------------|------------------|
 | 32 | 3/3 | Complete    | 2026-05-26 |
 | 33 | Limiter history and cron missed-fire diagnostics | OPS-01, OPS-02 | Complete — 2026-05-27 |
-| 34 | 3/3 | Complete   | 2026-05-27 |
+| 34 | 3/3 | Complete    | 2026-05-27 |
 | 35 | Runbook-guided remediation and alert hook boundaries | RNB-03 | 3 |
 | 36 | Docs, example host, verification, and support-truth closure | DOC-05, VER-04, HST-05 | 3 |
 
