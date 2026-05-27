@@ -228,3 +228,127 @@ jobs:
           otp-version: "27.3"
       - run: mix deps.get
       - run: mix test test/oban_powertools/workflow_runtime_transitions_test.exs test/oban_powertools/workflow_runtime_signals_test.exs test/oban_powertools/workflow_runtime_commands_test.exs test/oban_powertools/workflow_callbacks_test.exs test/oban_powertools/workflow_compatibility_test.exs
+
+  continuity-ver04-c1:
+    runs-on: ubuntu-latest
+    env:
+      OBAN_POWERTOOLS_SKIP_DB_BOOT: "1"
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: oban_powertools_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.19.5"
+          otp-version: "27.3"
+      - run: mix deps.get
+      - run: mix test test/oban_powertools/forensics_test.exs test/oban_powertools/web/live/forensics_live_test.exs test/oban_powertools/web/live/audit_live_test.exs --seed 0
+
+  continuity-ver04-c2:
+    runs-on: ubuntu-latest
+    env:
+      OBAN_POWERTOOLS_SKIP_DB_BOOT: "1"
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: oban_powertools_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.19.5"
+          otp-version: "27.3"
+      - run: mix deps.get
+      - run: mix test test/oban_powertools/cron_test.exs test/oban_powertools/web/live/cron_live_test.exs test/oban_powertools/web/live/limiters_live_test.exs --seed 0
+
+  continuity-ver04-c3:
+    runs-on: ubuntu-latest
+    env:
+      OBAN_POWERTOOLS_SKIP_DB_BOOT: "1"
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: oban_powertools_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.19.5"
+          otp-version: "27.3"
+      - run: mix deps.get
+      - run: mix test test/oban_powertools/lifeline_test.exs test/oban_powertools/web/live/lifeline_live_test.exs test/oban_powertools/web/live/forensics_live_test.exs --seed 0
+
+  continuity-ver04-c4:
+    runs-on: ubuntu-latest
+    env:
+      OBAN_POWERTOOLS_SKIP_DB_BOOT: "1"
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: oban_powertools_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.19.5"
+          otp-version: "27.3"
+      - run: mix deps.get
+      - run: mix test test/oban_powertools/forensics_test.exs test/oban_powertools/lifeline_test.exs test/oban_powertools/web/live/audit_live_test.exs --seed 0
+      - run: mix test test/oban_powertools/docs_contract_test.exs --seed 0
+
+  continuity-proof-status:
+    if: always()
+    runs-on: ubuntu-latest
+    needs:
+      - continuity-ver04-c1
+      - continuity-ver04-c2
+      - continuity-ver04-c3
+      - continuity-ver04-c4
+    steps:
+      - name: Fail when any continuity lane failed
+        run: |
+          if [ "${{ needs.continuity-ver04-c1.result }}" != "success" ] || \
+             [ "${{ needs.continuity-ver04-c2.result }}" != "success" ] || \
+             [ "${{ needs.continuity-ver04-c3.result }}" != "success" ] || \
+             [ "${{ needs.continuity-ver04-c4.result }}" != "success" ]; then
+            echo "One or more continuity proof lanes did not succeed."
+            exit 1
+          fi
