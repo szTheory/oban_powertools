@@ -171,7 +171,7 @@ This phase closes WR-01/WR-02 advisory debt and reduces minor cross-phase risk a
 
 Plans:
 
-- [ ] 42-01-PLAN.md — Run `/gsd-validate-phase` for phase 33 and phase 34 and resolve remaining partial metadata.
+- [x] 42-01-PLAN.md — Run `/gsd-validate-phase` for phase 33 and phase 34 and resolve remaining partial metadata.
 - [ ] 42-02-PLAN.md — Run `/gsd-validate-phase` for phase 38 and create any missing validation artifact needed for compliance.
 - [ ] 42-03-PLAN.md — Run `/gsd-validate-phase` for phase 39 and publish the updated validation closure snapshot.
 
@@ -206,7 +206,7 @@ This phase is a quality-hygiene closure sweep for validation artifacts and does 
 | 39 | CI continuity proof lane closure | VER-04 | Complete - 2026-05-27 |
 | 40 | Phase 34 manual acceptance closure | OPS-03, RNB-01, RNB-02 | Complete - 2026-05-27 (closure shifted left into automation; 2 plans, no human UAT) |
 | 41 | 1/1 | Complete    | 2026-05-27 |
-| 42 | Nyquist validation compliance sweep | Validation hygiene (phases 33, 34, 38, 39) | Pending |
+| 42 | 1/1 | Complete   | 2026-05-27 |
 
 ### Phase Success Criteria
 
