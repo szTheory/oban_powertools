@@ -213,6 +213,63 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     end
   end
 
+  test "ownership boundary remains explicit", %{conn: conn} do
+    insert_missing_heartbeat!("ownership-boundary")
+    incident = insert_dead_executor_incident!("ownership-boundary")
+    job = insert_executing_job!("ownership-boundary")
+    update_incident_job_ids!(incident, [job.id])
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{
+          id: "ops-1",
+          permissions: [:view_lifeline, :preview_repair]
+        }
+      )
+
+    {:ok, view, _html} = live(conn, "/ops/jobs/lifeline")
+
+    html =
+      view
+      |> element("button[phx-value-row-id$=':job:#{job.id}'][phx-click='preview']")
+      |> render_click()
+
+    assert html =~ "Powertools-native"
+    assert html =~ "Oban Web bridge"
+    assert html =~ "host-owned follow-up"
+
+    assert has_element?(
+             view,
+             ~s([data-runbook-ownership="Powertools-native"][data-runbook-variant="native_primary"])
+           )
+
+    assert has_element?(
+             view,
+             ~s([data-runbook-ownership="Oban Web bridge"][data-runbook-variant="bridge_guidance"])
+           )
+
+    assert has_element?(
+             view,
+             ~s([data-runbook-ownership="host-owned follow-up"][data-runbook-variant="host_guidance"])
+           )
+
+    refute has_element?(
+             view,
+             ~s([data-runbook-ownership="Oban Web bridge"][data-runbook-variant="native_primary"])
+           )
+
+    refute has_element?(
+             view,
+             ~s([data-runbook-ownership="host-owned follow-up"][data-runbook-variant="native_primary"])
+           )
+
+    refute html =~ "alert delivered"
+    refute html =~ "ticket created"
+    refute html =~ "page sent"
+    refute html =~ "PagerDuty"
+    refute html =~ "Slack"
+  end
+
   test "shows shared preview_drifted wording when target state changes after preview", %{
     conn: conn
   } do

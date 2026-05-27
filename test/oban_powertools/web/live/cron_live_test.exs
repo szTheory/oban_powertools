@@ -391,5 +391,61 @@ defmodule ObanPowertools.Web.CronLiveTest do
     assert html =~ "/ops/jobs/forensics?resource_type=cron_entry&amp;resource_id=forensic-entry"
   end
 
+  test "ownership boundary remains explicit", %{conn: conn} do
+    {:ok, entry} =
+      Cron.sync_entry(TestRepo, %{
+        name: "ownership-boundary-cron",
+        source: "runtime",
+        worker: "DemoWorker",
+        queue: "default",
+        expression: "* * * * *"
+      })
+
+    slot_at = truncate_minute(DateTime.add(DateTime.utc_now(), -120, :second))
+    assert {:ok, _coverage} = Cron.record_coverage(TestRepo, entry, slot_at, status: "healthy")
+
+    connection =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-10", permissions: [:view_cron, :view_forensics]}
+      )
+
+    {:ok, view, html} = live(connection, "/ops/jobs/cron?entry=#{entry.name}")
+
+    assert html =~ "Powertools-native"
+    assert html =~ "Oban Web bridge"
+    assert html =~ "host-owned follow-up"
+
+    assert has_element?(
+             view,
+             ~s([data-runbook-ownership="Powertools-native"][data-runbook-variant="native_primary"])
+           )
+
+    assert has_element?(
+             view,
+             ~s([data-runbook-ownership="Oban Web bridge"][data-runbook-variant="bridge_guidance"])
+           )
+
+    assert has_element?(
+             view,
+             ~s([data-runbook-ownership="host-owned follow-up"][data-runbook-variant="host_guidance"])
+           )
+
+    refute has_element?(
+             view,
+             ~s([data-runbook-ownership="Oban Web bridge"][data-runbook-variant="native_primary"])
+           )
+
+    refute has_element?(
+             view,
+             ~s([data-runbook-ownership="host-owned follow-up"][data-runbook-variant="native_primary"])
+           )
+
+    refute html =~ "alert delivered"
+    refute html =~ "ticket created"
+    refute html =~ "page sent"
+    refute html =~ "PagerDuty"
+    refute html =~ "Slack"
+  end
+
   defp truncate_minute(%DateTime{} = dt), do: %DateTime{dt | second: 0, microsecond: {0, 0}}
 end

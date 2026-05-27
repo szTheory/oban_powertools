@@ -225,6 +225,54 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
     refute has_element?(view, "input[name='reason']")
   end
 
+  test "ownership boundary remains explicit", %{conn: conn} do
+    {:ok, workflow} =
+      WorkflowFixtures.workflow_fixture(name: "ownership-boundary-workflow")
+      |> Workflow.insert(TestRepo)
+
+    connection =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-8", permissions: [:view_workflows]}
+      )
+
+    {:ok, view, html} = live(connection, "/ops/jobs/workflows/#{workflow.id}?step=sync_billing")
+
+    assert html =~ "Powertools-native"
+    assert html =~ "Oban Web bridge"
+    assert html =~ "host-owned follow-up"
+
+    assert has_element?(
+             view,
+             ~s([data-runbook-ownership="Powertools-native"][data-runbook-variant="native_primary"])
+           )
+
+    assert has_element?(
+             view,
+             ~s([data-runbook-ownership="Oban Web bridge"][data-runbook-variant="bridge_guidance"])
+           )
+
+    assert has_element?(
+             view,
+             ~s([data-runbook-ownership="host-owned follow-up"][data-runbook-variant="host_guidance"])
+           )
+
+    refute has_element?(
+             view,
+             ~s([data-runbook-ownership="Oban Web bridge"][data-runbook-variant="native_primary"])
+           )
+
+    refute has_element?(
+             view,
+             ~s([data-runbook-ownership="host-owned follow-up"][data-runbook-variant="native_primary"])
+           )
+
+    refute html =~ "alert delivered"
+    refute html =~ "ticket created"
+    refute html =~ "page sent"
+    refute html =~ "PagerDuty"
+    refute html =~ "Slack"
+  end
+
   test "renders a forensic entry link that preserves workflow and step selectors", %{conn: conn} do
     {:ok, workflow} =
       WorkflowFixtures.workflow_fixture(name: "forensics-entry-workflow") |> Workflow.insert(TestRepo)

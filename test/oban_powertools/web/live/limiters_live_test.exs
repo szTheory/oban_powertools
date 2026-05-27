@@ -166,4 +166,79 @@ defmodule ObanPowertools.Web.LimitersLiveTest do
     assert html =~ "Limiter reconfigured"
     assert html =~ "/ops/jobs/forensics?resource_type=limiter&amp;resource_id=payments-api"
   end
+
+  test "ownership boundary remains explicit", %{conn: conn} do
+    resource =
+      TestRepo.insert!(%Resource{
+        name: "ownership-boundary-limiter",
+        scope_kind: "global",
+        algorithm: "token_bucket",
+        bucket_span_ms: 60_000,
+        bucket_capacity: 5,
+        default_weight: 1,
+        partition_strategy: "global",
+        partition_config: %{},
+        cooldown_enabled: true,
+        metadata: %{}
+      })
+
+    TestRepo.insert!(%State{
+      resource_id: resource.id,
+      partition_key: "__global__",
+      tokens_used: 0,
+      bucket_started_at: DateTime.utc_now(),
+      reservation_snapshot: %{}
+    })
+
+    TestRepo.insert!(%LimiterHistoryFact{
+      resource_name: resource.name,
+      partition_key: "__global__",
+      event_type: "limiter.reconfigured",
+      cause_kind: "policy",
+      occurred_at: DateTime.utc_now(),
+      metadata: %{"config_diff" => %{"bucket_capacity" => %{"before" => 3, "after" => 5}}}
+    })
+
+    connection =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-11", permissions: [:view_limiters, :view_forensics]}
+      )
+
+    {:ok, view, html} = live(connection, "/ops/jobs/limiters?resource=#{resource.name}")
+
+    assert html =~ "Powertools-native"
+    assert html =~ "Oban Web bridge"
+    assert html =~ "host-owned follow-up"
+
+    assert has_element?(
+             view,
+             ~s([data-runbook-ownership="Powertools-native"][data-runbook-variant="native_primary"])
+           )
+
+    assert has_element?(
+             view,
+             ~s([data-runbook-ownership="Oban Web bridge"][data-runbook-variant="bridge_guidance"])
+           )
+
+    assert has_element?(
+             view,
+             ~s([data-runbook-ownership="host-owned follow-up"][data-runbook-variant="host_guidance"])
+           )
+
+    refute has_element?(
+             view,
+             ~s([data-runbook-ownership="Oban Web bridge"][data-runbook-variant="native_primary"])
+           )
+
+    refute has_element?(
+             view,
+             ~s([data-runbook-ownership="host-owned follow-up"][data-runbook-variant="native_primary"])
+           )
+
+    refute html =~ "alert delivered"
+    refute html =~ "ticket created"
+    refute html =~ "page sent"
+    refute html =~ "PagerDuty"
+    refute html =~ "Slack"
+  end
 end

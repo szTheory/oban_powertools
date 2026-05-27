@@ -309,6 +309,60 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
     refute html =~ ~s(data-runbook-ownership="host-owned follow-up" class="rounded bg-indigo-700)
   end
 
+  test "ownership boundary remains explicit", %{conn: conn} do
+    {:ok, entry} =
+      Cron.sync_entry(TestRepo, %{
+        name: "forensics-ownership-boundary",
+        source: "runtime",
+        worker: "DemoWorker",
+        queue: "default",
+        expression: "* * * * *"
+      })
+
+    connection =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-7", permissions: [:view_forensics, :view_cron]}
+      )
+
+    {:ok, view, html} =
+      live(connection, "/ops/jobs/forensics?resource_type=cron_entry&resource_id=#{entry.name}")
+
+    assert html =~ "Powertools-native"
+    assert html =~ "Oban Web bridge"
+    assert html =~ "host-owned follow-up"
+
+    assert has_element?(
+             view,
+             ~s([data-runbook-ownership="Powertools-native"][data-runbook-variant="native_primary"])
+           )
+
+    assert has_element?(
+             view,
+             ~s([data-runbook-ownership="Oban Web bridge"][data-runbook-variant="bridge_guidance"])
+           )
+
+    assert has_element?(
+             view,
+             ~s([data-runbook-ownership="host-owned follow-up"][data-runbook-variant="host_guidance"])
+           )
+
+    refute has_element?(
+             view,
+             ~s([data-runbook-ownership="Oban Web bridge"][data-runbook-variant="native_primary"])
+           )
+
+    refute has_element?(
+             view,
+             ~s([data-runbook-ownership="host-owned follow-up"][data-runbook-variant="native_primary"])
+           )
+
+    refute html =~ "alert delivered"
+    refute html =~ "ticket created"
+    refute html =~ "page sent"
+    refute html =~ "PagerDuty"
+    refute html =~ "Slack"
+  end
+
   test "mounts the limiter forensic bundle from stable resource selectors", %{conn: conn} do
     resource =
       TestRepo.insert!(%Resource{
