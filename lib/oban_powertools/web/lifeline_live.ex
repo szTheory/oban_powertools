@@ -812,8 +812,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       repo.one(query)
     end
 
-    defp load_target_detail(%{target_type: "job", target_id: target_id}),
-      do: %{job_id: String.to_integer(target_id)}
+    defp load_target_detail(%{target_type: "job", target_id: target_id})
+         when is_binary(target_id) do
+      case Integer.parse(target_id) do
+        {job_id, ""} -> %{job_id: job_id}
+        _ -> %{job_id: nil}
+      end
+    end
+
+    defp load_target_detail(%{target_type: "job"}), do: %{job_id: nil}
 
     defp load_target_detail(%{target_type: "workflow_step", target_id: target_id}) do
       case repo().get(Step, target_id) do
