@@ -123,7 +123,7 @@ This phase closes the broken docs/example-host operator flow identified by the m
 
 Plans:
 
-- [ ] 39-01-PLAN.md — Wire the phase 32-35 continuity suites into `.github/workflows/host-contract-proof.yml` for milestone-proof coverage.
+- [x] 39-01-PLAN.md — Wire the phase 32-35 continuity suites into `.github/workflows/host-contract-proof.yml` for milestone-proof coverage.
 - [ ] 39-02-PLAN.md — Publish CI evidence artifacts and pass/fail boundaries that map directly to continuity and ownership-boundary proof claims.
 - [ ] 39-03-PLAN.md — Close VER-04 traceability with automated proof references and prepare re-audit inputs for milestone completion.
 
