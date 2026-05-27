@@ -98,25 +98,35 @@ Make the stable v1.3 control plane materially better for real incident investiga
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FRN-01 | Phase 32 | Pending |
-| FRN-02 | Phase 32 | Pending |
-| FRN-03 | Phase 32 | Pending |
-| OPS-01 | Phase 33 | Pending |
-| OPS-02 | Phase 33 | Pending |
+| FRN-01 | Phase 37 | Complete |
+| FRN-02 | Phase 37 | Complete |
+| FRN-03 | Phase 37 | Complete |
+| OPS-01 | Phase 37 | Complete |
+| OPS-02 | Phase 37 | Complete |
 | OPS-03 | Phase 34 | Complete |
 | RNB-01 | Phase 34 | Complete |
 | RNB-02 | Phase 34 | Complete |
 | RNB-03 | Phase 35 | Complete |
-| DOC-05 | Phase 36 | Pending |
-| VER-04 | Phase 36 | Pending |
+| DOC-05 | Phase 38 | Pending |
+| VER-04 | Phase 39 | Pending |
 | HST-05 | Phase 35 | Complete |
+
+### Phase 37 Verification Backfill References
+
+- `FRN-01` -> `.planning/phases/32-forensic-timeline-evidence-bundle-foundation/32-VERIFICATION.md`
+- `FRN-02` -> `.planning/phases/32-forensic-timeline-evidence-bundle-foundation/32-VERIFICATION.md`
+- `FRN-03` -> `.planning/phases/32-forensic-timeline-evidence-bundle-foundation/32-VERIFICATION.md`
+- `OPS-01` -> `.planning/phases/33-limiter-history-cron-missed-fire-diagnostics/33-VERIFICATION.md`
+- `OPS-02` -> `.planning/phases/33-limiter-history-cron-missed-fire-diagnostics/33-VERIFICATION.md`
 
 **Coverage:**
 
 - v1.4 requirements: 12 total
 - Mapped to phases: 12
 - Unmapped: 0
+- Complete: 10
+- Pending: 2
 
 ---
 *Requirements defined: 2026-05-26*
-*Last updated: 2026-05-26 after milestone v1.4 initialization*
+*Last updated: 2026-05-27 after phase 37 verification backfill reconciliation*
