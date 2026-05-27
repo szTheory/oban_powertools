@@ -152,8 +152,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           else
             %{
               view: "active",
-              workflow_id: row.workflow_id,
-              step_name: row.step_name,
+              workflow_id: Map.get(row, :workflow_id),
+              step_name: Map.get(row, :step_name),
               action: row.action
             }
           end
