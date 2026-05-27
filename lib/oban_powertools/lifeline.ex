@@ -5,6 +5,8 @@ defmodule ObanPowertools.Lifeline do
 
   import Ecto.Query
 
+  require Logger
+
   alias Ecto.Multi
   alias ObanPowertools.{Audit, Auth, Explain, HostEscalation}
   alias ObanPowertools.Lifeline.{ArchiveRun, Heartbeat, Incident, RepairPreview, TargetType}
@@ -54,6 +56,8 @@ defmodule ObanPowertools.Lifeline do
     end
   end
 
+  # NOTE: This function performs DB writes (health_state updates) as a side effect.
+  # Called from both project_incidents/2 and directly from LifelineLive.load_data/2.
   def list_executor_health(repo, opts \\ []) do
     now = Keyword.get(opts, :now, DateTime.utc_now())
 
@@ -62,10 +66,10 @@ defmodule ObanPowertools.Lifeline do
       status = classify_heartbeat(heartbeat, now)
 
       if heartbeat.health_state != status do
-        {:ok, _heartbeat} =
-          heartbeat
-          |> Heartbeat.changeset(%{health_state: status})
-          |> repo.update()
+        case heartbeat |> Heartbeat.changeset(%{health_state: status}) |> repo.update() do
+          {:ok, _heartbeat} -> :ok
+          {:error, changeset} -> Logger.warning("Failed to update heartbeat health_state: #{inspect(changeset.errors)}")
+        end
       end
 
       %{
