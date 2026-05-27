@@ -4,8 +4,8 @@ milestone: v1.4
 milestone_name: milestone
 current_plan: Not started
 status: completed
-stopped_at: Completed 39-01-PLAN.md
-last_updated: "2026-05-27T10:49:23.423Z"
+stopped_at: Phase 36 context gathered
+last_updated: "2026-05-27T12:20:19.766Z"
 progress:
   total_phases: 8
   completed_phases: 6
@@ -112,8 +112,8 @@ Plan: 2 of 3
 
 ## Session Continuity
 
-- **Last session:** 2026-05-27T10:32:07.990Z
-- **Stopped At:** Completed 39-01-PLAN.md
-- **Resume File:** .planning/phases/39-ci-continuity-proof-lane-closure/39-01-SUMMARY.md
+- **Last session:** 2026-05-27T12:20:19.763Z
+- **Stopped At:** Phase 36 context gathered
+- **Resume File:** .planning/phases/36-docs-example-host-verification-support-truth-closure/36-CONTEXT.md
 - **Last Action:** Completed Phase 39 plan 39-01 by adding deterministic continuity claim lanes, aggregate continuity status gate, and docs-contract lane-name assertions.
 - **Next Action:** Execute `39-02-PLAN.md` to publish continuity proof evidence artifacts and fail-boundary outputs.
