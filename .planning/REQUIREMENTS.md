@@ -13,14 +13,14 @@ Make the stable v1.3 control plane materially better for real incident investiga
 
 ### Forensic Timelines & Evidence Bundles
 
-- [ ] **FRN-01**: Operators can inspect a durable cross-surface forensic timeline for a Powertools-managed resource that shows diagnosis-relevant state changes, manual actions, and related audit events in chronological order.
-- [ ] **FRN-02**: Operators can open an evidence bundle from a diagnosis state and see the current summary, recent causal events, related resources, and the next supported investigative or remediation paths.
-- [ ] **FRN-03**: Forensic views preserve the shared control-plane vocabulary from v1.3 so concepts like blocked, waiting, needs review, resolved, bridge-only, and host-owned remain consistent across overview and drill-down surfaces.
+- [x] **FRN-01**: Operators can inspect a durable cross-surface forensic timeline for a Powertools-managed resource that shows diagnosis-relevant state changes, manual actions, and related audit events in chronological order.
+- [x] **FRN-02**: Operators can open an evidence bundle from a diagnosis state and see the current summary, recent causal events, related resources, and the next supported investigative or remediation paths.
+- [x] **FRN-03**: Forensic views preserve the shared control-plane vocabulary from v1.3 so concepts like blocked, waiting, needs review, resolved, bridge-only, and host-owned remain consistent across overview and drill-down surfaces.
 
 ### Operational History & Missed-Fire Diagnostics
 
-- [ ] **OPS-01**: Operators can inspect limiter history that explains when capacity was exhausted, restored, or reconfigured, with enough context to distinguish transient pressure from policy-caused blocking.
-- [ ] **OPS-02**: Operators can inspect cron missed-fire, delayed-fire, and overlap-relevant history so they can diagnose why a scheduled task did not run when expected.
+- [x] **OPS-01**: Operators can inspect limiter history that explains when capacity was exhausted, restored, or reconfigured, with enough context to distinguish transient pressure from policy-caused blocking.
+- [x] **OPS-02**: Operators can inspect cron missed-fire, delayed-fire, and overlap-relevant history so they can diagnose why a scheduled task did not run when expected.
 - [x] **OPS-03**: The native overview can project attention-worthy historical issues from limiters, cron, workflows, and Lifeline without degrading into a generic raw-event feed.
 
 ### Runbook-Guided Remediation
@@ -31,8 +31,8 @@ Make the stable v1.3 control plane materially better for real incident investiga
 
 ### Support Truth, Proof & Host Integration
 
-- [ ] **DOC-05**: README, operator guides, and example-host material explain the new forensics and runbook surfaces honestly, including what is advisory, what is merge-blocking proof, and what remains host-owned.
-- [ ] **VER-04**: Automated proof covers forensic timeline projection, limiter and cron history behavior, runbook guidance rendering, and continuity between diagnosis, action, and audit surfaces.
+- [x] **DOC-05**: README, operator guides, and example-host material explain the new forensics and runbook surfaces honestly, including what is advisory, what is merge-blocking proof, and what remains host-owned.
+- [x] **VER-04**: Automated proof covers forensic timeline projection, limiter and cron history behavior, runbook guidance rendering, and continuity between diagnosis, action, and audit surfaces.
 - [x] **HST-05**: Host apps can integrate alert or escalation hooks around the new investigative surfaces without losing explicit boundaries about where entitlement, delivery, or downstream runbook truth lives.
 
 ## Capability Selection Rubric
@@ -111,6 +111,11 @@ Make the stable v1.3 control plane materially better for real incident investiga
 | VER-04 | Phase 39 | Complete |
 | HST-05 | Phase 35 | Complete |
 
+Reconciliation note: **Phase 36 is a reconciliation umbrella** with additive chronology only.
+`DOC-05` closure ownership stays in Phase 38 (`38-VERIFICATION.md`, including `DOC05-C1` contract lineage),
+and `VER-04` closure ownership stays in Phase 39 (`39-VERIFICATION.md` and `39-PROOF-MANIFEST.json`,
+including `VER04-C1` and aggregate `continuity-proof-status`).
+
 ### Phase 37 Verification Backfill References
 
 - `FRN-01` -> `.planning/phases/32-forensic-timeline-evidence-bundle-foundation/32-VERIFICATION.md`
@@ -138,4 +143,4 @@ Make the stable v1.3 control plane materially better for real incident investiga
 
 ---
 *Requirements defined: 2026-05-26*
-*Last updated: 2026-05-27 after phase 39 VER-04 proof closure*
+*Last updated: 2026-05-27 after phase 36 reconciliation closure*

@@ -87,7 +87,7 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 ## Current State
 
-Version `v1.3` shipped on 2026-05-26. The native `/ops/jobs` shell now reads as one coherent operator control plane: shared vocabulary and ownership boundaries span overview, cron, limiters, workflows, Lifeline, audit, and bounded Oban Web handoffs; the overview is diagnosis-first; drilldowns preserve durable context; and the public docs plus example-host proof tell the same native-shell versus bridge-only story. Milestone `v1.4` is active. Phases 32-35 added forensic bundle foundations, limiter/cron history diagnostics, historical attention projection, and runbook-guided remediation continuity with explicit host-owned escalation seams. Phase 37 then backfilled canonical verification artifacts for phases 32 and 33 and reconciled FRN/OPS traceability in top-level requirements. Phase 38 closed `DOC-05` with canonical forensics/runbook docs alignment and executable claim-level docs-contract coverage. Phase 39 completed `VER-04` CI continuity proof closure with deterministic claim artifacts and merge-blocking continuity status enforcement.
+Version `v1.3` shipped on 2026-05-26. The native `/ops/jobs` shell now reads as one coherent operator control plane: shared vocabulary and ownership boundaries span overview, cron, limiters, workflows, Lifeline, audit, and bounded Oban Web handoffs; the overview is diagnosis-first; drilldowns preserve durable context; and the public docs plus example-host proof tell the same native-shell versus bridge-only story. Milestone `v1.4` is complete. Phases 32-35 added forensic bundle foundations, limiter/cron history diagnostics, historical attention projection, and runbook-guided remediation continuity with explicit host-owned escalation seams. Phase 37 then backfilled canonical verification artifacts for phases 32 and 33 and reconciled FRN/OPS traceability in top-level requirements. Phase 38 closed `DOC-05` with canonical forensics/runbook docs alignment and executable claim-level docs-contract coverage. Phase 39 completed `VER-04` CI continuity proof closure with deterministic claim artifacts and merge-blocking continuity status enforcement. Phase 36 is now reconciled as an additive closure umbrella that indexes canonical ownership back to Phase 38 (`DOC-05`) and Phase 39 (`VER-04`) without reopening runtime scope.
 
 ## Current Milestone: v1.4 Operator Forensics & SRE Runbooks
 
@@ -150,4 +150,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-27 after completing Phase 39*
+*Last updated: 2026-05-27 after Phase 36 reconciliation closure*

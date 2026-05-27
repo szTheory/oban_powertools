@@ -1,6 +1,6 @@
 # Milestone v1.4: Operator Forensics & SRE Runbooks
 
-**Status:** Ready to build
+**Status:** Complete
 **Phases:** 32-39
 **Total Plans:** 24
 
@@ -78,12 +78,18 @@ The target is better operator guidance and clearer ownership boundaries, not a b
 
 Plans:
 
-- [ ] 36-01-PLAN.md — Update README, operator guides, and support-truth language to describe forensic timelines, evidence bundles, runbook guidance, and alert-hook ownership boundaries accurately.
-- [ ] 36-02-PLAN.md — Extend hermetic, docs-contract, and example-host proof to cover timeline chronology, missed-fire diagnosis, runbook continuity, and host-owned escalation seams.
-- [ ] 36-03-PLAN.md — Archive milestone learnings, requirement closure evidence, and the remaining automation or dashboard wedges for v1.5+ without reopening current scope.
+- [x] 36-01-PLAN.md — Update README, operator guides, and support-truth language to describe forensic timelines, evidence bundles, runbook guidance, and alert-hook ownership boundaries accurately.
+- [x] 36-02-PLAN.md — Extend hermetic, docs-contract, and example-host proof to cover timeline chronology, missed-fire diagnosis, runbook continuity, and host-owned escalation seams.
+- [x] 36-03-PLAN.md — Archive milestone learnings, requirement closure evidence, and the remaining automation or dashboard wedges for v1.5+ without reopening current scope.
 
 **Details:**
 The milestone closes only when the investigative UX, support-truth language, and proof posture all tell the same story.
+
+Reconciliation note: **Phase 36 is a reconciliation umbrella** that preserves additive chronology.
+`DOC-05` closure evidence remains owned by Phase 38 (`DOC05-C1..DOC05-C6` in
+`38-VERIFICATION.md`), while `VER-04` closure evidence remains owned by Phase 39
+(`VER04-C1..VER04-C4` and `continuity-proof-status` in `39-VERIFICATION.md` and
+`39-PROOF-MANIFEST.json`).
 
 ### Phase 37: Verification Backfill for Forensic and Ops Baseline
 
@@ -151,10 +157,10 @@ This phase turns continuity proof from phase-local evidence into CI-enforced mil
 | 33 | Limiter history and cron missed-fire diagnostics | OPS-01, OPS-02 | Gap closure in Phase 37 |
 | 34 | Historical attention projection and runbook entry surfaces | OPS-03, RNB-01, RNB-02 | Complete - 2026-05-27 |
 | 35 | Runbook-guided remediation and alert hook boundaries | RNB-03, HST-05 | Complete - 2026-05-27 |
-| 36 | Docs/example-host/proof closure seed phase | DOC-05, VER-04 | Gap closure split into Phases 38-39 |
-| 37 | 3/3 | Complete    | 2026-05-27 |
-| 38 | 3/3 | Complete    | 2026-05-27 |
-| 39 | 3/3 | Complete    | 2026-05-27 |
+| 36 | Docs/example-host/proof closure seed phase | DOC-05, VER-04 | Reconciliation closure complete - 2026-05-27 |
+| 37 | Verification backfill for forensic and ops baseline | FRN-01, FRN-02, FRN-03, OPS-01, OPS-02 | Complete - 2026-05-27 |
+| 38 | Docs and example-host forensics journey closure | DOC-05 | Complete - 2026-05-27 |
+| 39 | CI continuity proof lane closure | VER-04 | Complete - 2026-05-27 |
 
 ### Phase Success Criteria
 
