@@ -46,7 +46,11 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 
 ### Active
 
-- [ ] None
+- [ ] Native job listing with filter/search — QRY-01
+- [ ] Native job detail view — QRY-02
+- [ ] Native job actions (retry, cancel, discard) with reason/preview/audit — QRY-03
+- [ ] Bulk job operations — QRY-04
+- [ ] Operator actions Elixir API — API-01
 
 ### Out of Scope
 
@@ -89,17 +93,16 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 Version `v1.3` shipped on 2026-05-26. The native `/ops/jobs` shell now reads as one coherent operator control plane: shared vocabulary and ownership boundaries span overview, cron, limiters, workflows, Lifeline, audit, and bounded Oban Web handoffs; the overview is diagnosis-first; drilldowns preserve durable context; and the public docs plus example-host proof tell the same native-shell versus bridge-only story. Milestone `v1.4` is complete. Phases 32-35 added forensic bundle foundations, limiter/cron history diagnostics, historical attention projection, and runbook-guided remediation continuity with explicit host-owned escalation seams. Phase 37 then backfilled canonical verification artifacts for phases 32 and 33 and reconciled FRN/OPS traceability in top-level requirements. Phase 38 closed `DOC-05` with canonical forensics/runbook docs alignment and executable claim-level docs-contract coverage. Phase 39 completed `VER-04` CI continuity proof closure with deterministic claim artifacts and merge-blocking continuity status enforcement. Phase 36 is now reconciled as an additive closure umbrella that indexes canonical ownership back to Phase 38 (`DOC-05`) and Phase 39 (`VER-04`) without reopening runtime scope.
 
-## Current Milestone: v1.4 Operator Forensics & SRE Runbooks
+## Current Milestone: v1.5 Native Job Surface & Automation API
 
-**Goal:** deepen historical evidence, incident investigation, and runbook-guided remediation on top of the now-stable control-plane contract.
+**Goal:** Close the UI asymmetry with Oban Web by shipping a native operator job browse surface, and provide a typed Elixir API for the same operator mutations.
 
 **Target features:**
-- richer historical timelines, limiter history, missed-fire views, and cross-surface evidence bundles
-- runbook-guided remediation flows that build on the now-stable control-plane vocabulary
-- operator-grade investigative UX that deepens day-2 trust without widening into a generic dashboard rewrite
-- explicit alert, support-truth, and proof posture for the new forensics and runbook surfaces
-
-**Why now:** the control-plane contract is now stable enough that deeper forensics and remediation guidance should produce more operator leverage than another public capability family, while still keeping automation/API surface expansion deferred until the operator semantics feel settled.
+- Native job listing with filter/search by queue, state, worker, and tags
+- Native job detail view (args, meta, errors, history)
+- Native job actions: retry, cancel, discard — with reason capture, preview, and consistent audit trail
+- Bulk operations: retry/cancel/discard multiple selected jobs
+- Operator actions Elixir API — typed programmatic surface mirroring the UI's mutation capabilities
 
 ## Recently Shipped
 
@@ -150,4 +153,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-27 after Phase 42 (Nyquist validation compliance sweep: all four milestone-phase VALIDATION.md artifacts for phases 33, 34, 38, and 39 are now schema-normalized and `nyquist_compliant: true`; closure evidence published in `42-VALIDATION-CLOSURE.md`). Milestone v1.4 Nyquist validation debt cleared — audit-ready.*
+*Last updated: 2026-05-27 — Milestone v1.5 started. Native Job Surface & Automation API.*

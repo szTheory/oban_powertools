@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: Operator Forensics & SRE Runbooks
-current_plan: N/A — milestone archived
-status: archived
-stopped_at: Milestone v1.4 complete and archived
-last_updated: "2026-05-27T00:00:00.000Z"
+milestone: v1.5
+milestone_name: Native Job Surface & Automation API
+status: planning
+last_updated: "2026-05-27T21:45:09.309Z"
+last_activity: 2026-05-27
 progress:
-  total_phases: 11
-  completed_phases: 11
-  total_plans: 28
-  completed_plans: 28
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,15 +24,10 @@ See: .planning/PROJECT.md (updated 2026-05-27)
 
 ## Current Position
 
-Milestone v1.4 — ARCHIVED 2026-05-27
-
-All 11 phases (32-42) and 28 plans complete. All 12 v1.4 requirements satisfied. Audit passed 12/12 / 11/11 / 12/12 / 5/5.
-
-- **Canonical sequencing:** `.planning/ROADMAP.md`
-- **Milestone archive:** `.planning/milestones/v1.4-ROADMAP.md`
-- **Requirements archive:** `.planning/milestones/v1.4-REQUIREMENTS.md`
-- **Milestone audit:** `.planning/milestones/v1.4-MILESTONE-AUDIT.md`
-- **Strategic source of truth:** `.planning/PROJECT.md`
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-27 — Milestone v1.5 started
 
 ## Accumulated Context
 
