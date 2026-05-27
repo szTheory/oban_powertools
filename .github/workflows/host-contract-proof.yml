@@ -253,7 +253,54 @@ jobs:
           elixir-version: "1.19.5"
           otp-version: "27.3"
       - run: mix deps.get
-      - run: mix test test/oban_powertools/forensics_test.exs test/oban_powertools/web/live/forensics_live_test.exs test/oban_powertools/web/live/audit_live_test.exs --seed 0
+      - name: Run VER04-C1 suite and emit claim evidence
+        run: |
+          set +e
+          CLAIM_ID="VER04-C1"
+          CLAIM_JOB="${{ github.job }}"
+          CLAIM_COMMAND="mix test test/oban_powertools/forensics_test.exs test/oban_powertools/web/live/forensics_live_test.exs test/oban_powertools/web/live/audit_live_test.exs --seed 0"
+          CLAIM_OUTPUT_FILE="$(mktemp)"
+          mkdir -p tmp/ver04/claims tmp/ver04/logs
+          ${CLAIM_COMMAND} 2>&1 | tee "${CLAIM_OUTPUT_FILE}"
+          CLAIM_STATUS_CODE=${PIPESTATUS[0]}
+          CLAIM_STATUS="success"
+          if [ "${CLAIM_STATUS_CODE}" -ne 0 ]; then
+            CLAIM_STATUS="failure"
+          fi
+          cat <<EOF > "tmp/ver04/claims/${CLAIM_ID}.json"
+          {
+            "claim_id": "${CLAIM_ID}",
+            "job": "${CLAIM_JOB}",
+            "command": "${CLAIM_COMMAND}",
+            "status": "${CLAIM_STATUS}",
+            "seed": 0
+          }
+          EOF
+          if [ "${CLAIM_STATUS_CODE}" -ne 0 ]; then
+            cat "${CLAIM_OUTPUT_FILE}" > "tmp/ver04/logs/${CLAIM_ID}.log"
+          else
+            printf "No failed command output captured for %s.\n" "${CLAIM_ID}" > "tmp/ver04/logs/${CLAIM_ID}.log"
+          fi
+          cat <<EOF > "tmp/ver04/run-metadata.json"
+          {
+            "github.run_id": "${{ github.run_id }}",
+            "github.sha": "${{ github.sha }}",
+            "workflow_file": ".github/workflows/host-contract-proof.yml",
+            "generated_at_utc": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "seed_policy": "deterministic --seed 0"
+          }
+          EOF
+          exit "${CLAIM_STATUS_CODE}"
+      - name: Upload VER04-C1 claim artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: continuity-ver04-c1-evidence
+          if-no-files-found: error
+          path: |
+            tmp/ver04/claims/VER04-C1.json
+            tmp/ver04/logs/VER04-C1.log
+            tmp/ver04/run-metadata.json
 
   continuity-ver04-c2:
     runs-on: ubuntu-latest
@@ -279,7 +326,54 @@ jobs:
           elixir-version: "1.19.5"
           otp-version: "27.3"
       - run: mix deps.get
-      - run: mix test test/oban_powertools/cron_test.exs test/oban_powertools/web/live/cron_live_test.exs test/oban_powertools/web/live/limiters_live_test.exs --seed 0
+      - name: Run VER04-C2 suite and emit claim evidence
+        run: |
+          set +e
+          CLAIM_ID="VER04-C2"
+          CLAIM_JOB="${{ github.job }}"
+          CLAIM_COMMAND="mix test test/oban_powertools/cron_test.exs test/oban_powertools/web/live/cron_live_test.exs test/oban_powertools/web/live/limiters_live_test.exs --seed 0"
+          CLAIM_OUTPUT_FILE="$(mktemp)"
+          mkdir -p tmp/ver04/claims tmp/ver04/logs
+          ${CLAIM_COMMAND} 2>&1 | tee "${CLAIM_OUTPUT_FILE}"
+          CLAIM_STATUS_CODE=${PIPESTATUS[0]}
+          CLAIM_STATUS="success"
+          if [ "${CLAIM_STATUS_CODE}" -ne 0 ]; then
+            CLAIM_STATUS="failure"
+          fi
+          cat <<EOF > "tmp/ver04/claims/${CLAIM_ID}.json"
+          {
+            "claim_id": "${CLAIM_ID}",
+            "job": "${CLAIM_JOB}",
+            "command": "${CLAIM_COMMAND}",
+            "status": "${CLAIM_STATUS}",
+            "seed": 0
+          }
+          EOF
+          if [ "${CLAIM_STATUS_CODE}" -ne 0 ]; then
+            cat "${CLAIM_OUTPUT_FILE}" > "tmp/ver04/logs/${CLAIM_ID}.log"
+          else
+            printf "No failed command output captured for %s.\n" "${CLAIM_ID}" > "tmp/ver04/logs/${CLAIM_ID}.log"
+          fi
+          cat <<EOF > "tmp/ver04/run-metadata.json"
+          {
+            "github.run_id": "${{ github.run_id }}",
+            "github.sha": "${{ github.sha }}",
+            "workflow_file": ".github/workflows/host-contract-proof.yml",
+            "generated_at_utc": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "seed_policy": "deterministic --seed 0"
+          }
+          EOF
+          exit "${CLAIM_STATUS_CODE}"
+      - name: Upload VER04-C2 claim artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: continuity-ver04-c2-evidence
+          if-no-files-found: error
+          path: |
+            tmp/ver04/claims/VER04-C2.json
+            tmp/ver04/logs/VER04-C2.log
+            tmp/ver04/run-metadata.json
 
   continuity-ver04-c3:
     runs-on: ubuntu-latest
@@ -305,7 +399,54 @@ jobs:
           elixir-version: "1.19.5"
           otp-version: "27.3"
       - run: mix deps.get
-      - run: mix test test/oban_powertools/lifeline_test.exs test/oban_powertools/web/live/lifeline_live_test.exs test/oban_powertools/web/live/forensics_live_test.exs --seed 0
+      - name: Run VER04-C3 suite and emit claim evidence
+        run: |
+          set +e
+          CLAIM_ID="VER04-C3"
+          CLAIM_JOB="${{ github.job }}"
+          CLAIM_COMMAND="mix test test/oban_powertools/lifeline_test.exs test/oban_powertools/web/live/lifeline_live_test.exs test/oban_powertools/web/live/forensics_live_test.exs --seed 0"
+          CLAIM_OUTPUT_FILE="$(mktemp)"
+          mkdir -p tmp/ver04/claims tmp/ver04/logs
+          ${CLAIM_COMMAND} 2>&1 | tee "${CLAIM_OUTPUT_FILE}"
+          CLAIM_STATUS_CODE=${PIPESTATUS[0]}
+          CLAIM_STATUS="success"
+          if [ "${CLAIM_STATUS_CODE}" -ne 0 ]; then
+            CLAIM_STATUS="failure"
+          fi
+          cat <<EOF > "tmp/ver04/claims/${CLAIM_ID}.json"
+          {
+            "claim_id": "${CLAIM_ID}",
+            "job": "${CLAIM_JOB}",
+            "command": "${CLAIM_COMMAND}",
+            "status": "${CLAIM_STATUS}",
+            "seed": 0
+          }
+          EOF
+          if [ "${CLAIM_STATUS_CODE}" -ne 0 ]; then
+            cat "${CLAIM_OUTPUT_FILE}" > "tmp/ver04/logs/${CLAIM_ID}.log"
+          else
+            printf "No failed command output captured for %s.\n" "${CLAIM_ID}" > "tmp/ver04/logs/${CLAIM_ID}.log"
+          fi
+          cat <<EOF > "tmp/ver04/run-metadata.json"
+          {
+            "github.run_id": "${{ github.run_id }}",
+            "github.sha": "${{ github.sha }}",
+            "workflow_file": ".github/workflows/host-contract-proof.yml",
+            "generated_at_utc": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "seed_policy": "deterministic --seed 0"
+          }
+          EOF
+          exit "${CLAIM_STATUS_CODE}"
+      - name: Upload VER04-C3 claim artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: continuity-ver04-c3-evidence
+          if-no-files-found: error
+          path: |
+            tmp/ver04/claims/VER04-C3.json
+            tmp/ver04/logs/VER04-C3.log
+            tmp/ver04/run-metadata.json
 
   continuity-ver04-c4:
     runs-on: ubuntu-latest
@@ -331,8 +472,54 @@ jobs:
           elixir-version: "1.19.5"
           otp-version: "27.3"
       - run: mix deps.get
-      - run: mix test test/oban_powertools/forensics_test.exs test/oban_powertools/lifeline_test.exs test/oban_powertools/web/live/audit_live_test.exs --seed 0
-      - run: mix test test/oban_powertools/docs_contract_test.exs --seed 0
+      - name: Run VER04-C4 suites and emit claim evidence
+        run: |
+          set +e
+          CLAIM_ID="VER04-C4"
+          CLAIM_JOB="${{ github.job }}"
+          CLAIM_COMMAND="mix test test/oban_powertools/forensics_test.exs test/oban_powertools/lifeline_test.exs test/oban_powertools/web/live/audit_live_test.exs --seed 0 && mix test test/oban_powertools/docs_contract_test.exs --seed 0"
+          CLAIM_OUTPUT_FILE="$(mktemp)"
+          mkdir -p tmp/ver04/claims tmp/ver04/logs
+          bash -lc "${CLAIM_COMMAND}" 2>&1 | tee "${CLAIM_OUTPUT_FILE}"
+          CLAIM_STATUS_CODE=${PIPESTATUS[0]}
+          CLAIM_STATUS="success"
+          if [ "${CLAIM_STATUS_CODE}" -ne 0 ]; then
+            CLAIM_STATUS="failure"
+          fi
+          cat <<EOF > "tmp/ver04/claims/${CLAIM_ID}.json"
+          {
+            "claim_id": "${CLAIM_ID}",
+            "job": "${CLAIM_JOB}",
+            "command": "${CLAIM_COMMAND}",
+            "status": "${CLAIM_STATUS}",
+            "seed": 0
+          }
+          EOF
+          if [ "${CLAIM_STATUS_CODE}" -ne 0 ]; then
+            cat "${CLAIM_OUTPUT_FILE}" > "tmp/ver04/logs/${CLAIM_ID}.log"
+          else
+            printf "No failed command output captured for %s.\n" "${CLAIM_ID}" > "tmp/ver04/logs/${CLAIM_ID}.log"
+          fi
+          cat <<EOF > "tmp/ver04/run-metadata.json"
+          {
+            "github.run_id": "${{ github.run_id }}",
+            "github.sha": "${{ github.sha }}",
+            "workflow_file": ".github/workflows/host-contract-proof.yml",
+            "generated_at_utc": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "seed_policy": "deterministic --seed 0"
+          }
+          EOF
+          exit "${CLAIM_STATUS_CODE}"
+      - name: Upload VER04-C4 claim artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: continuity-ver04-c4-evidence
+          if-no-files-found: error
+          path: |
+            tmp/ver04/claims/VER04-C4.json
+            tmp/ver04/logs/VER04-C4.log
+            tmp/ver04/run-metadata.json
 
   continuity-proof-status:
     if: always()
@@ -343,6 +530,79 @@ jobs:
       - continuity-ver04-c3
       - continuity-ver04-c4
     steps:
+      - name: Download continuity evidence from all claim jobs
+        uses: actions/download-artifact@v4
+        with:
+          path: tmp/ver04/inbox
+      - name: Compose deterministic claim matrix outputs
+        run: |
+          set -euo pipefail
+          mkdir -p tmp/ver04/claims tmp/ver04/logs
+          shopt -s globstar nullglob
+          C1_CLAIM=(tmp/ver04/inbox/continuity-ver04-c1-evidence/**/VER04-C1.json)
+          C2_CLAIM=(tmp/ver04/inbox/continuity-ver04-c2-evidence/**/VER04-C2.json)
+          C3_CLAIM=(tmp/ver04/inbox/continuity-ver04-c3-evidence/**/VER04-C3.json)
+          C4_CLAIM=(tmp/ver04/inbox/continuity-ver04-c4-evidence/**/VER04-C4.json)
+          C1_LOG=(tmp/ver04/inbox/continuity-ver04-c1-evidence/**/VER04-C1.log)
+          C2_LOG=(tmp/ver04/inbox/continuity-ver04-c2-evidence/**/VER04-C2.log)
+          C3_LOG=(tmp/ver04/inbox/continuity-ver04-c3-evidence/**/VER04-C3.log)
+          C4_LOG=(tmp/ver04/inbox/continuity-ver04-c4-evidence/**/VER04-C4.log)
+          cp "${C1_CLAIM[0]}" tmp/ver04/claims/VER04-C1.json
+          cp "${C2_CLAIM[0]}" tmp/ver04/claims/VER04-C2.json
+          cp "${C3_CLAIM[0]}" tmp/ver04/claims/VER04-C3.json
+          cp "${C4_CLAIM[0]}" tmp/ver04/claims/VER04-C4.json
+          cp "${C1_LOG[0]}" tmp/ver04/logs/VER04-C1.log
+          cp "${C2_LOG[0]}" tmp/ver04/logs/VER04-C2.log
+          cp "${C3_LOG[0]}" tmp/ver04/logs/VER04-C3.log
+          cp "${C4_LOG[0]}" tmp/ver04/logs/VER04-C4.log
+          cat <<EOF > "tmp/ver04/run-metadata.json"
+          {
+            "github.run_id": "${{ github.run_id }}",
+            "github.sha": "${{ github.sha }}",
+            "workflow_file": ".github/workflows/host-contract-proof.yml",
+            "generated_at_utc": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "seed_policy": "deterministic --seed 0"
+          }
+          EOF
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          claims_dir = Path("tmp/ver04/claims")
+          claim_files = sorted(claims_dir.glob("VER04-C*.json"))
+          if not claim_files:
+              raise SystemExit("No claim files were found for matrix composition.")
+          claims = [json.loads(path.read_text(encoding="utf-8")) for path in claim_files]
+          claims = sorted(claims, key=lambda claim: claim["claim_id"])
+          matrix = {
+              "claims": claims,
+              "total_claims": len(claims),
+              "successful_claims": sum(1 for claim in claims if claim["status"] == "success"),
+              "failed_claims": sum(1 for claim in claims if claim["status"] != "success"),
+          }
+          Path("tmp/ver04/ver04-claim-matrix.json").write_text(
+              json.dumps(matrix, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          lines = [
+              "# VER-04 Claim Matrix",
+              "",
+              "| Claim ID | Job | Status | Seed | Command |",
+              "|---|---|---|---|---|",
+          ]
+          for claim in claims:
+              lines.append(
+                  f"| {claim['claim_id']} | {claim['job']} | {claim['status']} | {claim['seed']} | `{claim['command']}` |"
+              )
+          lines.extend(
+              [
+                  "",
+                  f"- Total claims: {matrix['total_claims']}",
+                  f"- Successful claims: {matrix['successful_claims']}",
+                  f"- Failed claims: {matrix['failed_claims']}",
+              ]
+          )
+          Path("tmp/ver04/ver04-claim-matrix.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+          PY
       - name: Fail when any continuity lane failed
         run: |
           if [ "${{ needs.continuity-ver04-c1.result }}" != "success" ] || \
