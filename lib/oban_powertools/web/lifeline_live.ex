@@ -1262,15 +1262,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp forensic_path(row, current_view) do
-      [
+      Selectors.forensic_path([
         {"incident_fingerprint", row.incident.incident_fingerprint},
         {"view", current_view},
         {"resource_type", row.target_type},
         {"resource_id", row.target_id}
-      ]
-      |> Enum.reject(fn {_key, value} -> is_nil(value) or value == "" end)
-      |> URI.encode_query()
-      |> then(&"/ops/jobs/forensics?#{&1}")
+      ])
     end
 
     defp follow_up_variant(path_or_venue) do
