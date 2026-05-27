@@ -21,11 +21,11 @@ Make the stable v1.3 control plane materially better for real incident investiga
 
 - [ ] **OPS-01**: Operators can inspect limiter history that explains when capacity was exhausted, restored, or reconfigured, with enough context to distinguish transient pressure from policy-caused blocking.
 - [ ] **OPS-02**: Operators can inspect cron missed-fire, delayed-fire, and overlap-relevant history so they can diagnose why a scheduled task did not run when expected.
-- [ ] **OPS-03**: The native overview can project attention-worthy historical issues from limiters, cron, workflows, and Lifeline without degrading into a generic raw-event feed.
+- [x] **OPS-03**: The native overview can project attention-worthy historical issues from limiters, cron, workflows, and Lifeline without degrading into a generic raw-event feed.
 
 ### Runbook-Guided Remediation
 
-- [ ] **RNB-01**: Operators can see runbook-guided next steps for supported diagnosis states, including preconditions, cautions, and the recommended order of operations before any bounded native action.
+- [x] **RNB-01**: Operators can see runbook-guided next steps for supported diagnosis states, including preconditions, cautions, and the recommended order of operations before any bounded native action.
 - [ ] **RNB-02**: Runbook guidance distinguishes Powertools-native actions, bridge-only follow-up, and host-owned or external-system steps so the product stays honest about its ownership boundaries.
 - [ ] **RNB-03**: When operators launch or complete a supported remediation flow, the resulting audit and evidence views retain the runbook context needed to explain what was attempted and why.
 
@@ -103,8 +103,8 @@ Make the stable v1.3 control plane materially better for real incident investiga
 | FRN-03 | Phase 32 | Pending |
 | OPS-01 | Phase 33 | Pending |
 | OPS-02 | Phase 33 | Pending |
-| OPS-03 | Phase 34 | Pending |
-| RNB-01 | Phase 34 | Pending |
+| OPS-03 | Phase 34 | Complete |
+| RNB-01 | Phase 34 | Complete |
 | RNB-02 | Phase 34 | Pending |
 | RNB-03 | Phase 35 | Pending |
 | DOC-05 | Phase 36 | Pending |

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Operator Forensics & SRE Runbooks
-current_plan: Not started
+current_plan: 2
 status: executing
-stopped_at: Phase 34 UI-SPEC approved
-last_updated: "2026-05-27T06:16:28.703Z"
+stopped_at: Completed 34-01-PLAN.md
+last_updated: "2026-05-27T06:42:02.053Z"
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 9
-  completed_plans: 6
+  completed_plans: 7
   percent: 40
 ---
 
@@ -19,19 +19,19 @@ progress:
 ## Project Reference
 
 **Core Value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-**Current Focus:** Phase 34 — historical attention projection & runbook entry surfaces
+**Current Focus:** Phase 34 — historical-attention-projection-runbook-entry-surfaces
 
 ## Current Position
 
-Phase: 34 (historical-attention-projection-runbook-entry-surfaces) — READY TO PLAN
-Plan: None
+Phase: 34 (historical-attention-projection-runbook-entry-surfaces) — EXECUTING
+Plan: 2 of 3
 
 - **Phase:** 34
 - **Plan:** None
-- **Current Plan:** Not started
+- **Current Plan:** 2
 - **Total Plans in Phase:** 3
 - **Status:** Ready to execute
-- **Progress:** [----------] 0%
+- **Progress:** [████████░░] 78%
 - **Canonical sequencing:** `.planning/ROADMAP.md`
 - **Milestone requirements:** `.planning/REQUIREMENTS.md`
 - **Strategic source of truth:** `.planning/MILESTONE-ARC.md`
@@ -41,6 +41,7 @@ Plan: None
 - **Phases Complete:** 2/5 active
 - **Plans Complete:** 6/15 active
 - **Metrics:** v1.4 has completed Phase 32 forensic bundle foundations and Phase 33 limiter/cron history diagnostics; Phase 34 is ready to plan historical attention projection and runbook entry surfaces.
+- **Latest Plan Metric:** 34-01 completed in 21m 16s across 3 tasks and 9 files; full `mix test` passed with 178 tests.
 
 ## Accumulated Context
 
@@ -96,13 +97,15 @@ Plan: None
   - Preserve explicit host-owned seams for alert delivery, escalation routing, and provider-specific runbook destinations; Powertools should explain and link, not pretend to own every downstream SRE system.
   - Phase 32 now provides the shared forensic bundle contract, chronology helpers, `/ops/jobs/forensics` destination, and stable selector continuity for workflow and Lifeline evidence.
   - Phase 33 now promotes limiter and cron into first-class forensic destinations using bounded limiter history facts, cron coverage facts, shared read models, and diagnosis-first history summaries.
+  - Phase 34-01 keeps historical attention inside the existing diagnosis-first overview buckets instead of creating a raw event feed.
+  - Phase 34-01 keeps overview attention links selector-only, excluding reason text, rendered copy, and preview tokens from URLs.
 - **Todos:** None
 - **Blockers:** None
 
 ## Session Continuity
 
-- **Last session:** 2026-05-27T06:00:18.363Z
-- **Stopped At:** Phase 34 UI-SPEC approved
-- **Resume File:** .planning/phases/34-historical-attention-projection-runbook-entry-surfaces/34-UI-SPEC.md
-- **Last Action:** Verified Phase 33 targeted suite and recorded Phase 33 plans, summaries, validation, roadmap, and state.
-- **Next Action:** Run `$gsd-discuss-phase 34` or `$gsd-plan-phase 34` to start historical attention projection and runbook entry surfaces.
+- **Last session:** 2026-05-27T06:42:02.050Z
+- **Stopped At:** Completed 34-01-PLAN.md
+- **Resume File:** None
+- **Last Action:** Completed Phase 34 Plan 01 with bounded historical attention projection, overview rendering, example-host fixture migrations, and full-suite verification.
+- **Next Action:** Execute Phase 34 Plan 02 for runbook entry surfaces.

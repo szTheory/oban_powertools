@@ -48,7 +48,7 @@ The milestone should answer concrete operator questions about “what happened a
 
 Plans:
 
-- [ ] 34-01-PLAN.md — Extend the overview and relevant drill-down surfaces with historically informed attention projections that stay diagnosis-first instead of becoming a feed.
+- [x] 34-01-PLAN.md — Extend the overview and relevant drill-down surfaces with historically informed attention projections that stay diagnosis-first instead of becoming a feed.
 - [ ] 34-02-PLAN.md — Introduce runbook entry surfaces that pair diagnosis states with cautions, prerequisites, and the recommended next investigative or remediation path.
 - [ ] 34-03-PLAN.md — Align runbook entry copy, refusal wording, and overview handoffs with the shared control-plane and forensic vocabulary.
 
