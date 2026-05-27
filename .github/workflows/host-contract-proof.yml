@@ -603,12 +603,66 @@ jobs:
           )
           Path("tmp/ver04/ver04-claim-matrix.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
           PY
-      - name: Fail when any continuity lane failed
+      - name: Scan proof packet for unsafe content
+        id: redaction_scan
+        run: |
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+          root = Path("tmp/ver04")
+          scan_targets = sorted(path for path in root.rglob("*") if path.is_file())
+          patterns = {
+              "aws_access_key": r"AKIA[0-9A-Z]{16}",
+              "github_token": r"ghp_[A-Za-z0-9]{36}",
+              "private_key": r"-----BEGIN (?:RSA|EC|OPENSSH|PRIVATE) KEY-----",
+              "db_password_url": r"postgres(?:ql)?://[^\\s:@]+:[^\\s@]+@",
+          }
+          unsafe_matches = []
+          for path in scan_targets:
+              content = path.read_text(encoding="utf-8", errors="ignore")
+              for label, pattern in patterns.items():
+                  if re.search(pattern, content):
+                      unsafe_matches.append({"file": str(path), "pattern": label})
+          report = {
+              "status": "safe" if not unsafe_matches else "unsafe",
+              "scan_root": str(root),
+              "scanned_files": [str(path) for path in scan_targets],
+              "unsafe_matches": unsafe_matches,
+          }
+          report_path = root / "redaction-report.json"
+          report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          if unsafe_matches:
+              raise SystemExit(1)
+          PY
+      - name: Upload continuity proof packet
+        id: upload_proof_packet
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: continuity-proof-packet
+          if-no-files-found: error
+          path: |
+            tmp/ver04/ver04-claim-matrix.md
+            tmp/ver04/ver04-claim-matrix.json
+            tmp/ver04/run-metadata.json
+            tmp/ver04/redaction-report.json
+            tmp/ver04/logs/*.log
+      - name: Enforce continuity proof failure boundaries
+        if: always()
         run: |
           if [ "${{ needs.continuity-ver04-c1.result }}" != "success" ] || \
              [ "${{ needs.continuity-ver04-c2.result }}" != "success" ] || \
              [ "${{ needs.continuity-ver04-c3.result }}" != "success" ] || \
              [ "${{ needs.continuity-ver04-c4.result }}" != "success" ]; then
             echo "One or more continuity proof lanes did not succeed."
+            exit 1
+          fi
+          if [ "${{ steps.redaction_scan.outcome }}" != "success" ]; then
+            echo "Redaction scan failed or reported unsafe artifact content."
+            exit 1
+          fi
+          if [ "${{ steps.upload_proof_packet.outcome }}" != "success" ]; then
+            echo "Proof packet upload failed or required files were missing."
             exit 1
           fi
