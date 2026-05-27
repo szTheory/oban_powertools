@@ -1,0 +1,63 @@
+# Requirements: Oban Powertools v1.5
+
+**Milestone:** v1.5 — Native Job Surface & Automation API
+**Defined:** 2026-05-27
+**Core Value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
+
+## v1.5 Requirements
+
+### Native Job Browse
+
+- [ ] **QRY-01**: User can browse jobs filtered by state, queue, worker, and tags — state is the primary navigation dimension; tags filtering requires a host-owned GIN index on `oban_jobs.tags` (documented in module and host guide)
+- [ ] **QRY-02**: User can view a job's full detail including args, meta, errors, attempt history, and timing — DisplayPolicy redaction applied to args and meta
+- [ ] **QRY-03**: User can retry, cancel, or discard a single job via preview → reason capture → execute → audit flow through the native Lifeline pipeline — no direct Oban function calls from the LiveView
+- [ ] **QRY-04**: User can bulk retry, cancel, or discard a visible selection of jobs (capped at configurable max, default 100) with per-job success/failure reporting
+
+### Operator Elixir API
+
+- [ ] **API-01**: Host app code can retry, cancel, or discard a single job programmatically via `ObanPowertools.Operator` — actor required, same audit guarantee as the UI
+- [ ] **API-02**: Host app code can bulk retry, cancel, or discard a list of jobs by ID via `ObanPowertools.Operator` — with per-job result reporting
+
+## Future Requirements (post-v1.5)
+
+### Native Job Browse (deferred)
+
+- **QRY-05**: User can filter jobs by args/meta qualifier (requires JSONB caching guardrails at scale)
+- **QRY-06**: Job list shows real-time count updates (requires `oban_met` integration)
+- **QRY-07**: User can navigate from a Lifeline job row to the native job detail page (deep-link)
+- **QRY-08**: User can bulk-select across multiple pages (cross-page select-all)
+
+### Operator Elixir API (deferred)
+
+- **API-03**: Host app code can query/filter jobs programmatically via `ObanPowertools.Operator.list/2`
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Delete job | Destroys audit trail — contradicts core product value |
+| Immediate mutations without preview | Oban Web bridge exists for raw immediate access; the native surface's value is the preview/reason/audit contract |
+| PubSub-backed live job subscription | Requires `oban_met` integration; deferred to post-v1.5 |
+| args/meta full-text search without guardrails | JSONB search without index/cache risks OOM and timeouts on large tables |
+| Per-worker ad hoc rate limiting | Outside the explicit global/partitioned limiter model |
+| Non-Postgres coordination layers | Architecture decision — Postgres-only |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| QRY-01 | TBD | Pending |
+| QRY-02 | TBD | Pending |
+| QRY-03 | TBD | Pending |
+| QRY-04 | TBD | Pending |
+| API-01 | TBD | Pending |
+| API-02 | TBD | Pending |
+
+**Coverage:**
+- v1.5 requirements: 6 total
+- Mapped to phases: 0 (roadmap pending)
+- Unmapped: 6 ⚠️
+
+---
+*Requirements defined: 2026-05-27*
+*Last updated: 2026-05-27 after initial v1.5 definition*
