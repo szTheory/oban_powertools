@@ -1,10 +1,11 @@
 ---
 phase: 41
 slug: runbook-link-fidelity-and-atom-safety-hardening
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-05-27
+updated: 2026-05-27
 ---
 
 # Phase 41 — Validation Strategy
@@ -113,4 +114,4 @@ Must produce zero hits before `/gsd:verify-work`:
 - [ ] Corrected rg-checks embedded in PLAN.md `<verification>` block (per RESEARCH.md Open Q#4 + plan-checker iteration 2 lib-scoped correction)
 - [ ] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** complete — phase executed 2026-05-27; 41-VERIFICATION.md status: passed, 226 tests, 0 failures, 7/7 truths verified. Wave 0 test files (selectors_test.exs, target_type_test.exs, evidence_bundle_test.exs) created and green. WR-01/WR-02 advisory debt closed.
