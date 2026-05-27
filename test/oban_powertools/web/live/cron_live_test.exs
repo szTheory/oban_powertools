@@ -379,6 +379,13 @@ defmodule ObanPowertools.Web.CronLiveTest do
     {:ok, _view, html} = live(conn, "/ops/jobs/cron?entry=#{entry.name}")
 
     assert html =~ "History Summary"
+    assert html =~ "Open runbook entry"
+    assert html =~ "No slot claim was recorded while scheduler coverage was healthy."
+    assert html =~ "Powertools-native"
+    assert html =~ "Oban Web bridge"
+    assert html =~ "host-owned follow-up"
+    assert html =~ "partial evidence"
+    assert html =~ "history unavailable"
     assert html =~ "Open forensic timeline"
     assert html =~ "Missed fire"
     assert html =~ "/ops/jobs/forensics?resource_type=cron_entry&amp;resource_id=forensic-entry"

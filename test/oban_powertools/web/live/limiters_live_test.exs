@@ -155,6 +155,13 @@ defmodule ObanPowertools.Web.LimitersLiveTest do
     {:ok, _view, html} = live(conn, "/ops/jobs/limiters?resource=#{resource.name}")
 
     assert html =~ "History Summary"
+    assert html =~ "Open runbook entry"
+    assert html =~ "Runnable now, with recent history showing a limiter reconfiguration"
+    assert html =~ "Powertools-native"
+    assert html =~ "Oban Web bridge"
+    assert html =~ "host-owned follow-up"
+    assert html =~ "partial evidence"
+    assert html =~ "history unavailable"
     assert html =~ "Open forensic timeline"
     assert html =~ "Limiter reconfigured"
     assert html =~ "/ops/jobs/forensics?resource_type=limiter&amp;resource_id=payments-api"
