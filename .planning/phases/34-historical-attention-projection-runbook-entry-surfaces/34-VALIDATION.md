@@ -20,6 +20,7 @@ created: 2026-05-27
 | **Quick run command** | `mix test test/oban_powertools/forensics_test.exs test/oban_powertools/web/live/engine_overview_live_test.exs test/oban_powertools/web/live/forensics_live_test.exs test/oban_powertools/web/live/workflows_live_test.exs test/oban_powertools/web/live/lifeline_live_test.exs test/oban_powertools/web/live/cron_live_test.exs test/oban_powertools/web/live/limiters_live_test.exs` |
 | **Full suite command** | `mix test` |
 | **Estimated runtime** | ~60 seconds targeted, repo-dependent for full suite |
+| **Latency note** | The full targeted sweep is intentionally wider than the 30s Nyquist warning threshold because Phase 34 spans shared forensics, overview, and four drill-down surfaces. Plans also include narrower per-task commands for early feedback before the full wave sweep. |
 
 ## Sampling Rate
 

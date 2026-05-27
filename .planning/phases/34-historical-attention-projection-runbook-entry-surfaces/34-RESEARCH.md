@@ -439,17 +439,15 @@ HEEx interpolation and component rendering are the standard Phoenix LiveView tem
 | A1 | It is easier to list facts than to decide which facts change diagnosis or next action. | Common Pitfalls | Low; this motivates proof but does not change implementation scope. |
 | A2 | Summary cards may hide completeness labels if compactness is over-optimized. | Common Pitfalls | Medium; planner should require compact labels for partial/unknown evidence. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Which workflow historical signals qualify for attention projection?** [VERIFIED: codebase inspection]
+1. **RESOLVED: Which workflow historical signals qualify for attention projection?** [VERIFIED: codebase inspection; 34-01-PLAN.md; 34-03-PLAN.md]
    - What we know: Workflow bundles include workflow/step diagnosis, audit chronology, legal next paths, and refusal-adjacent copy. [VERIFIED: lib/oban_powertools/forensics.ex; test/oban_powertools/web/live/control_plane_copy_coherence_test.exs]
-   - What's unclear: Phase 33 added explicit limiter/cron history summaries, but workflows do not yet have a separate "history summary" helper equivalent. [VERIFIED: lib/oban_powertools/forensics/cron_history.ex; lib/oban_powertools/forensics/limiter_history.ex; lib/oban_powertools/forensics.ex]
-   - Recommendation: Use blocked step/current workflow diagnosis plus scoped audit evidence through `Forensics.bundle/2` for Phase 34; do not invent a new workflow history store. [VERIFIED: 34-CONTEXT.md; lib/oban_powertools/forensics.ex]
+   - Resolution: Phase 34 uses blocked step/current workflow diagnosis plus scoped audit evidence through `Forensics.bundle/2` for attention projection and runbook handoffs. It does not invent a new workflow history store. [VERIFIED: 34-CONTEXT.md; lib/oban_powertools/forensics.ex; 34-01-PLAN.md; 34-03-PLAN.md]
 
-2. **How visible should host-owned placeholders be in Phase 34?** [VERIFIED: 34-CONTEXT.md]
+2. **RESOLVED: How visible should host-owned placeholders be in Phase 34?** [VERIFIED: 34-CONTEXT.md; 34-02-PLAN.md; 34-03-PLAN.md]
    - What we know: Host-owned semantic slots are allowed but first product value must not depend on host configuration. [VERIFIED: 34-CONTEXT.md]
-   - What's unclear: There is no existing host-owned external runbook registry or escalation destination in code. [VERIFIED: codebase inspection]
-   - Recommendation: Include host-owned follow-up entries only when derived from an explicit supported diagnosis boundary; avoid configuration APIs or registries in this phase. [VERIFIED: 34-CONTEXT.md]
+   - Resolution: Phase 34 renders host-owned follow-up entries only when derived from an explicit supported diagnosis boundary. It does not add configuration APIs, external runbook registries, escalation destinations, alert delivery, or first-value dependence on host configuration. [VERIFIED: 34-CONTEXT.md; 34-02-PLAN.md; 34-03-PLAN.md]
 
 ## Environment Availability
 
