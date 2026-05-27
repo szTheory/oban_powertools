@@ -2,6 +2,7 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
   use ObanPowertools.LiveCase, async: false
 
   alias ObanPowertools.{Audit, Cron, Explain}
+  alias ObanPowertools.Forensics.LimiterHistoryFact
   alias ObanPowertools.Lifeline.Incident
   alias ObanPowertools.Limits.{Resource, State}
 
@@ -47,6 +48,45 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
     assert html =~ "Inspection only"
     refute html =~ "Preview Action"
     refute html =~ "name=\"reason\""
+  end
+
+  test "renders bounded historical attention inside existing overview buckets", %{conn: conn} do
+    %{blocked_resource: blocked_resource, nightly: nightly} = seed_overview_fixture!()
+
+    TestRepo.insert!(%LimiterHistoryFact{
+      resource_name: blocked_resource.name,
+      partition_key: "__global__",
+      event_type: "limiter.blocked",
+      cause_kind: "policy",
+      occurred_at: DateTime.utc_now(),
+      metadata: %{"reason" => "policy cooldown"}
+    })
+
+    slot_at = DateTime.utc_now() |> DateTime.add(-120, :second) |> truncate_minute()
+    assert {:ok, _coverage} = Cron.record_coverage(TestRepo, nightly, slot_at, status: "healthy")
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_overview]}
+      )
+
+    {:ok, _view, html} = live(conn, "/ops/jobs")
+
+    assert html =~ "Diagnosis-first overview"
+    assert html =~ "Needs Review"
+    assert html =~ "Blocked"
+    assert html =~ "Waiting"
+    assert html =~ "Runnable"
+    assert html =~ "Bridge-only Follow-up"
+    assert html =~ "Resolved Recently"
+
+    assert html =~ "Blocked by policy cooldown for payments-api"
+    assert html =~ "Recent cron history shows a missed fire while scheduler coverage was healthy."
+    refute html =~ "Historical Attention"
+    refute html =~ "raw event"
+    refute html =~ "event feed"
+
+    refute html =~ "fourth historical exemplar"
   end
 
   defp seed_overview_fixture! do
@@ -164,5 +204,9 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
       repo: TestRepo,
       actor_id: "ops-1"
     )
+
+    %{blocked_resource: blocked_resource, runnable_resource: runnable_resource, nightly: nightly}
   end
+
+  defp truncate_minute(%DateTime{} = dt), do: %DateTime{dt | second: 0, microsecond: {0, 0}}
 end
