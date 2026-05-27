@@ -4,7 +4,7 @@ defmodule ObanPowertools.Forensics.LimiterHistory do
   import Ecto.Query
 
   alias ObanPowertools.{Audit, Explain}
-  alias ObanPowertools.Forensics.{EvidenceBundle, LimiterHistoryFact}
+  alias ObanPowertools.Forensics.{EvidenceBundle, LimiterHistoryFact, RunbookEntry}
   alias ObanPowertools.Limits.{Resource, State}
 
   @history_limit 8
@@ -21,7 +21,7 @@ defmodule ObanPowertools.Forensics.LimiterHistory do
         audit_events = audit_events(repo, resource_name)
         history = resource_history(resource, states, facts)
 
-        EvidenceBundle.build(%{
+        %{
           subject: %{
             type: "limiter",
             id: resource.name,
@@ -55,10 +55,22 @@ defmodule ObanPowertools.Forensics.LimiterHistory do
               label: "Return to limiter diagnosis",
               path: limiter_path(resource.name),
               venue: "Powertools-native"
+            },
+            %{
+              label: "Inspect audit trail",
+              path: audit_path(resource.name),
+              venue: "Inspection only"
+            },
+            %{
+              label: "Coordinate capacity policy follow-up",
+              path: nil,
+              venue: "External runbook"
             }
           ],
           completeness: completeness(facts, snapshot)
-        })
+        }
+        |> EvidenceBundle.build()
+        |> enrich_runbook_entry()
     end
   end
 
@@ -316,4 +328,8 @@ defmodule ObanPowertools.Forensics.LimiterHistory do
 
   defp audit_path(resource_name),
     do: "/ops/jobs/audit?resource_type=limiter&resource_id=#{URI.encode_www_form(resource_name)}"
+
+  defp enrich_runbook_entry(bundle) do
+    Map.put(bundle, :runbook_entry, RunbookEntry.from_bundle(bundle))
+  end
 end

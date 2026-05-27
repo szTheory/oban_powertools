@@ -5,6 +5,7 @@ defmodule ObanPowertools.Forensics do
   alias ObanPowertools.Forensics.CronHistory
   alias ObanPowertools.Forensics.EvidenceBundle
   alias ObanPowertools.Forensics.LimiterHistory
+  alias ObanPowertools.Forensics.RunbookEntry
   alias ObanPowertools.Lifeline.Incident
   alias ObanPowertools.Workflow.Step
   alias ObanPowertools.Workflow.Workflow
@@ -92,11 +93,12 @@ defmodule ObanPowertools.Forensics do
         |> Enum.reject(&is_nil/1)
         |> Kernel.++(Enum.map(audit_events, &audit_item/1))
 
-      EvidenceBundle.build(%{
+      %{
         subject: %{
           type: "workflow",
           id: workflow.id,
           label: workflow.name,
+          step: selected_step && selected_step.step_name,
           resource_type: selectors.resource_type || selected_resource_type(selected_step),
           resource_id: selectors.resource_id || selected_resource_id(selected_step),
           entry_surface: "Powertools-native workflows"
@@ -139,7 +141,9 @@ defmodule ObanPowertools.Forensics do
         legal_next_paths:
           workflow_next_paths(workflow, selected_step, workflow_story, step_story),
         completeness: workflow_completeness(chronology, audit_events)
-      })
+      }
+      |> EvidenceBundle.build()
+      |> enrich_runbook_entry()
     else
       unknown_bundle(selectors)
     end
@@ -184,11 +188,12 @@ defmodule ObanPowertools.Forensics do
 
       resource = lifeline_resource(incident, selectors)
 
-      EvidenceBundle.build(%{
+      %{
         subject: %{
           type: "lifeline_incident",
           id: incident.incident_fingerprint,
           label: incident.summary,
+          view: selectors.view || incident_view(incident),
           resource_type: resource.resource_type,
           resource_id: resource.resource_id,
           entry_surface: "Powertools-native Lifeline"
@@ -233,14 +238,16 @@ defmodule ObanPowertools.Forensics do
           }
         ],
         completeness: lifeline_completeness(incident, audit_events)
-      })
+      }
+      |> EvidenceBundle.build()
+      |> enrich_runbook_entry()
     else
       unknown_bundle(selectors)
     end
   end
 
   defp unknown_bundle(selectors) do
-    EvidenceBundle.build(%{
+    %{
       subject: %{
         type: "unknown",
         id: "unknown",
@@ -264,7 +271,13 @@ defmodule ObanPowertools.Forensics do
           "unknown: provide workflow_id, incident_fingerprint, or a supported resource_type/resource_id forensic selector.",
         selectors: selectors
       }
-    })
+    }
+    |> EvidenceBundle.build()
+    |> enrich_runbook_entry()
+  end
+
+  defp enrich_runbook_entry(bundle) do
+    Map.put(bundle, :runbook_entry, RunbookEntry.from_bundle(bundle))
   end
 
   defp workflow_audit_events(repo, workflow, selected_step) do

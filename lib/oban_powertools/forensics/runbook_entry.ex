@@ -18,7 +18,8 @@ defmodule ObanPowertools.Forensics.RunbookEntry do
     build(%{
       title: "Open runbook entry",
       diagnosis_state: field(diagnosis, :current) || "unknown",
-      why_now: field(diagnosis, :detail) || "No diagnosis detail is available for this forensic scope.",
+      why_now:
+        field(diagnosis, :detail) || "No diagnosis detail is available for this forensic scope.",
       prerequisites: prerequisites(completeness, next_paths),
       cautions: cautions(completeness, next_paths),
       ordered_next_paths: ordered_next_paths(next_paths),
@@ -32,7 +33,8 @@ defmodule ObanPowertools.Forensics.RunbookEntry do
     %{
       title: field(attrs, :title) || "Open runbook entry",
       diagnosis_state: to_string(field(attrs, :diagnosis_state) || "unknown"),
-      why_now: field(attrs, :why_now) || "No diagnosis detail is available for this forensic scope.",
+      why_now:
+        field(attrs, :why_now) || "No diagnosis detail is available for this forensic scope.",
       prerequisites:
         attrs
         |> field(:prerequisites)
@@ -103,7 +105,8 @@ defmodule ObanPowertools.Forensics.RunbookEntry do
     if Enum.any?(next_paths, &(ownership(&1) == :oban_web_bridge)) do
       %{
         label: "Oban Web bridge",
-        detail: "Oban Web bridge paths are inspection-only and must not be presented as native action controls.",
+        detail:
+          "Oban Web bridge paths are inspection-only and must not be presented as native action controls.",
         severity: :info
       }
     end
@@ -113,7 +116,8 @@ defmodule ObanPowertools.Forensics.RunbookEntry do
     if Enum.any?(next_paths, &(ownership(&1) == :host_owned)) do
       %{
         label: "host-owned follow-up",
-        detail: "host-owned follow-up paths point outside Powertools ownership and may require external coordination.",
+        detail:
+          "host-owned follow-up paths point outside Powertools ownership and may require external coordination.",
         severity: :info
       }
     end
@@ -186,16 +190,32 @@ defmodule ObanPowertools.Forensics.RunbookEntry do
 
     cond do
       type in ["workflow", :workflow] and present?(id) ->
-        "/ops/jobs/forensics?workflow_id=#{URI.encode_www_form(to_string(id))}"
+        [
+          {"workflow_id", id},
+          {"step", field(subject, :step)}
+        ]
+        |> selector_path()
 
       type in ["lifeline_incident", :lifeline_incident] and present?(id) ->
-        "/ops/jobs/forensics?incident_fingerprint=#{URI.encode_www_form(to_string(id))}"
+        [
+          {"incident_fingerprint", id},
+          {"view", field(subject, :view)}
+        ]
+        |> selector_path()
 
       resource_type in ["cron_entry", :cron_entry] and present?(resource_id) ->
-        "/ops/jobs/forensics?resource_type=cron_entry&resource_id=#{URI.encode_www_form(to_string(resource_id))}"
+        [
+          {"resource_type", "cron_entry"},
+          {"resource_id", resource_id}
+        ]
+        |> selector_path()
 
       resource_type in ["limiter", :limiter] and present?(resource_id) ->
-        "/ops/jobs/forensics?resource_type=limiter&resource_id=#{URI.encode_www_form(to_string(resource_id))}"
+        [
+          {"resource_type", "limiter"},
+          {"resource_id", resource_id}
+        ]
+        |> selector_path()
 
       true ->
         nil
@@ -210,8 +230,12 @@ defmodule ObanPowertools.Forensics.RunbookEntry do
     |> Enum.reject(&is_nil/1)
   end
 
-  defp degraded_boundary(%{state: :partial_evidence, details: details}), do: "partial evidence: #{details}"
-  defp degraded_boundary(%{state: :history_unavailable, details: details}), do: "history unavailable: #{details}"
+  defp degraded_boundary(%{state: :partial_evidence, details: details}),
+    do: "partial evidence: #{details}"
+
+  defp degraded_boundary(%{state: :history_unavailable, details: details}),
+    do: "history unavailable: #{details}"
+
   defp degraded_boundary(%{state: :unknown, details: details}), do: "unknown: #{details}"
   defp degraded_boundary(_completeness), do: nil
 
@@ -247,7 +271,9 @@ defmodule ObanPowertools.Forensics.RunbookEntry do
   end
 
   defp normalize_completeness(%{"state" => _state} = completeness) do
-    normalize_completeness(Map.new(completeness, fn {key, value} -> {String.to_atom(key), value} end))
+    normalize_completeness(
+      Map.new(completeness, fn {key, value} -> {String.to_atom(key), value} end)
+    )
   end
 
   defp normalize_completeness(_completeness) do
@@ -284,7 +310,18 @@ defmodule ObanPowertools.Forensics.RunbookEntry do
   end
 
   defp legal_path_detail([]), do: "No legal next path is available from this evidence bundle."
-  defp legal_path_detail(_paths), do: "At least one legal next path is available from this evidence bundle."
+
+  defp legal_path_detail(_paths),
+    do: "At least one legal next path is available from this evidence bundle."
+
+  defp selector_path(params) do
+    params =
+      params
+      |> Enum.reject(fn {_key, value} -> is_nil(value) or value == "" end)
+      |> URI.encode_query()
+
+    "/ops/jobs/forensics?#{params}"
+  end
 
   defp field(nil, _key), do: nil
   defp field(map, key), do: Map.get(map, key) || Map.get(map, Atom.to_string(key))

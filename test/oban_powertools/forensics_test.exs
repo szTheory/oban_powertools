@@ -303,7 +303,8 @@ defmodule ObanPowertools.ForensicsTest do
       Forensics.bundle(%{"workflow_id" => workflow.id, "step" => "sync_billing"}, repo: TestRepo)
 
     lifeline_bundle =
-      Forensics.bundle(%{"incident_fingerprint" => incident.incident_fingerprint, "view" => "active"},
+      Forensics.bundle(
+        %{"incident_fingerprint" => incident.incident_fingerprint, "view" => "active"},
         repo: TestRepo
       )
 
@@ -326,7 +327,10 @@ defmodule ObanPowertools.ForensicsTest do
 
     assert workflow_bundle.runbook_entry.evidence_path =~ "workflow_id=#{workflow.id}"
     assert workflow_bundle.runbook_entry.evidence_path =~ "step=sync_billing"
-    assert lifeline_bundle.runbook_entry.evidence_path =~ "incident_fingerprint=dead_executor%3Arunbook-executor"
+
+    assert lifeline_bundle.runbook_entry.evidence_path =~
+             "incident_fingerprint=dead_executor%3Arunbook-executor"
+
     assert lifeline_bundle.runbook_entry.evidence_path =~ "view=active"
     assert cron_bundle.runbook_entry.evidence_path =~ "resource_type=cron_entry"
     assert cron_bundle.runbook_entry.evidence_path =~ "resource_id=runbook-cron"
@@ -568,8 +572,13 @@ defmodule ObanPowertools.ForensicsTest do
 
     assert entry.title == "Open runbook entry"
     assert entry.diagnosis_state == "waiting_on_dependencies"
-    assert entry.why_now == "Selected step sync_billing currently reports waiting_on_dependencies."
-    assert [%{label: "Evidence bundle", state: :met}, %{label: "Legal next path", state: :met}] = entry.prerequisites
+
+    assert entry.why_now ==
+             "Selected step sync_billing currently reports waiting_on_dependencies."
+
+    assert [%{label: "Evidence bundle", state: :met}, %{label: "Legal next path", state: :met}] =
+             entry.prerequisites
+
     assert [%{label: "Advisory boundary", severity: :info} | _] = entry.cautions
     assert entry.evidence_path == "/ops/jobs/forensics?workflow_id=wf-123"
     assert entry.evidence_completeness.state == :complete
@@ -596,7 +605,10 @@ defmodule ObanPowertools.ForensicsTest do
 
     assert [
              %{label: "Oban Web bridge: Inspect Oban job details", ownership: "Oban Web bridge"},
-             %{label: "host-owned follow-up: Open pager escalation", ownership: "host-owned follow-up"}
+             %{
+               label: "host-owned follow-up: Open pager escalation",
+               ownership: "host-owned follow-up"
+             }
            ] = entry.ordered_next_paths
   end
 
@@ -609,9 +621,15 @@ defmodule ObanPowertools.ForensicsTest do
       entry =
         RunbookEntry.from_bundle(%{
           subject: %{type: "unknown", id: "unknown", label: "Unknown forensic scope"},
-          diagnosis_summary: %{current: Atom.to_string(state), detail: "#{expected_copy}: retained facts are incomplete."},
+          diagnosis_summary: %{
+            current: Atom.to_string(state),
+            detail: "#{expected_copy}: retained facts are incomplete."
+          },
           legal_next_paths: [],
-          completeness: %{state: state, details: "#{expected_copy}: retained facts are incomplete."}
+          completeness: %{
+            state: state,
+            details: "#{expected_copy}: retained facts are incomplete."
+          }
         })
 
       assert entry.evidence_completeness.state == state

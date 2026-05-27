@@ -5,7 +5,7 @@ defmodule ObanPowertools.Forensics.CronHistory do
 
   alias ObanPowertools.{Audit, ControlPlane}
   alias ObanPowertools.Cron.{Entry, Slot}
-  alias ObanPowertools.Forensics.{CronCoverage, EvidenceBundle}
+  alias ObanPowertools.Forensics.{CronCoverage, EvidenceBundle, RunbookEntry}
 
   @history_limit 8
 
@@ -19,7 +19,7 @@ defmodule ObanPowertools.Forensics.CronHistory do
         completeness = completeness(views)
         current = current_diagnosis(entry, views)
 
-        EvidenceBundle.build(%{
+        %{
           subject: %{
             type: "cron_entry",
             id: entry.name,
@@ -47,10 +47,22 @@ defmodule ObanPowertools.Forensics.CronHistory do
               label: "Return to cron diagnosis",
               path: cron_path(entry.name),
               venue: "Powertools-native"
+            },
+            %{
+              label: "Inspect audit trail",
+              path: audit_path(entry.name),
+              venue: "Inspection only"
+            },
+            %{
+              label: "Coordinate schedule owner follow-up",
+              path: nil,
+              venue: "External runbook"
             }
           ],
           completeness: completeness
-        })
+        }
+        |> EvidenceBundle.build()
+        |> enrich_runbook_entry()
     end
   end
 
@@ -386,4 +398,8 @@ defmodule ObanPowertools.Forensics.CronHistory do
 
   defp audit_path(entry_name),
     do: "/ops/jobs/audit?resource_type=cron_entry&resource_id=#{URI.encode_www_form(entry_name)}"
+
+  defp enrich_runbook_entry(bundle) do
+    Map.put(bundle, :runbook_entry, RunbookEntry.from_bundle(bundle))
+  end
 end
