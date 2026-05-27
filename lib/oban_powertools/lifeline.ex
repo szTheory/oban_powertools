@@ -217,7 +217,7 @@ defmodule ObanPowertools.Lifeline do
 
     result =
       repo.transaction(fn ->
-        archive_count =
+        {archive_count, archived_event_ids} =
           archive_due_repair_audits(
             repo,
             run,
@@ -226,19 +226,11 @@ defmodule ObanPowertools.Lifeline do
             Keyword.get(opts, :force_archive_failure, false)
           )
 
-        audit_cutoff =
-          DateTime.add(now, -@audit_retention_seconds, :second) |> DateTime.to_naive()
-
         preview_cutoff = DateTime.add(now, -@preview_retention_seconds, :second)
         heartbeat_cutoff = DateTime.add(now, -@heartbeat_retention_seconds, :second)
 
         {deleted_audits, _} =
-          repo.delete_all(
-            from(event in Audit,
-              where:
-                event.action == "lifeline.repair_executed" and event.inserted_at < ^audit_cutoff
-            )
-          )
+          repo.delete_all(from(event in Audit, where: event.id in ^archived_event_ids))
 
         if deleted_audits != archive_count do
           repo.rollback(:archive_mismatch)
@@ -517,7 +509,7 @@ defmodule ObanPowertools.Lifeline do
 
     audit_cutoff = DateTime.add(now, -@audit_retention_seconds, :second) |> DateTime.to_naive()
 
-    rows =
+    audit_events =
       repo.all(
         from(event in Audit,
           where: event.action == "lifeline.repair_executed" and event.inserted_at < ^audit_cutoff,
@@ -525,34 +517,38 @@ defmodule ObanPowertools.Lifeline do
           limit: ^batch_size
         )
       )
-      |> Enum.map(fn event ->
-        %{
-          id: Ecto.UUID.dump!(Ecto.UUID.generate()),
-          archive_run_id: Ecto.UUID.dump!(run.id),
-          audit_event_id: event.id,
-          resource_type: archive_resource_type(event.resource),
-          resource_id: archive_resource_id(event.resource),
-          action: event.action,
-          incident_class: event.metadata["incident_class"],
-          incident_fingerprint: event.metadata["incident_fingerprint"],
-          plan_hash: event.metadata["plan_hash"],
-          reason: event.metadata["reason"],
-          actor_id: event.actor_id,
-          affected_counts: event.metadata["affected_counts"] || %{},
-          evidence: event.metadata,
-          archived_at: now,
-          metadata: %{},
-          inserted_at: DateTime.to_naive(now)
-        }
-      end)
 
-    case rows do
+    case audit_events do
       [] ->
-        0
+        {0, []}
 
       _ ->
+        event_ids = Enum.map(audit_events, & &1.id)
+
+        rows =
+          Enum.map(audit_events, fn event ->
+            %{
+              id: Ecto.UUID.dump!(Ecto.UUID.generate()),
+              archive_run_id: Ecto.UUID.dump!(run.id),
+              audit_event_id: event.id,
+              resource_type: archive_resource_type(event.resource),
+              resource_id: archive_resource_id(event.resource),
+              action: event.action,
+              incident_class: event.metadata["incident_class"],
+              incident_fingerprint: event.metadata["incident_fingerprint"],
+              plan_hash: event.metadata["plan_hash"],
+              reason: event.metadata["reason"],
+              actor_id: event.actor_id,
+              affected_counts: event.metadata["affected_counts"] || %{},
+              evidence: event.metadata,
+              archived_at: now,
+              metadata: %{},
+              inserted_at: DateTime.to_naive(now)
+            }
+          end)
+
         {count, _} = repo.insert_all("oban_powertools_repair_archives", rows)
-        count
+        {count, event_ids}
     end
   end
 
