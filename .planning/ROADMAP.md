@@ -33,9 +33,9 @@ This phase establishes one investigative contract so later history and runbook w
 
 Plans:
 
-- [ ] 33-01-PLAN.md — Project limiter history that explains block, restore, reconfiguration, and pressure transitions without exposing an unrestricted raw-event stream.
-- [ ] 33-02-PLAN.md — Add cron missed-fire, delayed-fire, and overlap-relevant history views that explain why scheduled work did not run when expected.
-- [ ] 33-03-PLAN.md — Close proof and retention-boundary behavior for limiter and cron history so operators see explicit “unknown” or partial-evidence states when data is incomplete.
+- [x] 33-01-PLAN.md — Project limiter history that explains block, restore, reconfiguration, and pressure transitions without exposing an unrestricted raw-event stream.
+- [x] 33-02-PLAN.md — Add cron missed-fire, delayed-fire, and overlap-relevant history views that explain why scheduled work did not run when expected.
+- [x] 33-03-PLAN.md — Close proof and retention-boundary behavior for limiter and cron history so operators see explicit “unknown” or partial-evidence states when data is incomplete.
 
 **Details:**
 The milestone should answer concrete operator questions about “what happened and why” rather than simply exposing more rows.
@@ -102,7 +102,7 @@ The milestone closes only when the investigative UX, support-truth language, and
 | Phase | Goal | Requirements | Success Criteria |
 |-------|------|--------------|------------------|
 | 32 | 3/3 | Complete    | 2026-05-26 |
-| 33 | Limiter history and cron missed-fire diagnostics | OPS-01, OPS-02 | 3 |
+| 33 | Limiter history and cron missed-fire diagnostics | OPS-01, OPS-02 | Complete — 2026-05-27 |
 | 34 | Historical attention projection and runbook entry surfaces | OPS-03, RNB-01, RNB-02 | 3 |
 | 35 | Runbook-guided remediation and alert hook boundaries | RNB-03 | 3 |
 | 36 | Docs, example host, verification, and support-truth closure | DOC-05, VER-04, HST-05 | 3 |

@@ -4,14 +4,14 @@ milestone: v1.4
 milestone_name: Operator Forensics & SRE Runbooks
 current_plan: 1
 status: ready_to_plan
-stopped_at: Phase 32 complete (3/3) — ready to discuss Phase 33
-last_updated: 2026-05-26T14:23:19.662Z
+stopped_at: Phase 33 complete (3/3) — ready to discuss Phase 34
+last_updated: 2026-05-27T05:37:00.000Z
 progress:
   total_phases: 5
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 82
-  percent: 20
+  completed_phases: 2
+  total_plans: 15
+  completed_plans: 6
+  percent: 40
 ---
 
 # Project State
@@ -19,14 +19,14 @@ progress:
 ## Project Reference
 
 **Core Value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-**Current Focus:** Phase 33 — limiter history & cron missed fire diagnostics
+**Current Focus:** Phase 34 — historical attention projection & runbook entry surfaces
 
 ## Current Position
 
-Phase: 32 (forensic-timeline-evidence-bundle-foundation) — EXECUTING
-Plan: 1 of 3
+Phase: 34 (historical-attention-projection-runbook-entry-surfaces) — READY TO PLAN
+Plan: None
 
-- **Phase:** 33
+- **Phase:** 34
 - **Plan:** None
 - **Current Plan:** Not started
 - **Total Plans in Phase:** 3
@@ -38,9 +38,9 @@ Plan: 1 of 3
 
 ## Performance Metrics
 
-- **Phases Complete:** 0/5 active
-- **Plans Complete:** 0/15 active
-- **Metrics:** v1.4 opened on 2026-05-26 with five phases covering forensic projections, limiter and cron history, runbook-guided remediation, and support-truth closure on top of the shipped v1.3 control plane.
+- **Phases Complete:** 2/5 active
+- **Plans Complete:** 6/15 active
+- **Metrics:** v1.4 has completed Phase 32 forensic bundle foundations and Phase 33 limiter/cron history diagnostics; Phase 34 is ready to plan historical attention projection and runbook entry surfaces.
 
 ## Accumulated Context
 
@@ -94,13 +94,15 @@ Plan: 1 of 3
   - Keep the v1.4 wedge focused on investigative leverage and support truth, not on broad native queue-dashboard replacement or machine-facing automation contracts.
   - Treat missed-fire history, limiter history, evidence bundles, and remediation runbooks as Powertools-owned operator surfaces that must reuse the shared v1.3 vocabulary instead of inventing a parallel incident language.
   - Preserve explicit host-owned seams for alert delivery, escalation routing, and provider-specific runbook destinations; Powertools should explain and link, not pretend to own every downstream SRE system.
+  - Phase 32 now provides the shared forensic bundle contract, chronology helpers, `/ops/jobs/forensics` destination, and stable selector continuity for workflow and Lifeline evidence.
+  - Phase 33 now promotes limiter and cron into first-class forensic destinations using bounded limiter history facts, cron coverage facts, shared read models, and diagnosis-first history summaries.
 - **Todos:** None
 - **Blockers:** None
 
 ## Session Continuity
 
-- **Last session:** 2026-05-25T19:36:55.008Z
-- **Stopped At:** roadmap created; phase 32 ready for discussion
+- **Last session:** 2026-05-27T05:37:00.000Z
+- **Stopped At:** Phase 33 implementation committed and pushed; planning ledger repaired to point at Phase 34
 - **Resume File:** None
-- **Last Action:** Opened milestone v1.4, activated requirements, updated the strategic arc, and created the phase 32-36 roadmap.
-- **Next Action:** Run `$gsd-discuss-phase 32` or `$gsd-plan-phase 32` to start Phase 32.
+- **Last Action:** Verified Phase 33 targeted suite and recorded Phase 33 plans, summaries, validation, roadmap, and state.
+- **Next Action:** Run `$gsd-discuss-phase 34` or `$gsd-plan-phase 34` to start historical attention projection and runbook entry surfaces.
