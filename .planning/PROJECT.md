@@ -150,4 +150,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-27 after Phase 41 (WR-01/WR-02 advisory debt closure: centralized URL selector encoding via `ObanPowertools.Web.Selectors`, bounded atom normalization via `ObanPowertools.Lifeline.TargetType` and allowlisted `EvidenceBundle.normalize_related_evidence/1`).*
+*Last updated: 2026-05-27 after Phase 42 (Nyquist validation compliance sweep: all four milestone-phase VALIDATION.md artifacts for phases 33, 34, 38, and 39 are now schema-normalized and `nyquist_compliant: true`; closure evidence published in `42-VALIDATION-CLOSURE.md`). Milestone v1.4 Nyquist validation debt cleared — audit-ready.*
