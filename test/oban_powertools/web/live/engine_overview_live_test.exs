@@ -34,6 +34,38 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
     assert has_element?(view, "a[href*='/oban/jobs/321']")
   end
 
+  test "encodes incident fingerprints in overview Lifeline and Forensics links", %{conn: conn} do
+    seed_overview_fixture!(
+      active_fingerprint: "dead_executor:executor&with=delimiters",
+      resolved_fingerprint: "dead_executor:resolved&with=delimiters"
+    )
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_overview]}
+      )
+
+    {:ok, view, html} = live(conn, "/ops/jobs")
+
+    active_fingerprint = URI.encode_www_form("dead_executor:executor&with=delimiters")
+    resolved_fingerprint = URI.encode_www_form("dead_executor:resolved&with=delimiters")
+
+    assert has_element?(
+             view,
+             "a[href='/ops/jobs/lifeline?view=active&incident_fingerprint=#{active_fingerprint}']"
+           )
+
+    assert has_element?(
+             view,
+             "a[href='/ops/jobs/lifeline?view=resolved&incident_fingerprint=#{resolved_fingerprint}']"
+           )
+
+    assert html =~ "/ops/jobs/forensics?incident_fingerprint=#{active_fingerprint}"
+    assert html =~ "/ops/jobs/forensics?incident_fingerprint=#{resolved_fingerprint}"
+    refute html =~ "incident_fingerprint=dead_executor:executor&with=delimiters"
+    refute html =~ "incident_fingerprint=dead_executor:resolved&with=delimiters"
+  end
+
   test "keeps diagnosis context visible for read-only overview viewers", %{conn: conn} do
     seed_overview_fixture!()
 
@@ -152,7 +184,10 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
              "Current state and retained history do not identify a safe runbook path right now."
   end
 
-  defp seed_overview_fixture! do
+  defp seed_overview_fixture!(opts \\ []) do
+    active_fingerprint = Keyword.get(opts, :active_fingerprint, "dead_executor:executor-1")
+    resolved_fingerprint = Keyword.get(opts, :resolved_fingerprint, "dead_executor:executor-2")
+
     blocked_resource =
       TestRepo.insert!(%Resource{
         name: "payments-api",
@@ -231,7 +266,7 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
         incident_class: "dead_executor",
         status: "active",
         executor_id: "executor-1",
-        incident_fingerprint: "dead_executor:executor-1",
+        incident_fingerprint: active_fingerprint,
         health_state: "missing",
         summary: "missing executor executor-1",
         affected_counts: %{"jobs" => 1, "workflow_steps" => 0},
@@ -248,7 +283,7 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
         incident_class: "dead_executor",
         status: "resolved",
         executor_id: "executor-2",
-        incident_fingerprint: "dead_executor:executor-2",
+        incident_fingerprint: resolved_fingerprint,
         health_state: "resolved",
         summary: "resolved executor executor-2",
         affected_counts: %{"jobs" => 1, "workflow_steps" => 0},

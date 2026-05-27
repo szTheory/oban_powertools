@@ -196,8 +196,7 @@ defmodule ObanPowertools.Web.OverviewReadModel do
     "#{length(incidents)} resolved Lifeline incident(s) remain visible as continuity evidence."
   end
 
-  defp needs_review_path([incident | _]),
-    do: "/ops/jobs/lifeline?view=active&incident_fingerprint=#{incident.incident_fingerprint}"
+  defp needs_review_path([incident | _]), do: lifeline_incident_path("active", incident)
 
   defp needs_review_path([]), do: "/ops/jobs/lifeline"
 
@@ -212,10 +211,8 @@ defmodule ObanPowertools.Web.OverviewReadModel do
           status: incident.status,
           attention_reason: incident.summary || incident.incident_class,
           evidence_completeness: :complete,
-          path:
-            "/ops/jobs/lifeline?view=active&incident_fingerprint=#{incident.incident_fingerprint}",
-          evidence_path:
-            "/ops/jobs/forensics?incident_fingerprint=#{incident.incident_fingerprint}",
+          path: lifeline_incident_path("active", incident),
+          evidence_path: forensic_incident_path(incident),
           venue: ControlPlanePresenter.venue_label(:powertools_native),
           ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
           source: "lifeline"
@@ -260,10 +257,8 @@ defmodule ObanPowertools.Web.OverviewReadModel do
           status: :resolved,
           attention_reason: "Resolved Lifeline incident remains visible as continuity evidence.",
           evidence_completeness: :complete,
-          path:
-            "/ops/jobs/lifeline?view=resolved&incident_fingerprint=#{incident.incident_fingerprint}",
-          evidence_path:
-            "/ops/jobs/forensics?incident_fingerprint=#{incident.incident_fingerprint}",
+          path: lifeline_incident_path("resolved", incident),
+          evidence_path: forensic_incident_path(incident),
           venue: ControlPlanePresenter.venue_label(:powertools_native),
           ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
           source: "lifeline"
@@ -416,7 +411,7 @@ defmodule ObanPowertools.Web.OverviewReadModel do
   defp bridge_next_step_path([], dashboard_path), do: Path.join([dashboard_path, "jobs"])
 
   defp resolved_next_step_path([incident | _], _events),
-    do: "/ops/jobs/lifeline?view=resolved&incident_fingerprint=#{incident.incident_fingerprint}"
+    do: lifeline_incident_path("resolved", incident)
 
   defp resolved_next_step_path([], [event | _]) do
     "/ops/jobs/audit?" <>
@@ -428,4 +423,17 @@ defmodule ObanPowertools.Web.OverviewReadModel do
   end
 
   defp resolved_next_step_path([], []), do: "/ops/jobs/audit"
+
+  defp lifeline_incident_path(view, incident) do
+    "/ops/jobs/lifeline?" <>
+      URI.encode_query([
+        {"view", view},
+        {"incident_fingerprint", incident.incident_fingerprint}
+      ])
+  end
+
+  defp forensic_incident_path(incident) do
+    "/ops/jobs/forensics?" <>
+      URI.encode_query(%{"incident_fingerprint" => incident.incident_fingerprint})
+  end
 end
