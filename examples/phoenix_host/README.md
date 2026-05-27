@@ -47,6 +47,26 @@ That seed set is intentionally narrow. It supports opening `/ops/jobs`, previewi
 cron action, executing it, and inspecting durable audit evidence without implying broader
 demo coverage.
 
+## Forensics and runbook continuity
+
+`DOC05-C6`: After operator `ops-demo` runs `pause_cron_entry` on `nightly_sync`,
+the supported continuity path is to confirm context in `/ops/jobs/forensics` and
+then confirm follow-up evidence in `/ops/jobs/audit`.
+
+Use explicit ownership labels when choosing next action:
+
+- `Powertools-native` for native audited mutation paths
+- `Oban Web bridge` for read-only inspection
+- `host-owned follow-up` for external escalation or runbook destinations
+
+Escalation claims stay narrow. Powertools reports host follow-up status as
+`unconfigured`, `invoked`, or `failed`, and does not guarantee provider delivery
+or downstream completion truth.
+
+For canonical wording and the full operator journey, see
+[Forensics And Runbook Handoffs](../../guides/forensics-and-runbook-handoffs.md)
+and [Example App Walkthrough](../../guides/example-app-walkthrough.md).
+
 ## Provenance Buckets
 
 This checked-in fixture is support-truth aligned today, but it is still a curated fixture.
