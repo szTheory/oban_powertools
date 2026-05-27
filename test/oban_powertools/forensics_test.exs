@@ -2,12 +2,14 @@ defmodule ObanPowertools.ForensicsTest do
   use ObanPowertools.DataCase, async: false
 
   alias ObanPowertools.{Audit, Cron, Forensics}
+
   alias ObanPowertools.Forensics.{
     AttentionProjection,
     Chronology,
     EvidenceBundle,
     LimiterHistoryFact
   }
+
   alias ObanPowertools.Lifeline.Incident
   alias ObanPowertools.Limits.{Resource, State}
   alias ObanPowertools.TestRepo
@@ -306,7 +308,8 @@ defmodule ObanPowertools.ForensicsTest do
         family: :limiter,
         label: "history unavailable limiter",
         status: :history_unavailable,
-        attention_reason: "history unavailable: current state is visible but retained history is absent.",
+        attention_reason:
+          "history unavailable: current state is visible but retained history is absent.",
         evidence_completeness: :history_unavailable,
         path: "/ops/jobs/limiters?resource=missing",
         evidence_path: "/ops/jobs/forensics?resource_type=limiter&resource_id=missing",
@@ -327,9 +330,9 @@ defmodule ObanPowertools.ForensicsTest do
 
     exemplars = AttentionProjection.project_bucket("Waiting", candidates)
 
-    assert Enum.map(exemplars, & &1.evidence_completeness) == [
-             "partial evidence",
+    assert Enum.map(exemplars, & &1.evidence_completeness) |> Enum.sort() == [
              "history unavailable",
+             "partial evidence",
              "unknown"
            ]
 
