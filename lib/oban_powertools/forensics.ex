@@ -160,6 +160,7 @@ defmodule ObanPowertools.Forensics do
 
     if incident do
       audit_events = incident_audit_events(repo, incident)
+      continuity = latest_native_remediation_continuity(audit_events)
 
       chronology =
         [
@@ -188,8 +189,8 @@ defmodule ObanPowertools.Forensics do
 
       resource = lifeline_resource(incident, selectors)
 
-      %{
-        subject: %{
+      subject =
+        %{
           type: "lifeline_incident",
           id: incident.incident_fingerprint,
           label: incident.summary,
@@ -197,7 +198,11 @@ defmodule ObanPowertools.Forensics do
           resource_type: resource.resource_type,
           resource_id: resource.resource_id,
           entry_surface: "Powertools-native Lifeline"
-        },
+        }
+        |> maybe_put_continuity(continuity)
+
+      %{
+        subject: subject,
         diagnosis_summary: %{
           title: "Lifeline diagnosis",
           current: incident.health_state || incident.status,
@@ -305,6 +310,7 @@ defmodule ObanPowertools.Forensics do
 
   defp audit_item(event) do
     identity = Audit.event_resource_identity(event)
+    runbook_context = Audit.event_runbook_context(event)
 
     %{
       occurred_at: event.inserted_at,
@@ -314,9 +320,45 @@ defmodule ObanPowertools.Forensics do
       source_family: "audit",
       strength: :bridge_only,
       event_type: event.event_type,
-      notes: Audit.event_reason(event)
+      notes: Audit.event_reason(event),
+      reason: Audit.event_reason(event),
+      action: event.action,
+      attempt_state: Audit.event_attempt_state(event),
+      selected_path: Audit.event_selected_path(event),
+      runbook_context: runbook_context
     }
   end
+
+  defp latest_native_remediation_continuity(audit_events) do
+    audit_events
+    |> Enum.filter(fn event ->
+      (event.event_type || event.action) == "lifeline.repair_executed"
+    end)
+    |> Enum.sort_by(
+      fn event -> {event.inserted_at || ~N[1970-01-01 00:00:00], event.id || 0} end,
+      :desc
+    )
+    |> Enum.find(&is_map(Audit.event_runbook_context(&1)))
+    |> case do
+      nil ->
+        nil
+
+      event ->
+        runbook_context = Audit.event_runbook_context(event)
+        attempt = get_in(runbook_context, ["attempt"]) || %{}
+
+        %{
+          "attempt_state" => Audit.event_attempt_state(event),
+          "action" => attempt["action"] || event.action,
+          "reason" => Audit.event_reason(event),
+          "selected_path" => Audit.event_selected_path(event),
+          "runbook_context" => runbook_context
+        }
+    end
+  end
+
+  defp maybe_put_continuity(subject, nil), do: subject
+  defp maybe_put_continuity(subject, continuity), do: Map.put(subject, :continuity, continuity)
 
   defp workflow_completeness(chronology, audit_events) do
     cond do

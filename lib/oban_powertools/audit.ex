@@ -119,6 +119,37 @@ defmodule ObanPowertools.Audit do
     get_in(event.metadata || %{}, ["reason"])
   end
 
+  def event_runbook_context(%__MODULE__{} = event) do
+    case get_in(event.metadata || %{}, ["runbook_context"]) do
+      %{} = context -> context
+      _missing -> nil
+    end
+  end
+
+  def event_attempt_state(%__MODULE__{} = event) do
+    event
+    |> event_runbook_context()
+    |> case do
+      %{} = context -> get_in(context, ["attempt", "state"])
+      _missing -> nil
+    end
+  end
+
+  def event_selected_path(%__MODULE__{} = event) do
+    event
+    |> event_runbook_context()
+    |> case do
+      %{} = context ->
+        case get_in(context, ["selected_path"]) do
+          %{} = selected_path -> selected_path
+          _missing -> nil
+        end
+
+      _missing ->
+        nil
+    end
+  end
+
   def event_label(%__MODULE__{} = event) do
     event.event_type || event.action
   end

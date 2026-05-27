@@ -141,6 +141,228 @@ defmodule ObanPowertools.ForensicsTest do
     assert bundle.completeness.state == :history_unavailable
   end
 
+  test "lifeline forensic chronology projects runbook continuity from repair audit events" do
+    incident =
+      %Incident{}
+      |> Incident.changeset(%{
+        incident_class: "workflow_stuck",
+        status: "active",
+        workflow_id: nil,
+        workflow_step_id: nil,
+        incident_fingerprint: "workflow_stuck:continuity:#{System.unique_integer([:positive])}",
+        health_state: "missing",
+        summary: "continuity test incident",
+        affected_counts: %{"jobs" => 1, "workflow_steps" => 0},
+        evidence: %{"job_ids" => [123], "workflow_step_ids" => []},
+        first_detected_at: DateTime.utc_now(),
+        last_detected_at: DateTime.utc_now(),
+        metadata: %{}
+      })
+      |> TestRepo.insert!()
+
+    runbook_context = %{
+      "entry" => %{"title" => "Open runbook entry"},
+      "diagnosis_state" => "blocked",
+      "evidence_completeness" => "complete",
+      "selected_path" => %{
+        "ownership" => "Powertools-native",
+        "venue" => "Powertools-native Lifeline",
+        "intent" => "remediate"
+      },
+      "attempt" => %{
+        "state" => "succeeded",
+        "action" => "job_rescue",
+        "target_type" => "job",
+        "target_id" => "123"
+      },
+      "selectors" => %{
+        "incident_fingerprint" => incident.incident_fingerprint,
+        "resource_type" => "job",
+        "resource_id" => "123"
+      },
+      "plan_hash" => "plan-hash",
+      "preview_token" => "preview-token"
+    }
+
+    {:ok, _event} =
+      Audit.record(
+        "lifeline.repair_executed",
+        %{type: :job, id: 123},
+        %{
+          "event_type" => "lifeline.repair_executed",
+          "incident_fingerprint" => incident.incident_fingerprint,
+          "reason" => "Operator retried the stuck job",
+          "runbook_context" => runbook_context
+        },
+        repo: TestRepo,
+        actor_id: "ops-1"
+      )
+
+    bundle =
+      Forensics.bundle(%{"incident_fingerprint" => incident.incident_fingerprint}, repo: TestRepo)
+
+    audit_item = Enum.find(bundle.chronology, &(&1.event_type == "lifeline.repair_executed"))
+
+    assert audit_item.reason == "Operator retried the stuck job"
+    assert audit_item.action == "lifeline.repair_executed"
+    assert audit_item.attempt_state == "succeeded"
+    assert audit_item.selected_path["ownership"] == "Powertools-native"
+    assert audit_item.selected_path["venue"] == "Powertools-native Lifeline"
+    assert audit_item.runbook_context["attempt"]["action"] == "job_rescue"
+  end
+
+  test "runbook entry includes latest native remediation continuity summary when available" do
+    incident =
+      %Incident{}
+      |> Incident.changeset(%{
+        incident_class: "workflow_stuck",
+        status: "active",
+        workflow_id: nil,
+        workflow_step_id: nil,
+        incident_fingerprint:
+          "workflow_stuck:continuity-latest:#{System.unique_integer([:positive])}",
+        health_state: "missing",
+        summary: "continuity latest test incident",
+        affected_counts: %{"jobs" => 1, "workflow_steps" => 0},
+        evidence: %{"job_ids" => [123], "workflow_step_ids" => []},
+        first_detected_at: DateTime.utc_now(),
+        last_detected_at: DateTime.utc_now(),
+        metadata: %{}
+      })
+      |> TestRepo.insert!()
+
+    {:ok, _older_event} =
+      Audit.record(
+        "lifeline.repair_executed",
+        %{type: :job, id: 123},
+        %{
+          "event_type" => "lifeline.repair_executed",
+          "incident_fingerprint" => incident.incident_fingerprint,
+          "reason" => "Preview captured",
+          "runbook_context" => %{
+            "selected_path" => %{"ownership" => "powertools-native", "venue" => "lifeline"},
+            "attempt" => %{
+              "state" => "previewed",
+              "action" => "job_rescue",
+              "target_type" => "job",
+              "target_id" => "123"
+            }
+          }
+        },
+        repo: TestRepo,
+        actor_id: "ops-1"
+      )
+
+    {:ok, _latest_event} =
+      Audit.record(
+        "lifeline.repair_executed",
+        %{type: :job, id: 123},
+        %{
+          "event_type" => "lifeline.repair_executed",
+          "incident_fingerprint" => incident.incident_fingerprint,
+          "reason" => "Operator completed rescue",
+          "runbook_context" => %{
+            "selected_path" => %{
+              "ownership" => "Powertools-native",
+              "venue" => "Powertools-native Lifeline"
+            },
+            "attempt" => %{
+              "state" => "succeeded",
+              "action" => "job_rescue",
+              "target_type" => "job",
+              "target_id" => "123"
+            }
+          }
+        },
+        repo: TestRepo,
+        actor_id: "ops-1"
+      )
+
+    bundle =
+      Forensics.bundle(%{"incident_fingerprint" => incident.incident_fingerprint}, repo: TestRepo)
+
+    continuity_caution =
+      Enum.find(bundle.runbook_entry.cautions, &(&1.label == "Remediation continuity"))
+
+    assert continuity_caution.detail =~ "succeeded"
+    assert continuity_caution.detail =~ "Action: job_rescue"
+    assert continuity_caution.detail =~ "Ownership: Powertools-native"
+    assert continuity_caution.detail =~ "Reason: Operator completed rescue."
+  end
+
+  test "missing runbook continuity metadata degrades safely without remediation summary caution" do
+    incident =
+      %Incident{}
+      |> Incident.changeset(%{
+        incident_class: "workflow_stuck",
+        status: "active",
+        workflow_id: nil,
+        workflow_step_id: nil,
+        incident_fingerprint:
+          "workflow_stuck:continuity-none:#{System.unique_integer([:positive])}",
+        health_state: "missing",
+        summary: "continuity fallback incident",
+        affected_counts: %{"jobs" => 1, "workflow_steps" => 0},
+        evidence: %{"job_ids" => [123], "workflow_step_ids" => []},
+        first_detected_at: DateTime.utc_now(),
+        last_detected_at: DateTime.utc_now(),
+        metadata: %{}
+      })
+      |> TestRepo.insert!()
+
+    {:ok, _event} =
+      Audit.record(
+        "lifeline.repair_executed",
+        %{type: :job, id: 123},
+        %{
+          "event_type" => "lifeline.repair_executed",
+          "incident_fingerprint" => incident.incident_fingerprint,
+          "reason" => "Legacy event without continuity metadata"
+        },
+        repo: TestRepo,
+        actor_id: "ops-1"
+      )
+
+    bundle =
+      Forensics.bundle(%{"incident_fingerprint" => incident.incident_fingerprint}, repo: TestRepo)
+
+    audit_item = Enum.find(bundle.chronology, &(&1.event_type == "lifeline.repair_executed"))
+    assert audit_item
+    assert is_nil(audit_item.attempt_state)
+    assert is_nil(audit_item.selected_path)
+    assert is_nil(audit_item.runbook_context)
+
+    refute Enum.any?(bundle.runbook_entry.cautions, &(&1.label == "Remediation continuity"))
+  end
+
+  test "runbook continuity preserves explicit attempt-state vocabulary" do
+    for state <- ~w(previewed attempted succeeded drifted expired consumed) do
+      entry =
+        RunbookEntry.from_bundle(%{
+          subject: %{
+            type: "lifeline_incident",
+            id: "continuity-state-#{state}",
+            continuity: %{
+              attempt_state: state,
+              action: "job_rescue",
+              reason: "State vocabulary check",
+              selected_path: %{
+                ownership: "Powertools-native",
+                venue: "Powertools-native Lifeline"
+              }
+            }
+          },
+          diagnosis_summary: %{current: "blocked", detail: "State test."},
+          legal_next_paths: [],
+          completeness: %{state: :complete, details: "Complete forensic bundle."}
+        })
+
+      continuity_caution = Enum.find(entry.cautions, &(&1.label == "Remediation continuity"))
+      assert continuity_caution
+      assert continuity_caution.detail =~ state
+    end
+  end
+
   test "presenter keeps forensic provenance and completeness labels honest" do
     assert ControlPlanePresenter.forensic_provenance_label(:supporting) == "supporting evidence"
     assert ControlPlanePresenter.forensic_provenance_label(:bridge_only) == "Inspection only"

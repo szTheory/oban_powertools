@@ -8,12 +8,14 @@ defmodule ObanPowertools.Forensics.RunbookEntry do
     oban_web_bridge: "Oban Web bridge",
     host_owned: "host-owned follow-up"
   }
+  @continuity_attempt_states ~w(previewed attempted succeeded drifted expired consumed)
 
   def from_bundle(bundle) when is_map(bundle) do
     diagnosis = field(bundle, :diagnosis_summary) || %{}
     subject = field(bundle, :subject) || %{}
     completeness = normalize_completeness(field(bundle, :completeness))
     next_paths = field(bundle, :legal_next_paths) || []
+    continuity = field(bundle, :continuity) || field(subject, :continuity)
 
     build(%{
       title: "Open runbook entry",
@@ -21,7 +23,7 @@ defmodule ObanPowertools.Forensics.RunbookEntry do
       why_now:
         field(diagnosis, :detail) || "No diagnosis detail is available for this forensic scope.",
       prerequisites: prerequisites(completeness, next_paths),
-      cautions: cautions(completeness, next_paths),
+      cautions: cautions(completeness, next_paths, continuity),
       ordered_next_paths: ordered_next_paths(next_paths),
       evidence_path: evidence_path(subject),
       unsupported_boundaries: unsupported_boundaries(completeness),
@@ -72,7 +74,7 @@ defmodule ObanPowertools.Forensics.RunbookEntry do
     ]
   end
 
-  defp cautions(completeness, next_paths) do
+  defp cautions(completeness, next_paths, continuity) do
     [
       %{
         label: "Advisory boundary",
@@ -82,9 +84,43 @@ defmodule ObanPowertools.Forensics.RunbookEntry do
       },
       degraded_caution(completeness),
       bridge_caution(next_paths),
-      host_owned_caution(next_paths)
+      host_owned_caution(next_paths),
+      continuity_caution(continuity)
     ]
     |> Enum.reject(&is_nil/1)
+  end
+
+  defp continuity_caution(nil), do: nil
+
+  defp continuity_caution(continuity) when is_map(continuity) do
+    attempt_state =
+      field(continuity, :attempt_state) ||
+        get_in(field(continuity, :runbook_context) || %{}, ["attempt", "state"])
+
+    with normalized_state when normalized_state in @continuity_attempt_states <-
+           normalize_attempt_state(attempt_state) do
+      selected_path =
+        field(continuity, :selected_path) ||
+          get_in(field(continuity, :runbook_context) || %{}, ["selected_path"]) ||
+          %{}
+
+      ownership = normalize_continuity_ownership(field(selected_path, :ownership))
+      venue = field(selected_path, :venue) || ownership
+      action = field(continuity, :action) || "native remediation"
+      reason = field(continuity, :reason)
+
+      %{
+        label: "Remediation continuity",
+        detail:
+          "Latest Powertools-native remediation attempt state is #{normalized_state}. " <>
+            "Action: #{action}. Ownership: #{ownership}. Venue: #{venue}." <>
+            continuity_reason_detail(reason),
+        severity: :info
+      }
+    else
+      _missing ->
+        nil
+    end
   end
 
   defp degraded_caution(%{state: :partial_evidence, details: details}) do
@@ -293,6 +329,27 @@ defmodule ObanPowertools.Forensics.RunbookEntry do
   defp normalize_intent("remediate"), do: :remediate
   defp normalize_intent("escalate"), do: :escalate
   defp normalize_intent(_intent), do: :investigate
+
+  defp normalize_attempt_state(state) when is_atom(state), do: Atom.to_string(state)
+  defp normalize_attempt_state(state) when is_binary(state), do: state
+  defp normalize_attempt_state(_state), do: nil
+
+  defp normalize_continuity_ownership(label) when is_binary(label) do
+    normalized = String.downcase(label)
+
+    cond do
+      String.contains?(normalized, "powertools-native") -> @ownership_labels.powertools_native
+      String.contains?(normalized, "oban web") -> @ownership_labels.oban_web_bridge
+      String.contains?(normalized, "inspection only") -> @ownership_labels.oban_web_bridge
+      String.contains?(normalized, "host-owned") -> @ownership_labels.host_owned
+      true -> @ownership_labels.host_owned
+    end
+  end
+
+  defp normalize_continuity_ownership(_label), do: @ownership_labels.host_owned
+
+  defp continuity_reason_detail(reason) when reason in [nil, ""], do: ""
+  defp continuity_reason_detail(reason), do: " Reason: #{reason}."
 
   defp infer_intent(label) do
     label = String.downcase(to_string(label))

@@ -11,13 +11,19 @@ defmodule ObanPowertools.Forensics.Chronology do
       label: Map.get(attrs, :label) || Map.get(attrs, "label") || "Unknown event",
       resource_type: Map.get(attrs, :resource_type) || Map.get(attrs, "resource_type"),
       resource_id: Map.get(attrs, :resource_id) || Map.get(attrs, "resource_id"),
-      source_family: Map.get(attrs, :source_family) || Map.get(attrs, "source_family") || "unknown",
+      source_family:
+        Map.get(attrs, :source_family) || Map.get(attrs, "source_family") || "unknown",
       strength:
         attrs
         |> Map.get(:strength, Map.get(attrs, "strength"))
         |> Provenance.normalize_provenance(),
       event_type: Map.get(attrs, :event_type) || Map.get(attrs, "event_type"),
-      notes: Map.get(attrs, :notes) || Map.get(attrs, "notes")
+      notes: Map.get(attrs, :notes) || Map.get(attrs, "notes"),
+      reason: Map.get(attrs, :reason) || Map.get(attrs, "reason"),
+      action: Map.get(attrs, :action) || Map.get(attrs, "action"),
+      attempt_state: Map.get(attrs, :attempt_state) || Map.get(attrs, "attempt_state"),
+      selected_path: Map.get(attrs, :selected_path) || Map.get(attrs, "selected_path"),
+      runbook_context: Map.get(attrs, :runbook_context) || Map.get(attrs, "runbook_context")
     }
   end
 
