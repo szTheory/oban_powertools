@@ -205,7 +205,7 @@ This phase is a quality-hygiene closure sweep for validation artifacts and does 
 | 38 | Docs and example-host forensics journey closure | DOC-05 | Complete - 2026-05-27 |
 | 39 | CI continuity proof lane closure | VER-04 | Complete - 2026-05-27 |
 | 40 | Phase 34 manual acceptance closure | OPS-03, RNB-01, RNB-02 | Complete - 2026-05-27 (closure shifted left into automation; 2 plans, no human UAT) |
-| 41 | 1/1 | Complete   | 2026-05-27 |
+| 41 | 1/1 | Complete    | 2026-05-27 |
 | 42 | Nyquist validation compliance sweep | Validation hygiene (phases 33, 34, 38, 39) | Pending |
 
 ### Phase Success Criteria
