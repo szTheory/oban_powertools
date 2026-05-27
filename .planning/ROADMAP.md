@@ -124,8 +124,8 @@ This phase closes the broken docs/example-host operator flow identified by the m
 Plans:
 
 - [x] 39-01-PLAN.md — Wire the phase 32-35 continuity suites into `.github/workflows/host-contract-proof.yml` for milestone-proof coverage.
-- [ ] 39-02-PLAN.md — Publish CI evidence artifacts and pass/fail boundaries that map directly to continuity and ownership-boundary proof claims.
-- [ ] 39-03-PLAN.md — Close VER-04 traceability with automated proof references and prepare re-audit inputs for milestone completion.
+- [x] 39-02-PLAN.md — Publish CI evidence artifacts and pass/fail boundaries that map directly to continuity and ownership-boundary proof claims.
+- [x] 39-03-PLAN.md — Close VER-04 traceability with automated proof references and prepare re-audit inputs for milestone completion.
 
 **Details:**
 This phase turns continuity proof from phase-local evidence into CI-enforced milestone closure.
@@ -154,7 +154,7 @@ This phase turns continuity proof from phase-local evidence into CI-enforced mil
 | 36 | Docs/example-host/proof closure seed phase | DOC-05, VER-04 | Gap closure split into Phases 38-39 |
 | 37 | 3/3 | Complete    | 2026-05-27 |
 | 38 | 3/3 | Complete    | 2026-05-27 |
-| 39 | CI continuity proof lane closure | VER-04 | Planned |
+| 39 | 3/3 | Complete    | 2026-05-27 |
 
 ### Phase Success Criteria
 
