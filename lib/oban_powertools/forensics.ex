@@ -486,6 +486,8 @@ defmodule ObanPowertools.Forensics do
     Selectors.audit_path([{"resource_type", to_string(type)}, {"resource_id", to_string(id)}])
   end
 
+  defp audit_path(_resource), do: Selectors.audit_path([])
+
   defp lifeline_resource(incident, selectors) do
     cond do
       selectors.resource_type && selectors.resource_id ->
