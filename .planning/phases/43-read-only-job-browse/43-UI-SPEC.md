@@ -1,7 +1,8 @@
 ---
 phase: 43
 slug: read-only-job-browse
-status: draft
+status: approved
+reviewed_at: 2026-05-27T00:00:00Z
 shadcn_initialized: false
 preset: none
 created: 2026-05-27
