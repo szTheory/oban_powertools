@@ -44,20 +44,20 @@
 
 ## Traceability
 
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| QRY-01 | TBD | Pending |
-| QRY-02 | TBD | Pending |
-| QRY-03 | TBD | Pending |
-| QRY-04 | TBD | Pending |
-| API-01 | TBD | Pending |
-| API-02 | TBD | Pending |
+| Requirement | Phase | Status  |
+|-------------|-------|---------|
+| QRY-01      | 43    | Pending |
+| QRY-02      | 43    | Pending |
+| QRY-03      | 44    | Pending |
+| QRY-04      | 45    | Pending |
+| API-01      | 46    | Pending |
+| API-02      | 46    | Pending |
 
 **Coverage:**
 - v1.5 requirements: 6 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 6 ⚠️
+- Mapped to phases: 6 (100%)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-27*
-*Last updated: 2026-05-27 after initial v1.5 definition*
+*Last updated: 2026-05-27 — traceability updated after roadmap creation (Phases 43-46)*

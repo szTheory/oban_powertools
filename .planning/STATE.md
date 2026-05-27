@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Native Job Surface & Automation API
-status: planning
-last_updated: "2026-05-27T21:45:09.309Z"
+status: active
+last_updated: "2026-05-27"
 last_activity: 2026-05-27
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,24 +20,49 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-27)
 
 **Core value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-**Current focus:** Planning next milestone (v1.5)
+**Current focus:** Phase 43 — Read-Only Job Browse (QRY-01, QRY-02)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 43 — Read-Only Job Browse
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-27 — Milestone v1.5 started
+Status: Not started
+Progress: [ ] [ ] [ ] [ ] — 0/4 phases complete
+
+Last activity: 2026-05-27 — v1.5 roadmap created (Phases 43-46)
+
+## Performance Metrics
+
+- Phases: 0/4 complete
+- Plans: 0/? complete
 
 ## Accumulated Context
 
-- **Decisions:** See PROJECT.md Key Decisions section for full list.
-- **Decisions (v1.5 planning):** Assessed library at ~83% done (80-89 band). Highest-leverage next wedge is Native Job Surface (QRY-01) + Automation API (API-02) + Testing Helpers. Prior "Automation Surfaces & Ecosystem Hooks" ordering (from v1.2-era thread) updated: QRY-01 now takes priority because the UI asymmetry is the most visible adopter gap. After v1.5: v1.6 = Batches, v1.7 = Worker Lifecycle. Don't build prioritizer/scaler until demand proven.
-- **Blockers:** None
-- **Todos:** Run `/gsd-new-milestone` with v1.5 = "Native Job Surface & Automation API"
+### Decisions
+
+See PROJECT.md Key Decisions section for the full locked decision list.
+
+**v1.5 decisions:**
+- Phase order is non-negotiable: QRY-01 leads (zero Lifeline risk); QRY-03 must come after QRY-02 (actions anchor to detail context); QRY-04 iterates the single-job pipeline proven in Phase 44; API wraps last so signatures derive from the proven UI pipeline.
+- All mutations must route through `Lifeline.execute_repair` — no direct `Oban` function calls from LiveViews or the API module.
+- `%JobFilter{}` struct must be defined before any event handler is written in Phase 43.
+- Tags filtering requires a host-owned GIN index on `oban_jobs.tags` — document in module docs and host guide, do not block Phase 43 on it.
+- `RepairPreview.incident_id` nullability must be confirmed before Phase 44 begins.
+- `LiveAuth.@permission_messages` atoms to declare before Phase 43: `:view_jobs`, `:view_job_detail`, `:retry_job`, `:cancel_job`, `:discard_job`.
+- Pagination: offset-based for Phase 43; keyset upgrade path made explicit as a single function change in `ObanPowertools.Jobs.list/3`.
+- Telemetry: `source: "api"` in API call metadata; `worker`, `queue`, `job_id`, `reason` must never appear as telemetry metadata keys.
+- No `Ecto.Multi` wrapping all N bulk jobs — each runs its own `Lifeline.execute_repair` with result accumulation.
+
+### Todos
+
+- Run `/gsd:plan-phase 43` to begin Phase 43 planning.
+
+### Blockers
+
+None.
 
 ## Session Continuity
 
 - **Last session:** 2026-05-27
-- **Stopped At:** Post-v1.4 milestone next-step assessment complete. Recommended v1.5 scope established.
-- **Next Action:** Run `/gsd-new-milestone` — v1.5 "Native Job Surface & Automation API" (QRY-01 + API-02 + testing helpers)
+- **Stopped at:** v1.5 roadmap created. Phases 43-46 defined and written to ROADMAP.md.
+- **Next action:** `/gsd:plan-phase 43` — Read-Only Job Browse (QRY-01 + QRY-02)
