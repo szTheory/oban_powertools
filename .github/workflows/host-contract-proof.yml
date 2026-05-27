@@ -404,7 +404,7 @@ jobs:
           set +e
           CLAIM_ID="VER04-C3"
           CLAIM_JOB="${{ github.job }}"
-          CLAIM_COMMAND="mix test test/oban_powertools/lifeline_test.exs test/oban_powertools/web/live/lifeline_live_test.exs test/oban_powertools/web/live/forensics_live_test.exs --seed 0"
+          CLAIM_COMMAND="mix test test/oban_powertools/lifeline_test.exs test/oban_powertools/web/live/lifeline_live_test.exs test/oban_powertools/web/live/forensics_live_test.exs test/oban_powertools/web/live/engine_overview_live_test.exs --seed 0"
           CLAIM_OUTPUT_FILE="$(mktemp)"
           mkdir -p tmp/ver04/claims tmp/ver04/logs
           ${CLAIM_COMMAND} 2>&1 | tee "${CLAIM_OUTPUT_FILE}"
@@ -477,7 +477,7 @@ jobs:
           set +e
           CLAIM_ID="VER04-C4"
           CLAIM_JOB="${{ github.job }}"
-          CLAIM_COMMAND="mix test test/oban_powertools/forensics_test.exs test/oban_powertools/lifeline_test.exs test/oban_powertools/web/live/audit_live_test.exs --seed 0 && mix test test/oban_powertools/docs_contract_test.exs --seed 0"
+          CLAIM_COMMAND="mix test test/oban_powertools/forensics_test.exs test/oban_powertools/lifeline_test.exs test/oban_powertools/web/live/audit_live_test.exs test/oban_powertools/web/live/workflows_live_test.exs test/oban_powertools/web/live/runbook_copy_contract_test.exs --seed 0 && mix test test/oban_powertools/docs_contract_test.exs --seed 0"
           CLAIM_OUTPUT_FILE="$(mktemp)"
           mkdir -p tmp/ver04/claims tmp/ver04/logs
           bash -lc "${CLAIM_COMMAND}" 2>&1 | tee "${CLAIM_OUTPUT_FILE}"
@@ -603,6 +603,39 @@ jobs:
           )
           Path("tmp/ver04/ver04-claim-matrix.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
           PY
+      - name: Compose Phase 40 gate report
+        id: phase40_gate_report
+        run: |
+          set -euo pipefail
+          mkdir -p tmp/ver04
+          C3_RESULT="${{ needs.continuity-ver04-c3.result }}"
+          C4_RESULT="${{ needs.continuity-ver04-c4.result }}"
+          if [ "${C3_RESULT}" = "success" ] && [ "${C4_RESULT}" = "success" ]; then
+            GATE_STATUS="pass"
+          else
+            GATE_STATUS="fail"
+          fi
+          cat <<EOF > tmp/ver04/phase40-gate-report.json
+          {
+            "coverage_scope": "phase40",
+            "checked_claims": ["VER04-C3", "VER04-C4"],
+            "required_markers": [
+              "ownership-triad",
+              "runbook-ordering",
+              "overview-continuity",
+              "copy-contract",
+              "visual-hierarchy"
+            ],
+            "claim_results": {
+              "VER04-C3": "${C3_RESULT}",
+              "VER04-C4": "${C4_RESULT}"
+            },
+            "status": "${GATE_STATUS}",
+            "github.run_id": "${{ github.run_id }}",
+            "github.sha": "${{ github.sha }}",
+            "generated_at_utc": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          }
+          EOF
       - name: Scan proof packet for unsafe content
         id: redaction_scan
         run: |
@@ -647,7 +680,16 @@ jobs:
             tmp/ver04/ver04-claim-matrix.json
             tmp/ver04/run-metadata.json
             tmp/ver04/redaction-report.json
+            tmp/ver04/phase40-gate-report.json
             tmp/ver04/logs/*.log
+      - name: Upload Phase 40 gate report
+        id: upload_phase40_gate_report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase40-gate-report
+          if-no-files-found: error
+          path: tmp/ver04/phase40-gate-report.json
       - name: Enforce continuity proof failure boundaries
         if: always()
         run: |

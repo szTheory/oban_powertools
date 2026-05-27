@@ -189,6 +189,16 @@ defmodule ObanPowertools.DocsContractTest do
     assert source =~ "--only upgrade-proof"
   end
 
+  test "workflow keeps Phase 40 shift-left coverage markers" do
+    source = File.read!(@workflow_file)
+
+    assert source =~ "engine_overview_live_test.exs"
+    assert source =~ "workflows_live_test.exs"
+    assert source =~ "runbook_copy_contract_test.exs"
+    assert source =~ "phase40-gate-report.json"
+    assert source =~ "phase40-gate-report"
+  end
+
   test "troubleshooting docs keep the exact fail-fast runtime markers" do
     source = joined_docs()
 

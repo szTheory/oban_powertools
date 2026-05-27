@@ -37,13 +37,14 @@
       "claim_id": "VER04-C3",
       "requirement_id": "VER-04",
       "workflow_job": "continuity-ver04-c3",
-      "command": "mix test test/oban_powertools/lifeline_test.exs test/oban_powertools/web/live/lifeline_live_test.exs test/oban_powertools/web/live/forensics_live_test.exs --seed 0",
+      "command": "mix test test/oban_powertools/lifeline_test.exs test/oban_powertools/web/live/lifeline_live_test.exs test/oban_powertools/web/live/forensics_live_test.exs test/oban_powertools/web/live/engine_overview_live_test.exs --seed 0",
       "artifact_refs": {
         "claim_matrix_markdown": "tmp/ver04/ver04-claim-matrix.md",
         "claim_matrix_json": "tmp/ver04/ver04-claim-matrix.json",
         "run_metadata": "tmp/ver04/run-metadata.json",
         "redaction_report": "tmp/ver04/redaction-report.json",
-        "claim_log": "tmp/ver04/logs/VER04-C3.log"
+        "claim_log": "tmp/ver04/logs/VER04-C3.log",
+        "phase40_gate_report": "tmp/ver04/phase40-gate-report.json"
       },
       "status_source": "continuity-proof-status"
     },
@@ -51,13 +52,14 @@
       "claim_id": "VER04-C4",
       "requirement_id": "VER-04",
       "workflow_job": "continuity-ver04-c4",
-      "command": "mix test test/oban_powertools/forensics_test.exs test/oban_powertools/lifeline_test.exs test/oban_powertools/web/live/audit_live_test.exs --seed 0 && mix test test/oban_powertools/docs_contract_test.exs --seed 0",
+      "command": "mix test test/oban_powertools/forensics_test.exs test/oban_powertools/lifeline_test.exs test/oban_powertools/web/live/audit_live_test.exs test/oban_powertools/web/live/workflows_live_test.exs test/oban_powertools/web/live/runbook_copy_contract_test.exs --seed 0 && mix test test/oban_powertools/docs_contract_test.exs --seed 0",
       "artifact_refs": {
         "claim_matrix_markdown": "tmp/ver04/ver04-claim-matrix.md",
         "claim_matrix_json": "tmp/ver04/ver04-claim-matrix.json",
         "run_metadata": "tmp/ver04/run-metadata.json",
         "redaction_report": "tmp/ver04/redaction-report.json",
-        "claim_log": "tmp/ver04/logs/VER04-C4.log"
+        "claim_log": "tmp/ver04/logs/VER04-C4.log",
+        "phase40_gate_report": "tmp/ver04/phase40-gate-report.json"
       },
       "status_source": "continuity-proof-status"
     }
