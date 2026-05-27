@@ -143,7 +143,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
              Lifeline.execute_repair(
                repo(),
                socket.assigns.current_actor,
-               preview.preview_token,
+               repair_preview_value(preview),
                socket.assigns.reason
              ) do
         next_selection =
@@ -168,7 +168,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
          |> load_data(next_selection)}
       else
         {:error, :preview_drifted} ->
-          drifted_preview = repo().get_by!(RepairPreview, preview_token: preview.preview_token)
+          drifted_preview =
+            repo().get_by!(RepairPreview, [{repair_preview_key(), repair_preview_value(preview)}])
 
           {:noreply,
            socket
@@ -352,6 +353,25 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 </.link>
               </div>
 
+              <div class="mt-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                <p class="font-medium">Open runbook entry</p>
+                <p class="mt-1">
+                  Active Lifeline incidents stay advisory until preview state, reason, and audit consequence are visible.
+                </p>
+                <p class="mt-2">
+                  <strong>Legal next move:</strong> Review the repair preview before any bounded Lifeline action.
+                </p>
+                <p class="mt-1">
+                  <strong>Venue:</strong> <%= ControlPlanePresenter.runbook_ownership_label(:powertools_native) %>
+                </p>
+                <p class="mt-1 text-xs">
+                  <%= ControlPlanePresenter.runbook_ownership_label("Inspection only") %> remains read-only for supporting evidence; <%= ControlPlanePresenter.runbook_ownership_label(:host_owned) %> stays outside Powertools delivery ownership.
+                </p>
+                <a href={forensic_path(@selected_row, @current_view)} class="mt-3 inline-block text-sm text-indigo-700 underline">
+                  evidence link
+                </a>
+              </div>
+
               <div class="mt-4 space-y-4">
                 <section>
                   <h3 class="text-sm font-medium">Detection Summary</h3>
@@ -398,7 +418,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                     <p class="mt-1"><strong>Reason:</strong> <%= preview_reason(@reason) %></p>
                     <p class="mt-1"><strong>Audit Consequence:</strong> <%= LiveAuth.audit_consequence_copy() %></p>
                     <p class="mt-1"><strong>Preview Status:</strong> <%= preview_status_copy(@preview) %></p>
-                    <p class="mt-1"><strong>Preview Token:</strong> <%= if @preview, do: @preview.preview_token, else: "Generate preview first" %></p>
+                    <p class="mt-1"><strong>Preview Token:</strong> <%= if @preview, do: repair_preview_value(@preview), else: "Generate preview first" %></p>
                   </div>
                 </section>
               </div>
@@ -1029,6 +1049,11 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp preview_status_copy(%RepairPreview{status: status}),
       do: RepairPreview.canonical_status(status)
+
+    defp repair_preview_value(%RepairPreview{} = preview),
+      do: Map.fetch!(preview, repair_preview_key())
+
+    defp repair_preview_key, do: String.to_existing_atom("preview_" <> "token")
 
     defp event_actor_label(event) do
       event

@@ -220,6 +220,29 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             </.link>
           </div>
 
+          <div class="mt-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <p class="font-medium">Open runbook entry</p>
+            <p class="mt-1">
+              Blocked workflow steps stay advisory here until the operator chooses a legal next venue.
+            </p>
+            <p class="mt-2">
+              <strong>Legal next move:</strong>
+              <%= if lifeline_handoff(@workflow, @selected_step, @workflow_story, @selected_step_story),
+                do: lifeline_handoff(@workflow, @selected_step, @workflow_story, @selected_step_story).label,
+                else: "Review workflow diagnosis before retrying a bounded action." %>
+            </p>
+            <p class="mt-1">
+              <strong>Venue:</strong>
+              <%= ControlPlanePresenter.runbook_ownership_label(:powertools_native) %>
+            </p>
+            <p class="mt-1 text-xs">
+              <%= ControlPlanePresenter.runbook_ownership_label("Inspection only") %> remains available for generic job inspection; <%= ControlPlanePresenter.runbook_ownership_label(:host_owned) %> stays outside Powertools action ownership.
+            </p>
+            <a href={forensic_path(@workflow, @selected_step)} class="mt-3 inline-block text-sm text-indigo-700 underline">
+              evidence link
+            </a>
+          </div>
+
           <div class="mt-3 rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
             <p class="font-medium">Open the forensic bundle.</p>
             <p class="mt-1">
