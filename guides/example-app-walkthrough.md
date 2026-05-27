@@ -58,3 +58,24 @@ Reach for it when:
 
 Use the fixture alongside [Installation](installation.md) and
 [First Operator Session](first-operator-session.md), not instead of them.
+
+## Forensics and Runbook Handoff
+
+`DOC05-C4`: The supported fixture-backed continuity flow is:
+`ops-demo` runs `pause_cron_entry` for `nightly_sync`, confirms diagnosis context
+in `/ops/jobs/forensics`, then confirms follow-up visibility in `/ops/jobs/audit`.
+
+`DOC05-C5`: Keep ownership labels explicit at the handoff point:
+
+- `Powertools-native` for native `Audited action`
+- `Oban Web bridge` for `Inspection only`
+- `host-owned follow-up` for downstream actions outside Powertools ownership
+
+Treat evidence boundaries as authoritative:
+
+- `partial evidence`
+- `history unavailable`
+- `unknown`
+
+For the canonical deep narrative and wording contract, see
+[Forensics And Runbook Handoffs](forensics-and-runbook-handoffs.md).
