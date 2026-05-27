@@ -140,16 +140,15 @@ This phase turns continuity proof from phase-local evidence into CI-enforced mil
 
 **Goal**: close the open manual acceptance gates from phase 34 so OPS-03, RNB-01, and RNB-02 are fully satisfied.
 **Depends on**: Phase 39
-**Plans**: 3 plans
+**Plans**: 2 plans
 
 Plans:
 
-- [ ] 40-01-PLAN.md — Run and document manual overview visual-hierarchy acceptance checks for historical attention projections.
-- [ ] 40-02-PLAN.md — Run and document runbook support-truth and wording acceptance checks for guidance surfaces.
-- [ ] 40-03-PLAN.md — Apply any copy or presentation corrections and publish verification updates that clear `human_needed` status.
+- [x] 40-01-PLAN.md — Replace the two former human gates (`Overview visual scan`, `Runbook copy judgment`) with deterministic LiveView/copy-contract proxy tests and close 34-UAT/34-VERIFICATION/REQUIREMENTS automatically.
+- [x] 40-02-PLAN.md — Wire the new proxy suites into the existing `continuity-ver04-c3` and `continuity-ver04-c4` lanes, publish `phase40-gate-report.json`, and add docs-contract drift guards.
 
 **Details:**
-This phase converts the audit's remaining manual-gate debt into explicit closure work with requirement-level verification evidence.
+After replanning, this phase shifts the entire manual gate left into automation rather than recording human reviewer outcomes. The original 40-03 plan is subsumed by 40-01 because the closure work is driven by the same change that introduces the proxies. No human UAT remains on the closure path.
 
 ### Phase 41: Runbook Link Fidelity and Atom Safety Hardening
 
@@ -201,13 +200,13 @@ This phase is a quality-hygiene closure sweep for validation artifacts and does 
 |-------|------|--------------|------------------|
 | 32 | Forensic timeline and evidence bundle foundation | FRN-01, FRN-02, FRN-03 | Gap closure in Phase 37 |
 | 33 | Limiter history and cron missed-fire diagnostics | OPS-01, OPS-02 | Gap closure in Phase 37 |
-| 34 | Historical attention projection and runbook entry surfaces | OPS-03, RNB-01, RNB-02 | Manual acceptance gate open - closure moved to Phase 40 |
+| 34 | Historical attention projection and runbook entry surfaces | OPS-03, RNB-01, RNB-02 | Complete via Phase 40 automated proxies - 2026-05-27 |
 | 35 | Runbook-guided remediation and alert hook boundaries | RNB-03, HST-05 | Complete - 2026-05-27 |
 | 36 | Docs/example-host/proof closure seed phase | DOC-05, VER-04 | Reconciliation closure complete - 2026-05-27 |
 | 37 | Verification backfill for forensic and ops baseline | FRN-01, FRN-02, FRN-03, OPS-01, OPS-02 | Complete - 2026-05-27 |
 | 38 | Docs and example-host forensics journey closure | DOC-05 | Complete - 2026-05-27 |
 | 39 | CI continuity proof lane closure | VER-04 | Complete - 2026-05-27 |
-| 40 | Phase 34 manual acceptance closure | OPS-03, RNB-01, RNB-02 | Pending |
+| 40 | Phase 34 manual acceptance closure | OPS-03, RNB-01, RNB-02 | Complete - 2026-05-27 (closure shifted left into automation; 2 plans, no human UAT) |
 | 41 | Runbook link fidelity and atom safety hardening | Advisory debt (WR-01, WR-02) | Pending |
 | 42 | Nyquist validation compliance sweep | Validation hygiene (phases 33, 34, 38, 39) | Pending |
 
@@ -263,9 +262,9 @@ This phase is a quality-hygiene closure sweep for validation artifacts and does 
 
 **Phase 40**
 
-1. Manual acceptance checks for overview visual hierarchy and runbook guidance wording are executed and recorded with clear pass/fail evidence.
-2. OPS-03, RNB-01, and RNB-02 no longer depend on open `human_needed` verification status.
-3. Phase 34 verification artifacts and requirement traceability reflect full closure instead of partial/manual-needed state.
+1. Overview visual hierarchy and runbook guidance wording acceptance is encoded as deterministic LiveView/copy-contract proxy tests rather than a human gate, with clear pass/fail evidence from `mix test --seed 0`.
+2. OPS-03, RNB-01, and RNB-02 no longer depend on open `human_needed` verification status; the new proxies run inside merge-blocking `continuity-ver04-c3` and `continuity-ver04-c4` lanes.
+3. Phase 34 verification artifacts and requirement traceability reflect full closure (`status: verified`, `Complete`) instead of partial/manual-needed state, with a published `phase40-gate-report.json` for downstream audits.
 
 **Phase 41**
 

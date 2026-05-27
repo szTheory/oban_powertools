@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: milestone
-current_plan: Not started
-status: milestone_complete
-stopped_at: Phase 36 reconciliation closure complete
-last_updated: "2026-05-27T12:56:21Z"
+current_plan: None
+status: completed
+stopped_at: Phase 40 automated proxy closure complete
+last_updated: "2026-05-27T15:46:10.571Z"
 progress:
-  total_phases: 8
+  total_phases: 11
   completed_phases: 8
-  total_plans: 24
-  completed_plans: 24
-  percent: 100
+  total_plans: 29
+  completed_plans: 26
+  percent: 73
 ---
 
 # Project State
@@ -19,29 +19,29 @@ progress:
 ## Project Reference
 
 **Core Value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-**Current Focus:** Milestone v1.4 closure — all phases complete
+**Current Focus:** Milestone v1.4 gap-closure — Phase 40 complete; Phase 41 and Phase 42 pending.
 
 ## Current Position
 
-Phase: 39 (ci-continuity-proof-lane-closure) — COMPLETE
-Plan: 39-03 complete
+Phase: 40 (phase-34-manual-acceptance-closure) — COMPLETE
+Plan: 40-02 complete
 
-- **Phase:** 39
-- **Plan:** 39-03 complete
+- **Phase:** 40
+- **Plan:** 40-02 complete
 - **Current Plan:** None
-- **Total Plans in Phase:** 3
-- **Status:** Milestone complete, ready for archival flow
-- **Progress:** [##########] 100%
+- **Total Plans in Phase:** 2
+- **Status:** Phase 40 complete via automated proxies; Phase 41 next.
+- **Progress:** [#########.] 91% (Phase 40 of 11 active phases)
 - **Canonical sequencing:** `.planning/ROADMAP.md`
 - **Milestone requirements:** `.planning/REQUIREMENTS.md`
 - **Strategic source of truth:** `.planning/MILESTONE-ARC.md`
 
 ## Performance Metrics
 
-- **Phases Complete:** 8/8 active
-- **Plans Complete:** 24/24 active
-- **Metrics:** v1.4 now includes canonical FRN/OPS verification backfills and reconciled requirement traceability for Phase 37 while preserving deferred DOC-05/VER-04 ownership lanes.
-- **Latest Plan Metric:** 36-03 completed in 4m across 3 tasks and 6 files; reconciliation verification/learnings artifacts and ledger chronology notes published.
+- **Phases Complete:** 9/11 active (32-40 done; 41 + 42 pending)
+- **Plans Complete:** 26/29 active
+- **Metrics:** Phase 40 shifted the two former Phase 34 human gates left into deterministic LiveView/copy-contract proxies, then wired them into the merge-blocking `continuity-ver04-c3` and `continuity-ver04-c4` lanes and published `phase40-gate-report.json` for downstream audits.
+- **Latest Plan Metric:** 40-02 completed via inline orchestrator execution: 4 files modified (host-contract-proof.yml, docs_contract_test.exs, 39-PROOF-MANIFEST.json, 40-02-SUMMARY.md), C3 (49 tests) + C4 (57 tests) + docs-contract (11 tests) green under `--seed 0` locally.
 
 ## Accumulated Context
 
