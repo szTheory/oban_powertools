@@ -154,16 +154,14 @@ After replanning, this phase shifts the entire manual gate left into automation 
 
 **Goal**: resolve advisory phase 34 hardening debt that can reduce selector reliability or introduce avoidable normalization risk.
 **Depends on**: Phase 40
-**Plans**: 3 plans
+**Plans**: 1 plan (bundled per CONTEXT.md D-24 — selectors, atoms, and proof are tightly coupled)
 
 Plans:
 
-- [ ] 41-01-PLAN.md — Harden incident fingerprint interpolation and selector encoding for delimiter-heavy values.
-- [ ] 41-02-PLAN.md — Replace or constrain dynamic atom normalization paths in runbook/provenance handling.
-- [ ] 41-03-PLAN.md — Add targeted proof coverage and update integration notes for hardened behavior.
+- [ ] 41-01-PLAN.md — Bundled WR-01 + WR-02 hardening: centralize URL selector encoding behind `ObanPowertools.Web.Selectors`, replace `String.to_atom/1` in the four target modules with bounded normalization (`String.to_existing_atom/1` + rescue, closed-enum `ObanPowertools.Lifeline.TargetType`), and add deterministic regression coverage for delimiter-heavy fingerprints.
 
 **Details:**
-This phase closes WR-01/WR-02 advisory debt and reduces minor cross-phase risk around runbook deep-link fidelity and safety.
+This phase closes WR-01/WR-02 advisory debt and reduces minor cross-phase risk around runbook deep-link fidelity and safety. Per CONTEXT.md D-24 / D-26, the three originally envisioned plans are combined into a single bundled plan because the selector/atom/proof work is tightly coupled — regression tests only make sense once helpers exist, and splitting would force interim states without review value.
 
 ### Phase 42: Nyquist Validation Compliance Sweep
 
