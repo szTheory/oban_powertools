@@ -1,7 +1,7 @@
 # Adopter Readiness And v1.3 Ordering
 
 Date: 2026-05-25
-Status: Open until v1.3 planning starts
+Status: Updated 2026-05-27 — v1.3 and v1.4 shipped; new assessment at bottom
 
 ## Question
 
@@ -64,3 +64,30 @@ The milestone is now scoped as:
 ## Trigger to revisit
 
 Re-check this ordering at the end of `v1.3` or earlier if planning discovers that the operator-cohesion wedge is thinner than expected.
+
+---
+
+## Updated Assessment — 2026-05-27 (post v1.4)
+
+v1.3 (control plane cohesion) and v1.4 (forensics + runbooks) both shipped as predicted. Assessed again at v1.5 boundary.
+
+### Revised done-% estimate: ~83% (80-89 band)
+
+Backend capability is now stronger than the UI story. The main asymmetry: workflows, forensics, runbooks, lifeline, limits, and cron are all solid; but an adopter still cannot browse, filter, or inspect individual jobs natively without the Oban Web bridge.
+
+### Revised ordering for v1.5+
+
+1. **v1.5: Native Job Surface & Automation API** — jobs list/filter/detail/bulk-actions (QRY-01) + public mutation API + Powertools testing helpers (API-02). Closes the biggest practical adopter gap.
+2. **v1.6: Batches & Composition Completion** — Batch group-of-N-jobs-→-callback (very common SaaS pattern), chains, compose helpers.
+3. **v1.7: Worker Lifecycle Completion** — hooks, deadlines, output recording, field-level redaction.
+4. **After v1.7:** likely at diminishing returns for target persona. Don't build prioritizer/scaler until adoption proves need.
+
+### Why QRY-01 moved above "Automation Surfaces"
+
+The thread suggested v1.5 = Automation Surfaces at v1.2 time when control-plane cohesion was the bottleneck. With v1.3 and v1.4 shipped, the control plane is now rich and cohesive. The bottleneck has shifted: a new adopter sees impressive forensics/runbooks but can't browse jobs without a second package. That asymmetry is more urgent than automation hooks.
+
+### Still-explicit non-priorities
+
+- Full generic job dashboard that replaces Oban Web entirely (overbuilding; Oban Web OSS covers it)
+- Prioritizer/scaler until adoption proves demand
+- Encryption until an adopter specifically requests it
