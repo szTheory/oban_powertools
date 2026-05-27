@@ -47,7 +47,10 @@
   3. Operator can click any job row and see its full detail — args, meta, errors, attempt history, and timing — with `DisplayPolicy` redaction applied to args and meta
   4. Filter state is URL-serialized so deep-links and browser back/forward preserve the current view
   5. Unauthorized actors see a read-only banner and cannot reach mutation surfaces from the browse or detail pages
-**Plans**: TBD
+**Plans**: 3 plans
+  - [ ] 43-01-PLAN.md — Data layer: ObanPowertools.Jobs context module + %JobFilter{} + DisplayPolicy render_job_field/3 + Selectors :jobs path + unit tests
+  - [ ] 43-02-PLAN.md — Wave 2: LiveAuth atoms + router routes + JobsLive :index action (list page, state tabs, filter, push_patch) + LiveView tests
+  - [ ] 43-03-PLAN.md — Wave 3: JobsLive :show action (detail render with DisplayPolicy redaction, errors/attempt panels, back link) + detail tests
 **UI hint**: yes
 
 ### Phase 44: Single-Job Actions
@@ -105,7 +108,7 @@
 | 40    | v1.4      | 2/2           | Complete    | 2026-05-27 |
 | 41    | v1.4      | 1/1           | Complete    | 2026-05-27 |
 | 42    | v1.4      | 1/1           | Complete    | 2026-05-27 |
-| 43    | v1.5      | 0/?           | Not started | —          |
+| 43    | v1.5      | 0/3           | Not started | —          |
 | 44    | v1.5      | 0/?           | Not started | —          |
 | 45    | v1.5      | 0/?           | Not started | —          |
 | 46    | v1.5      | 0/?           | Not started | —          |
