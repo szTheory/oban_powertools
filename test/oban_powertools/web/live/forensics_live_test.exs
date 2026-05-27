@@ -119,6 +119,75 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
     assert html =~ "complete"
   end
 
+  test "renders canonical runbook entry after diagnosis and before timeline", %{conn: conn} do
+    {:ok, entry} =
+      Cron.sync_entry(TestRepo, %{
+        name: "forensics-runbook-cron",
+        source: "runtime",
+        worker: "DemoWorker",
+        queue: "default",
+        expression: "* * * * *"
+      })
+
+    slot_at = truncate_minute(DateTime.add(DateTime.utc_now(), -120, :second))
+    assert {:ok, _coverage} = Cron.record_coverage(TestRepo, entry, slot_at, status: "healthy")
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-5", permissions: [:view_forensics, :view_cron]}
+      )
+
+    {:ok, _view, html} =
+      live(conn, "/ops/jobs/forensics?resource_type=cron_entry&resource_id=#{entry.name}")
+
+    diagnosis_position = html_position(html, "Diagnosis Summary")
+    runbook_position = html_position(html, "Open runbook entry")
+    timeline_position = html_position(html, "Timeline")
+
+    assert diagnosis_position < runbook_position
+    assert runbook_position < timeline_position
+
+    assert html =~ "Diagnosis state"
+    assert html =~ "Why it matters now"
+    assert html =~ "Prerequisites"
+    assert html =~ "Cautions"
+    assert html =~ "Recommended order"
+    assert html =~ "Unsupported boundaries"
+    assert html =~ "Evidence link"
+    assert html =~ "Evidence completeness"
+    assert html =~ "Powertools-native"
+    assert html =~ "Oban Web bridge"
+    assert html =~ "host-owned follow-up"
+  end
+
+  test "renders degraded runbook guidance and non-native next paths as bordered guidance", %{
+    conn: conn
+  } do
+    {:ok, entry} =
+      Cron.sync_entry(TestRepo, %{
+        name: "forensics-runbook-unknown",
+        source: "runtime",
+        worker: "DemoWorker",
+        queue: "default",
+        expression: "* * * * *"
+      })
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-6", permissions: [:view_forensics, :view_cron]}
+      )
+
+    {:ok, _view, html} =
+      live(conn, "/ops/jobs/forensics?resource_type=cron_entry&resource_id=#{entry.name}")
+
+    assert html =~ "history unavailable"
+    assert html =~ "unknown"
+    assert html =~ ~s(data-runbook-ownership="Oban Web bridge")
+    assert html =~ ~s(data-runbook-ownership="host-owned follow-up")
+    refute html =~ ~s(data-runbook-ownership="Oban Web bridge" class="rounded bg-indigo-700)
+    refute html =~ ~s(data-runbook-ownership="host-owned follow-up" class="rounded bg-indigo-700)
+  end
+
   test "mounts the limiter forensic bundle from stable resource selectors", %{conn: conn} do
     resource =
       TestRepo.insert!(%Resource{
@@ -165,4 +234,9 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
   end
 
   defp truncate_minute(%DateTime{} = dt), do: %DateTime{dt | second: 0, microsecond: {0, 0}}
+
+  defp html_position(html, text) do
+    {position, _length} = :binary.match(html, text)
+    position
+  end
 end
