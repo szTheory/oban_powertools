@@ -1,313 +1,397 @@
-# Architecture Patterns
+# Architecture Research
 
-**Domain:** Oban Powertools v1.2 workflow semantics and recovery
-**Researched:** 2026-05-23
-**Confidence:** HIGH
+**Domain:** Phoenix/LiveView operator control plane — native job browse surface and Elixir API
+**Researched:** 2026-05-27
+**Confidence:** HIGH (based on direct codebase inspection)
 
-## Recommended Architecture
+## Standard Architecture
 
-Keep the existing architecture shape: Postgres is the source of truth, Ecto transactions own state transitions, PubSub remains only a hint, LiveView reads durable state, and Lifeline projects incidents from durable evidence. Do **not** introduce a second orchestrator, in-memory wait registry, or external coordination plane.
+### System Overview
 
-The right change is to split the current workflow runtime into two layers:
-
-1. **Workflow command layer** for explicit operator/runtime intents such as complete, signal, await, cancel, expire, and recover.
-2. **Workflow semantics layer** for deterministic reconciliation that derives the next durable state for workflows and steps from rows already stored in Postgres.
-
-That preserves the current DB-first model while making new semantics composable and repair-safe.
-
-### Recommended Structure
-
-```text
-Host code / workers / operator actions
-        |
-        v
-Workflow Commands
-  - complete_step
-  - register_await
-  - deliver_signal
-  - request_cancel
-  - expire_due_workflows
-  - recover_workflow
-        |
-        v
-Ecto.Multi transaction
-  - append durable facts
-  - mutate target rows
-  - append callback/outbox rows
-  - reconcile workflow
-        |
-        v
-Workflow Semantics Engine
-  - derive step/workflow states
-  - derive blocker codes
-  - derive callback emissions
-  - derive stuck/orphan/expired diagnoses
-        |
-        +--> PubSub hint to coordinator + LiveView
-        +--> Lifeline incident projection
-        +--> Callback dispatcher worker
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Host Router Scope                           │
+│              "/ops/jobs"  pipe_through(:browser)                │
+├─────────────────────────────────────────────────────────────────┤
+│              oban_powertools_routes("/oban")                     │
+│                                                                 │
+│  live_session :oban_powertools_native                           │
+│  on_mount: [ObanPowertools.Web.LiveAuth]                        │
+│                                                                 │
+│  Existing                         NEW (v1.5)                    │
+│  ┌──────────────┐  ┌────────────────────────────────────────┐  │
+│  │ EngineOverview│  │ JobsLive          JobDetailLive        │  │
+│  │ LifelineLive  │  │ /jobs             /jobs/:id            │  │
+│  │ LimitersLive  │  └────────────────────────────────────────┘  │
+│  │ CronLive      │                                              │
+│  │ WorkflowsLive │                                              │
+│  │ AuditLive     │                                              │
+│  │ ForensicsLive │                                              │
+│  └──────────────┘                                              │
+├─────────────────────────────────────────────────────────────────┤
+│                    Service Layer                                 │
+│  Existing                         NEW (v1.5)                    │
+│  ┌──────────────┐  ┌────────────────────────────────────────┐  │
+│  │ Lifeline      │  │ Jobs (query module)                    │  │
+│  │ Cron          │  │ ObanPowertools.Operator (API module)   │  │
+│  │ Limits        │  └────────────────────────────────────────┘  │
+│  │ Workflow      │                                              │
+│  │ Forensics     │                                              │
+│  └──────────────┘                                              │
+├─────────────────────────────────────────────────────────────────┤
+│           Shared Infrastructure (unchanged)                     │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐   │
+│  │  Auth    │  │  Audit   │  │Telemetry │  │ControlPlane  │   │
+│  │(Sigra)   │  │          │  │          │  │ Presenter    │   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────────┘   │
+├─────────────────────────────────────────────────────────────────┤
+│                   Postgres / Ecto                               │
+│  ┌──────────────────┐  ┌────────────────────────────────────┐  │
+│  │ oban_jobs        │  │ oban_powertools_audit_events       │  │
+│  │ (Oban.Job schema)│  │ oban_powertools_repair_previews    │  │
+│  │                  │  │ oban_powertools_repair_archives    │  │
+│  │ Existing schema, │  └────────────────────────────────────┘  │
+│  │ no migration     │                                          │
+│  │ required         │                                          │
+│  └──────────────────┘                                          │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Existing Baseline To Preserve
+### Component Responsibilities
 
-These current properties should remain unchanged:
+| Component | Responsibility | New or Modified |
+|-----------|----------------|-----------------|
+| `ObanPowertools.Web.JobsLive` | Job list with filter by queue/state/worker/tags, pagination, bulk selection | NEW |
+| `ObanPowertools.Web.JobDetailLive` | Job detail: args, meta, errors, attempt history, action buttons | NEW |
+| `ObanPowertools.Jobs` | Ecto query builder over `Oban.Job` schema; filter, paginate, count | NEW |
+| `ObanPowertools.Operator` | Typed Elixir API — retry, cancel, discard, bulk variants | NEW |
+| `ObanPowertools.Lifeline` | Command execution pipeline for audited mutations | MODIFIED — add `job_discard` to `@supported_actions`; add clauses to 3 private functions; relax incident guard for browse-initiated actions |
+| `ObanPowertools.Web.Router` | Route declarations | MODIFIED — add `/jobs` and `/jobs/:id` live routes inside existing `live_session` block |
+| `ObanPowertools.Web.LiveAuth` | Auth hooks, permission messages, page banners | MODIFIED — add `:view_jobs`, `:view_job_detail` permission keys and `:jobs` banner |
+| `ObanPowertools.Web.Selectors` | Canonical URL builder | MODIFIED — add `:jobs` and `:job_detail` canonical paths; add `jobs_path/1` and `job_detail_path/2` helpers |
+| `ObanPowertools.Telemetry` | Low-cardinality event contract | MODIFIED — document `source: "api"` for Operator API events under existing `:operator_action` family; no breaking change |
 
-| Existing Component | Keep | Why |
-|-----------|------|-----|
-| `ObanPowertools.Workflow.Runtime` DB-first reconciliation | Yes | Current tests already prove correctness without PubSub follow-up. |
-| `ObanPowertools.Workflow.Coordinator` PubSub hint model | Yes | Good for latency, but must stay non-authoritative. |
-| Persisted `workflows`, `steps`, `edges`, `results` tables | Yes | They already hold durable DAG truth and operator evidence. |
-| `ObanPowertools.Explain.workflow_step/3` | Yes, extend | Existing blocker vocabulary is the right read model seam. |
-| `ObanPowertools.Lifeline` preview/reason/audit repair flow | Yes, extend | New workflow semantics should plug into the same preview/drift/audit contract. |
-| LiveView workflow inspection | Yes, extend | Operators need the new states and diagnoses surfaced natively. |
+## Recommended Project Structure
 
-## New Vs Modified Components
+```
+lib/oban_powertools/
+├── jobs.ex                        # NEW: Ecto query builder over Oban.Job
+├── operator.ex                    # NEW: typed public Elixir API
+├── web/
+│   ├── jobs_live.ex               # NEW: job list LiveView (QRY-01, QRY-03, QRY-04)
+│   ├── job_detail_live.ex         # NEW: job detail LiveView (QRY-02, QRY-03)
+│   ├── router.ex                  # MODIFIED: add /jobs and /jobs/:id routes
+│   ├── live_auth.ex               # MODIFIED: add job-surface permission keys
+│   └── selectors.ex               # MODIFIED: add jobs canonical paths
+└── lifeline.ex                    # MODIFIED: add job_discard + browse-initiated action path
+```
 
-### Modified Components
+## Integration Points
 
-| Component | Change |
-|-----------|--------|
-| `ObanPowertools.Workflow` | Builder/API grows explicit contracts for callbacks, await definitions, cancellation policy, and expiry policy. |
-| `ObanPowertools.Workflow.Runtime` | Stop being only `complete_step`; become the transaction shell that calls a pure semantics planner and persists the resulting transitions. |
-| `ObanPowertools.Workflow.Signal` | Expand from simple PubSub events into a typed internal event vocabulary for `signal_received`, `await_registered`, `workflow_cancel_requested`, `workflow_expired`, `workflow_recovered`, and callback dispatch events. |
-| `ObanPowertools.Explain` | Add diagnosis categories for signal waits, missing signals, expired waits, cancellation propagation, missing backing jobs, and orphaned execution. |
-| `ObanPowertools.Lifeline` | Project workflow-specific incidents from semantics evidence rather than only `pending + blocker_codes != []`; repair previews must understand workflow recover/reconcile/cancel actions. |
-| `ObanPowertools.Web.WorkflowsLive` | Show wait contracts, signal history, terminal reasons, cancellation source, expiry status, recovery actions, and callback delivery status. |
-| `ObanPowertools.Application` | Add only minimal new supervised processes: callback dispatcher and optional expiry/recovery sweeper. |
+### 1. Oban.Job Schema Access
 
-### New Components
+`Oban.Job` is already used by `Lifeline` for direct `repo.get!(Oban.Job, id)` lookups and fragment queries against `meta`. The new `Jobs` query module extends this to full filter + paginate queries. The `tags` field is `{:array, :string}` in Oban's schema; Ecto array containment queries use `fragment/1`.
 
-| Component | Responsibility | Why It Should Exist |
-|-----------|----------------|---------------------|
-| `ObanPowertools.Workflow.Commands` | Public intent API: `complete_step`, `await_step`, `signal_workflow`, `cancel_workflow`, `expire_due`, `recover_workflow`, `reconcile_workflow`. | Separates caller intent from state derivation. |
-| `ObanPowertools.Workflow.Semantics` | Pure transition planner from persisted rows to next states, blocker codes, and emitted workflow events. | Keeps the rules testable and deterministic. |
-| `ObanPowertools.Workflow.Callback` schema + dispatcher | Durable callback/outbox rows and retriable delivery. | Callbacks must survive crashes and avoid inline host-code execution in DB transactions. |
-| `ObanPowertools.Workflow.Await` schema | Durable wait contracts keyed by workflow/step/signal name/correlation. | Signal delivery must work whether the signal arrives before or after the step begins waiting. |
-| `ObanPowertools.Workflow.SignalEvent` schema | Append-only durable signal inbox. | External signals are facts, not transient PubSub messages. |
-| `ObanPowertools.Workflow.Recovery` | Recovery planning for dead/stuck/orphaned graph situations. | Keeps Lifeline repair mutations separate from diagnosis logic. |
+Key `Oban.Job` fields for the browse surface:
 
-## Persistence / Model Changes
+| Field | Type | Use |
+|-------|------|-----|
+| `id` | integer | identity, detail links |
+| `state` | string | filter, display — 8 states: `available`, `scheduled`, `executing`, `retryable`, `completed`, `cancelled`, `discarded`, `suspended` |
+| `queue` | string | filter |
+| `worker` | string | filter, display |
+| `args` | map | detail display (subject to DisplayPolicy redaction) |
+| `meta` | map | detail display; `executor_id` key cross-links to Lifeline |
+| `errors` | list of maps | detail display — each entry has `at`, `attempt`, `error`, `stderr` |
+| `tags` | `[:string]` | filter |
+| `attempt` / `max_attempts` | integer | display |
+| `inserted_at` / `scheduled_at` / `attempted_at` / `completed_at` / `cancelled_at` / `discarded_at` | NaiveDateTime | sort, display |
 
-The milestone needs new durable facts, not just more string states.
+No migration is required — `oban_jobs` is entirely Oban's schema. Oban's own indexes on `(state)`, `(queue)`, and `(worker)` already exist. A composite index on `(state, queue, inserted_at DESC)` may be needed for large tables but is a host-owned operational concern, not a library migration.
 
-### Modify Existing Tables
+The query module follows the established pattern in `Lifeline` and `OverviewReadModel`:
 
-| Table | Recommended Additions | Purpose |
-|-------|------------------------|---------|
-| `oban_powertools_workflows` | `terminal_reason`, `terminal_details`, `cancel_requested_at`, `cancelled_by`, `expires_at`, `expired_at`, `recovered_at`, `last_reconciled_at`, `diagnosis_status` | Workflow-level contracts and operator-visible terminal truth. |
-| `oban_powertools_workflow_steps` | `await_state`, `await_key`, `await_expires_at`, `wait_started_at`, `terminal_reason`, `terminal_details`, `last_job_state`, `last_job_checked_at` | Separate dependency waiting from signal waiting and from job/runtime drift. |
-| `oban_powertools_workflow_edges` | `policy_details` or richer edge policy metadata | Supports future policy growth without a second migration for every new rule. |
-| `oban_powertools_workflow_results` | `result_kind`, `source`, `signal_event_id`, `expires_reason` | Distinguishes worker results from signal-derived resumptions or expiry outcomes. |
+```elixir
+defmodule ObanPowertools.Jobs do
+  import Ecto.Query
 
-### Add New Tables
+  def list(repo, filters \\ [], opts \\ []) do
+    page_size = Keyword.get(opts, :page_size, 50)
+    offset = Keyword.get(opts, :offset, 0)
 
-| Table | Core Fields | Purpose |
-|-------|-------------|---------|
-| `oban_powertools_workflow_awaits` | `workflow_id`, `step_id`, `signal_name`, `correlation_key`, `status`, `registered_at`, `satisfied_at`, `expires_at`, `payload_contract`, `diagnosis_snapshot` | Durable wait registration and timeout basis. |
-| `oban_powertools_workflow_signal_events` | `workflow_id`, `signal_name`, `correlation_key`, `payload`, `payload_bytes`, `recorded_at`, `consumed_at`, `status` | Append-only signal inbox with replay/recovery support. |
-| `oban_powertools_workflow_callbacks` | `workflow_id`, `step_id`, `event_kind`, `payload`, `status`, `attempt`, `scheduled_at`, `delivered_at`, `last_error` | Durable callback outbox and recovery queue. |
+    Oban.Job
+    |> apply_filters(filters)
+    |> order_by([j], desc: j.inserted_at)
+    |> limit(^page_size)
+    |> offset(^offset)
+    |> repo.all()
+  end
 
-### State Model Recommendation
+  defp apply_filters(query, filters) do
+    Enum.reduce(filters, query, fn
+      {:state, v}, q -> where(q, [j], j.state == ^v)
+      {:queue, v}, q -> where(q, [j], j.queue == ^v)
+      {:worker, v}, q -> where(q, [j], j.worker == ^v)
+      {:tag, v}, q -> where(q, [j], fragment("? @> ARRAY[?]::text[]", j.tags, ^v))
+      _, q -> q
+    end)
+  end
+end
+```
 
-Do not overload current `pending` to mean every kind of waiting.
+### 2. Lifeline Command Pipeline Reuse
 
-Recommended workflow states:
+Lifeline is the canonical mutation surface. All job actions from the browse surface (retry, cancel, discard) must route through `Lifeline.preview_repair/4` → `Lifeline.execute_repair/5`. This preserves the preview token, plan hash drift check, `Ecto.Multi`-wrapped audit write, host escalation dispatch, and telemetry emit.
 
-`pending | available | running | waiting | cancelling | cancelled | completed | failed | expired | recovering`
+**What changes in Lifeline:**
 
-Recommended step states:
+a. `@supported_actions` — add `"job_discard"`. `job_retry` and `job_cancel` already exist; they work without incident context because `incident_fingerprint_for_job/2` handles `nil` incident by generating `"job:manual:#{job_id}"`.
 
-`pending | available | executing | waiting_signal | waiting_retry | cancelled | completed | failed | expired`
+b. `build_job_preview/5` — the existing guard blocks `job_rescue` when `health_state != "missing"` but does not block `job_retry` or `job_cancel`. Adding `job_discard` requires an analogous `after_state` and `plan_hash` clause. The browse-initiated path passes `incident: nil`; this already works for `job_retry` and `job_cancel` and will work for `job_discard` with the same treatment.
 
-Use blocker codes and terminal reasons to explain the state, not ad hoc UI strings:
+c. `mutate_target/5` — add the `"job_discard"` clause:
+```elixir
+{"job", "job_discard"} ->
+  job = repo.get!(Oban.Job, preview.target_id)
+  {:ok, repo.update!(Ecto.Changeset.change(job, state: "discarded", discarded_at: now))}
+```
 
-- `waiting_on_dependencies`
-- `waiting_on_retryable_dependency`
-- `waiting_on_signal`
-- `signal_expired`
-- `cancel_requested`
-- `cancelled_by_dependency`
-- `expired_by_contract`
-- `job_missing_for_executing_step`
-- `job_state_mismatch`
-- `orphaned_executor`
+d. `next_job_state/1` — add `defp next_job_state("job_discard"), do: "discarded"`.
+
+e. `repair_summary/3` — add a summary clause for `"job_discard"`.
+
+**What does NOT change:** The preview token, plan hash, drift detection, `Ecto.Multi` transaction, `Audit.record/4` call, host escalation dispatch, and `Telemetry.execute_lifeline_event(:repair_executed, ...)` are all reused unmodified for browse-initiated actions.
+
+### 3. Auth Hooks
+
+`LiveAuth` wraps `Auth` (Sigra) and provides page-level and action-level guards. The new surfaces need:
+
+- New `authorize_page` action atoms: `:view_jobs` (list page), `:view_job_detail` (detail page). Pattern matches every existing LiveView's `mount/3`.
+- For Lifeline calls from the browse surface: reuse `:preview_repair` / `:execute_repair` rather than introducing new atoms. This means host auth modules need no changes, and the audit `command_key` stays `"execute_repair"`.
+- New entries in `LiveAuth`'s `@permission_messages` for `:view_jobs` and `:view_job_detail`.
+- New entry in `@page_read_only_banners` for `:jobs`.
+
+The `Auth.authorize/3` call shape `(actor, action_atom, resource_map)` is unchanged.
+
+### 4. Telemetry Hooks
+
+The contract is frozen at five families: `operator_action`, `limiter`, `cron`, `workflow`, `lifeline`. Low-cardinality is a hard constraint.
+
+- Browse queries: emit under `:operator_action` with `action: "job_browse"` and `source: "ui"` — both keys are already in the `:operator_action` allowed metadata set. No contract change.
+- Executed mutations (retry, cancel, discard): `Lifeline` already emits `Telemetry.execute_lifeline_event(:repair_executed, ...)` with `action`, `incident_class`, `target_type`. Browse-initiated actions produce the same emit. No change needed.
+- Operator API calls: emit under `:operator_action` with `action: "operator_api"` and `source: "api"`. Both metadata keys already allowed.
+
+No new telemetry family is needed.
+
+### 5. Selectors Extension
+
+`Selectors` uses a `@canonical_paths` map with one helper per destination. Extension follows the same pattern as the existing five paths:
+
+```elixir
+# Add to @canonical_paths:
+jobs: "/ops/jobs/jobs",
+
+# Add helpers:
+def jobs_path(params), do: encode(:jobs, params)
+
+# For job detail, build a non-encode helper since the ID is path-embedded:
+def job_detail_path(id, params \\ []) do
+  base = "/ops/jobs/jobs/#{id}"
+  query = params |> Enum.reject(fn {_, v} -> is_nil(v) or v == "" end) |> URI.encode_query()
+  if query == "", do: base, else: "#{base}?#{query}"
+end
+```
+
+### 6. Router Extension
+
+The new routes go inside the existing `live_session :oban_powertools_native` block, inheriting `LiveAuth` on_mount and the `oban_dashboard_path` session key:
+
+```elixir
+live("/jobs", ObanPowertools.Web.JobsLive, :index)
+live("/jobs/:id", ObanPowertools.Web.JobDetailLive, :show)
+```
+
+No new `live_session` is needed. No new session key is needed.
+
+### 7. Operator API Module
+
+`ObanPowertools.Operator` wraps Lifeline calls for programmatic use. The function signature follows the established `(repo, actor, ...)` convention used by `Lifeline`, `Cron`, and `Workflow`:
+
+```elixir
+defmodule ObanPowertools.Operator do
+  @doc "Retry a single job. Actor must satisfy Auth.audit_principal/1."
+  def retry_job(repo, actor, job_id, reason, opts \\ [])
+  # -> {:ok, %{target: job, preview: preview}} | {:error, reason}
+
+  def cancel_job(repo, actor, job_id, reason, opts \\ [])
+  def discard_job(repo, actor, job_id, reason, opts \\ [])
+
+  @doc "Retry multiple jobs. Returns {:ok, count} or {:error, [{id, reason}]}."
+  def bulk_retry(repo, actor, job_ids, reason, opts \\ [])
+  def bulk_cancel(repo, actor, job_ids, reason, opts \\ [])
+  def bulk_discard(repo, actor, job_ids, reason, opts \\ [])
+end
+```
+
+Each single-job function calls `Lifeline.preview_repair/4` then `Lifeline.execute_repair/5`. Bulk functions call the single-job path N times and aggregate results. Bulk operations should cap at a configurable `:max_bulk` option (default 100) to bound latency and audit volume.
 
 ## Data Flow
 
-### 1. Step Completion / Retry / Failure
+### Job Browse and Action Flow
 
-1. Worker or runtime calls `Workflow.Commands.complete_step/4`.
-2. Command transaction writes result evidence and step terminal/update facts.
-3. `Workflow.Semantics` recomputes descendant readiness, cancellation propagation, callback emissions, and workflow summary state.
-4. Transaction persists those changes atomically.
-5. PubSub broadcasts a hint for LiveView and the coordinator.
-6. Callback dispatcher picks up any newly ready callback rows.
+```
+Operator navigates to /ops/jobs
+    |
+    v
+JobsLive.mount/3
+  -> LiveAuth.authorize_page(socket, :view_jobs, %{type: :page, id: "jobs"})
+  -> Jobs.list(repo, filters, page_size: 50)     [queries oban_jobs directly]
+  -> assign(:jobs, jobs)
+    |
+Operator applies filter (queue, state, worker, tag)
+    |
+    v
+JobsLive.handle_event("filter", params, socket)
+  -> push_patch with new query params
+  -> handle_params -> Jobs.list(repo, new_filters)
+    |
+Operator clicks "Preview Retry" on a job row
+    |
+    v
+JobsLive.handle_event("preview_action", %{"job-id" => id, "action" => "job_retry"}, socket)
+  -> LiveAuth.authorize_action(socket, :preview_repair, %{type: :job, id: id})
+  -> Lifeline.preview_repair(repo, actor,
+       %{action: "job_retry", target_type: "job", target_id: id, incident_id: nil})
+  -> {:ok, preview}  [incident_fingerprint: "job:manual:#{id}"]
+  -> assign(:preview, preview)
+    |
+Operator enters reason + clicks "Execute"
+    |
+    v
+JobsLive.handle_event("execute_action", ...)
+  -> LiveAuth.authorize_action(socket, :execute_repair, resource)
+  -> Lifeline.execute_repair(repo, actor, preview_token, reason)
+     -> plan_hash recompute (drift check)
+     -> Ecto.Multi: mutate_target + update preview + Audit.record("lifeline.repair_executed", ...)
+     -> Telemetry.execute_lifeline_event(:repair_executed, %{count: 1}, %{action: "job_retry", ...})
+  -> {:ok, result}
+  -> reload job list
+```
 
-Recommendation: callback emission should be derived from transition edges such as `step -> completed`, `workflow -> failed`, not from ad hoc code branches.
+### Operator API Flow
 
-### 2. Signal / Await
+```
+ObanPowertools.Operator.retry_job(repo, actor, job_id, reason)
+    |
+    v
+  Lifeline.preview_repair(repo, actor,
+    %{action: "job_retry", target_type: "job", target_id: job_id, incident_id: nil})
+    |
+  {:ok, preview}
+    |
+  Lifeline.execute_repair(repo, actor, preview.preview_token, reason)
+    -> same Ecto.Multi path as UI: audit written, telemetry emitted
+    |
+  {:ok, %{target: updated_job, preview: consumed_preview}}
+```
 
-1. A step enters a wait contract by writing a row to `workflow_awaits` and moving to `waiting_signal`.
-2. Any external signal is inserted into `workflow_signal_events`, even if no await exists yet.
-3. Reconciliation matches pending awaits to stored signals by `workflow_id + signal_name + correlation_key`.
-4. Matching a signal marks the await satisfied, persists a signal-derived result or state update, and transitions the step back into `available` or `completed`, depending on the contract.
-5. Timeout processing moves expired awaits to `expired` or `cancelled`, based on the declared expiry policy.
+## New vs Modified: Explicit Component Table
 
-Recommendation: signals should be durable facts first, PubSub notifications second.
+### New (net-new files — zero risk to existing surfaces)
 
-### 3. Cancellation / Expiry
+| Component | File | Risk |
+|-----------|------|------|
+| `ObanPowertools.Jobs` | `lib/oban_powertools/jobs.ex` | None — pure Ecto, no deps on Lifeline |
+| `ObanPowertools.Operator` | `lib/oban_powertools/operator.ex` | None — thin wrapper; depends on Lifeline Phase 3 changes |
+| `ObanPowertools.Web.JobsLive` | `lib/oban_powertools/web/jobs_live.ex` | None until Phase 3 (mutation wiring) |
+| `ObanPowertools.Web.JobDetailLive` | `lib/oban_powertools/web/job_detail_live.ex` | None until Phase 3 |
 
-1. Operator/runtime issues `cancel_workflow` or a sweeper finds `expires_at <= now`.
-2. Command writes workflow-level cancellation or expiry intent first.
-3. Semantics propagates intent to runnable/waiting/executing steps.
-4. If a step has a backing Oban job in a cancellable state, use Oban cancellation APIs; otherwise durable step state still advances so workflow truth is explicit.
-5. Reconciliation appends callback rows for `workflow_cancelled` or `workflow_expired`.
-6. Lifeline can still repair or explain any residual drift between step truth and job truth.
+### Modified (surgical additions to existing files)
 
-This matches current Oban behavior: cancellable jobs are `executing`, `available`, `scheduled`, or `retryable`, and worker-returned `{:cancel, reason}` lands in `cancelled` while `{:error, reason}` becomes `retryable` or `discarded` depending on attempts. Sources: Oban `Oban` and `Oban.Worker` docs, v2.22.1.
+| Component | File | Change Scope | Risk |
+|-----------|------|-------------|------|
+| `ObanPowertools.Lifeline` | `lib/oban_powertools/lifeline.ex` | Add `"job_discard"` to `@supported_actions`; add clauses to `build_job_preview/5`, `mutate_target/5`, `next_job_state/1`, `repair_summary/3` | Low — additive clauses, no existing match ordering affected |
+| `ObanPowertools.Web.Router` | `lib/oban_powertools/web/router.ex` | Add 2 `live/3` calls inside existing `live_session` | Minimal — pattern is identical to existing 7 routes |
+| `ObanPowertools.Web.LiveAuth` | `lib/oban_powertools/web/live_auth.ex` | Add 2 keys to `@permission_messages`; add 1 key to `@page_read_only_banners` | Minimal — module attribute additions only |
+| `ObanPowertools.Web.Selectors` | `lib/oban_powertools/web/selectors.ex` | Add `:jobs` to `@canonical_paths`; add `jobs_path/1` and `job_detail_path/2` | Minimal — additive only |
+| `ObanPowertools.Telemetry` | `lib/oban_powertools/telemetry.ex` | Doc update only if `source: "api"` needs callout; no runtime change | None |
 
-### 4. Recovery / Stuck Graph Diagnosis
+## Build Order to Minimize Coupling Risk
 
-1. `Workflow.Semantics` derives diagnosis facts from durable rows: dependency waits, signal waits, expired waits, missing jobs, executor loss, callback delivery failure.
-2. `ObanPowertools.Explain` exposes the same diagnosis vocabulary to UI and programmatic callers.
-3. `ObanPowertools.Lifeline.project_incidents/2` consumes those facts and opens incidents with explicit classes:
-   - `workflow_waiting_signal`
-   - `workflow_signal_expired`
-   - `workflow_orphaned_execution`
-   - `workflow_callback_failed`
-   - `workflow_cancel_stalled`
-4. Repair preview uses the same existing preview/reason/drift/audit model.
-5. Recovery actions should be explicit commands such as `reconcile_workflow`, `requeue_callback`, `replay_signal`, `cancel_workflow`, `force_expire_workflow`, not raw row edits.
+**Phase A: Read-only job browse (QRY-01, QRY-02)**
 
-Recommendation: diagnosis should move from “blocked means stuck” to “derive a precise incident class from durable evidence”.
+Build `ObanPowertools.Jobs` and `JobsLive` as read-only first. Add router routes. Extend `Selectors` and `LiveAuth`. Zero Lifeline dependency. Validates `Oban.Job` query access before touching mutation code.
 
-## Patterns To Follow
+Add `JobDetailLive` (also read-only). No new integration points beyond Jobs query module.
 
-### Pattern 1: Facts First, Projection Second
+**Phase B: Single-job actions (QRY-03)**
 
-**What:** Write immutable facts such as signal arrival, callback intent, cancel request, and await registration before mutating summary state.
+Modify `Lifeline` to add `job_discard` support and validate browse-initiated (no-incident) action path. Wire preview/execute events into `JobsLive` and `JobDetailLive`. This is the highest-risk phase because it modifies `Lifeline`, but the changes are purely additive — new match clauses, no existing clause reordering.
 
-**When:** Any action that must survive crashes, duplicate delivery, or operator retries.
+**Phase C: Bulk operations (QRY-04)**
 
-**Why:** Recovery becomes replaying facts through reconciliation rather than guessing prior intent from current rows.
+Add bulk selection state to `JobsLive`. Implement `Operator.bulk_*` functions using the Phase B single-job pipeline. No new Lifeline changes needed.
 
-### Pattern 2: Pure Semantics Planner
+**Phase D: Operator API module (API-01)**
 
-**What:** Put state derivation in a pure module that accepts workflow rows, await rows, signal rows, and job snapshots and returns desired mutations.
+Add `ObanPowertools.Operator` as a thin wrapper. All Lifeline changes are already in place. Entirely additive.
 
-**When:** Workflow state depends on multiple durable sources and new rules will keep arriving.
+## Anti-Patterns
 
-**Why:** This prevents `Runtime`, `Lifeline`, and LiveView from each re-implementing the same rules.
+### Anti-Pattern 1: Raw Mass-Update Bypass
 
-### Pattern 3: Durable Callback Outbox
+**What people do:** Use `Oban.cancel_all_jobs/1` or `repo.update_all/2` from the UI or API.
 
-**What:** Model callbacks as rows plus a dispatcher worker, not inline host callbacks inside transactions.
+**Why it's wrong:** Bypasses preview token, plan hash, audit record, and telemetry — the entire Lifeline contract. Creates unauditable mutations.
 
-**When:** Workflow completion, failure, expiry, recovery, and signal satisfaction need host-visible hooks.
+**Do this instead:** Route all mutations through `Lifeline.preview_repair/4` + `Lifeline.execute_repair/5`.
 
-**Why:** Inline callbacks are not runtime-safe, not replayable, and not auditable enough for this package.
+### Anti-Pattern 2: Parallel Mutation Pipeline
 
-### Pattern 4: Explainability Shares The Same Vocabulary As Recovery
+**What people do:** Build a `JobActions` module with direct `repo.update!` calls for retry/cancel/discard.
 
-**What:** The blocker codes shown in UI should be the same codes Lifeline uses for incident classification and repair previews.
+**Why it's wrong:** Duplicates preview, drift, audit, and telemetry logic immediately and diverges from the audit trail format.
 
-**When:** Any new wait or terminal mode is added.
+**Do this instead:** Extend Lifeline with one new action (`job_discard`) and reuse the existing pipeline for `job_retry` and `job_cancel`.
 
-**Why:** Prevents the current split where UI says “blocked” while repair logic guesses why.
+### Anti-Pattern 3: New Auth Actions Requiring Host Module Changes
 
-## Anti-Patterns To Avoid
+**What people do:** Introduce `:preview_job_action` and `:execute_job_action` as new auth atoms, requiring host apps to update their auth modules.
 
-### Anti-Pattern 1: Using PubSub As Signal Storage
+**Why it's wrong:** Host apps have already implemented auth around `:preview_repair` / `:execute_repair`. New atoms are a breaking change to the host contract.
 
-**What:** Treating PubSub events as the only carrier for workflow signals or callback delivery.
+**Do this instead:** Reuse `:preview_repair` and `:execute_repair` for browse-initiated job actions. The resource map `%{type: :job, id: job_id}` already carries enough context for host auth logic.
 
-**Why bad:** Missed messages become lost workflow facts.
+### Anti-Pattern 4: Job Query Caching
 
-**Instead:** Persist signal and callback rows first, then broadcast hints.
+**What people do:** Introduce a GenServer or ETS cache for job counts or filtered lists.
 
-### Anti-Pattern 2: Overloading `pending`
+**Why it's wrong:** Conflicts with the Ecto-native, no-Redis design constraint. Adds stateful complexity that none of the existing operator surfaces require.
 
-**What:** Reusing one state for dependency waits, external signal waits, expiry hold, and cancellation stall.
+**Do this instead:** Query Postgres directly with appropriate `LIMIT` and pagination. Add `OFFSET`-based pagination for the list; switch to keyset (cursor) pagination only if table sizes warrant it.
 
-**Why bad:** Diagnosis, repair, and UI all become ambiguous.
+## Scaling Considerations
 
-**Instead:** Keep state coarse but use dedicated wait/terminal columns plus blocker codes.
+| Scale | Architecture Adjustments |
+|-------|--------------------------|
+| < 100K jobs | Default Oban indexes sufficient; `LIMIT/OFFSET` pagination fine |
+| 100K–1M jobs | Host-owned composite index on `(state, queue, inserted_at DESC)` if needed; enforce `LIMIT` ceiling; keyset pagination for deep pages |
+| > 1M jobs | Keyset pagination required; Oban Pruner discipline critical; out of scope for v1.5 |
 
-### Anti-Pattern 3: Direct Row Mutation From Lifeline
-
-**What:** Letting repair code update step/workflow rows without going through workflow commands.
-
-**Why bad:** Recovery bypasses callback emission, audit consistency, and semantic recomputation.
-
-**Instead:** Lifeline should call command APIs that re-enter the same transaction + semantics pipeline.
-
-### Anti-Pattern 4: Callback Execution Inside State Transaction
-
-**What:** Calling host code while holding DB transaction state for workflow completion.
-
-**Why bad:** Increases lock time, couples host failures to core workflow truth, and makes recovery unclear.
-
-**Instead:** Commit workflow truth first, then dispatch callbacks from durable outbox rows.
-
-## Scalability Considerations
-
-| Concern | At 100 workflows | At 10K workflows | At 1M workflows |
-|---------|------------------|------------------|-----------------|
-| Reconciliation cost | Full-graph reload is acceptable | Reconcile only affected workflow and changed await/signal rows | Need targeted queries, batched sweeps, and possibly per-workflow versioning to avoid repeated full scans |
-| Signal volume | Append-only inbox is cheap | Need indexes on `workflow_id`, `signal_name`, `correlation_key`, `status` | Add retention/pruning and partitioning strategy for signal/callback history |
-| Callback retries | Simple worker polling is enough | Need backoff and dedupe guards | Need explicit retention and dead-letter visibility |
-| Diagnosis sweeps | Inline checks acceptable | Add periodic sweeper for expiry/callback failures | Make diagnosis incremental and driven by due rows instead of global scans |
-
-## Sensible Build Order
-
-1. **Semantics foundation**
-   - Add `Workflow.Commands` and `Workflow.Semantics`.
-   - Refactor `Workflow.Runtime` to use them without changing public behavior yet.
-   - Goal: one place to compute transitions before new contracts arrive.
-
-2. **Persistence contract expansion**
-   - Add workflow/step columns for terminal reason, cancellation, expiry, and reconciliation timestamps.
-   - Add `workflow_awaits`, `workflow_signal_events`, and `workflow_callbacks`.
-   - Goal: durable facts exist before any new feature depends on them.
-
-3. **Signal/await semantics**
-   - Implement await registration, signal delivery, and matcher reconciliation.
-   - Extend explainability with `waiting_on_signal` and timeout diagnosis.
-   - Goal: external coordination works even across crashes and reorderings.
-
-4. **Cancellation and expiry**
-   - Add command APIs, propagation rules, and optional due-work sweeper.
-   - Integrate with Oban cancellation where backing jobs exist.
-   - Goal: explicit terminal contracts and predictable operator behavior.
-
-5. **Callback outbox and recovery**
-   - Emit callback rows from state transitions.
-   - Add dispatcher worker and retry/requeue semantics.
-   - Goal: host-visible completion/recovery hooks without unsafe inline execution.
-
-6. **Stuck-graph diagnosis and Lifeline integration**
-   - Upgrade incident projection from generic blocked-state checks to precise workflow incident classes.
-   - Route repair previews through command APIs.
-   - Goal: recovery actions stay runtime-safe and semantically complete.
-
-7. **Operator surfaces**
-   - Extend `WorkflowsLive` and Lifeline UI with wait/signal/cancel/expiry/callback visibility and audited actions.
-   - Goal: explain, then act.
+Bulk action cap: enforce a max selection size (default 100) in `JobsLive` to bound latency and audit volume. Expose as a configurable `RuntimeConfig` option or hard-coded constant in `Operator`.
 
 ## Sources
 
-- Local code:
-  - `lib/oban_powertools/workflow.ex`
-  - `lib/oban_powertools/workflow/runtime.ex`
-  - `lib/oban_powertools/workflow/coordinator.ex`
-  - `lib/oban_powertools/workflow/signal.ex`
-  - `lib/oban_powertools/explain.ex`
-  - `lib/oban_powertools/lifeline.ex`
-  - `lib/oban_powertools/web/workflows_live.ex`
-  - `guides/workflows.md`
-  - `.planning/PROJECT.md`
-  - `.planning/MILESTONE-ARC.md`
-- Official docs:
-  - Oban v2.22.1 `Oban.Worker`: https://hexdocs.pm/oban/Oban.Worker.html
-  - Oban v2.22.1 `Oban`: https://hexdocs.pm/oban/Oban.html
-  - Oban v2.22.1 Job Lifecycle: https://hexdocs.pm/oban/job_lifecycle.html
+- `lib/oban_powertools/lifeline.ex` — canonical mutation pipeline, `@supported_actions`, `mutate_target/5`, `build_job_preview/5`, `incident_fingerprint_for_job/2`, `next_job_state/1`
+- `lib/oban_powertools/web/live_auth.ex` — auth hook extension pattern; `@permission_messages` and `@page_read_only_banners` maps
+- `lib/oban_powertools/web/router.ex` — `live_session` block structure; route addition pattern
+- `lib/oban_powertools/web/selectors.ex` — `@canonical_paths` map; path helper pattern
+- `lib/oban_powertools/telemetry.ex` — frozen contract; allowed metadata keys per family
+- `lib/oban_powertools/audit.ex` — `Audit.record/4` signature; resource identity format
+- `lib/oban_powertools/auth.ex` — `authorize/3`, `actor_id/1`, `audit_principal/1` call shapes
+- `lib/oban_powertools/runtime_config.ex` — `repo!/1` and `Application.fetch_env!` patterns
+- Oban v2.18 docs (Context7 `/oban-bg/oban`) — `Oban.Job` fields and 8-state machine; `Oban.Job.query/1`; `cancel_all_jobs/1`; `retry_all_jobs/1`
+
+---
+*Architecture research for: Oban Powertools v1.5 Native Job Surface & Automation API*
+*Researched: 2026-05-27*
