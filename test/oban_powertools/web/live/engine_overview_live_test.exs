@@ -367,6 +367,49 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
     end)
   end
 
+  test "encodes delimiter-heavy incident fingerprints with the full canonical delimiter set in overview links",
+       %{conn: conn} do
+    # Full D-19 delimiter set: : / ? # % space & =
+    active_fingerprint = "dead_executor:exec/path?frag#tag with%20space&query=value"
+    resolved_fingerprint = "dead_executor:resolved/path?frag#tag with%20space&query=value"
+
+    seed_overview_fixture!(
+      active_fingerprint: active_fingerprint,
+      resolved_fingerprint: resolved_fingerprint
+    )
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_overview]}
+      )
+
+    {:ok, view, html} = live(conn, "/ops/jobs")
+
+    encoded_active = URI.encode_www_form(active_fingerprint)
+    encoded_resolved = URI.encode_www_form(resolved_fingerprint)
+
+    # Lifeline links use encoded fingerprint
+    assert has_element?(
+             view,
+             "a[href='/ops/jobs/lifeline?view=active&incident_fingerprint=#{encoded_active}']"
+           )
+
+    assert has_element?(
+             view,
+             "a[href='/ops/jobs/lifeline?view=resolved&incident_fingerprint=#{encoded_resolved}']"
+           )
+
+    # Forensics links use encoded fingerprint
+    assert html =~ "/ops/jobs/forensics?incident_fingerprint=#{encoded_active}"
+    assert html =~ "/ops/jobs/forensics?incident_fingerprint=#{encoded_resolved}"
+
+    # Raw delimiters must NOT appear unencoded in fingerprint parameter context
+    refute html =~ "incident_fingerprint=dead_executor:exec/path"
+    refute html =~ "incident_fingerprint=dead_executor:resolved/path"
+    refute html =~ "incident_fingerprint=#{active_fingerprint}"
+    refute html =~ "incident_fingerprint=#{resolved_fingerprint}"
+  end
+
   defp byte_index(text, marker) do
     case :binary.match(text, marker) do
       {index, _len} -> index

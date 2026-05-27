@@ -658,6 +658,66 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     refute selected_html =~ "reason="
   end
 
+  test "selects an incident with a delimiter-heavy fingerprint and round-trips the URL", %{
+    conn: conn
+  } do
+    # Use an executor_id with embedded delimiters so the projected fingerprint
+    # ("dead_executor:#{executor_id}") contains delimiters (:, /, space, &, =).
+    # This exercises the full D-19 encoding path through selection_path/1 ->
+    # Selectors.lifeline_path/1 -> URI.encode_query/1.
+    uid = System.unique_integer([:positive])
+    executor_id = "phx-41/delim:test #{uid}&x=#{uid}"
+
+    insert_missing_heartbeat!(executor_id)
+    incident = insert_dead_executor_incident!(executor_id)
+    job = insert_executing_job!(executor_id)
+    update_incident_job_ids!(incident, [job.id])
+
+    # Re-read the incident after projection to get the canonical fingerprint
+    # (projection may upsert but the fingerprint matches the executor_id pattern)
+    fingerprint = incident.incident_fingerprint
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-viewer", permissions: [:view_lifeline]}
+      )
+
+    {:ok, view, _html} = live(conn, "/ops/jobs/lifeline")
+
+    view
+    |> element("button[phx-value-row-id$=':job:#{job.id}'][phx-click='select_incident']")
+    |> render_click()
+
+    encoded_fingerprint = URI.encode_www_form(fingerprint)
+    row_id_str = "#{incident.id}:job:#{job.id}"
+    encoded_row_id = URI.encode_www_form(row_id_str)
+
+    assert_patch(
+      view,
+      "/ops/jobs/lifeline?view=active&incident_fingerprint=#{encoded_fingerprint}&row-id=#{encoded_row_id}"
+    )
+
+    # Re-mount: the encoded URL resolves back to the same incident row
+    {:ok, _remounted_view, remounted_html} =
+      live(
+        conn,
+        "/ops/jobs/lifeline?view=active&incident_fingerprint=#{encoded_fingerprint}"
+      )
+
+    # The incident row for this executor must appear in the re-mounted page,
+    # confirming the view=active tab was honoured and the incident is visible.
+    # Split on "&" to get a safe HTML-entity-free prefix (the executor_id contains
+    # "&" which the template renders as "&amp;" making direct match impossible).
+    safe_executor_prefix = executor_id |> String.split("&") |> List.first()
+    assert remounted_html =~ safe_executor_prefix
+
+    # Encoded fingerprint must appear in URL context (not raw)
+    assert remounted_html =~ "incident_fingerprint=#{encoded_fingerprint}"
+
+    # The raw (unencoded) fingerprint must not appear as a URL parameter value
+    refute remounted_html =~ "incident_fingerprint=#{fingerprint}"
+  end
+
   defp insert_dead_executor_incident!(executor_id, health_state \\ "missing") do
     %Incident{}
     |> Incident.changeset(%{
