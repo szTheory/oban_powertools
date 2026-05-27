@@ -33,7 +33,7 @@ Make the stable v1.3 control plane materially better for real incident investiga
 
 - [ ] **DOC-05**: README, operator guides, and example-host material explain the new forensics and runbook surfaces honestly, including what is advisory, what is merge-blocking proof, and what remains host-owned.
 - [ ] **VER-04**: Automated proof covers forensic timeline projection, limiter and cron history behavior, runbook guidance rendering, and continuity between diagnosis, action, and audit surfaces.
-- [ ] **HST-05**: Host apps can integrate alert or escalation hooks around the new investigative surfaces without losing explicit boundaries about where entitlement, delivery, or downstream runbook truth lives.
+- [x] **HST-05**: Host apps can integrate alert or escalation hooks around the new investigative surfaces without losing explicit boundaries about where entitlement, delivery, or downstream runbook truth lives.
 
 ## Capability Selection Rubric
 
@@ -109,7 +109,7 @@ Make the stable v1.3 control plane materially better for real incident investiga
 | RNB-03 | Phase 35 | Complete |
 | DOC-05 | Phase 36 | Pending |
 | VER-04 | Phase 36 | Pending |
-| HST-05 | Phase 36 | Pending |
+| HST-05 | Phase 35 | Complete |
 
 **Coverage:**
 - v1.4 requirements: 12 total

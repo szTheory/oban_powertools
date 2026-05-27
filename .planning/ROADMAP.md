@@ -64,7 +64,7 @@ This phase should make the product better at saying “here is the next safe thi
 Plans:
 
 - [x] 35-01-PLAN.md — Preserve runbook context through supported native remediation flows so the resulting audit and evidence views explain what was attempted and why.
-- [ ] 35-02-PLAN.md — Add explicit host-owned alert or escalation hook seams with truthful fallback behavior and no first-party provider lock-in.
+- [x] 35-02-PLAN.md — Add explicit host-owned alert or escalation hook seams with truthful fallback behavior and no first-party provider lock-in.
 - [ ] 35-03-PLAN.md — Verify that native, bridge-only, and host-owned follow-up paths stay clearly distinguished across remediation and escalation surfaces.
 
 **Details:**
