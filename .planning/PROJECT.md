@@ -150,4 +150,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-27 after Phase 36 reconciliation closure*
+*Last updated: 2026-05-27 after Phase 41 (WR-01/WR-02 advisory debt closure: centralized URL selector encoding via `ObanPowertools.Web.Selectors`, bounded atom normalization via `ObanPowertools.Lifeline.TargetType` and allowlisted `EvidenceBundle.normalize_related_evidence/1`).*
