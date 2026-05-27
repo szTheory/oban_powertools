@@ -89,6 +89,68 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
     refute html =~ "fourth historical exemplar"
   end
 
+  test "renders attention details with evidence links and stable overview URLs", %{conn: conn} do
+    %{blocked_resource: blocked_resource, nightly: nightly} = seed_overview_fixture!()
+
+    TestRepo.insert!(%LimiterHistoryFact{
+      resource_name: blocked_resource.name,
+      partition_key: "__global__",
+      event_type: "limiter.blocked",
+      cause_kind: "policy",
+      occurred_at: DateTime.utc_now(),
+      metadata: %{"reason" => "policy cooldown"}
+    })
+
+    slot_at = DateTime.utc_now() |> DateTime.add(-120, :second) |> truncate_minute()
+    assert {:ok, _coverage} = Cron.record_coverage(TestRepo, nightly, slot_at, status: "healthy")
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_overview]}
+      )
+
+    {:ok, view, html} = live(conn, "/ops/jobs")
+
+    assert html =~ "Blocked by policy cooldown for payments-api"
+    assert html =~ "Recent cron history shows a missed fire while scheduler coverage was healthy."
+    assert html =~ "history unavailable"
+    assert html =~ "Powertools-native"
+    assert html =~ "Open forensic timeline"
+    assert html =~ "Open runbook entry"
+
+    assert has_element?(
+             view,
+             "a[href='/ops/jobs/forensics?resource_id=payments-api&resource_type=limiter']",
+             "Open forensic timeline"
+           )
+
+    assert has_element?(
+             view,
+             "a[href='/ops/jobs/limiters?resource=payments-api']",
+             "Open runbook entry"
+           )
+
+    refute html =~ "attention_reason="
+    refute html =~ "reason="
+    refute html =~ "copy="
+    refute html =~ "preview_token="
+    refute html =~ URI.encode_www_form("Blocked by policy cooldown for payments-api")
+  end
+
+  test "renders empty guidance inside quiet overview buckets", %{conn: conn} do
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_overview]}
+      )
+
+    {:ok, _view, html} = live(conn, "/ops/jobs")
+
+    assert html =~ "No historical attention needed"
+
+    assert html =~
+             "Current state and retained history do not identify a safe runbook path right now."
+  end
+
   defp seed_overview_fixture! do
     blocked_resource =
       TestRepo.insert!(%Resource{
