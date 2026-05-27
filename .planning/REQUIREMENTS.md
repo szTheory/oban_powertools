@@ -110,6 +110,9 @@ Make the stable v1.3 control plane materially better for real incident investiga
 | DOC-05 | Phase 38 | Complete |
 | VER-04 | Phase 39 | Complete |
 | HST-05 | Phase 35 | Complete |
+| API-02 | Deferred (v1.5+) | Deferred |
+| QRY-01 | Deferred (v1.5+) | Deferred |
+| ALR-01 | Deferred (v1.5+) | Deferred |
 
 Reconciliation note: **Phase 36 is a reconciliation umbrella** with additive chronology only.
 `DOC-05` closure ownership stays in Phase 38 (`38-VERIFICATION.md`, including `DOC05-C1` contract lineage),
