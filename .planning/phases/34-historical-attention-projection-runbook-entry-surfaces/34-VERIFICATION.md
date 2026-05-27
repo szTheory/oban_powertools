@@ -1,24 +1,28 @@
 ---
 phase: 34-historical-attention-projection-runbook-entry-surfaces
-verified: 2026-05-27T07:19:52Z
-status: human_needed
+verified: 2026-05-27T15:39:48Z
+status: verified
 score: 15/15 must-haves verified
 overrides_applied: 0
-human_verification:
+automated_verification:
   - test: "Overview visual scan"
     expected: "The existing diagnosis-first bucket grid remains the primary scan model, historical exemplars are bounded and secondary, and no feed-like section dominates the page."
-    why_human: "Visual hierarchy and operator scan quality cannot be fully verified from code and DOM assertions."
+    proxy: "test/oban_powertools/web/live/engine_overview_live_test.exs"
+    command: "mix test test/oban_powertools/web/live/engine_overview_live_test.exs --seed 0"
+    closed_by: "Phase 40 plan 40-01"
   - test: "Runbook copy judgment"
     expected: "Representative overview, drilldown, and /ops/jobs/forensics states read as advisory, evidence-grounded, and ownership-honest before navigation or action."
-    why_human: "Copy tone and support-truth clarity need human review even though required strings and links are present."
+    proxy: "test/oban_powertools/web/live/runbook_copy_contract_test.exs"
+    command: "mix test test/oban_powertools/web/live/runbook_copy_contract_test.exs --seed 0"
+    closed_by: "Phase 40 plan 40-01"
 ---
 
 # Phase 34: Historical Attention Projection & Runbook Entry Surfaces Verification Report
 
 **Phase Goal:** project historically important issues back into the native overview and expose the first honest runbook entry points.
-**Verified:** 2026-05-27T07:19:52Z
-**Status:** human_needed
-**Re-verification:** No - initial verification
+**Verified:** 2026-05-27T07:19:52Z (initial); 2026-05-27T15:39:48Z (human gate retired by Phase 40 plan 40-01).
+**Status:** verified
+**Re-verification:** Phase 40 plan 40-01 replaced the human visual-scan and copy-judgment gates with automated proxies; CI shift-left wired into C3/C4 by Phase 40 plan 40-02.
 
 ## Goal Achievement
 
@@ -113,23 +117,25 @@ human_verification:
 | WR-01 | `34-REVIEW.md` | `overview_read_model.ex` interpolates `incident_fingerprint` directly into some Lifeline/Forensics URLs instead of encoding it. | Advisory debt. Stable selector names are used and no rendered copy selectors were found, but delimiter-containing fingerprints could lose selector fidelity. |
 | WR-02 | `34-REVIEW.md` | `RunbookEntry`, `Provenance`, and presenter normalization use `String.to_atom/1` for caller-provided strings. | Advisory security debt. It does not block the Phase 34 UI goal, but should be fixed with whitelist normalization. |
 
-### Human Verification Required
+### Automated Verification
+
+The two former human gates are encoded as deterministic ExUnit/LiveView proxy tests added in Phase 40 plan 40-01. CI shift-left into the existing `continuity-ver04-c3` and `continuity-ver04-c4` lanes is performed by Phase 40 plan 40-02; merge-blocking workflow drift is prevented by marker assertions in `test/oban_powertools/docs_contract_test.exs`.
 
 ### 1. Overview Visual Scan
 
-**Test:** Open `/ops/jobs` with representative limiter, cron, workflow, and Lifeline history and inspect the first viewport.
-**Expected:** The existing diagnosis-first bucket grid remains primary; historical exemplars are bounded and secondary; no raw feed or new dashboard band dominates the page.
-**Why human:** Visual hierarchy and operator scan quality cannot be fully proven from static code checks.
+**Proxy test:** `test/oban_powertools/web/live/engine_overview_live_test.exs` — `"visual hierarchy proxy: bucket-grid headings precede historical exemplars and no feed-like section is rendered"`
+**Command:** `mix test test/oban_powertools/web/live/engine_overview_live_test.exs --seed 0`
+**Encoding:** asserts bucket headings (`Diagnosis-first overview`, `Needs Review`, `Blocked`, `Waiting`, `Runnable`, `Bridge-only Follow-up`, `Resolved Recently`) appear in DOM order before any exemplar marker, and refutes any top-level feed-like section heading (`Event Feed`, `Activity Feed`, `Event Stream`, `Recent Activity`).
 
 ### 2. Runbook Copy Judgment
 
-**Test:** Open representative `/ops/jobs/forensics`, cron, limiter, workflow, and Lifeline drilldown states.
-**Expected:** Runbook guidance reads as advisory, evidence-grounded, and ownership-honest, with native/bridge/host-owned venue labels visible before navigation or action.
-**Why human:** Copy tone and support-truth posture need human judgment beyond string assertions.
+**Proxy test:** `test/oban_powertools/web/live/runbook_copy_contract_test.exs` — `"runbook surfaces honor the automated copy contract across workflow and lifeline bundles"`
+**Command:** `mix test test/oban_powertools/web/live/runbook_copy_contract_test.exs --seed 0`
+**Encoding:** renders workflows-live (legacy semantics rejection) + workflow forensics + lifeline forensics, asserts the ownership triad and at least one evidence-boundary marker, asserts refusal section ordering `Outcome → Reason → Legal next move → Venue` on workflows-live, refutes execution/certainty overclaims and faux-native runbook shortcuts.
 
 ### Gaps Summary
 
-No blocking gaps found. Automated checks verify the phase goal and all roadmap/plan must-haves. Human verification remains for visual hierarchy and copy judgment, and the two code review warnings remain advisory debt.
+No blocking gaps found. Automated checks verify the phase goal and all roadmap/plan must-haves. The previously open human visual-scan and copy-judgment gates are now closed by deterministic proxy tests; the two code review warnings (`WR-01`, `WR-02`) remain advisory debt unchanged by Phase 40.
 
 ---
 

@@ -184,6 +184,46 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
              "Current state and retained history do not identify a safe runbook path right now."
   end
 
+  test "visual hierarchy proxy: bucket-grid headings precede historical exemplars and no feed-like section is rendered",
+       %{conn: conn} do
+    seed_overview_fixture!()
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_overview]}
+      )
+
+    {:ok, _view, html} = live(conn, "/ops/jobs")
+
+    assert_occurs_in_order(html, [
+      "Diagnosis-first overview",
+      "Needs Review",
+      "Blocked",
+      "Waiting",
+      "Runnable",
+      "Bridge-only Follow-up",
+      "Resolved Recently"
+    ])
+
+    first_bucket = byte_index(html, "Needs Review")
+
+    for exemplar_marker <- [
+          "Open forensic timeline",
+          "Open runbook entry",
+          "Blocked by policy cooldown for payments-api"
+        ] do
+      idx = byte_index(html, exemplar_marker)
+
+      assert idx > first_bucket,
+             "expected historical exemplar marker #{inspect(exemplar_marker)} to render nested inside a bucket (after first bucket heading), got byte index #{idx} vs first bucket at #{first_bucket}"
+    end
+
+    for forbidden <- ["Event Feed", "Activity Feed", "Event Stream", "Recent Activity"] do
+      refute html =~ forbidden,
+             "rendered overview contains forbidden feed-like section heading #{inspect(forbidden)}"
+    end
+  end
+
   defp seed_overview_fixture!(opts \\ []) do
     active_fingerprint = Keyword.get(opts, :active_fingerprint, "dead_executor:executor-1")
     resolved_fingerprint = Keyword.get(opts, :resolved_fingerprint, "dead_executor:executor-2")
@@ -307,4 +347,30 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
   end
 
   defp truncate_minute(%DateTime{} = dt), do: %DateTime{dt | second: 0, microsecond: {0, 0}}
+
+  defp assert_occurs_in_order(text, markers) do
+    Enum.reduce(markers, {text, 0}, fn marker, {remaining, offset} ->
+      assert String.contains?(remaining, marker),
+             "expected #{inspect(marker)} after byte offset #{offset}"
+
+      {index, _len} = :binary.match(remaining, marker)
+      next_offset = offset + index + byte_size(marker)
+
+      next_remaining =
+        binary_part(
+          remaining,
+          index + byte_size(marker),
+          byte_size(remaining) - index - byte_size(marker)
+        )
+
+      {next_remaining, next_offset}
+    end)
+  end
+
+  defp byte_index(text, marker) do
+    case :binary.match(text, marker) do
+      {index, _len} -> index
+      :nomatch -> flunk("expected #{inspect(marker)} to be present in rendered HTML")
+    end
+  end
 end
