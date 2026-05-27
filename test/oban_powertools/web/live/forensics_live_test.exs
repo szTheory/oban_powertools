@@ -9,6 +9,15 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
   alias ObanPowertools.Workflow
   alias ObanPowertools.WorkflowFixtures
 
+  @allowed_selector_keys MapSet.new([
+    "resource_type",
+    "resource_id",
+    "workflow_id",
+    "step",
+    "incident_fingerprint",
+    "view"
+  ])
+
   test "mounts the workflow forensic bundle and preserves step scope across remount", %{
     conn: conn
   } do
@@ -123,12 +132,31 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
     assert html =~ "resource_type=job"
     assert html =~ "resource_id=123"
     assert html =~ "Latest runbook continuity"
+    assert html =~ "Diagnosis:"
+    assert html =~ "Legal next path:"
+    assert html =~ "Venue:"
     assert html =~ "Attempt state:"
-    assert html =~ "Action:"
+    assert html =~ "Evidence link:"
+    assert html =~ "Audit follow-up:"
     assert html =~ "Reason:"
     assert html =~ "host-owned follow-up status:"
     assert html =~ "Host-owned follow-up callback invoked"
     assert html =~ "Operator rescued orphaned execution"
+    assert html =~ "host-owned follow-up"
+
+    diagnosis_position = html_position(html, "Diagnosis:")
+    legal_path_position = html_position(html, "Legal next path:")
+    venue_position = html_position(html, "Venue:")
+    attempt_position = html_position(html, "Attempt state:")
+    evidence_link_position = html_position(html, "Evidence link:")
+    audit_follow_up_position = html_position(html, "Audit follow-up:")
+
+    assert diagnosis_position < legal_path_position
+    assert legal_path_position < venue_position
+    assert venue_position < attempt_position
+    assert attempt_position < evidence_link_position
+    assert evidence_link_position < audit_follow_up_position
+    assert_forensics_selector_allowlist(html)
 
     {:ok, _remounted_view, remounted_html} = live(conn, path)
 
@@ -307,6 +335,8 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
     assert html =~ ~s(data-runbook-ownership="host-owned follow-up")
     refute html =~ ~s(data-runbook-ownership="Oban Web bridge" class="rounded bg-indigo-700)
     refute html =~ ~s(data-runbook-ownership="host-owned follow-up" class="rounded bg-indigo-700)
+    refute html =~ "bridge-only completed"
+    refute html =~ "host-owned follow-up succeeded"
   end
 
   test "ownership boundary remains explicit", %{conn: conn} do
@@ -413,5 +443,22 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
   defp html_position(html, text) do
     {position, _length} = :binary.match(html, text)
     position
+  end
+
+  defp assert_forensics_selector_allowlist(html) do
+    Regex.scan(~r{/ops/jobs/forensics\?[^"']+}, html)
+    |> Enum.map(&List.first/1)
+    |> Enum.each(fn encoded_path ->
+      query =
+        encoded_path
+        |> String.split("?", parts: 2)
+        |> List.last()
+        |> String.replace("&amp;", "&")
+        |> URI.decode_query()
+        |> Map.keys()
+        |> MapSet.new()
+
+      assert MapSet.subset?(query, @allowed_selector_keys)
+    end)
   end
 end

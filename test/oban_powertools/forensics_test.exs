@@ -20,6 +20,15 @@ defmodule ObanPowertools.ForensicsTest do
   alias ObanPowertools.Workflow.Workflow, as: WorkflowRecord
   alias ObanPowertools.WorkflowFixtures
 
+  @allowed_selector_keys MapSet.new([
+    "resource_type",
+    "resource_id",
+    "workflow_id",
+    "step",
+    "incident_fingerprint",
+    "view"
+  ])
+
   test "bundle contract preserves diagnosis-first shape, chronology ordering, and supporting evidence labels" do
     now = DateTime.utc_now()
 
@@ -105,6 +114,47 @@ defmodule ObanPowertools.ForensicsTest do
     assert bundle.diagnosis_summary.current
     assert bundle.completeness.state == :partial_evidence
     assert Enum.any?(bundle.related_evidence, &(&1.provenance == :supporting))
+  end
+
+  test "forensic evidence and continuity links keep the stable selector allowlist" do
+    {:ok, workflow} =
+      WorkflowFixtures.workflow_fixture(name: "selector-allowlist-workflow")
+      |> Workflow.insert(TestRepo)
+
+    incident =
+      %Incident{}
+      |> Incident.changeset(%{
+        incident_class: "dead_executor",
+        status: "active",
+        executor_id: "selector-allowlist",
+        incident_fingerprint: "dead_executor:selector-allowlist",
+        health_state: "missing",
+        summary: "selector allowlist incident",
+        affected_counts: %{"jobs" => 1, "workflow_steps" => 0},
+        evidence: %{"job_ids" => [123], "workflow_step_ids" => []},
+        first_detected_at: DateTime.utc_now(),
+        last_detected_at: DateTime.utc_now(),
+        metadata: %{}
+      })
+      |> TestRepo.insert!()
+
+    workflow_bundle =
+      Forensics.bundle(%{"workflow_id" => workflow.id, "step" => "sync_billing"}, repo: TestRepo)
+
+    lifeline_bundle =
+      Forensics.bundle(%{"incident_fingerprint" => incident.incident_fingerprint, "view" => "active"},
+        repo: TestRepo
+      )
+
+    assert_selector_keys_allowed(workflow_bundle.runbook_entry.evidence_path)
+    assert_selector_keys_allowed(lifeline_bundle.runbook_entry.evidence_path)
+
+    assert_selector_keys_allowed(
+      Enum.find(lifeline_bundle.linked_resources, &(&1.label == "Lifeline detail")).path
+    )
+
+    refute workflow_bundle.runbook_entry.evidence_path =~ "preview_token="
+    refute lifeline_bundle.runbook_entry.evidence_path =~ "reason="
   end
 
   test "lifeline bundle marks history unavailable when resolved incident lacks retained audit evidence" do
@@ -361,6 +411,42 @@ defmodule ObanPowertools.ForensicsTest do
       assert continuity_caution
       assert continuity_caution.detail =~ state
     end
+  end
+
+  test "partial evidence and history unavailable continuity stay explicit without completion claims" do
+    entry =
+      RunbookEntry.from_bundle(%{
+        subject: %{type: "unknown", id: "unknown", label: "Unknown forensic scope"},
+        diagnosis_summary: %{
+          current: "unknown",
+          detail:
+            "partial evidence and history unavailable states keep bridge-only and host-owned follow-up guidance explicit."
+        },
+        legal_next_paths: [
+          %{
+            label: "bridge-only investigation lane",
+            venue: "Inspection only",
+            path: "/ops/jobs/oban"
+          },
+          %{label: "host-owned follow-up escalation", venue: "PagerDuty", path: nil}
+        ],
+        completeness: %{
+          state: :history_unavailable,
+          details:
+            "history unavailable: partial evidence and unknown chronology remain explicit follow-up boundaries."
+        }
+      })
+
+    labels = Enum.map(entry.ordered_next_paths, &String.downcase(&1.label))
+    details = entry.evidence_completeness.details
+
+    assert Enum.any?(labels, &String.contains?(&1, "bridge-only"))
+    assert Enum.any?(labels, &String.contains?(&1, "host-owned follow-up"))
+    assert details =~ "history unavailable"
+    assert details =~ "partial evidence"
+    assert details =~ "unknown"
+    refute inspect(entry) =~ "completed remediation"
+    refute inspect(entry) =~ "succeeded"
   end
 
   test "presenter keeps forensic provenance and completeness labels honest" do
@@ -915,5 +1001,12 @@ defmodule ObanPowertools.ForensicsTest do
 
   defp assert_no_existing_atom(value) do
     assert_raise ArgumentError, fn -> String.to_existing_atom(value) end
+  end
+
+  defp assert_selector_keys_allowed(path) do
+    parsed = URI.parse(path)
+    keys = parsed.query |> URI.decode_query() |> Map.keys() |> MapSet.new()
+
+    assert MapSet.subset?(keys, @allowed_selector_keys)
   end
 end

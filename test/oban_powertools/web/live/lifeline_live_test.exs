@@ -25,6 +25,15 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
   alias ObanPowertools.Workflow.Step
   alias ObanPowertools.WorkflowFixtures
 
+  @allowed_selector_keys MapSet.new([
+    "resource_type",
+    "resource_id",
+    "workflow_id",
+    "step",
+    "incident_fingerprint",
+    "view"
+  ])
+
   setup do
     original_display_policy = Application.get_env(:oban_powertools, :display_policy)
 
@@ -128,10 +137,14 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     legal_path_position = html_position(html, "Legal next path:")
     venue_position = html_position(html, "Venue:")
     attempt_state_position = html_position(html, "Attempt state:")
+    evidence_link_position = html_position(html, "Evidence link:")
+    audit_follow_up_position = html_position(html, "Audit follow-up:")
 
     assert diagnosis_position < legal_path_position
     assert legal_path_position < venue_position
     assert venue_position < attempt_state_position
+    assert attempt_state_position < evidence_link_position
+    assert evidence_link_position < audit_follow_up_position
 
     assert [%{status: "ready"}] = TestRepo.all(ObanPowertools.Lifeline.RepairPreview)
 
@@ -640,6 +653,9 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
 
     assert has_element?(view, "a[href*='view=active']")
     assert has_element?(view, "a[href*='resource_type=job']")
+    assert_forensics_selector_allowlist(selected_html)
+    refute selected_html =~ "preview_token="
+    refute selected_html =~ "reason="
   end
 
   defp insert_dead_executor_incident!(executor_id, health_state \\ "missing") do
@@ -741,5 +757,22 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
   defp html_position(html, text) do
     {position, _length} = :binary.match(html, text)
     position
+  end
+
+  defp assert_forensics_selector_allowlist(html) do
+    Regex.scan(~r{/ops/jobs/forensics\?[^"']+}, html)
+    |> Enum.map(&List.first/1)
+    |> Enum.each(fn encoded_path ->
+      query =
+        encoded_path
+        |> String.split("?", parts: 2)
+        |> List.last()
+        |> String.replace("&amp;", "&")
+        |> URI.decode_query()
+        |> Map.keys()
+        |> MapSet.new()
+
+      assert MapSet.subset?(query, @allowed_selector_keys)
+    end)
   end
 end
