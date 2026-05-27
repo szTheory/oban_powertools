@@ -401,7 +401,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp selected_step_path(workflow_id, step_name),
-      do: "/ops/jobs/workflows/#{workflow_id}?step=#{step_name}"
+      do: "/ops/jobs/workflows/#{workflow_id}?step=#{URI.encode_www_form(step_name)}"
 
     defp forensic_path(workflow, selected_step) do
       Selectors.forensic_path([

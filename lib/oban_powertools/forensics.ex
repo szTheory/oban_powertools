@@ -459,7 +459,7 @@ defmodule ObanPowertools.Forensics do
   defp workflow_path(workflow, nil), do: "/ops/jobs/workflows/#{workflow.id}"
 
   defp workflow_path(workflow, step),
-    do: "/ops/jobs/workflows/#{workflow.id}?step=#{step.step_name}"
+    do: "/ops/jobs/workflows/#{workflow.id}?step=#{URI.encode_www_form(step.step_name)}"
 
   defp lifeline_path(incident, view) do
     Selectors.lifeline_path([
