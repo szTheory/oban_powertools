@@ -14,8 +14,11 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     bridge_only: "Bridge-only Follow-up"
   }
 
-  def status_label(status) when is_binary(status),
-    do: status |> String.to_atom() |> status_label()
+  def status_label(status) when is_binary(status) do
+    String.to_existing_atom(status) |> status_label()
+  rescue
+    ArgumentError -> Phoenix.Naming.humanize(status)
+  end
 
   def status_label(status), do: Map.get(@status_labels, status, Phoenix.Naming.humanize(status))
 
@@ -220,6 +223,14 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
   defp refusal_reason_label(code), do: Phoenix.Naming.humanize(code)
 
   defp follow_up_value(map, key) do
-    Map.get(map, key) || Map.get(map, String.to_atom(key))
+    Map.get(map, key) || Map.get(map, safe_atom(key))
   end
+
+  defp safe_atom(binary) when is_binary(binary) do
+    String.to_existing_atom(binary)
+  rescue
+    ArgumentError -> nil
+  end
+
+  defp safe_atom(_), do: nil
 end
