@@ -1,8 +1,8 @@
 # Milestone v1.4: Operator Forensics & SRE Runbooks
 
 **Status:** Ready to build
-**Phases:** 32-36
-**Total Plans:** 15
+**Phases:** 32-39
+**Total Plans:** 24
 
 ## Overview
 
@@ -85,27 +85,76 @@ Plans:
 **Details:**
 The milestone closes only when the investigative UX, support-truth language, and proof posture all tell the same story.
 
+### Phase 37: Verification Backfill for Forensic and Ops Baseline
+
+**Goal**: close orphaned requirement verification by publishing phase-level verification artifacts for completed phase-32 and phase-33 work.
+**Depends on**: Phase 35
+**Plans**: 3 plans
+
+Plans:
+
+- [x] 37-01-PLAN.md — Produce a phase-level verification report for phase 32 that links implemented forensic timeline/evidence behavior to FRN-01, FRN-02, and FRN-03.
+- [x] 37-02-PLAN.md — Produce a phase-level verification report for phase 33 that links limiter/cron history behavior to OPS-01 and OPS-02.
+- [x] 37-03-PLAN.md — Reconcile requirement-to-verification evidence references so audit traceability for FRN/OPS requirements is no longer orphaned.
+
+**Details:**
+This phase backfills missing verification artifacts without reopening delivered runtime scope.
+
+### Phase 38: Docs and Example-Host Forensics Journey Closure
+
+**Goal**: satisfy docs/support-truth closure for v1.4 forensic and runbook operator flows.
+**Depends on**: Phase 37
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 38-01-PLAN.md — Update README and operator guides to cover `/ops/jobs/forensics`, evidence-boundary behavior, and runbook handoffs with explicit support-truth wording.
+- [ ] 38-02-PLAN.md — Extend example-host documentation and walkthroughs to reflect supported operator journeys and host-owned escalation boundaries.
+- [ ] 38-03-PLAN.md — Verify and document docs-contract closure evidence for DOC-05 with references to published guidance artifacts.
+
+**Details:**
+This phase closes the broken docs/example-host operator flow identified by the milestone audit.
+
+### Phase 39: CI Continuity Proof Lane Closure
+
+**Goal**: make continuity suites auditable in CI so VER-04 closure is merge-blocking and reproducible.
+**Depends on**: Phase 38
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 39-01-PLAN.md — Wire the phase 32-35 continuity suites into `.github/workflows/host-contract-proof.yml` for milestone-proof coverage.
+- [ ] 39-02-PLAN.md — Publish CI evidence artifacts and pass/fail boundaries that map directly to continuity and ownership-boundary proof claims.
+- [ ] 39-03-PLAN.md — Close VER-04 traceability with automated proof references and prepare re-audit inputs for milestone completion.
+
+**Details:**
+This phase turns continuity proof from phase-local evidence into CI-enforced milestone closure.
+
 ---
 
 ## Milestone Summary
 
 **Key Decisions:**
 
-- Activate the default arc candidate `v1.4 Operator Forensics & SRE Runbooks` without resetting phase numbering; continue at phases 32-36.
+- Activate the default arc candidate `v1.4 Operator Forensics & SRE Runbooks` without resetting phase numbering; continue at phases 32-39.
 - Keep the milestone focused on investigative leverage, historical context, and runbook guidance rather than a native generic queue-dashboard rewrite.
 - Treat alerting and escalation as explicit host-owned seams; Powertools may explain and hook into them but should not imply first-party ownership of downstream delivery truth.
 - Reuse the v1.3 control-plane vocabulary everywhere so forensics and runbooks strengthen the existing operator contract instead of creating a parallel language.
 - Require explicit partial-evidence and unknown-state handling wherever historical data can be absent, retained away, or bridge-only.
+- After milestone audit gaps, add dedicated closure phases for verification backfill, docs/example-host closure, and CI continuity proof wiring.
 
 **Requirements Coverage:**
 
 | Phase | Goal | Requirements | Success Criteria |
 |-------|------|--------------|------------------|
-| 32 | 3/3 | Complete    | 2026-05-26 |
-| 33 | Limiter history and cron missed-fire diagnostics | OPS-01, OPS-02 | Complete — 2026-05-27 |
-| 34 | 3/3 | Complete    | 2026-05-27 |
-| 35 | 3/3 | Complete    | 2026-05-27 |
-| 36 | Docs, example host, verification, and support-truth closure | DOC-05, VER-04, HST-05 | 3 |
+| 32 | Forensic timeline and evidence bundle foundation | FRN-01, FRN-02, FRN-03 | Gap closure in Phase 37 |
+| 33 | Limiter history and cron missed-fire diagnostics | OPS-01, OPS-02 | Gap closure in Phase 37 |
+| 34 | Historical attention projection and runbook entry surfaces | OPS-03, RNB-01, RNB-02 | Complete - 2026-05-27 |
+| 35 | Runbook-guided remediation and alert hook boundaries | RNB-03, HST-05 | Complete - 2026-05-27 |
+| 36 | Docs/example-host/proof closure seed phase | DOC-05, VER-04 | Gap closure split into Phases 38-39 |
+| 37 | 3/3 | Complete    | 2026-05-27 |
+| 38 | Docs and example-host forensics journey closure | DOC-05 | Planned |
+| 39 | CI continuity proof lane closure | VER-04 | Planned |
 
 ### Phase Success Criteria
 
@@ -138,6 +187,24 @@ The milestone closes only when the investigative UX, support-truth language, and
 1. Public docs and example-host material describe the new forensics and runbook surfaces honestly.
 2. Merge-blocking proof covers chronology, history diagnosis, runbook continuity, and escalation-seam boundaries.
 3. The milestone closes with archived learnings and a clean deferred wedge for v1.5 automation work.
+
+**Phase 37**
+
+1. Phase 32 and phase 33 both have phase-level verification artifacts with explicit FRN/OPS requirement mappings.
+2. Requirement closure evidence references are no longer orphaned in milestone audits.
+3. Verification backfill is documented without reopening implementation scope from earlier phases.
+
+**Phase 38**
+
+1. README and operator guides explicitly document `/ops/jobs/forensics` flows, evidence boundaries, and runbook handoffs.
+2. Example-host material reflects supported operator journeys and host-owned escalation ownership boundaries.
+3. DOC-05 closure evidence is linked from docs-contract outputs and milestone artifacts.
+
+**Phase 39**
+
+1. Host contract CI executes continuity suites used for milestone verification proof.
+2. CI artifacts map directly to continuity proof claims and ownership-boundary behavior.
+3. VER-04 can be validated from reproducible automation evidence in the proof lane.
 
 ---
 

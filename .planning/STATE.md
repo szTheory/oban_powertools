@@ -4,14 +4,14 @@ milestone: v1.4
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: Completed 35-03-PLAN.md
-last_updated: "2026-05-27T08:42:37.976Z"
+stopped_at: Completed Phase 37 execution and verification
+last_updated: "2026-05-27T09:47:00Z"
 progress:
-  total_phases: 5
-  completed_phases: 3
-  total_plans: 13
-  completed_plans: 12
-  percent: 60
+  total_phases: 8
+  completed_phases: 4
+  total_plans: 24
+  completed_plans: 15
+  percent: 63
 ---
 
 # Project State
@@ -19,29 +19,29 @@ progress:
 ## Project Reference
 
 **Core Value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-**Current Focus:** Phase 36 — docs-example-host-verification-support-truth-closure
+**Current Focus:** Phase 38 — docs-example-host-forensics-journey-closure
 
 ## Current Position
 
-Phase: 36 (docs-example-host-verification-support-truth-closure) — EXECUTING
-Plan: 1 of 3
+Phase: 38 (docs-example-host-forensics-journey-closure) — READY TO PLAN
+Plan: 0 of 3
 
-- **Phase:** 36
-- **Plan:** 35-03 complete
+- **Phase:** 38
+- **Plan:** 37-03 complete
 - **Current Plan:** Not started
 - **Total Plans in Phase:** 3
 - **Status:** Ready to plan
-- **Progress:** [████████--] 80%
+- **Progress:** [----------] 0%
 - **Canonical sequencing:** `.planning/ROADMAP.md`
 - **Milestone requirements:** `.planning/REQUIREMENTS.md`
 - **Strategic source of truth:** `.planning/MILESTONE-ARC.md`
 
 ## Performance Metrics
 
-- **Phases Complete:** 3/5 active
-- **Plans Complete:** 11/15 active
-- **Metrics:** v1.4 has completed Phases 32-35 and now includes cross-surface ownership-boundary rendering and regression proof for remediation continuity.
-- **Latest Plan Metric:** 35-03 completed in 7m across 3 tasks and 12 files; forensic and remediation suites passed with selector-safety and support-truth denial checks.
+- **Phases Complete:** 4/8 active
+- **Plans Complete:** 15/24 active
+- **Metrics:** v1.4 now includes canonical FRN/OPS verification backfills and reconciled requirement traceability for Phase 37 while preserving deferred DOC-05/VER-04 ownership lanes.
+- **Latest Plan Metric:** 37-03 completed in 5m across 2 tasks and 1 file; reconciliation checks and targeted regression suite passed.
 
 ## Accumulated Context
 
@@ -110,8 +110,8 @@ Plan: 1 of 3
 
 ## Session Continuity
 
-- **Last session:** 2026-05-27T08:34:51.000Z
-- **Stopped At:** Completed 35-03-PLAN.md
-- **Resume File:** .planning/phases/35-runbook-guided-remediation-alert-hook-boundaries/35-03-SUMMARY.md
-- **Last Action:** Completed Phase 35 Plan 03 with shared follow-up render variants and regression coverage for ownership boundaries, selector safety, and continuity ordering.
-- **Next Action:** Execute `36-01-PLAN.md` to align docs, example-host guidance, and verification posture with Phase 35 behavior.
+- **Last session:** 2026-05-27T09:47:00Z
+- **Stopped At:** Completed Phase 37 execution and verification
+- **Resume File:** .planning/phases/37-verification-backfill-forensic-ops-baseline/37-VERIFICATION.md
+- **Last Action:** Completed Phase 37 plans 01-03 with new phase-level verification artifacts for phases 32/33 and reconciled FRN/OPS traceability in REQUIREMENTS.
+- **Next Action:** Start Phase 38 planning (`/gsd-plan-phase 38`) for DOC-05 docs and example-host closure work.
