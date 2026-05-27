@@ -2,7 +2,12 @@ defmodule ObanPowertools.ForensicsTest do
   use ObanPowertools.DataCase, async: false
 
   alias ObanPowertools.{Audit, Cron, Forensics}
-  alias ObanPowertools.Forensics.{Chronology, EvidenceBundle, LimiterHistoryFact}
+  alias ObanPowertools.Forensics.{
+    AttentionProjection,
+    Chronology,
+    EvidenceBundle,
+    LimiterHistoryFact
+  }
   alias ObanPowertools.Lifeline.Incident
   alias ObanPowertools.Limits.{Resource, State}
   alias ObanPowertools.TestRepo
@@ -225,6 +230,139 @@ defmodule ObanPowertools.ForensicsTest do
     assert bundle.subject.entry_surface == "Powertools-native limiters"
     assert bundle.completeness.state == :complete
     assert Enum.any?(bundle.chronology, &(&1.event_type == "limiter.reconfigured"))
+  end
+
+  test "attention projection caps bucket exemplars and orders by diagnosis impact before label" do
+    candidates = [
+      %{
+        bucket: "Blocked",
+        family: :cron,
+        label: "z cron newest",
+        status: :missed_fire,
+        attention_reason: "Cron missed-fire history changes the next safe path.",
+        evidence_completeness: :complete,
+        path: "/ops/jobs/cron?entry=z",
+        evidence_path: "/ops/jobs/forensics?resource_type=cron_entry&resource_id=z",
+        source: "cron-history",
+        rank: 40
+      },
+      %{
+        bucket: "Blocked",
+        family: :limiter,
+        label: "a limiter",
+        status: :blocked,
+        attention_reason: "Limiter history shows active blocking pressure.",
+        evidence_completeness: :complete,
+        path: "/ops/jobs/limiters?resource=a",
+        evidence_path: "/ops/jobs/forensics?resource_type=limiter&resource_id=a",
+        source: "limiter-history",
+        rank: 20
+      },
+      %{
+        bucket: "Blocked",
+        family: :lifeline,
+        label: "b lifeline",
+        status: :active,
+        attention_reason: "Active Lifeline incident should be inspected before older history.",
+        evidence_completeness: :complete,
+        path: "/ops/jobs/lifeline?incident_fingerprint=active",
+        evidence_path: "/ops/jobs/forensics?incident_fingerprint=active",
+        source: "lifeline"
+      },
+      %{
+        bucket: "Blocked",
+        family: :workflow,
+        label: "c workflow",
+        status: :blocked,
+        attention_reason: "Workflow step is blocked.",
+        evidence_completeness: :complete,
+        path: "/ops/jobs/workflows?workflow_id=wf-1",
+        evidence_path: "/ops/jobs/forensics?workflow_id=wf-1",
+        source: "workflow"
+      }
+    ]
+
+    exemplars = AttentionProjection.project_bucket("Blocked", candidates)
+
+    assert length(exemplars) == 3
+    assert Enum.map(exemplars, & &1.label) == ["b lifeline", "a limiter", "z cron newest"]
+  end
+
+  test "attention projection preserves degraded evidence labels without causal certainty copy" do
+    candidates = [
+      %{
+        "bucket" => "Waiting",
+        "family" => "cron",
+        "label" => "partial evidence cron",
+        "status" => "partial_evidence",
+        "attention_reason" => "partial evidence: retained scheduler coverage is incomplete.",
+        "evidence_completeness" => "partial_evidence",
+        "path" => "/ops/jobs/cron?entry=partial",
+        "evidence_path" => "/ops/jobs/forensics?resource_type=cron_entry&resource_id=partial",
+        "source" => "cron-history"
+      },
+      %{
+        bucket: "Waiting",
+        family: :limiter,
+        label: "history unavailable limiter",
+        status: :history_unavailable,
+        attention_reason: "history unavailable: current state is visible but retained history is absent.",
+        evidence_completeness: :history_unavailable,
+        path: "/ops/jobs/limiters?resource=missing",
+        evidence_path: "/ops/jobs/forensics?resource_type=limiter&resource_id=missing",
+        source: "limiter-history"
+      },
+      %{
+        bucket: "Waiting",
+        family: :cron,
+        label: "unknown cron",
+        status: :unknown,
+        attention_reason: "unknown: retained cron windows cannot prove what happened.",
+        evidence_completeness: :unknown,
+        path: "/ops/jobs/cron?entry=unknown",
+        evidence_path: "/ops/jobs/forensics?resource_type=cron_entry&resource_id=unknown",
+        source: "cron-history"
+      }
+    ]
+
+    exemplars = AttentionProjection.project_bucket("Waiting", candidates)
+
+    assert Enum.map(exemplars, & &1.evidence_completeness) == [
+             "partial evidence",
+             "history unavailable",
+             "unknown"
+           ]
+
+    refute Enum.any?(exemplars, &String.contains?(&1.attention_reason, "caused"))
+  end
+
+  test "attention projection excludes action intent without honest next path" do
+    candidates = [
+      %{
+        bucket: "Needs Review",
+        family: :limiter,
+        label: "missing path",
+        status: :blocked,
+        attention_reason: "Limiter history needs review.",
+        evidence_completeness: :complete,
+        evidence_path: "/ops/jobs/forensics?resource_type=limiter&resource_id=missing",
+        source: "limiter-history"
+      },
+      %{
+        bucket: "Needs Review",
+        family: :cron,
+        label: "neutral guidance",
+        status: :unknown,
+        attention_reason: "unknown: retained cron windows cannot prove what happened.",
+        evidence_completeness: :unknown,
+        path: "/ops/jobs/cron?entry=neutral",
+        evidence_path: "/ops/jobs/forensics?resource_type=cron_entry&resource_id=neutral",
+        source: "cron-history"
+      }
+    ]
+
+    assert [%{label: "neutral guidance", path: "/ops/jobs/cron?entry=neutral"}] =
+             AttentionProjection.project_bucket("Needs Review", candidates)
   end
 
   defp truncate_minute(%DateTime{} = dt), do: %DateTime{dt | second: 0, microsecond: {0, 0}}
