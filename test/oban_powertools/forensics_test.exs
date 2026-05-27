@@ -7,7 +7,8 @@ defmodule ObanPowertools.ForensicsTest do
     AttentionProjection,
     Chronology,
     EvidenceBundle,
-    LimiterHistoryFact
+    LimiterHistoryFact,
+    RunbookEntry
   }
 
   alias ObanPowertools.Lifeline.Incident
@@ -366,6 +367,104 @@ defmodule ObanPowertools.ForensicsTest do
 
     assert [%{label: "neutral guidance", path: "/ops/jobs/cron?entry=neutral"}] =
              AttentionProjection.project_bucket("Needs Review", candidates)
+  end
+
+  test "runbook entry builds advisory guidance from a complete evidence bundle" do
+    bundle =
+      EvidenceBundle.build(%{
+        subject: %{
+          type: "workflow",
+          id: "wf-123",
+          label: "billing workflow",
+          entry_surface: "Powertools-native workflows"
+        },
+        diagnosis_summary: %{
+          current: "waiting_on_dependencies",
+          detail: "Selected step sync_billing currently reports waiting_on_dependencies.",
+          provenance: :durable
+        },
+        legal_next_paths: [
+          %{
+            label: "Return to workflow diagnosis",
+            path: "/ops/jobs/workflows/wf-123?step=sync_billing",
+            venue: "Powertools-native"
+          },
+          %{
+            label: "Inspect scoped audit evidence",
+            path: "/ops/jobs/audit?resource_type=workflow&resource_id=wf-123",
+            venue: "Inspection only"
+          },
+          %{
+            label: "Coordinate customer retry window",
+            path: nil,
+            venue: "External runbook"
+          }
+        ],
+        completeness: %{
+          state: :complete,
+          details: "Complete forensic bundle from workflow and audit evidence."
+        }
+      })
+
+    entry = RunbookEntry.from_bundle(bundle)
+
+    assert entry.title == "Open runbook entry"
+    assert entry.diagnosis_state == "waiting_on_dependencies"
+    assert entry.why_now == "Selected step sync_billing currently reports waiting_on_dependencies."
+    assert [%{label: "Evidence bundle", state: :met}, %{label: "Legal next path", state: :met}] = entry.prerequisites
+    assert [%{label: "Advisory boundary", severity: :info} | _] = entry.cautions
+    assert entry.evidence_path == "/ops/jobs/forensics?workflow_id=wf-123"
+    assert entry.evidence_completeness.state == :complete
+    assert Enum.any?(entry.unsupported_boundaries, &String.contains?(&1, "advisory only"))
+
+    assert [
+             %{order: 1, ownership: "Powertools-native", venue: "Powertools-native"},
+             %{order: 2, ownership: "Oban Web bridge", venue: "Inspection only"},
+             %{order: 3, ownership: "host-owned follow-up", venue: "External runbook"}
+           ] = entry.ordered_next_paths
+  end
+
+  test "runbook entry labels bridge-only and host-owned paths before path labels" do
+    entry =
+      RunbookEntry.from_bundle(%{
+        subject: %{type: "limiter", id: "github-api", label: "github-api"},
+        diagnosis_summary: %{current: "blocked", detail: "Blocked by policy cooldown."},
+        legal_next_paths: [
+          %{label: "Inspect Oban job details", venue: "Inspection only", path: "/ops/jobs/oban"},
+          %{label: "Open pager escalation", venue: "PagerDuty", path: nil}
+        ],
+        completeness: %{state: "complete", details: "Complete limiter bundle."}
+      })
+
+    assert [
+             %{label: "Oban Web bridge: Inspect Oban job details", ownership: "Oban Web bridge"},
+             %{label: "host-owned follow-up: Open pager escalation", ownership: "host-owned follow-up"}
+           ] = entry.ordered_next_paths
+  end
+
+  test "runbook entry degrades partial unavailable and unknown evidence without execution claims" do
+    for {state, expected_copy} <- [
+          {:partial_evidence, "partial evidence"},
+          {:history_unavailable, "history unavailable"},
+          {:unknown, "unknown"}
+        ] do
+      entry =
+        RunbookEntry.from_bundle(%{
+          subject: %{type: "unknown", id: "unknown", label: "Unknown forensic scope"},
+          diagnosis_summary: %{current: Atom.to_string(state), detail: "#{expected_copy}: retained facts are incomplete."},
+          legal_next_paths: [],
+          completeness: %{state: state, details: "#{expected_copy}: retained facts are incomplete."}
+        })
+
+      assert entry.evidence_completeness.state == state
+      assert Enum.any?(entry.cautions, &String.contains?(&1.detail, expected_copy))
+      assert Enum.any?(entry.unsupported_boundaries, &String.contains?(&1, expected_copy))
+      refute inspect(entry) =~ "completed remediation"
+      refute inspect(entry) =~ "delivery"
+      refute inspect(entry) =~ "executed"
+      refute inspect(entry) =~ "session"
+      refute inspect(entry) =~ "checklist"
+    end
   end
 
   defp truncate_minute(%DateTime{} = dt), do: %DateTime{dt | second: 0, microsecond: {0, 0}}
