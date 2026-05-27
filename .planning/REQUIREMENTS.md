@@ -108,7 +108,7 @@ Make the stable v1.3 control plane materially better for real incident investiga
 | RNB-02 | Phase 34 | Complete |
 | RNB-03 | Phase 35 | Complete |
 | DOC-05 | Phase 38 | Complete |
-| VER-04 | Phase 39 | Pending |
+| VER-04 | Phase 39 | Complete |
 | HST-05 | Phase 35 | Complete |
 
 ### Phase 37 Verification Backfill References
@@ -122,16 +122,20 @@ Make the stable v1.3 control plane materially better for real incident investiga
 ### Phase 38 Verification References
 
 - `DOC-05` -> `.planning/phases/38-docs-example-host-forensics-journey-closure/38-VERIFICATION.md`
-- `VER-04` remains `Phase 39 | Pending`; Phase 39 remains the CI continuity closure lane.
+
+### Phase 39 Verification References
+
+- `VER-04` -> `.planning/phases/39-ci-continuity-proof-lane-closure/39-VERIFICATION.md`
+- `VER-04` -> `.planning/phases/39-ci-continuity-proof-lane-closure/39-PROOF-MANIFEST.json`
 
 **Coverage:**
 
 - v1.4 requirements: 12 total
 - Mapped to phases: 12
 - Unmapped: 0
-- Complete: 11
-- Pending: 1
+- Complete: 12
+- Pending: 0
 
 ---
 *Requirements defined: 2026-05-26*
-*Last updated: 2026-05-27 after phase 38 DOC-05 verification closure*
+*Last updated: 2026-05-27 after phase 39 VER-04 proof closure*
