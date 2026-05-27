@@ -6,7 +6,7 @@ defmodule ObanPowertools.Lifeline do
   import Ecto.Query
 
   alias Ecto.Multi
-  alias ObanPowertools.{Audit, Auth, Explain}
+  alias ObanPowertools.{Audit, Auth, Explain, HostEscalation}
   alias ObanPowertools.Lifeline.{ArchiveRun, Heartbeat, Incident, RepairPreview}
   alias ObanPowertools.Telemetry
   alias ObanPowertools.Workflow
@@ -1079,6 +1079,11 @@ defmodule ObanPowertools.Lifeline do
     |> repo.transaction()
     |> case do
       {:ok, %{target: target, preview: preview_record}} ->
+        runbook_context = runbook_context_for_attempt(preview_record, "succeeded", trimmed_reason)
+
+        _host_follow_up =
+          emit_host_follow_up(repo, preview_record, actor, runbook_context)
+
         Telemetry.execute_lifeline_event(:repair_executed, %{count: 1}, %{
           action: preview.action,
           incident_class: preview.incident_class,
@@ -1173,6 +1178,53 @@ defmodule ObanPowertools.Lifeline do
         )
     end
   end
+
+  defp emit_host_follow_up(repo, preview, actor, runbook_context) do
+    dispatch_result =
+      HostEscalation.dispatch(%{
+        "event_name" => "lifeline.remediation_attempt",
+        "attempt_state" => "succeeded",
+        "action" => preview.action,
+        "target_type" => preview.target_type,
+        "target_id" => to_string(preview.target_id),
+        "incident_fingerprint" => preview.incident_fingerprint,
+        "ownership" => "host-owned follow-up",
+        "runbook_context" => bounded_runbook_context(runbook_context)
+      })
+
+    metadata = %{
+      "status" => HostEscalation.dispatch_status(dispatch_result),
+      "details" => Map.get(dispatch_result, :details, %{}),
+      "incident_fingerprint" => preview.incident_fingerprint,
+      "preview_token" => preview.preview_token,
+      "plan_hash" => preview.plan_hash,
+      "runbook_context" => runbook_context
+    }
+
+    case Audit.record(
+           "lifeline.host_follow_up",
+           %{type: String.to_atom(preview.target_type), id: preview.target_id},
+           metadata,
+           repo: repo,
+           actor_id: Auth.actor_id(actor)
+         ) do
+      {:ok, _event} -> :ok
+      {:error, _changeset} -> :error
+    end
+  end
+
+  defp bounded_runbook_context(runbook_context) when is_map(runbook_context) do
+    Map.take(runbook_context, [
+      "entry",
+      "diagnosis_state",
+      "evidence_completeness",
+      "selected_path",
+      "attempt",
+      "selectors"
+    ])
+  end
+
+  defp bounded_runbook_context(_runbook_context), do: %{}
 
   defp repair_summary("job_rescue", "job", target_id),
     do: "Return job #{target_id} to available state."

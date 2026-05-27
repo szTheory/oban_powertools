@@ -1,3 +1,17 @@
+defmodule ObanPowertools.LifelineHostEscalationOkTestHandler do
+  @behaviour ObanPowertools.HostEscalationHandler
+
+  @impl true
+  def handle_escalation(_event_facts), do: :ok
+end
+
+defmodule ObanPowertools.LifelineHostEscalationFailTestHandler do
+  @behaviour ObanPowertools.HostEscalationHandler
+
+  @impl true
+  def handle_escalation(_event_facts), do: {:error, :host_callback_failed}
+end
+
 defmodule ObanPowertools.LifelineTest do
   use ObanPowertools.DataCase, async: false
 
@@ -8,6 +22,16 @@ defmodule ObanPowertools.LifelineTest do
   alias ObanPowertools.Workflow
   alias ObanPowertools.Workflow.{CommandAttempt, Step}
   alias ObanPowertools.WorkflowFixtures
+
+  setup do
+    original_handler = Application.get_env(:oban_powertools, :host_escalation_handler)
+
+    on_exit(fn ->
+      Application.put_env(:oban_powertools, :host_escalation_handler, original_handler)
+    end)
+
+    :ok
+  end
 
   test "refresh_heartbeats upserts one durable row per executor identity" do
     now = DateTime.utc_now()
@@ -274,6 +298,8 @@ defmodule ObanPowertools.LifelineTest do
   end
 
   test "execute_repair requires a reason, enforces single-use, and writes immutable audit evidence for jobs" do
+    Application.delete_env(:oban_powertools, :host_escalation_handler)
+
     incident = insert_dead_executor_incident!("executor-missing")
     job = insert_executing_job!("executor-missing")
     actor = %{id: "operator-1", permissions: [:preview_repair, :execute_repair]}
@@ -306,27 +332,45 @@ defmodule ObanPowertools.LifelineTest do
     assert resolved_incident.status == "resolved"
     assert resolved_incident.resolved_at
 
-    [audit_event] = Audit.list(%{type: :job, id: Integer.to_string(job.id)}, repo: repo())
-    assert audit_event.action == "lifeline.repair_executed"
-    assert audit_event.event_type == "lifeline.repair_executed"
-    assert audit_event.command_key == "execute_repair"
-    assert audit_event.resource_type == "job"
-    assert audit_event.resource_id == Integer.to_string(job.id)
-    assert audit_event.metadata["reason"] =~ "orphaned job"
-    assert audit_event.metadata["runbook_context"]["attempt"]["state"] == "succeeded"
-    assert audit_event.metadata["runbook_context"]["attempt"]["action"] == "job_rescue"
-    assert audit_event.metadata["runbook_context"]["attempt"]["target_type"] == "job"
+    audit_events = Audit.list(%{type: :job, id: Integer.to_string(job.id)}, repo: repo())
+    assert length(audit_events) == 2
 
-    assert audit_event.metadata["runbook_context"]["attempt"]["target_id"] ==
+    repair_audit_event =
+      Enum.find(audit_events, &(&1.action == "lifeline.repair_executed"))
+
+    host_follow_up_event =
+      Enum.find(audit_events, &(&1.action == "lifeline.host_follow_up"))
+
+    assert repair_audit_event
+    assert repair_audit_event.event_type == "lifeline.repair_executed"
+    assert repair_audit_event.command_key == "execute_repair"
+    assert repair_audit_event.resource_type == "job"
+    assert repair_audit_event.resource_id == Integer.to_string(job.id)
+    assert repair_audit_event.metadata["reason"] =~ "orphaned job"
+    assert repair_audit_event.metadata["runbook_context"]["attempt"]["state"] == "succeeded"
+    assert repair_audit_event.metadata["runbook_context"]["attempt"]["action"] == "job_rescue"
+    assert repair_audit_event.metadata["runbook_context"]["attempt"]["target_type"] == "job"
+
+    assert repair_audit_event.metadata["runbook_context"]["attempt"]["target_id"] ==
              Integer.to_string(job.id)
 
-    assert audit_event.metadata["runbook_context"]["selectors"]["resource_type"] == "job"
+    assert repair_audit_event.metadata["runbook_context"]["selectors"]["resource_type"] == "job"
 
-    assert audit_event.metadata["runbook_context"]["selectors"]["resource_id"] ==
+    assert repair_audit_event.metadata["runbook_context"]["selectors"]["resource_id"] ==
              Integer.to_string(job.id)
 
-    assert audit_event.metadata["runbook_context"]["plan_hash"] == preview.plan_hash
-    assert audit_event.metadata["runbook_context"]["preview_token"] == preview.preview_token
+    assert repair_audit_event.metadata["runbook_context"]["plan_hash"] == preview.plan_hash
+    assert repair_audit_event.metadata["runbook_context"]["preview_token"] == preview.preview_token
+
+    assert host_follow_up_event
+    assert host_follow_up_event.metadata["status"] == "host_owned_follow_up_unconfigured"
+    assert host_follow_up_event.metadata["details"]["fallback"] == "host-owned follow-up unavailable"
+    assert host_follow_up_event.metadata["details"]["configuration"] == "No host escalation hook configured"
+    assert host_follow_up_event.metadata["incident_fingerprint"] == incident.incident_fingerprint
+    assert host_follow_up_event.metadata["preview_token"] == preview.preview_token
+    assert host_follow_up_event.metadata["plan_hash"] == preview.plan_hash
+    assert host_follow_up_event.metadata["runbook_context"]["attempt"]["state"] == "succeeded"
+    assert host_follow_up_event.metadata["runbook_context"]["attempt"]["action"] == "job_rescue"
 
     assert {:error, :preview_consumed} =
              Lifeline.execute_repair(
@@ -335,6 +379,82 @@ defmodule ObanPowertools.LifelineTest do
                preview.preview_token,
                "Trying again after the preview was consumed"
              )
+  end
+
+  test "execute_repair records callback failure status without rolling back successful remediation" do
+    Application.put_env(
+      :oban_powertools,
+      :host_escalation_handler,
+      ObanPowertools.LifelineHostEscalationFailTestHandler
+    )
+
+    incident = insert_dead_executor_incident!("executor-missing-failed-callback")
+    job = insert_executing_job!("executor-missing-failed-callback")
+    actor = %{id: "operator-1", permissions: [:preview_repair, :execute_repair]}
+
+    {:ok, preview} =
+      Lifeline.preview_repair(repo(), actor, %{
+        incident_fingerprint: incident.incident_fingerprint,
+        action: "job_rescue",
+        target_type: "job",
+        target_id: job.id
+      })
+
+    assert {:ok, %{target: repaired_job}} =
+             Lifeline.execute_repair(
+               repo(),
+               actor,
+               preview.preview_token,
+               "Apply native remediation even if host callback fails"
+             )
+
+    assert repaired_job.state == "available"
+
+    host_follow_up_event =
+      Audit.list(%{type: :job, id: Integer.to_string(job.id)}, repo: repo())
+      |> Enum.find(&(&1.action == "lifeline.host_follow_up"))
+
+    assert host_follow_up_event
+    assert host_follow_up_event.metadata["status"] == "host_owned_follow_up_callback_failed"
+    assert host_follow_up_event.metadata["details"]["reason"] =~ "host_callback_failed"
+  end
+
+  test "execute_repair records callback invoked status when host follow-up is configured" do
+    Application.put_env(
+      :oban_powertools,
+      :host_escalation_handler,
+      ObanPowertools.LifelineHostEscalationOkTestHandler
+    )
+
+    incident = insert_dead_executor_incident!("executor-missing-callback-ok")
+    job = insert_executing_job!("executor-missing-callback-ok")
+    actor = %{id: "operator-1", permissions: [:preview_repair, :execute_repair]}
+
+    {:ok, preview} =
+      Lifeline.preview_repair(repo(), actor, %{
+        incident_fingerprint: incident.incident_fingerprint,
+        action: "job_rescue",
+        target_type: "job",
+        target_id: job.id
+      })
+
+    assert {:ok, %{target: repaired_job}} =
+             Lifeline.execute_repair(
+               repo(),
+               actor,
+               preview.preview_token,
+               "Call host follow-up callback after successful remediation"
+             )
+
+    assert repaired_job.state == "available"
+
+    host_follow_up_event =
+      Audit.list(%{type: :job, id: Integer.to_string(job.id)}, repo: repo())
+      |> Enum.find(&(&1.action == "lifeline.host_follow_up"))
+
+    assert host_follow_up_event
+    assert host_follow_up_event.metadata["status"] == "host_owned_follow_up_callback_invoked"
+    assert host_follow_up_event.metadata["details"]["result"] == "ok"
   end
 
   test "execute_repair leaves the incident active for unauthorized execution attempts" do
