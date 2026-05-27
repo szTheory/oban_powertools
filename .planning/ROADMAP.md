@@ -108,9 +108,9 @@ This phase backfills missing verification artifacts without reopening delivered 
 
 Plans:
 
-- [ ] 38-01-PLAN.md — Update README and operator guides to cover `/ops/jobs/forensics`, evidence-boundary behavior, and runbook handoffs with explicit support-truth wording.
-- [ ] 38-02-PLAN.md — Extend example-host documentation and walkthroughs to reflect supported operator journeys and host-owned escalation boundaries.
-- [ ] 38-03-PLAN.md — Verify and document docs-contract closure evidence for DOC-05 with references to published guidance artifacts.
+- [x] 38-01-PLAN.md — Update README and operator guides to cover `/ops/jobs/forensics`, evidence-boundary behavior, and runbook handoffs with explicit support-truth wording.
+- [x] 38-02-PLAN.md — Extend example-host documentation and walkthroughs to reflect supported operator journeys and host-owned escalation boundaries.
+- [x] 38-03-PLAN.md — Verify and document docs-contract closure evidence for DOC-05 with references to published guidance artifacts.
 
 **Details:**
 This phase closes the broken docs/example-host operator flow identified by the milestone audit.
@@ -153,7 +153,7 @@ This phase turns continuity proof from phase-local evidence into CI-enforced mil
 | 35 | Runbook-guided remediation and alert hook boundaries | RNB-03, HST-05 | Complete - 2026-05-27 |
 | 36 | Docs/example-host/proof closure seed phase | DOC-05, VER-04 | Gap closure split into Phases 38-39 |
 | 37 | 3/3 | Complete    | 2026-05-27 |
-| 38 | Docs and example-host forensics journey closure | DOC-05 | Planned |
+| 38 | 3/3 | Complete    | 2026-05-27 |
 | 39 | CI continuity proof lane closure | VER-04 | Planned |
 
 ### Phase Success Criteria
