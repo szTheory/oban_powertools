@@ -729,6 +729,21 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       ]
     end
 
+    defp incident_rows(_repo, %Incident{} = incident) do
+      [
+        %{
+          id: "#{incident.id}:summary",
+          incident: incident,
+          action: "job_rescue",
+          target_type: "job",
+          target_id: nil,
+          target_summary: incident.summary || incident.incident_class,
+          previewable?: false,
+          resource: %{type: :job, id: "missing"}
+        }
+      ]
+    end
+
     defp pick_view_and_row(active_rows, resolved_rows, nil, current_view) do
       default_view =
         if current_view == "resolved" and resolved_rows != [], do: "resolved", else: "active"
