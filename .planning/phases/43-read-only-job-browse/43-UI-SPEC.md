@@ -56,18 +56,20 @@ Exceptions:
 
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
-| Body | 14px (`text-sm`) | 400 regular | 1.5 (Tailwind default for `text-sm`) |
-| Label / table header | 14px (`text-sm`) | 500 medium (`font-medium`) | 1.5 |
+| Body | 14px (`text-sm`) | 400 regular (`font-normal`) | 1.5 (Tailwind default for `text-sm`) |
+| Label / table header / badge text | 14px (`text-sm`) | 600 semibold (`font-semibold`) | 1.5 |
 | Subheading / card title | 16px (`text-base`) | 600 semibold (`font-semibold`) | 1.25 |
 | Page heading (h1) | 24px (`text-2xl`) | 600 semibold (`font-semibold`) | 1.2 |
+
+Exactly 2 weights declared: 400 (regular) for body copy, 600 (semibold) for all emphasis roles (table headers, badge text, subheadings, page headings, state tab labels).
 
 Source: consistent pattern across all existing LiveViews:
 - `h1` always `text-2xl font-semibold`
 - section headings always `text-base font-semibold`
 - body and descriptive copy always `text-sm` at regular weight
-- table headers always `text-sm font-medium`
+- table headers use `font-semibold` (previously `font-medium` — collapsed to semibold per 2-weight constraint)
 
-Badge / meta text: 12px (`text-xs`) at weight 500 (`font-medium`) — used for all state badges, timestamps in compact contexts, and count indicators.
+Badge / meta text: 12px (`text-xs`) at weight 600 (`font-semibold`) — used for all state badges, timestamps in compact contexts, and count indicators.
 
 ---
 
@@ -114,18 +116,20 @@ Disabled / placeholder text: `text-zinc-500` — established for timestamps, sub
 
 These are the concrete UI building blocks for Phase 43. No new component abstractions are required — all patterns already exist in the codebase.
 
+**Primary visual anchor:** The state tab bar and job table are the focal point of the list page. The tab bar drives the dominant interaction (state selection); the table is the primary data surface. All other elements (filter bar, pagination, banners) are secondary to this pairing.
+
 ### Job List Page (`/ops/jobs/jobs?state=executing&...`)
 
 1. **Page header** — `h1.text-2xl.font-semibold` "Jobs" + `p.text-sm.text-zinc-600` subtitle with native banner
 2. **Read-only banner** — `p.rounded-lg.border.border-amber-200.bg-amber-50.px-4.py-3.text-sm.text-amber-800` (conditional on `@read_only?`) — from `LiveAuth.page_read_only_banner(:jobs)`
 3. **State tab bar** — horizontal row of `button` elements (one per Oban state, 7 total), using `view_toggle_class/1` pattern:
-   - Active: `rounded border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700`
-   - Inactive: `rounded border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600`
+   - Active: `rounded border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700`
+   - Inactive: `rounded border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600`
    - Each tab shows label + count in parens: `executing (12)`
    - State is always selected (no "all" tab); default state: `available` on mount if no URL param
 4. **Filter bar** — `form` with three inline selects: Queue, Worker, Tags — `phx-change` triggers `push_patch` to update URL params
 5. **Job table** — `div.overflow-hidden.rounded-lg.border.bg-white` wrapping `table.min-w-full.divide-y`:
-   - `thead.bg-slate-50.text-left.text-sm` with `th.px-4.py-3.font-medium` columns: State, Worker, Queue, Job ID, Scheduled At, Attempts
+   - `thead.bg-slate-50.text-left.text-sm` with `th.px-4.py-3.font-semibold` columns: State, Worker, Queue, Job ID, Scheduled At, Attempts
    - `tbody.divide-y.text-sm` with `tr` rows, each `td.px-4.py-3`
    - Clickable row: entire row is navigable to `/jobs/:id` via `phx-click` + `JS.navigate`
    - State column: state badge using the state badge color table above
@@ -193,8 +197,10 @@ No mutation controls appear anywhere in Phase 43 — the detail page is strictly
 | Tags GIN index caveat | Tags filtering performs best with a host-owned GIN index on oban_jobs.tags. See module documentation for the recommended index definition. |
 | Pagination: previous | Previous |
 | Pagination: next | Next |
+| Error state (query failure) | Unable to load jobs. Check your database connection and try refreshing the page. |
+| Error state (job not found) | Job not found. It may have been pruned or the ID is invalid. Return to the job list. |
 
-Source: read-only banner copy from CONTEXT.md D-19. State tab labels mirror Oban Web's established vocabulary (CONTEXT.md D-09). All other copy derived by applying the existing voice pattern from `lifeline_live.ex` empty states and `cron_live.ex` descriptions.
+Source: read-only banner copy from CONTEXT.md D-19. State tab labels mirror Oban Web's established vocabulary (CONTEXT.md D-09). Error state copy follows the existing voice pattern from `lifeline_live.ex` and `cron_live.ex` (problem description + next action). All other copy derived from the same sources.
 
 Destructive actions: none in Phase 43. No confirmation dialogs required.
 
