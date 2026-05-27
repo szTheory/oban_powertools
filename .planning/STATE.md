@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: milestone
-current_plan: None
-status: completed
+current_plan: 1
+status: executing
 stopped_at: Phase 41 context gathered
-last_updated: "2026-05-27T16:05:19.168Z"
+last_updated: "2026-05-27T16:58:53.248Z"
 progress:
   total_phases: 11
   completed_phases: 8
@@ -19,18 +19,18 @@ progress:
 ## Project Reference
 
 **Core Value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-**Current Focus:** Milestone v1.4 gap-closure — Phase 40 complete; Phase 41 and Phase 42 pending.
+**Current Focus:** Phase 41 — runbook-link-fidelity-and-atom-safety-hardening
 
 ## Current Position
 
-Phase: 40 (phase-34-manual-acceptance-closure) — COMPLETE
-Plan: 40-02 complete
+Phase: 41 (runbook-link-fidelity-and-atom-safety-hardening) — EXECUTING
+Plan: 1 of 1
 
 - **Phase:** 40
 - **Plan:** 40-02 complete
-- **Current Plan:** None
-- **Total Plans in Phase:** 2
-- **Status:** Phase 40 complete via automated proxies; Phase 41 next.
+- **Current Plan:** 1
+- **Total Plans in Phase:** 1
+- **Status:** Executing Phase 41
 - **Progress:** [#########.] 91% (Phase 40 of 11 active phases)
 - **Canonical sequencing:** `.planning/ROADMAP.md`
 - **Milestone requirements:** `.planning/REQUIREMENTS.md`

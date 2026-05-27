@@ -158,7 +158,7 @@ After replanning, this phase shifts the entire manual gate left into automation 
 
 Plans:
 
-- [ ] 41-01-PLAN.md — Bundled WR-01 + WR-02 hardening: centralize URL selector encoding behind `ObanPowertools.Web.Selectors`, replace `String.to_atom/1` in the four target modules with bounded normalization (`String.to_existing_atom/1` + rescue, closed-enum `ObanPowertools.Lifeline.TargetType`), and add deterministic regression coverage for delimiter-heavy fingerprints.
+- [x] 41-01-PLAN.md — Bundled WR-01 + WR-02 hardening: centralize URL selector encoding behind `ObanPowertools.Web.Selectors`, replace `String.to_atom/1` in the four target modules with bounded normalization (`String.to_existing_atom/1` + rescue, closed-enum `ObanPowertools.Lifeline.TargetType`), and add deterministic regression coverage for delimiter-heavy fingerprints.
 
 **Details:**
 This phase closes WR-01/WR-02 advisory debt and reduces minor cross-phase risk around runbook deep-link fidelity and safety. Per CONTEXT.md D-24 / D-26, the three originally envisioned plans are combined into a single bundled plan because the selector/atom/proof work is tightly coupled — regression tests only make sense once helpers exist, and splitting would force interim states without review value.
@@ -205,7 +205,7 @@ This phase is a quality-hygiene closure sweep for validation artifacts and does 
 | 38 | Docs and example-host forensics journey closure | DOC-05 | Complete - 2026-05-27 |
 | 39 | CI continuity proof lane closure | VER-04 | Complete - 2026-05-27 |
 | 40 | Phase 34 manual acceptance closure | OPS-03, RNB-01, RNB-02 | Complete - 2026-05-27 (closure shifted left into automation; 2 plans, no human UAT) |
-| 41 | Runbook link fidelity and atom safety hardening | Advisory debt (WR-01, WR-02) | Pending |
+| 41 | 1/1 | Complete   | 2026-05-27 |
 | 42 | Nyquist validation compliance sweep | Validation hygiene (phases 33, 34, 38, 39) | Pending |
 
 ### Phase Success Criteria
