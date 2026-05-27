@@ -37,6 +37,10 @@ defmodule ObanPowertools.RuntimeConfig do
     workflow_callback_handler(opts ++ [required: true])
   end
 
+  def host_escalation_handler(opts \\ []) do
+    Keyword.get(opts, :host_escalation_handler) || configured(:host_escalation_handler, opts)
+  end
+
   defp configured(key, opts) do
     case Application.get_env(@app, key) do
       nil ->
