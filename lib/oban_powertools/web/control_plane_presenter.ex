@@ -4,6 +4,7 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
   """
 
   alias ObanPowertools.{Audit, ControlPlane}
+  alias ObanPowertools.Web.Selectors
 
   @status_labels %{
     needs_review: "Needs Review",
@@ -180,14 +181,11 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
   def audit_follow_up_path(event) do
     identity = Audit.event_resource_identity(event)
 
-    [
+    Selectors.audit_path([
       {"resource_type", identity.type},
       {"resource_id", identity.id},
       {"event_type", Audit.event_label(event)}
-    ]
-    |> Enum.reject(fn {_key, value} -> is_nil(value) or value == "" end)
-    |> URI.encode_query()
-    |> then(&"/ops/jobs/audit?#{&1}")
+    ])
   end
 
   def workflow_refusal(nil), do: nil
