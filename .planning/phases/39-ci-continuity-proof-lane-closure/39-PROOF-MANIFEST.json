@@ -1,0 +1,65 @@
+{
+  "phase": "39-ci-continuity-proof-lane-closure",
+  "plan": "03",
+  "workflow_file": ".github/workflows/host-contract-proof.yml",
+  "status_source": "continuity-proof-status",
+  "verified_at_utc": "2026-05-27T10:45:55Z",
+  "claims": [
+    {
+      "claim_id": "VER04-C1",
+      "requirement_id": "VER-04",
+      "workflow_job": "continuity-ver04-c1",
+      "command": "mix test test/oban_powertools/forensics_test.exs test/oban_powertools/web/live/forensics_live_test.exs test/oban_powertools/web/live/audit_live_test.exs --seed 0",
+      "artifact_refs": {
+        "claim_matrix_markdown": "tmp/ver04/ver04-claim-matrix.md",
+        "claim_matrix_json": "tmp/ver04/ver04-claim-matrix.json",
+        "run_metadata": "tmp/ver04/run-metadata.json",
+        "redaction_report": "tmp/ver04/redaction-report.json",
+        "claim_log": "tmp/ver04/logs/VER04-C1.log"
+      },
+      "status_source": "continuity-proof-status"
+    },
+    {
+      "claim_id": "VER04-C2",
+      "requirement_id": "VER-04",
+      "workflow_job": "continuity-ver04-c2",
+      "command": "mix test test/oban_powertools/cron_test.exs test/oban_powertools/web/live/cron_live_test.exs test/oban_powertools/web/live/limiters_live_test.exs --seed 0",
+      "artifact_refs": {
+        "claim_matrix_markdown": "tmp/ver04/ver04-claim-matrix.md",
+        "claim_matrix_json": "tmp/ver04/ver04-claim-matrix.json",
+        "run_metadata": "tmp/ver04/run-metadata.json",
+        "redaction_report": "tmp/ver04/redaction-report.json",
+        "claim_log": "tmp/ver04/logs/VER04-C2.log"
+      },
+      "status_source": "continuity-proof-status"
+    },
+    {
+      "claim_id": "VER04-C3",
+      "requirement_id": "VER-04",
+      "workflow_job": "continuity-ver04-c3",
+      "command": "mix test test/oban_powertools/lifeline_test.exs test/oban_powertools/web/live/lifeline_live_test.exs test/oban_powertools/web/live/forensics_live_test.exs --seed 0",
+      "artifact_refs": {
+        "claim_matrix_markdown": "tmp/ver04/ver04-claim-matrix.md",
+        "claim_matrix_json": "tmp/ver04/ver04-claim-matrix.json",
+        "run_metadata": "tmp/ver04/run-metadata.json",
+        "redaction_report": "tmp/ver04/redaction-report.json",
+        "claim_log": "tmp/ver04/logs/VER04-C3.log"
+      },
+      "status_source": "continuity-proof-status"
+    },
+    {
+      "claim_id": "VER04-C4",
+      "requirement_id": "VER-04",
+      "workflow_job": "continuity-ver04-c4",
+      "command": "mix test test/oban_powertools/forensics_test.exs test/oban_powertools/lifeline_test.exs test/oban_powertools/web/live/audit_live_test.exs --seed 0 && mix test test/oban_powertools/docs_contract_test.exs --seed 0",
+      "artifact_refs": {
+        "claim_matrix_markdown": "tmp/ver04/ver04-claim-matrix.md",
+        "claim_matrix_json": "tmp/ver04/ver04-claim-matrix.json",
+        "run_metadata": "tmp/ver04/run-metadata.json",
+        "redaction_report": "tmp/ver04/redaction-report.json",
+        "claim_log": "tmp/ver04/logs/VER04-C4.log"
+      },
+      "status_source": "continuity-proof-status"
+    }
+  ]
+}
