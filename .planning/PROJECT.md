@@ -38,13 +38,13 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 - ✓ Native-only and optional-bridge host contract proof (`PKG-03`, `DOC-03`) — v1.1 Phase 13
 - ✓ Supported archived-host upgrade lane (`PKG-02`) — v1.1 Phase 15
 - ✓ Explicit support-truth boundaries and host-owned hardening/troubleshooting guidance (`HST-03`, `DOC-02`) — v1.1 Phase 15
+- ✓ Runbook-guided remediation continuity with explicit host-owned escalation boundaries (`RNB-01`, `RNB-02`, `RNB-03`, `HST-05`) — v1.4 Phase 35
 
 ### Active
 
 - [ ] `FRN-01` through `FRN-03` — cross-surface forensic timelines, evidence bundles, and durable investigative context
 - [ ] `OPS-01` through `OPS-03` — limiter history, missed-fire diagnosis, and attention-first operational projections
-- [ ] `RNB-01` through `RNB-03` — runbook-guided remediation with explicit native, bridge-only, and host-owned follow-up boundaries
-- [ ] `DOC-05`, `VER-04`, and `HST-05` — support-truthful docs, proof, and host integration guidance for the new forensics surfaces
+- [ ] `DOC-05` and `VER-04` — support-truthful docs and proof coverage for the new forensics and runbook surfaces
 
 ### Out of Scope
 
@@ -85,7 +85,7 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 ## Current State
 
-Version `v1.3` shipped on 2026-05-26. The native `/ops/jobs` shell now reads as one coherent operator control plane: shared vocabulary and ownership boundaries span overview, cron, limiters, workflows, Lifeline, audit, and bounded Oban Web handoffs; the overview is diagnosis-first; drilldowns preserve durable context; and the public docs plus example-host proof tell the same native-shell versus bridge-only story. Milestone `v1.4` is active. Phases 32-34 have added forensic bundle foundations, limiter/cron history diagnostics, historical attention projection, and the first advisory runbook entry surfaces. Phase 35 is next and should connect supported remediation flows to durable runbook context while preserving explicit host-owned alert and escalation boundaries.
+Version `v1.3` shipped on 2026-05-26. The native `/ops/jobs` shell now reads as one coherent operator control plane: shared vocabulary and ownership boundaries span overview, cron, limiters, workflows, Lifeline, audit, and bounded Oban Web handoffs; the overview is diagnosis-first; drilldowns preserve durable context; and the public docs plus example-host proof tell the same native-shell versus bridge-only story. Milestone `v1.4` is active. Phases 32-35 have now added forensic bundle foundations, limiter/cron history diagnostics, historical attention projection, and runbook-guided remediation continuity with explicit host-owned escalation seams. Phase 36 is next to close docs, verification, and support-truth proof for the milestone.
 
 ## Current Milestone: v1.4 Operator Forensics & SRE Runbooks
 
@@ -148,4 +148,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-27 after completing Phase 34*
+*Last updated: 2026-05-27 after completing Phase 35*
