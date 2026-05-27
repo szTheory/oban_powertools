@@ -5,5 +5,19 @@
   "workflow": {
     "_auto_chain_active": false,
     "research_before_questions": true
+  },
+  "model_profile": "balanced",
+  "models": {
+    "planning": "opus",
+    "discuss": "opus",
+    "research": "sonnet",
+    "execution": "sonnet",
+    "verification": "sonnet",
+    "completion": "sonnet"
+  },
+  "model_overrides": {
+    "gsd-roadmapper": "sonnet",
+    "gsd-pattern-mapper": "sonnet",
+    "gsd-codebase-mapper": "haiku"
   }
 }
