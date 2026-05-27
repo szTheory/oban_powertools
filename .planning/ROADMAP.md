@@ -1,8 +1,8 @@
 # Milestone v1.4: Operator Forensics & SRE Runbooks
 
-**Status:** Complete
-**Phases:** 32-39
-**Total Plans:** 24
+**Status:** In Progress (gap closure)
+**Phases:** 32-42
+**Total Plans:** 24 complete (+ gap-closure planning pending)
 
 ## Overview
 
@@ -136,6 +136,51 @@ Plans:
 **Details:**
 This phase turns continuity proof from phase-local evidence into CI-enforced milestone closure.
 
+### Phase 40: Phase 34 Manual Acceptance Closure
+
+**Goal**: close the open manual acceptance gates from phase 34 so OPS-03, RNB-01, and RNB-02 are fully satisfied.
+**Depends on**: Phase 39
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 40-01-PLAN.md — Run and document manual overview visual-hierarchy acceptance checks for historical attention projections.
+- [ ] 40-02-PLAN.md — Run and document runbook support-truth and wording acceptance checks for guidance surfaces.
+- [ ] 40-03-PLAN.md — Apply any copy or presentation corrections and publish verification updates that clear `human_needed` status.
+
+**Details:**
+This phase converts the audit's remaining manual-gate debt into explicit closure work with requirement-level verification evidence.
+
+### Phase 41: Runbook Link Fidelity and Atom Safety Hardening
+
+**Goal**: resolve advisory phase 34 hardening debt that can reduce selector reliability or introduce avoidable normalization risk.
+**Depends on**: Phase 40
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 41-01-PLAN.md — Harden incident fingerprint interpolation and selector encoding for delimiter-heavy values.
+- [ ] 41-02-PLAN.md — Replace or constrain dynamic atom normalization paths in runbook/provenance handling.
+- [ ] 41-03-PLAN.md — Add targeted proof coverage and update integration notes for hardened behavior.
+
+**Details:**
+This phase closes WR-01/WR-02 advisory debt and reduces minor cross-phase risk around runbook deep-link fidelity and safety.
+
+### Phase 42: Nyquist Validation Compliance Sweep
+
+**Goal**: normalize milestone-phase validation artifacts so Nyquist compliance is clean before the next completion audit.
+**Depends on**: Phase 41
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 42-01-PLAN.md — Run `/gsd-validate-phase` for phase 33 and phase 34 and resolve remaining partial metadata.
+- [ ] 42-02-PLAN.md — Run `/gsd-validate-phase` for phase 38 and create any missing validation artifact needed for compliance.
+- [ ] 42-03-PLAN.md — Run `/gsd-validate-phase` for phase 39 and publish the updated validation closure snapshot.
+
+**Details:**
+This phase is a quality-hygiene closure sweep for validation artifacts and does not widen runtime feature scope.
+
 ---
 
 ## Milestone Summary
@@ -148,6 +193,7 @@ This phase turns continuity proof from phase-local evidence into CI-enforced mil
 - Reuse the v1.3 control-plane vocabulary everywhere so forensics and runbooks strengthen the existing operator contract instead of creating a parallel language.
 - Require explicit partial-evidence and unknown-state handling wherever historical data can be absent, retained away, or bridge-only.
 - After milestone audit gaps, add dedicated closure phases for verification backfill, docs/example-host closure, and CI continuity proof wiring.
+- After re-audit surfaced remaining debt, add dedicated gap-closure phases for manual acceptance closure, advisory hardening, and Nyquist compliance sweep.
 
 **Requirements Coverage:**
 
@@ -155,12 +201,15 @@ This phase turns continuity proof from phase-local evidence into CI-enforced mil
 |-------|------|--------------|------------------|
 | 32 | Forensic timeline and evidence bundle foundation | FRN-01, FRN-02, FRN-03 | Gap closure in Phase 37 |
 | 33 | Limiter history and cron missed-fire diagnostics | OPS-01, OPS-02 | Gap closure in Phase 37 |
-| 34 | Historical attention projection and runbook entry surfaces | OPS-03, RNB-01, RNB-02 | Complete - 2026-05-27 |
+| 34 | Historical attention projection and runbook entry surfaces | OPS-03, RNB-01, RNB-02 | Manual acceptance gate open - closure moved to Phase 40 |
 | 35 | Runbook-guided remediation and alert hook boundaries | RNB-03, HST-05 | Complete - 2026-05-27 |
 | 36 | Docs/example-host/proof closure seed phase | DOC-05, VER-04 | Reconciliation closure complete - 2026-05-27 |
 | 37 | Verification backfill for forensic and ops baseline | FRN-01, FRN-02, FRN-03, OPS-01, OPS-02 | Complete - 2026-05-27 |
 | 38 | Docs and example-host forensics journey closure | DOC-05 | Complete - 2026-05-27 |
 | 39 | CI continuity proof lane closure | VER-04 | Complete - 2026-05-27 |
+| 40 | Phase 34 manual acceptance closure | OPS-03, RNB-01, RNB-02 | Pending |
+| 41 | Runbook link fidelity and atom safety hardening | Advisory debt (WR-01, WR-02) | Pending |
+| 42 | Nyquist validation compliance sweep | Validation hygiene (phases 33, 34, 38, 39) | Pending |
 
 ### Phase Success Criteria
 
@@ -211,6 +260,24 @@ This phase turns continuity proof from phase-local evidence into CI-enforced mil
 1. Host contract CI executes continuity suites used for milestone verification proof.
 2. CI artifacts map directly to continuity proof claims and ownership-boundary behavior.
 3. VER-04 can be validated from reproducible automation evidence in the proof lane.
+
+**Phase 40**
+
+1. Manual acceptance checks for overview visual hierarchy and runbook guidance wording are executed and recorded with clear pass/fail evidence.
+2. OPS-03, RNB-01, and RNB-02 no longer depend on open `human_needed` verification status.
+3. Phase 34 verification artifacts and requirement traceability reflect full closure instead of partial/manual-needed state.
+
+**Phase 41**
+
+1. Delimiter-heavy `incident_fingerprint` values preserve deep-link selector fidelity across supported runbook surfaces.
+2. Dynamic atom normalization risks in phase 34 runbook/provenance paths are removed or constrained to safe alternatives.
+3. Integration/flow risk notes tied to WR-01/WR-02 are reduced from open advisory debt to verified hardening outcomes.
+
+**Phase 42**
+
+1. Validation artifacts for phases 33, 34, 38, and 39 meet Nyquist compliance requirements.
+2. Missing or draft/non-compliant validation frontmatter is corrected and linked in closure artifacts.
+3. Milestone audit inputs include a clean validation compliance snapshot for completion readiness.
 
 ---
 

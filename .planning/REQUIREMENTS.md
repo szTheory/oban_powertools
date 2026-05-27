@@ -21,12 +21,12 @@ Make the stable v1.3 control plane materially better for real incident investiga
 
 - [x] **OPS-01**: Operators can inspect limiter history that explains when capacity was exhausted, restored, or reconfigured, with enough context to distinguish transient pressure from policy-caused blocking.
 - [x] **OPS-02**: Operators can inspect cron missed-fire, delayed-fire, and overlap-relevant history so they can diagnose why a scheduled task did not run when expected.
-- [x] **OPS-03**: The native overview can project attention-worthy historical issues from limiters, cron, workflows, and Lifeline without degrading into a generic raw-event feed.
+- [ ] **OPS-03**: The native overview can project attention-worthy historical issues from limiters, cron, workflows, and Lifeline without degrading into a generic raw-event feed.
 
 ### Runbook-Guided Remediation
 
-- [x] **RNB-01**: Operators can see runbook-guided next steps for supported diagnosis states, including preconditions, cautions, and the recommended order of operations before any bounded native action.
-- [x] **RNB-02**: Runbook guidance distinguishes Powertools-native actions, bridge-only follow-up, and host-owned or external-system steps so the product stays honest about its ownership boundaries.
+- [ ] **RNB-01**: Operators can see runbook-guided next steps for supported diagnosis states, including preconditions, cautions, and the recommended order of operations before any bounded native action.
+- [ ] **RNB-02**: Runbook guidance distinguishes Powertools-native actions, bridge-only follow-up, and host-owned or external-system steps so the product stays honest about its ownership boundaries.
 - [x] **RNB-03**: When operators launch or complete a supported remediation flow, the resulting audit and evidence views retain the runbook context needed to explain what was attempted and why.
 
 ### Support Truth, Proof & Host Integration
@@ -103,9 +103,9 @@ Make the stable v1.3 control plane materially better for real incident investiga
 | FRN-03 | Phase 37 | Complete |
 | OPS-01 | Phase 37 | Complete |
 | OPS-02 | Phase 37 | Complete |
-| OPS-03 | Phase 34 | Complete |
-| RNB-01 | Phase 34 | Complete |
-| RNB-02 | Phase 34 | Complete |
+| OPS-03 | Phase 40 | Pending |
+| RNB-01 | Phase 40 | Pending |
+| RNB-02 | Phase 40 | Pending |
 | RNB-03 | Phase 35 | Complete |
 | DOC-05 | Phase 38 | Complete |
 | VER-04 | Phase 39 | Complete |
@@ -141,9 +141,9 @@ including `VER04-C1` and aggregate `continuity-proof-status`).
 - v1.4 requirements: 12 total
 - Mapped to phases: 12
 - Unmapped: 0
-- Complete: 12
-- Pending: 0
+- Complete: 9
+- Pending: 3
 
 ---
 *Requirements defined: 2026-05-26*
-*Last updated: 2026-05-27 after phase 36 reconciliation closure*
+*Last updated: 2026-05-27 after gap-closure phase planning (40-42)*
