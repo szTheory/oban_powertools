@@ -85,7 +85,7 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 ## Current State
 
-Version `v1.3` shipped on 2026-05-26. The native `/ops/jobs` shell now reads as one coherent operator control plane: shared vocabulary and ownership boundaries span overview, cron, limiters, workflows, Lifeline, audit, and bounded Oban Web handoffs; the overview is diagnosis-first; drilldowns preserve durable context; and the public docs plus example-host proof tell the same native-shell versus bridge-only story. Milestone `v1.4` is now active and focuses on making that stable control plane materially better for incident investigation, remediation guidance, and day-2 trust.
+Version `v1.3` shipped on 2026-05-26. The native `/ops/jobs` shell now reads as one coherent operator control plane: shared vocabulary and ownership boundaries span overview, cron, limiters, workflows, Lifeline, audit, and bounded Oban Web handoffs; the overview is diagnosis-first; drilldowns preserve durable context; and the public docs plus example-host proof tell the same native-shell versus bridge-only story. Milestone `v1.4` is active. Phases 32-34 have added forensic bundle foundations, limiter/cron history diagnostics, historical attention projection, and the first advisory runbook entry surfaces. Phase 35 is next and should connect supported remediation flows to durable runbook context while preserving explicit host-owned alert and escalation boundaries.
 
 ## Current Milestone: v1.4 Operator Forensics & SRE Runbooks
 
@@ -148,4 +148,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-26 after opening milestone v1.4*
+*Last updated: 2026-05-27 after completing Phase 34*
