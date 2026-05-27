@@ -218,6 +218,34 @@ defmodule ObanPowertools.LifelineTest do
     assert first_preview.metadata["summary"] =~ "job"
     assert first_preview.metadata["risk"] == "high"
     assert first_preview.metadata["resource"]["type"] == "job"
+    assert first_preview.metadata["runbook_context"]["entry"]["title"] == "Open runbook entry"
+    assert first_preview.metadata["runbook_context"]["diagnosis_state"] == "missing"
+    assert first_preview.metadata["runbook_context"]["evidence_completeness"] == "complete"
+
+    assert first_preview.metadata["runbook_context"]["selected_path"]["ownership"] ==
+             "Powertools-native"
+
+    assert first_preview.metadata["runbook_context"]["selected_path"]["venue"] ==
+             "Powertools-native Lifeline"
+
+    assert first_preview.metadata["runbook_context"]["selected_path"]["intent"] == "remediate"
+    assert first_preview.metadata["runbook_context"]["attempt"]["state"] == "previewed"
+    assert first_preview.metadata["runbook_context"]["attempt"]["action"] == "job_rescue"
+    assert first_preview.metadata["runbook_context"]["attempt"]["target_type"] == "job"
+    assert first_preview.metadata["runbook_context"]["attempt"]["target_id"] == to_string(job.id)
+
+    assert first_preview.metadata["runbook_context"]["selectors"]["incident_fingerprint"] ==
+             incident.incident_fingerprint
+
+    assert first_preview.metadata["runbook_context"]["selectors"]["resource_type"] == "job"
+
+    assert first_preview.metadata["runbook_context"]["selectors"]["resource_id"] ==
+             to_string(job.id)
+
+    assert first_preview.metadata["runbook_context"]["plan_hash"] == first_preview.plan_hash
+
+    assert first_preview.metadata["runbook_context"]["preview_token"] ==
+             first_preview.preview_token
   end
 
   test "preview_repair rejects late incidents and unsupported targets" do
@@ -272,6 +300,7 @@ defmodule ObanPowertools.LifelineTest do
     assert repaired_job.state == "available"
     assert executed_preview.consumed_at
     assert executed_preview.status == "consumed"
+    assert executed_preview.metadata["runbook_context"]["attempt"]["state"] == "consumed"
 
     resolved_incident = repo().get!(Incident, incident.id)
     assert resolved_incident.status == "resolved"
@@ -284,6 +313,20 @@ defmodule ObanPowertools.LifelineTest do
     assert audit_event.resource_type == "job"
     assert audit_event.resource_id == Integer.to_string(job.id)
     assert audit_event.metadata["reason"] =~ "orphaned job"
+    assert audit_event.metadata["runbook_context"]["attempt"]["state"] == "succeeded"
+    assert audit_event.metadata["runbook_context"]["attempt"]["action"] == "job_rescue"
+    assert audit_event.metadata["runbook_context"]["attempt"]["target_type"] == "job"
+
+    assert audit_event.metadata["runbook_context"]["attempt"]["target_id"] ==
+             Integer.to_string(job.id)
+
+    assert audit_event.metadata["runbook_context"]["selectors"]["resource_type"] == "job"
+
+    assert audit_event.metadata["runbook_context"]["selectors"]["resource_id"] ==
+             Integer.to_string(job.id)
+
+    assert audit_event.metadata["runbook_context"]["plan_hash"] == preview.plan_hash
+    assert audit_event.metadata["runbook_context"]["preview_token"] == preview.preview_token
 
     assert {:error, :preview_consumed} =
              Lifeline.execute_repair(
@@ -368,6 +411,7 @@ defmodule ObanPowertools.LifelineTest do
 
     assert drifted_preview.status == "drifted"
     assert drifted_preview.metadata["drift_reason"]
+    assert drifted_preview.metadata["runbook_context"]["attempt"]["state"] == "drifted"
 
     drifted_incident = repo().get!(Incident, workflow_incident.id)
     assert drifted_incident.status == "active"
@@ -393,6 +437,15 @@ defmodule ObanPowertools.LifelineTest do
 
     assert cancelled_step.state == "cancelled"
 
+    consumed_preview =
+      repo().get_by!(
+        ObanPowertools.Lifeline.RepairPreview,
+        preview_token: fresh_preview.preview_token
+      )
+
+    assert consumed_preview.status == "consumed"
+    assert consumed_preview.metadata["runbook_context"]["attempt"]["state"] == "consumed"
+
     command_attempt =
       repo().get_by!(CommandAttempt,
         workflow_id: workflow.id,
@@ -408,6 +461,43 @@ defmodule ObanPowertools.LifelineTest do
     resolved_incident = repo().get!(Incident, workflow_incident.id)
     assert resolved_incident.status == "resolved"
     assert resolved_incident.resolved_at
+  end
+
+  test "expired previews preserve continuity metadata while setting attempt state to expired" do
+    incident = insert_dead_executor_incident!("executor-missing")
+    job = insert_executing_job!("executor-missing")
+    actor = %{id: "operator-1", permissions: [:preview_repair, :execute_repair]}
+    now = DateTime.utc_now()
+
+    {:ok, preview} =
+      Lifeline.preview_repair(
+        repo(),
+        actor,
+        %{
+          incident_fingerprint: incident.incident_fingerprint,
+          action: "job_rescue",
+          target_type: "job",
+          target_id: job.id
+        },
+        now: now
+      )
+
+    assert {:error, :preview_expired} =
+             Lifeline.execute_repair(
+               repo(),
+               actor,
+               preview.preview_token,
+               "Expired remediation request should not execute",
+               now: DateTime.add(now, 8 * 24 * 60 * 60, :second)
+             )
+
+    expired_preview =
+      repo().get_by!(ObanPowertools.Lifeline.RepairPreview, preview_token: preview.preview_token)
+
+    assert expired_preview.status == "expired"
+    assert expired_preview.metadata["runbook_context"]["attempt"]["state"] == "expired"
+    assert expired_preview.metadata["runbook_context"]["plan_hash"] == preview.plan_hash
+    assert expired_preview.metadata["runbook_context"]["preview_token"] == preview.preview_token
   end
 
   test "preview_repair and execute_repair support workflow_request_cancel without an incident row" do

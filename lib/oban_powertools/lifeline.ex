@@ -626,30 +626,35 @@ defmodule ObanPowertools.Lifeline do
 
         after_state = %{"job_id" => job.id, "state" => next_job_state(action)}
 
+        preview = %{
+          incident_id: incident && incident.id,
+          incident_class: (incident && incident.incident_class) || infer_incident_class(action),
+          incident_fingerprint: incident_fingerprint,
+          plan_hash: plan_hash(action, "job", target_id, before_state, health_state),
+          preview_token: Ecto.UUID.generate(),
+          action: action,
+          target_type: "job",
+          target_id: to_string(target_id),
+          health_state: health_state,
+          status: "ready",
+          affected_counts: %{"jobs" => 1, "workflow_steps" => 0},
+          before_snapshot: before_state,
+          after_snapshot: after_state,
+          evidence: %{"previewed_at" => now},
+          reason_required: true,
+          expires_at: DateTime.add(now, 7 * 24 * 60 * 60, :second),
+          metadata: %{
+            "summary" => repair_summary(action, "job", target_id),
+            "risk" => "high",
+            "resource" => %{"type" => "job", "id" => to_string(target_id)}
+          }
+        }
+
         {:ok,
-         %{
-           incident_id: incident && incident.id,
-           incident_class: (incident && incident.incident_class) || infer_incident_class(action),
-           incident_fingerprint: incident_fingerprint,
-           plan_hash: plan_hash(action, "job", target_id, before_state, health_state),
-           preview_token: Ecto.UUID.generate(),
-           action: action,
-           target_type: "job",
-           target_id: to_string(target_id),
-           health_state: health_state,
-           status: "ready",
-           affected_counts: %{"jobs" => 1, "workflow_steps" => 0},
-           before_snapshot: before_state,
-           after_snapshot: after_state,
-           evidence: %{"previewed_at" => now},
-           reason_required: true,
-           expires_at: DateTime.add(now, 7 * 24 * 60 * 60, :second),
-           metadata: %{
-             "summary" => repair_summary(action, "job", target_id),
-             "risk" => "high",
-             "resource" => %{"type" => "job", "id" => to_string(target_id)}
-           }
-         }}
+         put_preview_runbook_context(preview, %{
+           "diagnosis_state" => diagnosis_state_for_preview(incident, health_state),
+           "evidence_completeness" => evidence_completeness_for_preview(incident)
+         })}
     end
   end
 
@@ -670,39 +675,44 @@ defmodule ObanPowertools.Lifeline do
     incident_fingerprint =
       (incident && incident.incident_fingerprint) || "workflow_step:#{step.id}"
 
+    preview = %{
+      incident_id: incident && incident.id,
+      incident_class: (incident && incident.incident_class) || "workflow_stuck",
+      incident_fingerprint: incident_fingerprint,
+      plan_hash:
+        plan_hash(
+          action,
+          "workflow_step",
+          target_id,
+          before_state,
+          incident && incident.health_state
+        ),
+      preview_token: Ecto.UUID.generate(),
+      action: action,
+      target_type: "workflow_step",
+      target_id: to_string(target_id),
+      health_state: incident && incident.health_state,
+      status: "ready",
+      affected_counts: %{"jobs" => 0, "workflow_steps" => 1},
+      before_snapshot: before_state,
+      after_snapshot: after_state,
+      evidence: %{"previewed_at" => now},
+      reason_required: true,
+      expires_at: DateTime.add(now, 7 * 24 * 60 * 60, :second),
+      metadata: %{
+        "summary" => repair_summary(action, "workflow_step", target_id),
+        "risk" => "high",
+        "diagnosis" => story.diagnosis,
+        "latest_rejection" => story.rejection_summary,
+        "resource" => %{"type" => "workflow_step", "id" => to_string(target_id)}
+      }
+    }
+
     {:ok,
-     %{
-       incident_id: incident && incident.id,
-       incident_class: (incident && incident.incident_class) || "workflow_stuck",
-       incident_fingerprint: incident_fingerprint,
-       plan_hash:
-         plan_hash(
-           action,
-           "workflow_step",
-           target_id,
-           before_state,
-           incident && incident.health_state
-         ),
-       preview_token: Ecto.UUID.generate(),
-       action: action,
-       target_type: "workflow_step",
-       target_id: to_string(target_id),
-       health_state: incident && incident.health_state,
-       status: "ready",
-       affected_counts: %{"jobs" => 0, "workflow_steps" => 1},
-       before_snapshot: before_state,
-       after_snapshot: after_state,
-       evidence: %{"previewed_at" => now},
-       reason_required: true,
-       expires_at: DateTime.add(now, 7 * 24 * 60 * 60, :second),
-       metadata: %{
-         "summary" => repair_summary(action, "workflow_step", target_id),
-         "risk" => "high",
-         "diagnosis" => story.diagnosis,
-         "latest_rejection" => story.rejection_summary,
-         "resource" => %{"type" => "workflow_step", "id" => to_string(target_id)}
-       }
-     }}
+     put_preview_runbook_context(preview, %{
+       "diagnosis_state" => story.diagnosis || "needs_review",
+       "evidence_completeness" => evidence_completeness_for_preview(incident)
+     })}
   end
 
   defp build_workflow_preview(repo, incident, target_id, action, now) do
@@ -735,33 +745,38 @@ defmodule ObanPowertools.Lifeline do
     incident_fingerprint =
       (incident && incident.incident_fingerprint) || "workflow:#{workflow.id}"
 
+    preview = %{
+      incident_id: incident && incident.id,
+      incident_class: (incident && incident.incident_class) || "workflow_action",
+      incident_fingerprint: incident_fingerprint,
+      plan_hash:
+        plan_hash(action, "workflow", target_id, before_state, incident && incident.health_state),
+      preview_token: Ecto.UUID.generate(),
+      action: action,
+      target_type: "workflow",
+      target_id: to_string(target_id),
+      health_state: incident && incident.health_state,
+      status: "ready",
+      affected_counts: %{"jobs" => 0, "workflow_steps" => length(steps)},
+      before_snapshot: before_state,
+      after_snapshot: after_state,
+      evidence: %{"previewed_at" => now},
+      reason_required: true,
+      expires_at: DateTime.add(now, 7 * 24 * 60 * 60, :second),
+      metadata: %{
+        "summary" => repair_summary(action, "workflow", target_id),
+        "risk" => "medium",
+        "diagnosis" => story.diagnosis,
+        "latest_rejection" => story.rejection_summary,
+        "resource" => %{"type" => "workflow", "id" => to_string(target_id)}
+      }
+    }
+
     {:ok,
-     %{
-       incident_id: incident && incident.id,
-       incident_class: (incident && incident.incident_class) || "workflow_action",
-       incident_fingerprint: incident_fingerprint,
-       plan_hash:
-         plan_hash(action, "workflow", target_id, before_state, incident && incident.health_state),
-       preview_token: Ecto.UUID.generate(),
-       action: action,
-       target_type: "workflow",
-       target_id: to_string(target_id),
-       health_state: incident && incident.health_state,
-       status: "ready",
-       affected_counts: %{"jobs" => 0, "workflow_steps" => length(steps)},
-       before_snapshot: before_state,
-       after_snapshot: after_state,
-       evidence: %{"previewed_at" => now},
-       reason_required: true,
-       expires_at: DateTime.add(now, 7 * 24 * 60 * 60, :second),
-       metadata: %{
-         "summary" => repair_summary(action, "workflow", target_id),
-         "risk" => "medium",
-         "diagnosis" => story.diagnosis,
-         "latest_rejection" => story.rejection_summary,
-         "resource" => %{"type" => "workflow", "id" => to_string(target_id)}
-       }
-     }}
+     put_preview_runbook_context(preview, %{
+       "diagnosis_state" => story.diagnosis || "needs_review",
+       "evidence_completeness" => evidence_completeness_for_preview(incident)
+     })}
   end
 
   defp resolve_incident(repo, attrs) do
@@ -804,6 +819,90 @@ defmodule ObanPowertools.Lifeline do
     |> Base.encode16(case: :lower)
   end
 
+  defp put_preview_runbook_context(preview, context_overrides) do
+    metadata = preview.metadata || %{}
+
+    Map.put(
+      preview,
+      :metadata,
+      Map.put(
+        metadata,
+        "runbook_context",
+        runbook_context_for_preview(preview, context_overrides)
+      )
+    )
+  end
+
+  defp runbook_context_for_preview(preview, context_overrides) do
+    overrides = context_overrides || %{}
+
+    %{
+      "entry" => %{"title" => Map.get(overrides, "entry_title", "Open runbook entry")},
+      "diagnosis_state" => Map.get(overrides, "diagnosis_state", "needs_review"),
+      "evidence_completeness" => Map.get(overrides, "evidence_completeness", "unknown"),
+      "selected_path" => %{
+        "ownership" => "Powertools-native",
+        "venue" => "Powertools-native Lifeline",
+        "intent" => "remediate"
+      },
+      "attempt" => %{
+        "state" => "previewed",
+        "action" => preview.action,
+        "target_type" => preview.target_type,
+        "target_id" => to_string(preview.target_id)
+      },
+      "selectors" => %{
+        "incident_fingerprint" => preview.incident_fingerprint,
+        "resource_type" => preview.target_type,
+        "resource_id" => to_string(preview.target_id)
+      },
+      "plan_hash" => preview.plan_hash,
+      "preview_token" => preview.preview_token
+    }
+  end
+
+  defp runbook_context_for_attempt(preview, attempt_state, reason) do
+    runbook_context =
+      preview.metadata
+      |> Kernel.||(%{})
+      |> Map.get("runbook_context")
+      |> case do
+        %{} = context -> context
+        _missing -> runbook_context_for_preview(preview, %{})
+      end
+
+    runbook_context
+    |> with_attempt_state(attempt_state)
+    |> then(fn context ->
+      if is_binary(reason) and String.trim(reason) != "" do
+        put_in(context, ["attempt", "reason"], String.trim(reason))
+      else
+        context
+      end
+    end)
+  end
+
+  defp with_attempt_state(runbook_context, attempt_state) when is_map(runbook_context) do
+    attempt =
+      runbook_context
+      |> Map.get("attempt", %{})
+      |> Map.put("state", attempt_state)
+
+    Map.put(runbook_context, "attempt", attempt)
+  end
+
+  defp diagnosis_state_for_preview(%Incident{health_state: health_state}, _fallback)
+       when is_binary(health_state),
+       do: health_state
+
+  defp diagnosis_state_for_preview(_incident, health_state) when is_binary(health_state),
+    do: health_state
+
+  defp diagnosis_state_for_preview(_incident, _health_state), do: "needs_review"
+
+  defp evidence_completeness_for_preview(%Incident{}), do: "complete"
+  defp evidence_completeness_for_preview(nil), do: "partial_evidence"
+
   defp validate_reason(reason, false) when is_binary(reason), do: :ok
   defp validate_reason(nil, false), do: :ok
   defp validate_reason(_reason, false), do: :ok
@@ -827,7 +926,13 @@ defmodule ObanPowertools.Lifeline do
 
       {:error, :preview_expired} ->
         preview
-        |> RepairPreview.changeset(%{status: "expired"})
+        |> RepairPreview.changeset(%{
+          status: "expired",
+          metadata:
+            preview.metadata
+            |> Kernel.||(%{})
+            |> Map.put("runbook_context", runbook_context_for_attempt(preview, "expired", nil))
+        })
         |> repo.update!()
 
         {:error, :preview_expired}
@@ -916,6 +1021,7 @@ defmodule ObanPowertools.Lifeline do
           |> Kernel.||(%{})
           |> Map.put("drift_reason", "Target state changed after preview generation.")
           |> Map.put("drifted_at", DateTime.to_iso8601(now))
+          |> Map.put("runbook_context", runbook_context_for_attempt(preview, "drifted", nil))
       })
       |> repo.update!()
 
@@ -924,9 +1030,11 @@ defmodule ObanPowertools.Lifeline do
   end
 
   defp apply_repair(repo, preview, actor, reason, now) do
+    trimmed_reason = String.trim(reason)
+
     Multi.new()
     |> Multi.run(:target, fn repo, _changes ->
-      mutate_target(repo, preview, actor, reason, now)
+      mutate_target(repo, preview, actor, trimmed_reason, now)
     end)
     |> Multi.run(:incident, fn repo, _changes ->
       resolve_incident_after_repair(repo, preview, now)
@@ -937,7 +1045,14 @@ defmodule ObanPowertools.Lifeline do
         status: "consumed",
         executed_at: now,
         consumed_at: now,
-        metadata: Map.put(preview.metadata || %{}, "reason", String.trim(reason))
+        metadata:
+          preview.metadata
+          |> Kernel.||(%{})
+          |> Map.put("reason", trimmed_reason)
+          |> Map.put(
+            "runbook_context",
+            runbook_context_for_attempt(preview, "consumed", trimmed_reason)
+          )
       })
     )
     |> Multi.run(:audit, fn repo, %{preview: preview_record} ->
@@ -946,9 +1061,11 @@ defmodule ObanPowertools.Lifeline do
         "incident_class" => preview_record.incident_class,
         "incident_fingerprint" => preview_record.incident_fingerprint,
         "plan_hash" => preview_record.plan_hash,
-        "reason" => String.trim(reason),
+        "reason" => trimmed_reason,
         "affected_counts" => preview_record.affected_counts,
-        "result" => "ok"
+        "result" => "ok",
+        "runbook_context" =>
+          runbook_context_for_attempt(preview_record, "succeeded", trimmed_reason)
       }
 
       Audit.record(
