@@ -7,8 +7,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     import Ecto.Query
 
     alias ObanPowertools.{Audit, DisplayPolicy, Explain, Lifeline}
-    alias ObanPowertools.Lifeline.{ArchiveRun, Incident, RepairPreview}
-    alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth}
+    alias ObanPowertools.Lifeline.{ArchiveRun, Incident, RepairPreview, TargetType}
+    alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth, Selectors}
     alias ObanPowertools.Workflow.{Step, Workflow}
 
     @impl true
@@ -843,19 +843,14 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp selected_fingerprint(row), do: row.incident.incident_fingerprint
 
     defp selection_path(selection) do
-      query =
-        [
-          {"view", Map.get(selection, :view)},
-          {"incident_fingerprint", Map.get(selection, :incident_fingerprint)},
-          {"row-id", Map.get(selection, :row_id)},
-          {"workflow_id", Map.get(selection, :workflow_id)},
-          {"step", Map.get(selection, :step_name)},
-          {"action", Map.get(selection, :action)}
-        ]
-        |> Enum.reject(fn {_key, value} -> is_nil(value) or value == "" end)
-        |> URI.encode_query()
-
-      "/ops/jobs/lifeline?#{query}"
+      Selectors.lifeline_path([
+        {"view", Map.get(selection, :view)},
+        {"incident_fingerprint", Map.get(selection, :incident_fingerprint)},
+        {"row-id", Map.get(selection, :row_id)},
+        {"workflow_id", Map.get(selection, :workflow_id)},
+        {"step", Map.get(selection, :step_name)},
+        {"action", Map.get(selection, :action)}
+      ])
     end
 
     defp preview_action(row, actor) do
@@ -1102,7 +1097,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp repair_preview_value(%RepairPreview{} = preview),
       do: Map.fetch!(preview, repair_preview_key())
 
-    defp repair_preview_key, do: String.to_existing_atom("preview_" <> "token")
+    defp repair_preview_key, do: :preview_token
 
     defp event_actor_label(event) do
       event
@@ -1365,7 +1360,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
              target_summary: handoff_summary(workflow, step, action_info),
              previewable?: true,
              resource: %{
-               type: String.to_atom(action_info.target_type),
+               type: TargetType.to_atom(action_info.target_type),
                id: to_string(action_info.target_id)
              },
              workflow_id: workflow.id,

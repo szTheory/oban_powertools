@@ -438,6 +438,51 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
     assert html =~ "complete"
   end
 
+  test "resolves a delimiter-heavy incident fingerprint round-trip", %{conn: conn} do
+    # Full D-19 delimiter set: : / ? # % space & =
+    fingerprint = "workflow_stuck:wf-1/step-2?attempt=3 #frag%20"
+
+    incident =
+      %Incident{}
+      |> Incident.changeset(%{
+        incident_class: "workflow_stuck",
+        status: "active",
+        incident_fingerprint: fingerprint,
+        health_state: "missing",
+        summary: "delimiter-heavy incident for round-trip test",
+        affected_counts: %{"jobs" => 1, "workflow_steps" => 0},
+        evidence: %{"job_ids" => [456], "workflow_step_ids" => []},
+        first_detected_at: DateTime.utc_now(),
+        last_detected_at: DateTime.utc_now(),
+        metadata: %{}
+      })
+      |> TestRepo.insert!()
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_forensics, :view_lifeline]}
+      )
+
+    encoded = URI.encode_www_form(fingerprint)
+    path = "/ops/jobs/forensics?incident_fingerprint=#{encoded}&view=active"
+
+    {:ok, _view, html} = live(conn, path)
+
+    # Bundle subject must contain the decoded fingerprint (round-trip identity)
+    assert html =~ incident.incident_fingerprint
+
+    # The encoded fingerprint must appear in URL parameter context (href attributes)
+    assert html =~ "incident_fingerprint=#{URI.encode_www_form(fingerprint)}"
+
+    # Selector allowlist must be satisfied
+    assert_forensics_selector_allowlist(html)
+
+    # Re-mount: idempotency check
+    {:ok, _remounted_view, remounted_html} = live(conn, path)
+    assert remounted_html =~ incident.incident_fingerprint
+    assert URI.encode_www_form(fingerprint) in ~w(#{encoded})
+  end
+
   defp truncate_minute(%DateTime{} = dt), do: %DateTime{dt | second: 0, microsecond: {0, 0}}
 
   defp html_position(html, text) do

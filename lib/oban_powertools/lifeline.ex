@@ -7,7 +7,7 @@ defmodule ObanPowertools.Lifeline do
 
   alias Ecto.Multi
   alias ObanPowertools.{Audit, Auth, Explain, HostEscalation}
-  alias ObanPowertools.Lifeline.{ArchiveRun, Heartbeat, Incident, RepairPreview}
+  alias ObanPowertools.Lifeline.{ArchiveRun, Heartbeat, Incident, RepairPreview, TargetType}
   alias ObanPowertools.Telemetry
   alias ObanPowertools.Workflow
   alias ObanPowertools.Workflow.{Runtime, Step}
@@ -1070,7 +1070,7 @@ defmodule ObanPowertools.Lifeline do
 
       Audit.record(
         "lifeline.repair_executed",
-        %{type: String.to_atom(preview.target_type), id: preview.target_id},
+        %{type: TargetType.to_atom(preview.target_type), id: preview.target_id},
         metadata,
         repo: repo,
         actor_id: Auth.actor_id(actor)
@@ -1203,7 +1203,7 @@ defmodule ObanPowertools.Lifeline do
 
     case Audit.record(
            "lifeline.host_follow_up",
-           %{type: String.to_atom(preview.target_type), id: preview.target_id},
+           %{type: TargetType.to_atom(preview.target_type), id: preview.target_id},
            metadata,
            repo: repo,
            actor_id: Auth.actor_id(actor)

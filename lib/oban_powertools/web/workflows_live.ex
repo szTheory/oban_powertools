@@ -8,7 +8,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     alias ObanPowertools.{ControlPlane, DisplayPolicy, Explain}
     alias ObanPowertools.Workflow.{Edge, Result, Step, Workflow}
-    alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth}
+    alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth, Selectors}
 
     @impl true
     def mount(_params, %{"oban_dashboard_path" => dashboard_path}, socket) do
@@ -404,15 +404,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       do: "/ops/jobs/workflows/#{workflow_id}?step=#{step_name}"
 
     defp forensic_path(workflow, selected_step) do
-      [
+      Selectors.forensic_path([
         {"workflow_id", workflow.id},
         {"step", selected_step && selected_step.step_name},
         {"resource_type", if(selected_step, do: "workflow_step", else: "workflow")},
         {"resource_id", selected_step && selected_step.id}
-      ]
-      |> Enum.reject(fn {_key, value} -> is_nil(value) end)
-      |> URI.encode_query()
-      |> then(&"/ops/jobs/forensics?#{&1}")
+      ])
     end
 
     defp lifeline_handoff(workflow, selected_step, workflow_story, selected_step_story) do
@@ -427,16 +424,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       action = List.first(step_actions) || List.first(workflow_actions)
 
       if action do
-        params =
-          [
-            {"workflow_id", workflow.id},
-            {"step", selected_step && selected_step.step_name},
-            {"action", action.id}
-          ]
-          |> Enum.reject(fn {_key, value} -> is_nil(value) end)
-          |> URI.encode_query()
-
-        %{label: "Review in Lifeline: #{action.label}", path: "/ops/jobs/lifeline?#{params}"}
+        %{
+          label: "Review in Lifeline: #{action.label}",
+          path:
+            Selectors.lifeline_path([
+              {"workflow_id", workflow.id},
+              {"step", selected_step && selected_step.step_name},
+              {"action", action.id}
+            ])
+        }
       end
     end
 
