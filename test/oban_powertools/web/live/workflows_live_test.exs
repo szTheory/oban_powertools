@@ -23,6 +23,7 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
   alias ObanPowertools.Workflow.Step
   alias ObanPowertools.Workflow.Workflow, as: WorkflowRecord
   alias ObanPowertools.WorkflowFixtures
+  alias ObanPowertools.Web.ControlPlanePresenter
 
   setup do
     original_display_policy = Application.get_env(:oban_powertools, :display_policy)
@@ -144,8 +145,32 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
     assert html =~ "Migrate via compatibility path"
     assert html =~ "Venue:"
     assert html =~ "Workflow diagnosis"
+    assert html_position(html, "Outcome:") < html_position(html, "Reason:")
+    assert html_position(html, "Reason:") < html_position(html, "Legal next move:")
+    assert html_position(html, "Legal next move:") < html_position(html, "Venue:")
+    assert html_position(html, "Venue:") < html_position(html, "Machine code:")
     assert html =~ "Machine code: unsupported_legacy_semantics"
     assert html =~ "Semantics: legacy_v1 (compatibility_path)"
+  end
+
+  test "shared runbook ownership helper returns exact control-plane labels" do
+    assert ControlPlanePresenter.runbook_ownership_label(:powertools_native) ==
+             "Powertools-native"
+
+    assert ControlPlanePresenter.runbook_ownership_label("Powertools-native") ==
+             "Powertools-native"
+
+    assert ControlPlanePresenter.runbook_ownership_label(:oban_web_bridge) ==
+             "Oban Web bridge"
+
+    assert ControlPlanePresenter.runbook_ownership_label("Inspection only") ==
+             "Oban Web bridge"
+
+    assert ControlPlanePresenter.runbook_ownership_label(:host_owned) ==
+             "host-owned follow-up"
+
+    assert ControlPlanePresenter.runbook_ownership_label("host-owned follow-up") ==
+             "host-owned follow-up"
   end
 
   test "renders callback posture and recovery session identity", %{conn: conn} do
@@ -184,6 +209,7 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
 
     assert html =~ "Review the bounded action in Lifeline."
     assert html =~ "Review in Lifeline: Retry step"
+    assert html =~ "Powertools-native"
     assert html =~ "Audited action"
     assert has_element?(view, "a[href*='/ops/jobs/lifeline?']")
     refute html =~ "Execute Repair Plan"
@@ -212,5 +238,12 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
     conn = Plug.Test.init_test_session(conn, current_actor: %{id: "ops-2", permissions: []})
 
     assert {:error, {:redirect, %{to: "/"}}} = live(conn, "/ops/jobs/workflows")
+  end
+
+  defp html_position(html, text) do
+    case :binary.match(html, text) do
+      {position, _length} -> position
+      :nomatch -> flunk("expected #{inspect(text)} in rendered HTML")
+    end
   end
 end
