@@ -78,8 +78,12 @@ passed and a real native mutation succeeds.
 - `supported`: the native `/ops/jobs` shell is the supported operator surface, and native
   Powertools pages are the supported mutation surface.
 - `supported`: `Powertools-native` surfaces own diagnosis-first wording, legal next action, venue, and durable audit evidence.
+- `supported`: the canonical forensics handoff path is `/ops/jobs` -> `/ops/jobs/forensics` -> ownership-labeled next path -> `/ops/jobs/audit`.
 - `supported`: the optional `/ops/jobs/oban` bridge is supported only as a narrower read-only
   inspection annex and stays explicitly `Inspection only`.
+- `supported`: forensics labels are explicit support-truth boundaries; `partial evidence`,
+  `history unavailable`, and `unknown` mean operators should treat certainty as bounded.
+- `host-owned`: downstream escalation and provider delivery outcomes remain host-owned follow-up.
 - `supported`: one singular upgrade lane is supported for hosts that already have Postgres/Ecto,
   `repo`, `auth_module`, `/ops/jobs`, and Powertools migrations in place and still need to add
   `display_policy`.
@@ -101,7 +105,10 @@ passed and a real native mutation succeeds.
 - [Installation](guides/installation.md) covers the exact host-owned setup path, including
   `ObanPowertoolsAuth`, `ObanPowertoolsDisplayPolicy`, and the compile/migrate/boot threshold.
 - [First Operator Session](guides/first-operator-session.md) walks from install to the canonical
-  `ops-demo` -> `pause_cron_entry` on `nightly_sync` proof, the overview entrypoint, and the read-only bridge.
+  `ops-demo` -> `pause_cron_entry` on `nightly_sync` proof, forensic confirmation, audit follow-up,
+  and the read-only bridge.
+- [Forensics And Runbook Handoffs](guides/forensics-and-runbook-handoffs.md) is the canonical
+  v1.4 journey and ownership contract for `/ops/jobs/forensics` and `/ops/jobs/audit`.
 - [Example App Walkthrough](guides/example-app-walkthrough.md) points to the canonical fixture at
   `examples/phoenix_host`.
 - [Workers And Idempotency](guides/workers-and-idempotency.md) shows how to build typed workers

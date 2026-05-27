@@ -55,7 +55,19 @@ This matters because the native pages are the supported mutation surface:
 - audit evidence stays with the native Powertools operator flow
 - follow-up stays visible in the cross-surface audit destination at `/ops/jobs/audit`
 
-## 5. Check the Optional Bridge Boundary
+## 5. Confirm Forensics and Audit Continuity
+
+After `ops-demo` runs `pause_cron_entry` on `nightly_sync`, confirm continuity through:
+
+1. `/ops/jobs/forensics` for diagnosis context and evidence boundaries
+2. ownership-labeled next path (`Powertools-native`, `Oban Web bridge`, or
+   `host-owned follow-up`)
+3. `/ops/jobs/audit` for follow-up visibility
+
+For the canonical narrative and wording contract, see
+[Forensics And Runbook Handoffs](forensics-and-runbook-handoffs.md).
+
+## 6. Check the Optional Bridge Boundary
 
 If `oban_web` is installed, open `/ops/jobs/oban` after the native `ops-demo` ->
 `pause_cron_entry` on `nightly_sync` proof succeeds.
@@ -64,18 +76,20 @@ That route is an additional read-only inspection stop. It shares the same host-o
 display seams, but it is not a mutation equivalent. Use it for bounded inspection. Keep audited
 mutation work on the native Powertools pages.
 
-## 6. What Success Looks Like
+## 7. What Success Looks Like
 
 Your first operator session is successful when:
 
 - `/ops/jobs` renders for the seeded operator
 - the overview and audit pages stay inside the same native control plane story
 - operator `ops-demo` completes native action `pause_cron_entry` on `nightly_sync`
+- `/ops/jobs/forensics` reflects post-mutation context before follow-up
+- ownership-labeled next paths stay explicit before follow-up action
 - durable audit evidence records that native mutation
 - `/ops/jobs/oban` is available only when `oban_web` is installed
 - `/ops/jobs/oban` remains read-only
 
-## 7. Compare Against the Canonical Host
+## 8. Compare Against the Canonical Host
 
 If your host differs from the paved road, compare it against the generated fixture walkthrough in
 [Example App Walkthrough](example-app-walkthrough.md).

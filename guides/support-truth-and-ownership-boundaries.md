@@ -51,6 +51,28 @@ and `intentionally unsupported`.
 - non-Postgres support
 - broad compatibility promises outside verified lanes
 
+## v1.4 forensics and runbook handoffs
+
+For forensic continuity, keep one explicit route-level journey:
+`/ops/jobs` -> `/ops/jobs/forensics` -> ownership-labeled next path ->
+`/ops/jobs/audit`.
+
+At decision points, preserve these exact labels:
+
+- `Powertools-native` (`Audited action`)
+- `Oban Web bridge` (`Inspection only`)
+- `host-owned follow-up`
+
+Forensics evidence boundaries must remain explicit:
+
+- `partial evidence`
+- `history unavailable`
+- `unknown`
+
+Escalation status truth is intentionally narrow. Powertools reports only
+`unconfigured`, `invoked`, and `failed` host follow-up states, and host
+escalation remains host-owned beyond those statuses.
+
 ## library-owned implementation
 
 - nested Powertools routes
