@@ -62,9 +62,14 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     {:ok, view, html} = live(conn, "/ops/jobs/lifeline")
 
     assert html =~ "Needs Review"
-    assert html =~ "Preview Repair Plan"
+    assert html =~ "Preview Native Remediation"
     assert html =~ "Archive Activity"
     assert html =~ "Archive and prune visibility is read-only here."
+    assert html =~ "No remediation attempts recorded yet"
+
+    assert html =~
+             "This diagnosis has not entered a supported native remediation flow. Review legal next paths, then start a native preview to capture attempt context."
+
     refute has_element?(view, "button[phx-click='execute']")
   end
 
@@ -90,13 +95,16 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
       |> element("button[phx-value-row-id$=':job:#{job.id}'][phx-click='preview']")
       |> render_click()
 
-    assert html =~ "Open runbook entry"
-    assert html =~ "Legal next move"
-    assert html =~ "Venue"
-    assert html =~ "evidence"
+    assert html =~ "Runbook continuity"
+    assert html =~ "Diagnosis:"
+    assert html =~ "Legal next path:"
+    assert html =~ "Venue:"
+    assert html =~ "Attempt state:"
+    assert html =~ "Evidence link"
     assert html =~ "Powertools-native"
     assert html =~ "Oban Web bridge"
     assert html =~ "host-owned follow-up"
+
     assert html =~
              "/ops/jobs/forensics?incident_fingerprint=#{URI.encode_www_form(incident.incident_fingerprint)}&amp;view=active"
 
@@ -104,11 +112,23 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     assert html =~ "Preview Status"
     assert html =~ "Audit Record to be Written"
     assert html =~ "Audit Consequence"
-    assert html =~ "One immutable operator event will be written."
+
+    assert html =~
+             "Execute Remediation: This writes a native remediation attempt to audit and forensic evidence. Confirm only after reviewing reason, ownership, and expected outcome."
+
     assert html =~ "policy actor: operator:ops-1"
     assert html =~ "policy reason: none provided"
     assert html =~ "Open Generic Job Inspection in Oban Web bridge"
     assert html =~ "/oban/jobs/#{job.id}"
+
+    diagnosis_position = html_position(html, "Diagnosis:")
+    legal_path_position = html_position(html, "Legal next path:")
+    venue_position = html_position(html, "Venue:")
+    attempt_state_position = html_position(html, "Attempt state:")
+
+    assert diagnosis_position < legal_path_position
+    assert legal_path_position < venue_position
+    assert venue_position < attempt_state_position
 
     assert [%{status: "ready"}] = TestRepo.all(ObanPowertools.Lifeline.RepairPreview)
 
@@ -256,7 +276,7 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     assert html =~
              "/ops/jobs/audit?resource_type=job&amp;resource_id=#{job.id}&amp;event_type=lifeline.repair_executed"
 
-    refute html =~ "Preview Repair Plan"
+    refute html =~ "Preview Native Remediation"
     refute has_element?(view, "button[phx-value-row-id$=':job:#{job.id}'][phx-click='preview']")
 
     remounted_conn =
@@ -477,7 +497,12 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     assert selected_html =~ "Open the forensic bundle."
     assert selected_html =~ "Inspection only"
     assert has_element?(view, "a[href*='/ops/jobs/forensics?']")
-    assert has_element?(view, "a[href*='incident_fingerprint=#{URI.encode_www_form(incident.incident_fingerprint)}']")
+
+    assert has_element?(
+             view,
+             "a[href*='incident_fingerprint=#{URI.encode_www_form(incident.incident_fingerprint)}']"
+           )
+
     assert has_element?(view, "a[href*='view=active']")
     assert has_element?(view, "a[href*='resource_type=job']")
   end
@@ -576,5 +601,10 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
       metadata: %{}
     })
     |> TestRepo.insert!()
+  end
+
+  defp html_position(html, text) do
+    {position, _length} = :binary.match(html, text)
+    position
   end
 end

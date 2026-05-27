@@ -77,6 +77,17 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               </a>
             </div>
 
+            <div :if={continuity = runbook_continuity(@bundle)} class="mt-4 rounded border border-slate-200 bg-slate-50 p-3">
+              <p class="text-sm font-semibold">Latest runbook continuity</p>
+              <p class="mt-1 text-sm text-zinc-600">
+                <strong>Attempt state:</strong> <%= continuity_attempt_state(continuity) %>
+                <span class="mx-2">•</span>
+                <strong>Action:</strong> <%= continuity_action(continuity) %>
+                <span class="mx-2">•</span>
+                <strong>Reason:</strong> <%= continuity_reason(continuity) %>
+              </p>
+            </div>
+
             <div class="mt-4 grid gap-4 md:grid-cols-2">
               <div class="rounded border bg-slate-50 p-3">
                 <h3 class="text-sm font-semibold">Diagnosis state</h3>
@@ -284,6 +295,25 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       do: "rounded bg-indigo-700 px-3 py-2 text-sm text-white"
 
     defp runbook_path_link_class(_item), do: "text-sm text-indigo-700 underline"
+
+    defp runbook_continuity(bundle) do
+      case get_in(bundle, [:subject, :continuity]) || get_in(bundle, [:subject, "continuity"]) do
+        %{} = continuity -> continuity
+        _missing -> nil
+      end
+    end
+
+    defp continuity_attempt_state(continuity) do
+      Map.get(continuity, "attempt_state") || Map.get(continuity, :attempt_state) || "unknown"
+    end
+
+    defp continuity_action(continuity) do
+      Map.get(continuity, "action") || Map.get(continuity, :action) || "unknown"
+    end
+
+    defp continuity_reason(continuity) do
+      Map.get(continuity, "reason") || Map.get(continuity, :reason) || "none provided"
+    end
 
     defp repo, do: Application.fetch_env!(:oban_powertools, :repo)
   end

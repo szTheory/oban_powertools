@@ -1,6 +1,7 @@
 defmodule ObanPowertools.Web.ForensicsLiveTest do
   use ObanPowertools.LiveCase, async: false
 
+  alias ObanPowertools.Audit
   alias ObanPowertools.Cron
   alias ObanPowertools.Forensics.LimiterHistoryFact
   alias ObanPowertools.Lifeline.Incident
@@ -67,6 +68,31 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
       })
       |> TestRepo.insert!()
 
+    {:ok, _event} =
+      Audit.record(
+        "lifeline.repair_executed",
+        %{type: :job, id: 123},
+        %{
+          "event_type" => "lifeline.repair_executed",
+          "incident_fingerprint" => incident.incident_fingerprint,
+          "reason" => "Operator rescued orphaned execution",
+          "runbook_context" => %{
+            "selected_path" => %{
+              "ownership" => "Powertools-native",
+              "venue" => "Powertools-native Lifeline"
+            },
+            "attempt" => %{
+              "state" => "succeeded",
+              "action" => "job_rescue",
+              "target_type" => "job",
+              "target_id" => "123"
+            }
+          }
+        },
+        repo: TestRepo,
+        actor_id: "ops-1"
+      )
+
     conn =
       Plug.Test.init_test_session(conn,
         current_actor: %{id: "ops-1", permissions: [:view_forensics, :view_lifeline]}
@@ -81,11 +107,16 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
     assert html =~ "Inspection only"
     assert html =~ "resource_type=job"
     assert html =~ "resource_id=123"
+    assert html =~ "Latest runbook continuity"
+    assert html =~ "Attempt state:"
+    assert html =~ "Action:"
+    assert html =~ "Reason:"
+    assert html =~ "Operator rescued orphaned execution"
 
     {:ok, _remounted_view, remounted_html} = live(conn, path)
 
     assert remounted_html =~ incident.incident_fingerprint
-    assert remounted_html =~ "partial evidence"
+    assert remounted_html =~ "Latest runbook continuity"
   end
 
   test "redirects unauthorized viewers", %{conn: conn} do

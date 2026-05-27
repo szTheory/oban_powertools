@@ -316,7 +316,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                         if(action.enabled?, do: "bg-indigo-600 text-white", else: "cursor-not-allowed border text-zinc-400")
                       ]}
                     >
-                      Preview Repair Plan
+                      Preview Native Remediation
                     </button>
                     <p :if={@current_view == "active" and not is_nil(action.disabled_reason)} class="mt-1 text-xs text-zinc-500">
                       <%= action.disabled_reason %>
@@ -353,24 +353,30 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 </.link>
               </div>
 
-              <div class="mt-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                <p class="font-medium">Open runbook entry</p>
-                <p class="mt-1">
-                  Active Lifeline incidents stay advisory until preview state, reason, and audit consequence are visible.
-                </p>
-                <p class="mt-2">
-                  <strong>Legal next move:</strong> Review the repair preview before any bounded Lifeline action.
-                </p>
-                <p class="mt-1">
-                  <strong>Venue:</strong> <%= ControlPlanePresenter.runbook_ownership_label(:powertools_native) %>
-                </p>
-                <p class="mt-1 text-xs">
-                  <%= ControlPlanePresenter.runbook_ownership_label("Inspection only") %> remains read-only for supporting evidence; <%= ControlPlanePresenter.runbook_ownership_label(:host_owned) %> stays outside Powertools delivery ownership.
-                </p>
-                <a href={forensic_path(@selected_row, @current_view)} class="mt-3 inline-block text-sm text-indigo-700 underline">
-                  evidence link
-                </a>
-              </div>
+              <section class="mt-4">
+                <h3 class="text-sm font-medium">Runbook continuity</h3>
+                <div class="mt-2 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  <%= if continuity = runbook_continuity(@preview, @audit_events) do %>
+                    <p><strong>Diagnosis:</strong> <%= continuity_diagnosis(continuity) %></p>
+                    <p class="mt-1"><strong>Legal next path:</strong> <%= continuity_legal_next_path(continuity) %></p>
+                    <p class="mt-1"><strong>Venue:</strong> <%= continuity_venue(continuity) %></p>
+                    <p class="mt-1"><strong>Attempt state:</strong> <%= continuity_attempt_state(continuity) %></p>
+                  <% else %>
+                    <p class="font-medium">No remediation attempts recorded yet</p>
+                    <p class="mt-1">
+                      This diagnosis has not entered a supported native remediation flow. Review legal next paths, then start a native preview to capture attempt context.
+                    </p>
+                  <% end %>
+                  <p class="mt-1 text-xs">
+                    <%= ControlPlanePresenter.runbook_ownership_label(:powertools_native) %>,
+                    <%= ControlPlanePresenter.runbook_ownership_label("Inspection only") %>, and
+                    <%= ControlPlanePresenter.runbook_ownership_label(:host_owned) %> remain explicitly bounded.
+                  </p>
+                  <a href={forensic_path(@selected_row, @current_view)} class="mt-3 inline-block text-sm text-indigo-700 underline">
+                    Evidence link
+                  </a>
+                </div>
+              </section>
 
               <div class="mt-4 space-y-4">
                 <section>
@@ -436,7 +442,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 </label>
                 <% execute_action = execute_action(@preview, @reason, @current_actor, @selected_row) %>
                 <p class="text-xs text-zinc-500">
-                  Execute Repair Plan: This will change job or workflow state immediately and write one immutable operator event. Enter a reason before continuing.
+                  Execute Remediation: This writes a native remediation attempt to audit and forensic evidence. Confirm only after reviewing reason, ownership, and expected outcome.
                 </p>
                 <div class="flex flex-wrap gap-3">
                   <button
@@ -452,7 +458,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                       )
                     ]}
                   >
-                    Execute Repair Plan
+                    Execute Remediation
                   </button>
                   <a
                     :if={@target_detail.job_id}
@@ -1069,6 +1075,63 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       event
       |> Audit.event_reason()
       |> DisplayPolicy.reason(%{surface: :lifeline, section: :audit_history, event: event.action})
+    end
+
+    defp runbook_continuity(preview, audit_events) do
+      case preview_runbook_context(preview) do
+        %{} = context -> context
+        _missing -> latest_audit_runbook_context(audit_events)
+      end
+    end
+
+    defp preview_runbook_context(nil), do: nil
+
+    defp preview_runbook_context(%RepairPreview{} = preview) do
+      case get_in(preview.metadata || %{}, ["runbook_context"]) do
+        %{} = context -> context
+        _missing -> nil
+      end
+    end
+
+    defp latest_audit_runbook_context(audit_events) do
+      Enum.find_value(audit_events || [], fn event ->
+        case get_in(event.metadata || %{}, ["runbook_context"]) do
+          %{} = context -> context
+          _missing -> nil
+        end
+      end)
+    end
+
+    defp continuity_diagnosis(runbook_context) do
+      Map.get(runbook_context || %{}, "diagnosis_state", "unknown")
+    end
+
+    defp continuity_legal_next_path(runbook_context) do
+      selected_path = continuity_selected_path(runbook_context)
+      intent = Map.get(selected_path, "intent", "investigate")
+
+      ownership =
+        ControlPlanePresenter.runbook_ownership_label(Map.get(selected_path, "ownership"))
+
+      "#{intent} via #{ownership}"
+    end
+
+    defp continuity_venue(runbook_context) do
+      selected_path = continuity_selected_path(runbook_context)
+
+      Map.get(selected_path, "venue") ||
+        ControlPlanePresenter.runbook_ownership_label(Map.get(selected_path, "ownership"))
+    end
+
+    defp continuity_attempt_state(runbook_context) do
+      get_in(runbook_context || %{}, ["attempt", "state"]) || "unknown"
+    end
+
+    defp continuity_selected_path(runbook_context) do
+      case Map.get(runbook_context || %{}, "selected_path") do
+        %{} = selected_path -> selected_path
+        _missing -> %{}
+      end
     end
 
     defp error_message(:preview_not_found), do: LiveAuth.mutation_error(:preview_not_available)
