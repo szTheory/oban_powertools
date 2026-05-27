@@ -2,6 +2,7 @@ defmodule ObanPowertools.Forensics do
   import Ecto.Query
 
   alias ObanPowertools.{Audit, Explain, Lifeline}
+  alias ObanPowertools.Web.Selectors
   alias ObanPowertools.Forensics.CronHistory
   alias ObanPowertools.Forensics.EvidenceBundle
   alias ObanPowertools.Forensics.LimiterHistory
@@ -440,20 +441,16 @@ defmodule ObanPowertools.Forensics do
         []
 
       action ->
-        params =
-          [
-            {"workflow_id", workflow.id},
-            {"step", selected_step && selected_step.step_name},
-            {"action", action.id}
-          ]
-          |> Enum.reject(fn {_key, value} -> is_nil(value) end)
-          |> URI.encode_query()
-
         [
           %{
             label: action.label,
             venue: "Powertools-native Lifeline",
-            path: "/ops/jobs/lifeline?#{params}"
+            path:
+              Selectors.lifeline_path([
+                {"workflow_id", workflow.id},
+                {"step", selected_step && selected_step.step_name},
+                {"action", action.id}
+              ])
           }
         ]
     end
@@ -465,32 +462,28 @@ defmodule ObanPowertools.Forensics do
     do: "/ops/jobs/workflows/#{workflow.id}?step=#{step.step_name}"
 
   defp lifeline_path(incident, view) do
-    params =
-      [
-        {"incident_fingerprint", incident.incident_fingerprint},
-        {"view", view || incident_view(incident)}
-      ]
-      |> URI.encode_query()
-
-    "/ops/jobs/lifeline?#{params}"
+    Selectors.lifeline_path([
+      {"incident_fingerprint", incident.incident_fingerprint},
+      {"view", view || incident_view(incident)}
+    ])
   end
 
   defp incident_view(%Incident{status: "resolved"}), do: "resolved"
   defp incident_view(_incident), do: "active"
 
   defp audit_path(%Step{} = step),
-    do: "/ops/jobs/audit?resource_type=workflow_step&resource_id=#{step.id}"
+    do: Selectors.audit_path([{"resource_type", "workflow_step"}, {"resource_id", to_string(step.id)}])
 
   defp audit_path(%Workflow{} = workflow),
-    do: "/ops/jobs/audit?resource_type=workflow&resource_id=#{workflow.id}"
+    do: Selectors.audit_path([{"resource_type", "workflow"}, {"resource_id", to_string(workflow.id)}])
 
   defp audit_path(%{resource_type: type, resource_id: id})
        when not is_nil(type) and not is_nil(id) do
-    "/ops/jobs/audit?resource_type=#{type}&resource_id=#{id}"
+    Selectors.audit_path([{"resource_type", to_string(type)}, {"resource_id", to_string(id)}])
   end
 
   defp audit_path(%{type: type, id: id}) do
-    "/ops/jobs/audit?resource_type=#{type}&resource_id=#{id}"
+    Selectors.audit_path([{"resource_type", to_string(type)}, {"resource_id", to_string(id)}])
   end
 
   defp lifeline_resource(incident, selectors) do

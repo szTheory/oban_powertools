@@ -9,7 +9,7 @@ defmodule ObanPowertools.Web.OverviewReadModel do
   alias ObanPowertools.Lifeline
   alias ObanPowertools.Lifeline.Incident
   alias ObanPowertools.Limits.{Resource, State}
-  alias ObanPowertools.Web.ControlPlanePresenter
+  alias ObanPowertools.Web.{ControlPlanePresenter, Selectors}
 
   def build(opts) do
     repo = Keyword.fetch!(opts, :repo)
@@ -279,12 +279,11 @@ defmodule ObanPowertools.Web.OverviewReadModel do
           attention_reason: ControlPlanePresenter.audit_event_label(event),
           evidence_completeness: :complete,
           path:
-            "/ops/jobs/audit?" <>
-              URI.encode_query(%{
-                "resource_type" => event.resource_type,
-                "resource_id" => event.resource_id,
-                "event_type" => event.event_type
-              }),
+            Selectors.audit_path([
+              {"resource_type", event.resource_type},
+              {"resource_id", event.resource_id},
+              {"event_type", event.event_type}
+            ]),
           venue: ControlPlanePresenter.venue_label(:powertools_native),
           ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
           source: "audit"
@@ -306,9 +305,9 @@ defmodule ObanPowertools.Web.OverviewReadModel do
         status: limiter_projection_status(resource),
         attention_reason: limiter_attention_reason(resource, summary),
         evidence_completeness: summary.completeness.state,
-        path: "/ops/jobs/limiters?resource=#{URI.encode_www_form(resource.name)}",
+        path: Selectors.limiter_path([{"resource", resource.name}]),
         evidence_path:
-          "/ops/jobs/forensics?resource_id=#{URI.encode_www_form(resource.name)}&resource_type=limiter",
+          Selectors.forensic_path([{"resource_id", resource.name}, {"resource_type", "limiter"}]),
         venue: ControlPlanePresenter.venue_label(:powertools_native),
         ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
         source: "limiter-history"
@@ -332,9 +331,9 @@ defmodule ObanPowertools.Web.OverviewReadModel do
         status: cron_projection_status(summary),
         attention_reason: cron_attention_reason(summary),
         evidence_completeness: summary.completeness.state,
-        path: "/ops/jobs/cron?entry=#{URI.encode_www_form(entry.name)}",
+        path: Selectors.cron_path([{"entry", entry.name}]),
         evidence_path:
-          "/ops/jobs/forensics?resource_id=#{URI.encode_www_form(entry.name)}&resource_type=cron_entry",
+          Selectors.forensic_path([{"resource_id", entry.name}, {"resource_type", "cron_entry"}]),
         venue: ControlPlanePresenter.venue_label(:powertools_native),
         ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
         source: "cron-history"
@@ -391,7 +390,7 @@ defmodule ObanPowertools.Web.OverviewReadModel do
   end
 
   defp first_resource_path([resource | _], _fallback),
-    do: "/ops/jobs/limiters?resource=#{URI.encode_www_form(resource.name)}"
+    do: Selectors.limiter_path([{"resource", resource.name}])
 
   defp first_resource_path([], fallback), do: fallback
 
@@ -400,10 +399,10 @@ defmodule ObanPowertools.Web.OverviewReadModel do
   defp waiting_next_step_label([], []), do: "Review Waiting State"
 
   defp waiting_next_step_path([resource | _], _entries),
-    do: "/ops/jobs/limiters?resource=#{URI.encode_www_form(resource.name)}"
+    do: Selectors.limiter_path([{"resource", resource.name}])
 
   defp waiting_next_step_path([], [entry | _]),
-    do: "/ops/jobs/cron?entry=#{URI.encode_www_form(entry.name)}"
+    do: Selectors.cron_path([{"entry", entry.name}])
 
   defp waiting_next_step_path([], []), do: "/ops/jobs/cron"
 
@@ -414,26 +413,23 @@ defmodule ObanPowertools.Web.OverviewReadModel do
     do: lifeline_incident_path("resolved", incident)
 
   defp resolved_next_step_path([], [event | _]) do
-    "/ops/jobs/audit?" <>
-      URI.encode_query(%{
-        "resource_type" => event.resource_type,
-        "resource_id" => event.resource_id,
-        "event_type" => event.event_type
-      })
+    Selectors.audit_path([
+      {"resource_type", event.resource_type},
+      {"resource_id", event.resource_id},
+      {"event_type", event.event_type}
+    ])
   end
 
   defp resolved_next_step_path([], []), do: "/ops/jobs/audit"
 
   defp lifeline_incident_path(view, incident) do
-    "/ops/jobs/lifeline?" <>
-      URI.encode_query([
-        {"view", view},
-        {"incident_fingerprint", incident.incident_fingerprint}
-      ])
+    Selectors.lifeline_path([
+      {"view", view},
+      {"incident_fingerprint", incident.incident_fingerprint}
+    ])
   end
 
   defp forensic_incident_path(incident) do
-    "/ops/jobs/forensics?" <>
-      URI.encode_query(%{"incident_fingerprint" => incident.incident_fingerprint})
+    Selectors.forensic_path([{"incident_fingerprint", incident.incident_fingerprint}])
   end
 end

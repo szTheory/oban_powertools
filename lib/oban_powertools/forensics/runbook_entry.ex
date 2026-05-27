@@ -2,6 +2,7 @@ defmodule ObanPowertools.Forensics.RunbookEntry do
   @moduledoc false
 
   alias ObanPowertools.Forensics.Provenance
+  alias ObanPowertools.Web.Selectors
 
   @ownership_labels %{
     powertools_native: "Powertools-native",
@@ -230,28 +231,28 @@ defmodule ObanPowertools.Forensics.RunbookEntry do
           {"workflow_id", id},
           {"step", field(subject, :step)}
         ]
-        |> selector_path()
+        |> Selectors.forensic_path()
 
       type in ["lifeline_incident", :lifeline_incident] and present?(id) ->
         [
           {"incident_fingerprint", id},
           {"view", field(subject, :view)}
         ]
-        |> selector_path()
+        |> Selectors.forensic_path()
 
       resource_type in ["cron_entry", :cron_entry] and present?(resource_id) ->
         [
           {"resource_type", "cron_entry"},
           {"resource_id", resource_id}
         ]
-        |> selector_path()
+        |> Selectors.forensic_path()
 
       resource_type in ["limiter", :limiter] and present?(resource_id) ->
         [
           {"resource_type", "limiter"},
           {"resource_id", resource_id}
         ]
-        |> selector_path()
+        |> Selectors.forensic_path()
 
       true ->
         nil
@@ -367,15 +368,6 @@ defmodule ObanPowertools.Forensics.RunbookEntry do
 
   defp legal_path_detail(_paths),
     do: "At least one legal next path is available from this evidence bundle."
-
-  defp selector_path(params) do
-    params =
-      params
-      |> Enum.reject(fn {_key, value} -> is_nil(value) or value == "" end)
-      |> URI.encode_query()
-
-    "/ops/jobs/forensics?#{params}"
-  end
 
   defp field(nil, _key), do: nil
   defp field(map, key), do: Map.get(map, key) || Map.get(map, Atom.to_string(key))
