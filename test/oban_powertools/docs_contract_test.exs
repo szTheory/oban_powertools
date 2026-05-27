@@ -5,6 +5,7 @@ defmodule ObanPowertools.DocsContractTest do
     "README.md",
     "guides/installation.md",
     "guides/first-operator-session.md",
+    "guides/forensics-and-runbook-handoffs.md",
     "guides/example-app-walkthrough.md",
     "guides/workers-and-idempotency.md",
     "guides/limits-and-explain.md",
@@ -75,6 +76,62 @@ defmodule ObanPowertools.DocsContractTest do
     assert source =~ "Audited action"
     assert source =~ "overview"
     assert source =~ "audit"
+  end
+
+  test "doc-05 forensics claims are file-scoped and complete" do
+    canonical = File.read!("guides/forensics-and-runbook-handoffs.md")
+    walkthrough = File.read!("guides/example-app-walkthrough.md")
+    fixture = File.read!("examples/phoenix_host/README.md")
+
+    assert canonical =~ "DOC05-C1"
+    assert canonical =~ "DOC05-C2"
+    assert canonical =~ "DOC05-C3"
+    assert canonical =~ "/ops/jobs/forensics"
+    assert canonical =~ "/ops/jobs/audit"
+    assert canonical =~ "partial evidence"
+    assert canonical =~ "history unavailable"
+    assert canonical =~ "unknown"
+    assert canonical =~ "Powertools-native"
+    assert canonical =~ "Oban Web bridge"
+    assert canonical =~ "host-owned follow-up"
+    assert canonical =~ "unconfigured"
+    assert canonical =~ "invoked"
+    assert canonical =~ "failed"
+    assert canonical =~ "does not claim provider delivery certainty"
+    assert canonical =~ "external runbook truth"
+
+    assert walkthrough =~ "DOC05-C4"
+    assert walkthrough =~ "DOC05-C5"
+    assert walkthrough =~ "ops-demo"
+    assert walkthrough =~ "pause_cron_entry"
+    assert walkthrough =~ "nightly_sync"
+    assert walkthrough =~ "/ops/jobs/forensics"
+    assert walkthrough =~ "/ops/jobs/audit"
+    assert walkthrough =~ "forensics-and-runbook-handoffs"
+
+    assert fixture =~ "DOC05-C6"
+    assert fixture =~ "/ops/jobs/forensics"
+    assert fixture =~ "/ops/jobs/audit"
+    assert fixture =~ "forensics-and-runbook-handoffs"
+    assert fixture =~ "example-app-walkthrough"
+    assert fixture =~ "host-owned follow-up"
+    assert fixture =~ "does not guarantee provider delivery"
+  end
+
+  test "docs reject provider-delivery over-claims" do
+    canonical = File.read!("guides/forensics-and-runbook-handoffs.md")
+    walkthrough = File.read!("guides/example-app-walkthrough.md")
+    fixture = File.read!("examples/phoenix_host/README.md")
+
+    assert canonical =~ "does not claim provider delivery certainty"
+    assert fixture =~ "does not guarantee provider delivery"
+    assert canonical =~ "host-owned responsibilities"
+
+    refute canonical =~ "Powertools delivered the page"
+    refute canonical =~ "Powertools guarantees downstream completion"
+    refute walkthrough =~ "Powertools guarantees downstream completion"
+    refute fixture =~ "Powertools delivered the page"
+    refute fixture =~ "Powertools owns external runbook outcomes"
   end
 
   test "builder docs keep the core primitive contract explicit" do
