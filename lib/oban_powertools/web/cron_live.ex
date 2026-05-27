@@ -10,7 +10,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth}
 
     @impl true
-    def mount(_params, _session, socket) do
+    def mount(_params, _mount_payload, socket) do
       with {:ok, socket} <-
              LiveAuth.authorize_page(socket, :view_cron, %{type: :page, id: "cron"}) do
         :ok = DisplayPolicy.assert_configured!()
@@ -227,6 +227,35 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 <p class="font-medium"><%= history_label(slot.classification) %></p>
                 <p class="mt-1 text-zinc-600"><%= slot.detail %></p>
               </div>
+            </div>
+
+            <div class="mt-3 rounded border bg-white p-3 text-sm">
+              <h4 class="font-semibold">Open runbook entry</h4>
+              <p class="mt-1 text-zinc-600"><%= @history_summary.detail %></p>
+              <p class="mt-2 text-xs text-amber-700">
+                Caution: partial evidence and history unavailable states stay diagnostic only until retained cron history proves what happened.
+              </p>
+              <ol class="mt-3 space-y-2">
+                <li>
+                  1. Return to cron diagnosis —
+                  <span class="font-medium"><%= ControlPlanePresenter.runbook_ownership_label(:powertools_native) %></span>
+                </li>
+                <li>
+                  2. Inspect audit trail —
+                  <span class="font-medium"><%= ControlPlanePresenter.runbook_ownership_label("Inspection only") %></span>
+                </li>
+                <li>
+                  3. Coordinate schedule owner follow-up —
+                  <span class="font-medium"><%= ControlPlanePresenter.runbook_ownership_label(:host_owned) %></span>
+                </li>
+              </ol>
+              <a
+                :if={can_view_forensics?(@current_actor)}
+                href={forensics_path(@selected_entry.name)}
+                class="mt-3 inline-block text-sm text-indigo-700 underline"
+              >
+                Evidence link
+              </a>
             </div>
           </div>
         </div>

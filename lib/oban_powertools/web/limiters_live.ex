@@ -157,6 +157,35 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                       <p :if={episode.notes} class="mt-1 text-zinc-600"><%= episode.notes %></p>
                     </div>
                   </div>
+
+                  <div class="mt-3 rounded border bg-white p-3 text-sm">
+                    <h4 class="font-semibold">Open runbook entry</h4>
+                    <p class="mt-1 text-zinc-600"><%= @history_summary.detail %></p>
+                    <p class="mt-2 text-xs text-amber-700">
+                      Caution: partial evidence and history unavailable states stay diagnostic only until retained limiter history proves what happened.
+                    </p>
+                    <ol class="mt-3 space-y-2">
+                      <li>
+                        1. Return to limiter diagnosis —
+                        <span class="font-medium"><%= ControlPlanePresenter.runbook_ownership_label(:powertools_native) %></span>
+                      </li>
+                      <li>
+                        2. Inspect audit trail —
+                        <span class="font-medium"><%= ControlPlanePresenter.runbook_ownership_label("Inspection only") %></span>
+                      </li>
+                      <li>
+                        3. Coordinate capacity policy follow-up —
+                        <span class="font-medium"><%= ControlPlanePresenter.runbook_ownership_label(:host_owned) %></span>
+                      </li>
+                    </ol>
+                    <a
+                      :if={can_view_forensics?(@current_actor)}
+                      href={forensics_path(@selected_resource)}
+                      class="mt-3 inline-block text-sm text-indigo-700 underline"
+                    >
+                      Evidence link
+                    </a>
+                  </div>
                 </div>
               </div>
             <% else %>
