@@ -104,32 +104,37 @@ The milestone closes only when the investigative UX, support-truth language, and
 | 32 | 3/3 | Complete    | 2026-05-26 |
 | 33 | Limiter history and cron missed-fire diagnostics | OPS-01, OPS-02 | Complete — 2026-05-27 |
 | 34 | 3/3 | Complete    | 2026-05-27 |
-| 35 | 3/3 | RNB-03, HST-05 | Complete — 2026-05-27 |
+| 35 | 3/3 | Complete    | 2026-05-27 |
 | 36 | Docs, example host, verification, and support-truth closure | DOC-05, VER-04, HST-05 | 3 |
 
 ### Phase Success Criteria
 
 **Phase 32**
+
 1. Operators can inspect one durable investigative timeline and evidence bundle shape across at least the primary Powertools-owned resource types.
 2. Timeline and evidence views preserve v1.3 control-plane vocabulary and explicit partial-evidence states.
 3. Linked drill-down and audit continuity survive refresh and remount without losing diagnosis context.
 
 **Phase 33**
+
 1. Limiter history explains pressure, blocking, and restoration events clearly enough to distinguish transient from policy-caused issues.
 2. Cron history explains missed-fire, delayed-fire, or overlap-relevant cases without inventing certainty when evidence is incomplete.
 3. Retention or data-availability limits surface as explicit support-truth boundaries.
 
 **Phase 34**
+
 1. The overview surfaces historically important issues without collapsing into an unrestricted event feed.
 2. Supported diagnosis states expose runbook entry guidance with prerequisites, cautions, and recommended next steps.
 3. Operators can distinguish native, bridge-only, and host-owned follow-up paths before taking action.
 
 **Phase 35**
+
 1. Supported remediation flows preserve the runbook context needed to explain what was attempted and why.
 2. Host-owned alert or escalation hooks can be wired without obscuring delivery ownership or fallback behavior.
 3. Audit, evidence, and remediation surfaces stay aligned on follow-up ownership boundaries.
 
 **Phase 36**
+
 1. Public docs and example-host material describe the new forensics and runbook surfaces honestly.
 2. Merge-blocking proof covers chronology, history diagnosis, runbook continuity, and escalation-seam boundaries.
 3. The milestone closes with archived learnings and a clean deferred wedge for v1.5 automation work.

@@ -112,6 +112,7 @@ Make the stable v1.3 control plane materially better for real incident investiga
 | HST-05 | Phase 35 | Complete |
 
 **Coverage:**
+
 - v1.4 requirements: 12 total
 - Mapped to phases: 12
 - Unmapped: 0
