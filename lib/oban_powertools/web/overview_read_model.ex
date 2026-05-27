@@ -270,6 +270,8 @@ defmodule ObanPowertools.Web.OverviewReadModel do
       |> Enum.filter(&(&1.event_type == "lifeline.repair_executed"))
       |> Enum.take(1)
       |> Enum.map(fn event ->
+        identity = Audit.event_resource_identity(event)
+
         %{
           bucket: "Resolved Recently",
           family: :audit,
@@ -280,9 +282,9 @@ defmodule ObanPowertools.Web.OverviewReadModel do
           evidence_completeness: :complete,
           path:
             Selectors.audit_path([
-              {"resource_type", event.resource_type},
-              {"resource_id", event.resource_id},
-              {"event_type", event.event_type}
+              {"resource_type", identity.type},
+              {"resource_id", identity.id},
+              {"event_type", Audit.event_label(event)}
             ]),
           venue: ControlPlanePresenter.venue_label(:powertools_native),
           ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
@@ -413,10 +415,12 @@ defmodule ObanPowertools.Web.OverviewReadModel do
     do: lifeline_incident_path("resolved", incident)
 
   defp resolved_next_step_path([], [event | _]) do
+    identity = Audit.event_resource_identity(event)
+
     Selectors.audit_path([
-      {"resource_type", event.resource_type},
-      {"resource_id", event.resource_id},
-      {"event_type", event.event_type}
+      {"resource_type", identity.type},
+      {"resource_id", identity.id},
+      {"event_type", Audit.event_label(event)}
     ])
   end
 
