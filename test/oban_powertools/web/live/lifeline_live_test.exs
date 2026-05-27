@@ -90,6 +90,16 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
       |> element("button[phx-value-row-id$=':job:#{job.id}'][phx-click='preview']")
       |> render_click()
 
+    assert html =~ "Open runbook entry"
+    assert html =~ "Legal next move"
+    assert html =~ "Venue"
+    assert html =~ "evidence"
+    assert html =~ "Powertools-native"
+    assert html =~ "Oban Web bridge"
+    assert html =~ "host-owned follow-up"
+    assert html =~
+             "/ops/jobs/forensics?incident_fingerprint=#{URI.encode_www_form(incident.incident_fingerprint)}&amp;view=active"
+
     assert html =~ "Preview Ready"
     assert html =~ "Preview Status"
     assert html =~ "Audit Record to be Written"

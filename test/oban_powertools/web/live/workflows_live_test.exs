@@ -208,10 +208,19 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
     {:ok, view, html} = live(conn, "/ops/jobs/workflows/#{workflow.id}?step=sync_billing")
 
     assert html =~ "Review the bounded action in Lifeline."
+    assert html =~ "Open runbook entry"
+    assert html =~ "Legal next move"
+    assert html =~ "Venue"
+    assert html =~ "evidence"
     assert html =~ "Review in Lifeline: Retry step"
     assert html =~ "Powertools-native"
+    assert html =~ "Oban Web bridge"
+    assert html =~ "host-owned follow-up"
     assert html =~ "Audited action"
     assert has_element?(view, "a[href*='/ops/jobs/lifeline?']")
+    assert has_element?(view, "a[href*='/ops/jobs/forensics?']")
+    assert has_element?(view, "a[href*='workflow_id=#{workflow.id}']")
+    assert has_element?(view, "a[href*='step=sync_billing']")
     refute html =~ "Execute Repair Plan"
     refute has_element?(view, "input[name='reason']")
   end
