@@ -263,17 +263,14 @@ defmodule ObanPowertools.Forensics.RunbookEntry do
     %{label: "Caution", detail: "No caution detail available.", severity: :info}
   end
 
-  defp normalize_completeness(%{state: state} = completeness) do
+  defp normalize_completeness(%{} = completeness) do
+    state = field(completeness, :state)
+    details = field(completeness, :details)
+
     %{
       state: Provenance.normalize_completeness(state),
-      details: field(completeness, :details) || "No evidence completeness details available."
+      details: details || "No evidence completeness details available."
     }
-  end
-
-  defp normalize_completeness(%{"state" => _state} = completeness) do
-    normalize_completeness(
-      Map.new(completeness, fn {key, value} -> {String.to_atom(key), value} end)
-    )
   end
 
   defp normalize_completeness(_completeness) do

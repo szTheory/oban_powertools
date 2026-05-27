@@ -27,8 +27,9 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
 
   def continuity_posture, do: "Continuity evidence"
 
-  def runbook_ownership_label(ownership) when ownership in [:powertools_native, "powertools_native"],
-    do: "Powertools-native"
+  def runbook_ownership_label(ownership)
+      when ownership in [:powertools_native, "powertools_native"],
+      do: "Powertools-native"
 
   def runbook_ownership_label(ownership) when ownership in [:oban_web_bridge, "oban_web_bridge"],
     do: "Oban Web bridge"
@@ -49,11 +50,13 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
 
   def runbook_ownership_label(_ownership), do: "host-owned follow-up"
 
-  def runbook_path_posture(path_or_venue) when path_or_venue in [:powertools_native, "powertools_native"],
-    do: "Powertools-native"
+  def runbook_path_posture(path_or_venue)
+      when path_or_venue in [:powertools_native, "powertools_native"],
+      do: "Powertools-native"
 
-  def runbook_path_posture(path_or_venue) when path_or_venue in [:oban_web_bridge, "oban_web_bridge"],
-    do: "Oban Web bridge"
+  def runbook_path_posture(path_or_venue)
+      when path_or_venue in [:oban_web_bridge, "oban_web_bridge"],
+      do: "Oban Web bridge"
 
   def runbook_path_posture(path_or_venue) when path_or_venue in [:host_owned, "host_owned"],
     do: "host-owned follow-up"
@@ -98,21 +101,25 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     "#{ownership_badge(:oban_web_bridge)} remains #{ownership_posture(:oban_web_bridge) |> String.downcase()} and read-only."
   end
 
-  def forensic_provenance_label(provenance) when is_binary(provenance),
-    do: provenance |> String.to_atom() |> forensic_provenance_label()
-
   def forensic_provenance_label(:durable), do: "durable"
+  def forensic_provenance_label("durable"), do: "durable"
   def forensic_provenance_label(:supporting), do: "supporting evidence"
+  def forensic_provenance_label("supporting"), do: "supporting evidence"
   def forensic_provenance_label(:bridge_only), do: "Inspection only"
+  def forensic_provenance_label("bridge_only"), do: "Inspection only"
   def forensic_provenance_label(:missing), do: "unknown"
-
-  def forensic_completeness_label(completeness) when is_binary(completeness),
-    do: completeness |> String.to_atom() |> forensic_completeness_label()
+  def forensic_provenance_label("missing"), do: "unknown"
+  def forensic_provenance_label(_provenance), do: "unknown"
 
   def forensic_completeness_label(:complete), do: "complete"
+  def forensic_completeness_label("complete"), do: "complete"
   def forensic_completeness_label(:partial_evidence), do: "partial evidence"
+  def forensic_completeness_label("partial_evidence"), do: "partial evidence"
   def forensic_completeness_label(:history_unavailable), do: "history unavailable"
+  def forensic_completeness_label("history_unavailable"), do: "history unavailable"
   def forensic_completeness_label(:unknown), do: "unknown"
+  def forensic_completeness_label("unknown"), do: "unknown"
+  def forensic_completeness_label(_completeness), do: "unknown"
 
   def venue_label(venue), do: ControlPlane.venue_label(venue)
 

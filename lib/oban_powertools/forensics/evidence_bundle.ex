@@ -45,9 +45,11 @@ defmodule ObanPowertools.Forensics.EvidenceBundle do
     item
     |> Map.new(fn
       {"state", value} -> {:state, Provenance.normalize_completeness(value)}
-      {key, value} -> {String.to_atom(key), value}
+      {"details", value} -> {:details, value}
+      pair -> pair
     end)
   end
 
-  defp normalize_completeness(_item), do: %{state: :unknown, details: "No evidence completeness details available."}
+  defp normalize_completeness(_item),
+    do: %{state: :unknown, details: "No evidence completeness details available."}
 end

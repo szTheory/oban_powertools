@@ -8,6 +8,7 @@ defmodule ObanPowertools.ForensicsTest do
     Chronology,
     EvidenceBundle,
     LimiterHistoryFact,
+    Provenance,
     RunbookEntry
   }
 
@@ -151,6 +152,51 @@ defmodule ObanPowertools.ForensicsTest do
              "history unavailable"
 
     assert ControlPlanePresenter.forensic_completeness_label(:unknown) == "unknown"
+  end
+
+  test "forensic label and runbook completeness helpers do not atomize novel strings" do
+    novel_state = "novel_completeness_#{System.unique_integer([:positive])}"
+    novel_provenance = "novel_provenance_#{System.unique_integer([:positive])}"
+    novel_key = "novel_key_#{System.unique_integer([:positive])}"
+
+    assert_no_existing_atom(novel_state)
+    assert_no_existing_atom(novel_provenance)
+    assert_no_existing_atom(novel_key)
+
+    assert Provenance.normalize_completeness(novel_state) == :unknown
+    assert Provenance.normalize_provenance(novel_provenance) == :missing
+    assert ControlPlanePresenter.forensic_completeness_label(novel_state) == "unknown"
+    assert ControlPlanePresenter.forensic_provenance_label(novel_provenance) == "unknown"
+
+    entry =
+      RunbookEntry.from_bundle(%{
+        subject: %{type: "unknown", id: "unknown", label: "Unknown forensic scope"},
+        diagnosis_summary: %{current: "unknown", detail: "Unknown state."},
+        legal_next_paths: [],
+        completeness: %{
+          "state" => novel_state,
+          "details" => "Novel completeness degraded safely.",
+          novel_key => "ignored"
+        }
+      })
+
+    assert entry.evidence_completeness.state == :unknown
+    assert entry.evidence_completeness.details == "Novel completeness degraded safely."
+
+    bundle =
+      EvidenceBundle.build(%{
+        completeness: %{
+          "state" => novel_state,
+          "details" => "Novel bundle completeness degraded safely.",
+          novel_key => "ignored"
+        }
+      })
+
+    assert bundle.completeness.state == :unknown
+    assert bundle.completeness.details == "Novel bundle completeness degraded safely."
+    assert_no_existing_atom(novel_state)
+    assert_no_existing_atom(novel_provenance)
+    assert_no_existing_atom(novel_key)
   end
 
   test "workflow and incident audit items remain available for forensic follow-up" do
@@ -644,4 +690,8 @@ defmodule ObanPowertools.ForensicsTest do
   end
 
   defp truncate_minute(%DateTime{} = dt), do: %DateTime{dt | second: 0, microsecond: {0, 0}}
+
+  defp assert_no_existing_atom(value) do
+    assert_raise ArgumentError, fn -> String.to_existing_atom(value) end
+  end
 end
