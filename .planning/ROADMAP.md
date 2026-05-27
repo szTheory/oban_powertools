@@ -65,7 +65,7 @@ Plans:
 
 - [x] 35-01-PLAN.md — Preserve runbook context through supported native remediation flows so the resulting audit and evidence views explain what was attempted and why.
 - [x] 35-02-PLAN.md — Add explicit host-owned alert or escalation hook seams with truthful fallback behavior and no first-party provider lock-in.
-- [ ] 35-03-PLAN.md — Verify that native, bridge-only, and host-owned follow-up paths stay clearly distinguished across remediation and escalation surfaces.
+- [x] 35-03-PLAN.md — Verify that native, bridge-only, and host-owned follow-up paths stay clearly distinguished across remediation and escalation surfaces.
 
 **Details:**
 The target is better operator guidance and clearer ownership boundaries, not a built-in paging or ticketing product.
@@ -104,7 +104,7 @@ The milestone closes only when the investigative UX, support-truth language, and
 | 32 | 3/3 | Complete    | 2026-05-26 |
 | 33 | Limiter history and cron missed-fire diagnostics | OPS-01, OPS-02 | Complete — 2026-05-27 |
 | 34 | 3/3 | Complete    | 2026-05-27 |
-| 35 | Runbook-guided remediation and alert hook boundaries | RNB-03 | 3 |
+| 35 | 3/3 | RNB-03, HST-05 | Complete — 2026-05-27 |
 | 36 | Docs, example host, verification, and support-truth closure | DOC-05, VER-04, HST-05 | 3 |
 
 ### Phase Success Criteria
