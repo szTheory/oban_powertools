@@ -235,6 +235,164 @@ defmodule ObanPowertools.ForensicsTest do
     assert Enum.any?(bundle.chronology, &(&1.event_type == "limiter.reconfigured"))
   end
 
+  test "supported forensic bundles expose canonical runbook entries with stable selectors" do
+    {:ok, workflow} =
+      WorkflowFixtures.workflow_fixture(name: "runbook-workflow") |> Workflow.insert(TestRepo)
+
+    incident =
+      %Incident{}
+      |> Incident.changeset(%{
+        incident_class: "dead_executor",
+        status: "active",
+        executor_id: "runbook-executor",
+        incident_fingerprint: "dead_executor:runbook-executor",
+        health_state: "missing",
+        summary: "missing executor runbook-executor",
+        affected_counts: %{"jobs" => 1, "workflow_steps" => 0},
+        evidence: %{"job_ids" => [123], "workflow_step_ids" => []},
+        first_detected_at: DateTime.utc_now(),
+        last_detected_at: DateTime.utc_now(),
+        metadata: %{}
+      })
+      |> TestRepo.insert!()
+
+    {:ok, entry} =
+      Cron.sync_entry(TestRepo, %{
+        name: "runbook-cron",
+        source: "runtime",
+        worker: "Example.Worker",
+        queue: "default",
+        expression: "* * * * *"
+      })
+
+    slot_at = DateTime.utc_now() |> DateTime.add(-120, :second) |> truncate_minute()
+    assert {:ok, _coverage} = Cron.record_coverage(TestRepo, entry, slot_at, status: "healthy")
+
+    resource =
+      TestRepo.insert!(%Resource{
+        name: "runbook-limiter",
+        scope_kind: "global",
+        algorithm: "token_bucket",
+        bucket_span_ms: 60_000,
+        bucket_capacity: 5,
+        default_weight: 1,
+        partition_strategy: "global",
+        partition_config: %{},
+        cooldown_enabled: true,
+        metadata: %{}
+      })
+
+    TestRepo.insert!(%State{
+      resource_id: resource.id,
+      partition_key: "__global__",
+      tokens_used: 0,
+      bucket_started_at: DateTime.utc_now(),
+      reservation_snapshot: %{}
+    })
+
+    TestRepo.insert!(%LimiterHistoryFact{
+      resource_name: resource.name,
+      partition_key: "__global__",
+      event_type: "limiter.blocked",
+      cause_kind: "policy",
+      occurred_at: DateTime.utc_now(),
+      metadata: %{}
+    })
+
+    workflow_bundle =
+      Forensics.bundle(%{"workflow_id" => workflow.id, "step" => "sync_billing"}, repo: TestRepo)
+
+    lifeline_bundle =
+      Forensics.bundle(%{"incident_fingerprint" => incident.incident_fingerprint, "view" => "active"},
+        repo: TestRepo
+      )
+
+    cron_bundle =
+      Forensics.bundle(%{"resource_type" => "cron_entry", "resource_id" => entry.name},
+        repo: TestRepo
+      )
+
+    limiter_bundle =
+      Forensics.bundle(%{"resource_type" => "limiter", "resource_id" => resource.name},
+        repo: TestRepo
+      )
+
+    unknown_bundle = Forensics.bundle(%{}, repo: TestRepo)
+
+    for bundle <- [workflow_bundle, lifeline_bundle, cron_bundle, limiter_bundle, unknown_bundle] do
+      assert Map.has_key?(bundle, :runbook_entry)
+      assert bundle.runbook_entry.title == "Open runbook entry"
+    end
+
+    assert workflow_bundle.runbook_entry.evidence_path =~ "workflow_id=#{workflow.id}"
+    assert workflow_bundle.runbook_entry.evidence_path =~ "step=sync_billing"
+    assert lifeline_bundle.runbook_entry.evidence_path =~ "incident_fingerprint=dead_executor%3Arunbook-executor"
+    assert lifeline_bundle.runbook_entry.evidence_path =~ "view=active"
+    assert cron_bundle.runbook_entry.evidence_path =~ "resource_type=cron_entry"
+    assert cron_bundle.runbook_entry.evidence_path =~ "resource_id=runbook-cron"
+    assert limiter_bundle.runbook_entry.evidence_path =~ "resource_type=limiter"
+    assert limiter_bundle.runbook_entry.evidence_path =~ "resource_id=runbook-limiter"
+
+    refute Enum.any?(
+             unknown_bundle.runbook_entry.ordered_next_paths,
+             &(&1.ownership == "Powertools-native" and &1.intent == :remediate)
+           )
+  end
+
+  test "cron and limiter runbook paths label ownership before action intent" do
+    {:ok, entry} =
+      Cron.sync_entry(TestRepo, %{
+        name: "runbook-unknown-window",
+        source: "runtime",
+        worker: "Example.Worker",
+        queue: "default",
+        expression: "* * * * *"
+      })
+
+    cron_bundle =
+      Forensics.bundle(%{"resource_type" => "cron_entry", "resource_id" => entry.name},
+        repo: TestRepo
+      )
+
+    resource =
+      TestRepo.insert!(%Resource{
+        name: "runbook-policy",
+        scope_kind: "global",
+        algorithm: "token_bucket",
+        bucket_span_ms: 60_000,
+        bucket_capacity: 5,
+        default_weight: 1,
+        partition_strategy: "global",
+        partition_config: %{},
+        cooldown_enabled: true,
+        metadata: %{}
+      })
+
+    TestRepo.insert!(%State{
+      resource_id: resource.id,
+      partition_key: "__global__",
+      tokens_used: 5,
+      bucket_started_at: DateTime.utc_now(),
+      reservation_snapshot: %{}
+    })
+
+    limiter_bundle =
+      Forensics.bundle(%{"resource_type" => "limiter", "resource_id" => resource.name},
+        repo: TestRepo
+      )
+
+    for bundle <- [cron_bundle, limiter_bundle] do
+      labels = Enum.map(bundle.runbook_entry.ordered_next_paths, & &1.label)
+      ownerships = Enum.map(bundle.runbook_entry.ordered_next_paths, & &1.ownership)
+
+      assert "Powertools-native" in ownerships
+      assert "Oban Web bridge" in ownerships
+      assert "host-owned follow-up" in ownerships
+      assert Enum.any?(labels, &String.starts_with?(&1, "Oban Web bridge:"))
+      assert Enum.any?(labels, &String.starts_with?(&1, "host-owned follow-up:"))
+    end
+  end
+
   test "attention projection caps bucket exemplars and orders by diagnosis impact before label" do
     candidates = [
       %{
