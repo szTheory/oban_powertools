@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Operator Forensics & SRE Runbooks
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 34-01-PLAN.md
-last_updated: "2026-05-27T06:42:02.053Z"
+stopped_at: Completed 34-02-PLAN.md
+last_updated: "2026-05-27T06:55:26.120Z"
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
   percent: 40
 ---
 
@@ -24,14 +24,14 @@ progress:
 ## Current Position
 
 Phase: 34 (historical-attention-projection-runbook-entry-surfaces) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 - **Phase:** 34
 - **Plan:** None
-- **Current Plan:** 2
+- **Current Plan:** 3
 - **Total Plans in Phase:** 3
 - **Status:** Ready to execute
-- **Progress:** [████████░░] 78%
+- **Progress:** [█████████░] 89%
 - **Canonical sequencing:** `.planning/ROADMAP.md`
 - **Milestone requirements:** `.planning/REQUIREMENTS.md`
 - **Strategic source of truth:** `.planning/MILESTONE-ARC.md`
@@ -41,7 +41,7 @@ Plan: 2 of 3
 - **Phases Complete:** 2/5 active
 - **Plans Complete:** 6/15 active
 - **Metrics:** v1.4 has completed Phase 32 forensic bundle foundations and Phase 33 limiter/cron history diagnostics; Phase 34 is ready to plan historical attention projection and runbook entry surfaces.
-- **Latest Plan Metric:** 34-01 completed in 21m 16s across 3 tasks and 9 files; full `mix test` passed with 178 tests.
+- **Latest Plan Metric:** 34-02 completed in 8m 44s across 3 tasks and 7 files; focused forensic and LiveView tests passed with 23 tests.
 
 ## Accumulated Context
 
@@ -99,13 +99,16 @@ Plan: 2 of 3
   - Phase 33 now promotes limiter and cron into first-class forensic destinations using bounded limiter history facts, cron coverage facts, shared read models, and diagnosis-first history summaries.
   - Phase 34-01 keeps historical attention inside the existing diagnosis-first overview buckets instead of creating a raw event feed.
   - Phase 34-01 keeps overview attention links selector-only, excluding reason text, rendered copy, and preview tokens from URLs.
+  - Phase 34-02 keeps runbook entries advisory read-model data rather than persisted action state.
+  - Phase 34-02 uses only existing durable selectors for evidence links: workflow_id, step, incident_fingerprint, view, resource_type, and resource_id.
+  - Phase 34-02 renders bridge-only and host-owned follow-up paths as bordered guidance rather than filled native action controls.
 - **Todos:** None
 - **Blockers:** None
 
 ## Session Continuity
 
-- **Last session:** 2026-05-27T06:42:02.050Z
-- **Stopped At:** Completed 34-01-PLAN.md
+- **Last session:** 2026-05-27T06:55:25.941Z
+- **Stopped At:** Completed 34-02-PLAN.md
 - **Resume File:** None
-- **Last Action:** Completed Phase 34 Plan 01 with bounded historical attention projection, overview rendering, example-host fixture migrations, and full-suite verification.
-- **Next Action:** Execute Phase 34 Plan 02 for runbook entry surfaces.
+- **Last Action:** Completed Phase 34 Plan 02 with advisory runbook entry builders, bundle enrichment, and forensic LiveView rendering.
+- **Next Action:** Execute Phase 34 Plan 03 to align runbook copy, refusal wording, and overview handoffs.

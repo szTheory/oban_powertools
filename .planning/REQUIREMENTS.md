@@ -26,7 +26,7 @@ Make the stable v1.3 control plane materially better for real incident investiga
 ### Runbook-Guided Remediation
 
 - [x] **RNB-01**: Operators can see runbook-guided next steps for supported diagnosis states, including preconditions, cautions, and the recommended order of operations before any bounded native action.
-- [ ] **RNB-02**: Runbook guidance distinguishes Powertools-native actions, bridge-only follow-up, and host-owned or external-system steps so the product stays honest about its ownership boundaries.
+- [x] **RNB-02**: Runbook guidance distinguishes Powertools-native actions, bridge-only follow-up, and host-owned or external-system steps so the product stays honest about its ownership boundaries.
 - [ ] **RNB-03**: When operators launch or complete a supported remediation flow, the resulting audit and evidence views retain the runbook context needed to explain what was attempted and why.
 
 ### Support Truth, Proof & Host Integration
@@ -105,7 +105,7 @@ Make the stable v1.3 control plane materially better for real incident investiga
 | OPS-02 | Phase 33 | Pending |
 | OPS-03 | Phase 34 | Complete |
 | RNB-01 | Phase 34 | Complete |
-| RNB-02 | Phase 34 | Pending |
+| RNB-02 | Phase 34 | Complete |
 | RNB-03 | Phase 35 | Pending |
 | DOC-05 | Phase 36 | Pending |
 | VER-04 | Phase 36 | Pending |

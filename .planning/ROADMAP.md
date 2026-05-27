@@ -49,7 +49,7 @@ The milestone should answer concrete operator questions about “what happened a
 Plans:
 
 - [x] 34-01-PLAN.md — Extend the overview and relevant drill-down surfaces with historically informed attention projections that stay diagnosis-first instead of becoming a feed.
-- [ ] 34-02-PLAN.md — Introduce runbook entry surfaces that pair diagnosis states with cautions, prerequisites, and the recommended next investigative or remediation path.
+- [x] 34-02-PLAN.md — Introduce runbook entry surfaces that pair diagnosis states with cautions, prerequisites, and the recommended next investigative or remediation path.
 - [ ] 34-03-PLAN.md — Align runbook entry copy, refusal wording, and overview handoffs with the shared control-plane and forensic vocabulary.
 
 **Details:**
@@ -103,7 +103,7 @@ The milestone closes only when the investigative UX, support-truth language, and
 |-------|------|--------------|------------------|
 | 32 | 3/3 | Complete    | 2026-05-26 |
 | 33 | Limiter history and cron missed-fire diagnostics | OPS-01, OPS-02 | Complete — 2026-05-27 |
-| 34 | Historical attention projection and runbook entry surfaces | OPS-03, RNB-01, RNB-02 | 3 |
+| 34 | 2/3 | In Progress|  |
 | 35 | Runbook-guided remediation and alert hook boundaries | RNB-03 | 3 |
 | 36 | Docs, example host, verification, and support-truth closure | DOC-05, VER-04, HST-05 | 3 |
 
