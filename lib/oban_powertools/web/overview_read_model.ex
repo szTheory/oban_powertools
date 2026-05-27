@@ -313,7 +313,7 @@ defmodule ObanPowertools.Web.OverviewReadModel do
         evidence_completeness: summary.completeness.state,
         path: "/ops/jobs/limiters?resource=#{URI.encode_www_form(resource.name)}",
         evidence_path:
-          "/ops/jobs/forensics?resource_type=limiter&resource_id=#{URI.encode_www_form(resource.name)}",
+          "/ops/jobs/forensics?resource_id=#{URI.encode_www_form(resource.name)}&resource_type=limiter",
         venue: ControlPlanePresenter.venue_label(:powertools_native),
         ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
         source: "limiter-history"
@@ -339,7 +339,7 @@ defmodule ObanPowertools.Web.OverviewReadModel do
         evidence_completeness: summary.completeness.state,
         path: "/ops/jobs/cron?entry=#{URI.encode_www_form(entry.name)}",
         evidence_path:
-          "/ops/jobs/forensics?resource_type=cron_entry&resource_id=#{URI.encode_www_form(entry.name)}",
+          "/ops/jobs/forensics?resource_id=#{URI.encode_www_form(entry.name)}&resource_type=cron_entry",
         venue: ControlPlanePresenter.venue_label(:powertools_native),
         ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
         source: "cron-history"

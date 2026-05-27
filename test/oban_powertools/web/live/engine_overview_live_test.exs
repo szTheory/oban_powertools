@@ -24,6 +24,7 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
     assert html =~ "Resolved Recently"
     assert html =~ "Bridge-only Follow-up"
     assert html =~ "Review Needs Review"
+    assert html =~ "partial evidence"
     assert html =~ "Oban Web bridge"
     assert html =~ "Inspection only"
     assert html =~ "Continuity evidence"
