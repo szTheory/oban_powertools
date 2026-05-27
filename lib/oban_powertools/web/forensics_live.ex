@@ -62,6 +62,107 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         </div>
 
         <div class="rounded-lg border bg-white p-4">
+          <%= if @bundle[:runbook_entry] do %>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 class="text-base font-semibold"><%= @bundle.runbook_entry.title %></h2>
+                <p class="mt-1 text-xs text-zinc-500">Advisory runbook guidance from the current evidence bundle.</p>
+              </div>
+              <a
+                :if={@bundle.runbook_entry.evidence_path}
+                href={@bundle.runbook_entry.evidence_path}
+                class="rounded border border-indigo-200 px-3 py-2 text-sm text-indigo-700"
+              >
+                Evidence link
+              </a>
+            </div>
+
+            <div class="mt-4 grid gap-4 md:grid-cols-2">
+              <div class="rounded border bg-slate-50 p-3">
+                <h3 class="text-sm font-semibold">Diagnosis state</h3>
+                <p class="mt-1 text-sm text-zinc-600"><%= @bundle.runbook_entry.diagnosis_state %></p>
+              </div>
+
+              <div class="rounded border bg-slate-50 p-3">
+                <h3 class="text-sm font-semibold">Why it matters now</h3>
+                <p class="mt-1 text-sm text-zinc-600"><%= @bundle.runbook_entry.why_now %></p>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <h3 class="text-sm font-semibold">Prerequisites</h3>
+              <div class="mt-2 space-y-2">
+                <div :for={item <- @bundle.runbook_entry.prerequisites} class="rounded border bg-slate-50 p-3">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="font-medium"><%= item.label %></span>
+                    <span class="rounded border px-2 py-1 text-xs text-zinc-600"><%= item.state %></span>
+                  </div>
+                  <p class="mt-1 text-sm text-zinc-600"><%= item.detail %></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <h3 class="text-sm font-semibold">Cautions</h3>
+              <div class="mt-2 space-y-2">
+                <div :for={item <- @bundle.runbook_entry.cautions} class={caution_class(item)}>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="font-medium"><%= item.label %></span>
+                    <span class="rounded border px-2 py-1 text-xs"><%= item.severity %></span>
+                  </div>
+                  <p class="mt-1 text-sm"><%= item.detail %></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <h3 class="text-sm font-semibold">Recommended order</h3>
+              <div class="mt-2 space-y-2">
+                <div
+                  :for={item <- @bundle.runbook_entry.ordered_next_paths}
+                  data-runbook-ownership={item.ownership}
+                  class={runbook_path_class(item)}
+                >
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="rounded border px-2 py-1 text-xs"><%= item.ownership %></span>
+                    <span class="text-xs text-zinc-500"><%= item.venue %></span>
+                    <span class="text-xs text-zinc-500"><%= item.intent %></span>
+                  </div>
+                  <div class="mt-2 flex flex-wrap items-center gap-3">
+                    <span class="text-sm font-medium"><%= item.order %>. <%= item.label %></span>
+                    <a :if={item.path} href={item.path} class={runbook_path_link_class(item)}>
+                      Open path
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <h3 class="text-sm font-semibold">Unsupported boundaries</h3>
+              <div class="mt-2 space-y-2">
+                <p :for={boundary <- @bundle.runbook_entry.unsupported_boundaries} class="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  <%= boundary %>
+                </p>
+              </div>
+            </div>
+
+            <div class="mt-4 rounded border bg-slate-50 p-3">
+              <h3 class="text-sm font-semibold">Evidence completeness</h3>
+              <p class="mt-1 text-sm text-zinc-600">
+                <%= ControlPlanePresenter.forensic_completeness_label(@bundle.runbook_entry.evidence_completeness.state) %>
+              </p>
+              <p class="mt-1 text-sm text-zinc-600"><%= completeness_details(@bundle.runbook_entry.evidence_completeness) %></p>
+            </div>
+          <% else %>
+            <h2 class="text-base font-semibold">Open runbook entry</h2>
+            <p class="mt-2 text-sm text-zinc-600">
+              Runbook guidance is unavailable because the evidence bundle could not be assembled. Refresh the page, then open the forensic timeline for the same resource.
+            </p>
+          <% end %>
+        </div>
+
+        <div class="rounded-lg border bg-white p-4">
           <h2 class="text-base font-semibold">Timeline</h2>
           <%= if @bundle.chronology == [] do %>
             <p class="mt-2 text-sm text-zinc-600">
@@ -168,6 +269,21 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp completeness_details(%{details: details}), do: details
     defp completeness_details(_), do: "No completeness details available."
+
+    defp caution_class(%{severity: :warning}),
+      do: "rounded border border-amber-200 bg-amber-50 p-3 text-amber-800"
+
+    defp caution_class(_item), do: "rounded border bg-slate-50 p-3 text-zinc-600"
+
+    defp runbook_path_class(%{ownership: "Powertools-native"}),
+      do: "rounded border border-indigo-200 bg-indigo-50 p-3"
+
+    defp runbook_path_class(_item), do: "rounded border bg-white p-3"
+
+    defp runbook_path_link_class(%{ownership: "Powertools-native"}),
+      do: "rounded bg-indigo-700 px-3 py-2 text-sm text-white"
+
+    defp runbook_path_link_class(_item), do: "text-sm text-indigo-700 underline"
 
     defp repo, do: Application.fetch_env!(:oban_powertools, :repo)
   end
