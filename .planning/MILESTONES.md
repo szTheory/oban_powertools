@@ -65,3 +65,25 @@
 - Unified preview, reason, refusal, and audit posture across bounded native mutation surfaces without widening scope into a native generic queue or job dashboard.
 - Aligned limiters, workflows, Lifeline, cron, and audit follow-up around one continuity-safe operator story and shared resource identity.
 - Closed the milestone with support-truthful docs, repo-local proof, and example-host proof that keep the native-shell versus bridge-only contract honest.
+
+## v1.4
+
+- **Status:** Shipped 2026-05-27
+- **Phases:** 32-42
+- **Plans:** 28
+- **Timeline:** 2026-05-26 -> 2026-05-27
+- **Git range:** `15ff9ae` -> `b1a2f2d`
+- **Files changed:** 190 | **LOC:** +26,997 / −328
+
+### Delivered
+
+- Durable forensic timelines and evidence bundles with shared v1.3 control-plane vocabulary, provenance model, and `/ops/jobs/forensics` investigative destination.
+- Limiter history projection and cron missed-fire/delayed-fire diagnostics with explicit retention-boundary support truth for both surfaces.
+- Diagnosis-first historical attention projection and advisory runbook entry surfaces that distinguish native, bridge-only, and host-owned follow-up paths.
+- Runbook-guided remediation continuity — `runbook_context` persisted through preview→execute→audit — and host-owned escalation hook seams with explicit `unconfigured/invoked/failed` statuses.
+- Canonical phase-level verification backfills for FRN-01/02/03 (Phase 37) and OPS-01/02 (Phase 37), closing orphaned audit traceability.
+- Support-truthful docs and 10-test docs-contract coverage for the forensics/runbook operator journey (Phase 38, DOC-05 closed).
+- Four named CI continuity lanes (`continuity-ver04-c1..c4`) making milestone-proof coverage merge-blocking and reproducible (Phase 39, VER-04 closed).
+- Automated acceptance proxies replaced Phase 34 human UAT gates for OPS-03, RNB-01, RNB-02 (Phase 40).
+- Centralized URL selector encoding and bounded atom normalization hardening; 226 tests, 0 failures (Phase 41).
+- Nyquist validation compliance sweep clearing all validation gaps across phases 33, 34, 38, 39 (Phase 42).
