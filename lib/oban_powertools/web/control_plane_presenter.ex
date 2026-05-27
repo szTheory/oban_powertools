@@ -27,6 +27,69 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
 
   def continuity_posture, do: "Continuity evidence"
 
+  def runbook_ownership_label(ownership) when ownership in [:powertools_native, "powertools_native"],
+    do: "Powertools-native"
+
+  def runbook_ownership_label(ownership) when ownership in [:oban_web_bridge, "oban_web_bridge"],
+    do: "Oban Web bridge"
+
+  def runbook_ownership_label(ownership) when ownership in [:host_owned, "host_owned"],
+    do: "host-owned follow-up"
+
+  def runbook_ownership_label("Powertools-native"), do: "Powertools-native"
+  def runbook_ownership_label("Oban Web bridge"), do: "Oban Web bridge"
+  def runbook_ownership_label("Inspection only"), do: "Oban Web bridge"
+  def runbook_ownership_label("host-owned follow-up"), do: "host-owned follow-up"
+
+  def runbook_ownership_label(ownership) when is_binary(ownership) do
+    ownership
+    |> String.downcase()
+    |> runbook_path_posture()
+  end
+
+  def runbook_ownership_label(_ownership), do: "host-owned follow-up"
+
+  def runbook_path_posture(path_or_venue) when path_or_venue in [:powertools_native, "powertools_native"],
+    do: "Powertools-native"
+
+  def runbook_path_posture(path_or_venue) when path_or_venue in [:oban_web_bridge, "oban_web_bridge"],
+    do: "Oban Web bridge"
+
+  def runbook_path_posture(path_or_venue) when path_or_venue in [:host_owned, "host_owned"],
+    do: "host-owned follow-up"
+
+  def runbook_path_posture(path_or_venue) when is_binary(path_or_venue) do
+    normalized = String.downcase(path_or_venue)
+
+    cond do
+      String.contains?(normalized, "powertools-native") -> "Powertools-native"
+      String.contains?(normalized, "/ops/jobs") -> "Powertools-native"
+      String.contains?(normalized, "lifeline") -> "Powertools-native"
+      String.contains?(normalized, "oban web") -> "Oban Web bridge"
+      String.contains?(normalized, "inspection only") -> "Oban Web bridge"
+      true -> "host-owned follow-up"
+    end
+  end
+
+  def runbook_path_posture(_path_or_venue), do: "host-owned follow-up"
+
+  def runbook_boundary_note(:powertools_native),
+    do: "Powertools-native path stays inside the audited native control plane."
+
+  def runbook_boundary_note(:oban_web_bridge),
+    do: "Oban Web bridge path is inspection-only and read-only."
+
+  def runbook_boundary_note(:host_owned),
+    do: "host-owned follow-up path is outside Powertools delivery and runbook truth."
+
+  def runbook_boundary_note(path_or_venue) do
+    case runbook_path_posture(path_or_venue) do
+      "Powertools-native" -> runbook_boundary_note(:powertools_native)
+      "Oban Web bridge" -> runbook_boundary_note(:oban_web_bridge)
+      "host-owned follow-up" -> runbook_boundary_note(:host_owned)
+    end
+  end
+
   def native_banner do
     "#{ownership_badge(:powertools_native)} surfaces keep diagnosis, preview, reason, and #{ownership_posture(:powertools_native) |> String.downcase()} together."
   end

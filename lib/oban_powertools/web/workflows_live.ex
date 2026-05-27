@@ -210,7 +210,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               Review the bounded action in Lifeline.
             </p>
             <p class="mt-1">
-              Diagnose workflow causality here. Powertools-native pages own preview, reason, venue, and Audited action controls.
+              Diagnose workflow causality here. <%= ControlPlanePresenter.runbook_ownership_label(:powertools_native) %> pages own preview, reason, venue, and <%= ControlPlanePresenter.ownership_posture(:powertools_native) %> controls.
             </p>
             <.link
               navigate={lifeline_handoff(@workflow, @selected_step, @workflow_story, @selected_step_story).path}
