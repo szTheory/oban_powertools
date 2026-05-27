@@ -3,7 +3,9 @@ phase: 33
 slug: limiter-history-cron-missed-fire-diagnostics
 status: complete
 nyquist_compliant: true
+wave_0_complete: true
 created: 2026-05-27
+updated: 2026-05-27
 implementation_commit: 1b36404
 ---
 
