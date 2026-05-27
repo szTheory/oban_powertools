@@ -361,6 +361,13 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                     <p class="mt-1"><strong>Legal next path:</strong> <%= continuity_legal_next_path(continuity) %></p>
                     <p class="mt-1"><strong>Venue:</strong> <%= continuity_venue(continuity) %></p>
                     <p class="mt-1"><strong>Attempt state:</strong> <%= continuity_attempt_state(continuity) %></p>
+                    <p class="mt-1">
+                      <strong>host-owned follow-up status:</strong>
+                      <%= host_follow_up_status_label(@audit_events) %>
+                    </p>
+                    <p :if={detail = host_follow_up_status_detail(@audit_events)} class="mt-1 text-xs">
+                      <%= detail %>
+                    </p>
                   <% else %>
                     <p class="font-medium">No remediation attempts recorded yet</p>
                     <p class="mt-1">
@@ -1132,6 +1139,44 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         %{} = selected_path -> selected_path
         _missing -> %{}
       end
+    end
+
+    defp host_follow_up_status_label(audit_events) do
+      audit_events
+      |> latest_host_follow_up_event()
+      |> read_host_follow_up_status()
+      |> ControlPlanePresenter.host_follow_up_status_label()
+    end
+
+    defp host_follow_up_status_detail(audit_events) do
+      case latest_host_follow_up_event(audit_events) do
+        nil ->
+          "No host escalation hook configured"
+
+        event ->
+          details = event.metadata["details"] || %{}
+
+          case event.metadata["status"] do
+            "host_owned_follow_up_unconfigured" ->
+              details["configuration"] || "No host escalation hook configured"
+
+            "host_owned_follow_up_callback_failed" ->
+              details["reason"] || "Host-owned follow-up callback failed"
+
+            _other ->
+              nil
+          end
+      end
+    end
+
+    defp latest_host_follow_up_event(audit_events) do
+      Enum.find(audit_events || [], &(&1.action == "lifeline.host_follow_up"))
+    end
+
+    defp read_host_follow_up_status(nil), do: "host_owned_follow_up_unconfigured"
+
+    defp read_host_follow_up_status(event) do
+      event.metadata["status"] || "host_owned_follow_up_unconfigured"
     end
 
     defp error_message(:preview_not_found), do: LiveAuth.mutation_error(:preview_not_available)

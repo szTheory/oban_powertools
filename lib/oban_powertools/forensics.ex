@@ -346,16 +346,38 @@ defmodule ObanPowertools.Forensics do
       event ->
         runbook_context = Audit.event_runbook_context(event)
         attempt = get_in(runbook_context, ["attempt"]) || %{}
+        preview_token = get_in(runbook_context, ["preview_token"])
+        host_follow_up_event = latest_host_follow_up_event(audit_events, preview_token)
 
         %{
           "attempt_state" => Audit.event_attempt_state(event),
           "action" => attempt["action"] || event.action,
           "reason" => Audit.event_reason(event),
           "selected_path" => Audit.event_selected_path(event),
-          "runbook_context" => runbook_context
+          "runbook_context" => runbook_context,
+          "host_follow_up_status" => host_follow_up_status(host_follow_up_event),
+          "host_follow_up_details" => host_follow_up_details(host_follow_up_event)
         }
     end
   end
+
+  defp latest_host_follow_up_event(audit_events, preview_token) do
+    audit_events
+    |> Enum.filter(fn event -> (event.event_type || event.action) == "lifeline.host_follow_up" end)
+    |> Enum.sort_by(
+      fn event -> {event.inserted_at || ~N[1970-01-01 00:00:00], event.id || 0} end,
+      :desc
+    )
+    |> Enum.find(fn event ->
+      is_nil(preview_token) or event.metadata["preview_token"] == preview_token
+    end)
+  end
+
+  defp host_follow_up_status(nil), do: "host_owned_follow_up_unconfigured"
+  defp host_follow_up_status(event), do: event.metadata["status"] || "host_owned_follow_up_unconfigured"
+
+  defp host_follow_up_details(nil), do: %{"configuration" => "No host escalation hook configured"}
+  defp host_follow_up_details(event), do: event.metadata["details"] || %{}
 
   defp maybe_put_continuity(subject, nil), do: subject
   defp maybe_put_continuity(subject, continuity), do: Map.put(subject, :continuity, continuity)

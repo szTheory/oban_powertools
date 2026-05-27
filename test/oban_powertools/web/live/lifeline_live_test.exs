@@ -100,6 +100,9 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     assert html =~ "Legal next path:"
     assert html =~ "Venue:"
     assert html =~ "Attempt state:"
+    assert html =~ "host-owned follow-up status:"
+    assert html =~ "Host-owned follow-up unavailable"
+    assert html =~ "No host escalation hook configured"
     assert html =~ "Evidence link"
     assert html =~ "Powertools-native"
     assert html =~ "Oban Web bridge"
@@ -134,6 +137,80 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
 
     render_change(view, "reason", %{"reason" => "reviewed"})
     assert render(view) =~ "policy reason: REVIEWED"
+  end
+
+  test "renders host-owned follow-up status labels from audit metadata", %{conn: conn} do
+    for {status, details, expected_label, expected_detail} <- [
+          {
+            "host_owned_follow_up_unconfigured",
+            %{"configuration" => "No host escalation hook configured"},
+            "Host-owned follow-up unavailable",
+            "No host escalation hook configured"
+          },
+          {
+            "host_owned_follow_up_callback_invoked",
+            %{"result" => "ok"},
+            "Host-owned follow-up callback invoked",
+            nil
+          },
+          {
+            "host_owned_follow_up_callback_failed",
+            %{"reason" => "callback timeout"},
+            "Host-owned follow-up callback failed",
+            "callback timeout"
+          }
+        ] do
+      executor_id = "host-status-#{System.unique_integer([:positive])}"
+      insert_missing_heartbeat!(executor_id)
+      incident = insert_dead_executor_incident!(executor_id)
+      job = insert_executing_job!(executor_id)
+      update_incident_job_ids!(incident, [job.id])
+
+      {:ok, _event} =
+        Audit.record(
+          "lifeline.host_follow_up",
+          %{type: :job, id: job.id},
+          %{
+            "event_type" => "lifeline.host_follow_up",
+            "incident_fingerprint" => incident.incident_fingerprint,
+            "status" => status,
+            "details" => details,
+            "runbook_context" => %{
+              "selected_path" => %{
+                "ownership" => "Powertools-native",
+                "venue" => "Powertools-native Lifeline"
+              },
+              "attempt" => %{
+                "state" => "succeeded",
+                "action" => "job_rescue",
+                "target_type" => "job",
+                "target_id" => Integer.to_string(job.id)
+              }
+            }
+          },
+          repo: TestRepo,
+          actor_id: "ops-1"
+        )
+
+      status_conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{id: "ops-1", permissions: [:view_lifeline]}
+        )
+
+      {:ok, view, _html} = live(status_conn, "/ops/jobs/lifeline")
+
+      html =
+        view
+        |> element("button[phx-value-row-id$=':job:#{job.id}'][phx-click='select_incident']")
+        |> render_click()
+
+      assert html =~ "host-owned follow-up status:"
+      assert html =~ expected_label
+
+      if expected_detail do
+        assert html =~ expected_detail
+      end
+    end
   end
 
   test "shows shared preview_drifted wording when target state changes after preview", %{
@@ -306,8 +383,9 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     assert resolved_html =~ "policy reason: RESCUING ORPHANED JOB AFTER NODE LOSS"
     assert resolved_html =~ "Manual Intervention History"
 
-    [event] = Audit.list(%{type: :job, id: Integer.to_string(job.id)}, repo: TestRepo)
-    assert event.action == "lifeline.repair_executed"
+    events = Audit.list(%{type: :job, id: Integer.to_string(job.id)}, repo: TestRepo)
+    assert Enum.any?(events, &(&1.action == "lifeline.repair_executed"))
+    assert Enum.any?(events, &(&1.action == "lifeline.host_follow_up"))
   end
 
   test "unauthorized execute keeps the incident in Needs Review instead of moving it into resolved",

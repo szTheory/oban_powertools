@@ -86,6 +86,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 <span class="mx-2">•</span>
                 <strong>Reason:</strong> <%= continuity_reason(continuity) %>
               </p>
+              <p class="mt-1 text-sm text-zinc-600">
+                <strong>host-owned follow-up status:</strong> <%= continuity_host_follow_up_status(continuity) %>
+              </p>
+              <p :if={detail = continuity_host_follow_up_detail(continuity)} class="mt-1 text-xs text-zinc-500">
+                <%= detail %>
+              </p>
             </div>
 
             <div class="mt-4 grid gap-4 md:grid-cols-2">
@@ -313,6 +319,28 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp continuity_reason(continuity) do
       Map.get(continuity, "reason") || Map.get(continuity, :reason) || "none provided"
+    end
+
+    defp continuity_host_follow_up_status(continuity) do
+      continuity
+      |> Map.get("host_follow_up_status")
+      |> ControlPlanePresenter.host_follow_up_status_label()
+    end
+
+    defp continuity_host_follow_up_detail(continuity) do
+      details = Map.get(continuity, "host_follow_up_details") || %{}
+      status = Map.get(continuity, "host_follow_up_status")
+
+      case status do
+        "host_owned_follow_up_unconfigured" ->
+          details["configuration"] || "No host escalation hook configured"
+
+        "host_owned_follow_up_callback_failed" ->
+          details["reason"] || "Host-owned follow-up callback failed"
+
+        _other ->
+          nil
+      end
     end
 
     defp repo, do: Application.fetch_env!(:oban_powertools, :repo)

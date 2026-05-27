@@ -121,6 +121,17 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
   def forensic_completeness_label("unknown"), do: "unknown"
   def forensic_completeness_label(_completeness), do: "unknown"
 
+  def host_follow_up_status_label("host_owned_follow_up_unconfigured"),
+    do: "Host-owned follow-up unavailable"
+
+  def host_follow_up_status_label("host_owned_follow_up_callback_invoked"),
+    do: "Host-owned follow-up callback invoked"
+
+  def host_follow_up_status_label("host_owned_follow_up_callback_failed"),
+    do: "Host-owned follow-up callback failed"
+
+  def host_follow_up_status_label(_status), do: "Host-owned follow-up unavailable"
+
   def venue_label(venue), do: ControlPlane.venue_label(venue)
 
   def audit_event_label(event), do: Audit.event_label(event)

@@ -93,6 +93,21 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
         actor_id: "ops-1"
       )
 
+    {:ok, _follow_up_event} =
+      Audit.record(
+        "lifeline.host_follow_up",
+        %{type: :job, id: 123},
+        %{
+          "event_type" => "lifeline.host_follow_up",
+          "incident_fingerprint" => incident.incident_fingerprint,
+          "status" => "host_owned_follow_up_callback_invoked",
+          "details" => %{"result" => "ok"},
+          "preview_token" => "preview-123"
+        },
+        repo: TestRepo,
+        actor_id: "ops-1"
+      )
+
     conn =
       Plug.Test.init_test_session(conn,
         current_actor: %{id: "ops-1", permissions: [:view_forensics, :view_lifeline]}
@@ -111,12 +126,87 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
     assert html =~ "Attempt state:"
     assert html =~ "Action:"
     assert html =~ "Reason:"
+    assert html =~ "host-owned follow-up status:"
+    assert html =~ "Host-owned follow-up callback invoked"
     assert html =~ "Operator rescued orphaned execution"
 
     {:ok, _remounted_view, remounted_html} = live(conn, path)
 
     assert remounted_html =~ incident.incident_fingerprint
     assert remounted_html =~ "Latest runbook continuity"
+  end
+
+  test "renders failed host-owned follow-up status with explicit warning detail", %{conn: conn} do
+    incident =
+      %Incident{}
+      |> Incident.changeset(%{
+        incident_class: "dead_executor",
+        status: "active",
+        executor_id: "forensics-live-failed-follow-up",
+        incident_fingerprint: "dead_executor:forensics-live-failed-follow-up",
+        health_state: "missing",
+        summary: "missing executor forensics-live-failed-follow-up",
+        affected_counts: %{"jobs" => 1, "workflow_steps" => 0},
+        evidence: %{"job_ids" => [321], "workflow_step_ids" => []},
+        first_detected_at: DateTime.utc_now(),
+        last_detected_at: DateTime.utc_now(),
+        metadata: %{}
+      })
+      |> TestRepo.insert!()
+
+    {:ok, _repair_event} =
+      Audit.record(
+        "lifeline.repair_executed",
+        %{type: :job, id: 321},
+        %{
+          "event_type" => "lifeline.repair_executed",
+          "incident_fingerprint" => incident.incident_fingerprint,
+          "reason" => "Operator retried job",
+          "runbook_context" => %{
+            "selected_path" => %{
+              "ownership" => "Powertools-native",
+              "venue" => "Powertools-native Lifeline"
+            },
+            "attempt" => %{
+              "state" => "succeeded",
+              "action" => "job_retry",
+              "target_type" => "job",
+              "target_id" => "321"
+            }
+          }
+        },
+        repo: TestRepo,
+        actor_id: "ops-1"
+      )
+
+    {:ok, _follow_up_event} =
+      Audit.record(
+        "lifeline.host_follow_up",
+        %{type: :job, id: 321},
+        %{
+          "event_type" => "lifeline.host_follow_up",
+          "incident_fingerprint" => incident.incident_fingerprint,
+          "status" => "host_owned_follow_up_callback_failed",
+          "details" => %{"reason" => "callback timeout"},
+          "preview_token" => "preview-321"
+        },
+        repo: TestRepo,
+        actor_id: "ops-1"
+      )
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_forensics, :view_lifeline]}
+      )
+
+    path =
+      "/ops/jobs/forensics?incident_fingerprint=#{URI.encode_www_form(incident.incident_fingerprint)}&view=active&resource_type=job&resource_id=321"
+
+    {:ok, _view, html} = live(conn, path)
+
+    assert html =~ "host-owned follow-up status:"
+    assert html =~ "Host-owned follow-up callback failed"
+    assert html =~ "callback timeout"
   end
 
   test "redirects unauthorized viewers", %{conn: conn} do
