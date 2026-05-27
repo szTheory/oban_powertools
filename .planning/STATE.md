@@ -2,9 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Native Job Surface & Automation API
-status: active
-last_updated: "2026-05-27"
-last_activity: 2026-05-27
+status: Not started
+stopped_at: Phase 43 context gathered
+last_updated: "2026-05-27T22:21:17.418Z"
+last_activity: 2026-05-27 — v1.5 roadmap created (Phases 43-46)
 progress:
   total_phases: 4
   completed_phases: 0
@@ -43,6 +44,7 @@ Last activity: 2026-05-27 — v1.5 roadmap created (Phases 43-46)
 See PROJECT.md Key Decisions section for the full locked decision list.
 
 **v1.5 decisions:**
+
 - Phase order is non-negotiable: QRY-01 leads (zero Lifeline risk); QRY-03 must come after QRY-02 (actions anchor to detail context); QRY-04 iterates the single-job pipeline proven in Phase 44; API wraps last so signatures derive from the proven UI pipeline.
 - All mutations must route through `Lifeline.execute_repair` — no direct `Oban` function calls from LiveViews or the API module.
 - `%JobFilter{}` struct must be defined before any event handler is written in Phase 43.
@@ -63,6 +65,6 @@ None.
 
 ## Session Continuity
 
-- **Last session:** 2026-05-27
-- **Stopped at:** v1.5 roadmap created. Phases 43-46 defined and written to ROADMAP.md.
+- **Last session:** 2026-05-27T22:21:17.414Z
+- **Stopped at:** Phase 43 context gathered
 - **Next action:** `/gsd:plan-phase 43` — Read-Only Job Browse (QRY-01 + QRY-02)
