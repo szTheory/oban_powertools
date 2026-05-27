@@ -79,18 +79,34 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
             <div :if={continuity = runbook_continuity(@bundle)} class="mt-4 rounded border border-slate-200 bg-slate-50 p-3">
               <p class="text-sm font-semibold">Latest runbook continuity</p>
-              <p class="mt-1 text-sm text-zinc-600">
-                <strong>Attempt state:</strong> <%= continuity_attempt_state(continuity) %>
-                <span class="mx-2">•</span>
-                <strong>Action:</strong> <%= continuity_action(continuity) %>
-                <span class="mx-2">•</span>
-                <strong>Reason:</strong> <%= continuity_reason(continuity) %>
-              </p>
+              <p class="mt-1 text-sm text-zinc-600"><strong>Diagnosis:</strong> <%= continuity_diagnosis(@bundle, continuity) %></p>
+              <p class="mt-1 text-sm text-zinc-600"><strong>Legal next path:</strong> <%= continuity_legal_next_path(continuity) %></p>
+              <p class="mt-1 text-sm text-zinc-600"><strong>Venue:</strong> <%= continuity_venue(continuity) %></p>
+              <p class="mt-1 text-sm text-zinc-600"><strong>Attempt state:</strong> <%= continuity_attempt_state(continuity) %></p>
               <p class="mt-1 text-sm text-zinc-600">
                 <strong>host-owned follow-up status:</strong> <%= continuity_host_follow_up_status(continuity) %>
               </p>
               <p :if={detail = continuity_host_follow_up_detail(continuity)} class="mt-1 text-xs text-zinc-500">
                 <%= detail %>
+              </p>
+              <p class="mt-1 text-sm text-zinc-600"><strong>Reason:</strong> <%= continuity_reason(continuity) %></p>
+              <p class="mt-2 text-sm text-zinc-600">
+                <strong>Evidence link:</strong>
+                <a
+                  :if={@bundle.runbook_entry.evidence_path}
+                  href={@bundle.runbook_entry.evidence_path}
+                  class="text-indigo-700 underline"
+                >
+                  Open forensic evidence
+                </a>
+                <span :if={is_nil(@bundle.runbook_entry.evidence_path)}>No evidence link available</span>
+              </p>
+              <p class="mt-1 text-sm text-zinc-600">
+                <strong>Audit follow-up:</strong>
+                <a :if={path = continuity_audit_follow_up_path(@bundle)} href={path} class="text-indigo-700 underline">
+                  Open in Audit
+                </a>
+                <span :if={is_nil(continuity_audit_follow_up_path(@bundle))}>No audit follow-up available</span>
               </p>
             </div>
 
@@ -138,6 +154,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 <div
                   :for={item <- @bundle.runbook_entry.ordered_next_paths}
                   data-runbook-ownership={item.ownership}
+                  data-runbook-variant={follow_up_variant(item)}
                   class={runbook_path_class(item)}
                 >
                   <div class="flex flex-wrap items-center gap-2">
@@ -152,6 +169,11 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                     </a>
                   </div>
                 </div>
+              </div>
+              <div class="mt-3 space-y-1 text-xs text-zinc-600">
+                <p><%= ControlPlanePresenter.runbook_ownership_label("Powertools-native") %></p>
+                <p><%= ControlPlanePresenter.runbook_ownership_label("Oban Web bridge") %></p>
+                <p><%= ControlPlanePresenter.runbook_ownership_label("host-owned follow-up") %></p>
               </div>
             </div>
 
@@ -292,15 +314,20 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp caution_class(_item), do: "rounded border bg-slate-50 p-3 text-zinc-600"
 
-    defp runbook_path_class(%{ownership: "Powertools-native"}),
-      do: "rounded border border-indigo-200 bg-indigo-50 p-3"
+    defp runbook_path_class(item) do
+      case ControlPlanePresenter.follow_up_render_variant(item) do
+        :native_primary -> "rounded border border-indigo-200 bg-indigo-50 p-3"
+        :bridge_guidance -> "rounded border border-slate-200 bg-white p-3"
+        :host_guidance -> "rounded border border-amber-200 bg-amber-50 p-3"
+      end
+    end
 
-    defp runbook_path_class(_item), do: "rounded border bg-white p-3"
-
-    defp runbook_path_link_class(%{ownership: "Powertools-native"}),
-      do: "rounded bg-indigo-700 px-3 py-2 text-sm text-white"
-
-    defp runbook_path_link_class(_item), do: "text-sm text-indigo-700 underline"
+    defp runbook_path_link_class(item) do
+      case ControlPlanePresenter.follow_up_render_variant(item) do
+        :native_primary -> "rounded bg-indigo-700 px-3 py-2 text-sm text-white"
+        _guidance -> "text-sm text-indigo-700 underline"
+      end
+    end
 
     defp runbook_continuity(bundle) do
       case get_in(bundle, [:subject, :continuity]) || get_in(bundle, [:subject, "continuity"]) do
@@ -313,6 +340,25 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       Map.get(continuity, "attempt_state") || Map.get(continuity, :attempt_state) || "unknown"
     end
 
+    defp continuity_diagnosis(bundle, continuity) do
+      Map.get(continuity, "diagnosis_state") ||
+        Map.get(continuity, :diagnosis_state) ||
+        get_in(bundle, [:runbook_entry, :diagnosis_state]) ||
+        "unknown"
+    end
+
+    defp continuity_legal_next_path(continuity) do
+      intent = Map.get(continuity, "action") || Map.get(continuity, :action) || "investigate"
+      ownership = follow_up_ownership_label(continuity)
+      "#{intent} via #{ownership}"
+    end
+
+    defp continuity_venue(continuity) do
+      Map.get(continuity, "venue") ||
+        Map.get(continuity, :venue) ||
+        follow_up_ownership_label(continuity)
+    end
+
     defp continuity_action(continuity) do
       Map.get(continuity, "action") || Map.get(continuity, :action) || "unknown"
     end
@@ -322,9 +368,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp continuity_host_follow_up_status(continuity) do
-      continuity
-      |> Map.get("host_follow_up_status")
-      |> ControlPlanePresenter.host_follow_up_status_label()
+      case Map.get(continuity, "host_follow_up_status") do
+        nil -> "Host-owned follow-up unavailable"
+        status -> ControlPlanePresenter.host_follow_up_status_label(status)
+      end
     end
 
     defp continuity_host_follow_up_detail(continuity) do
@@ -340,6 +387,38 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
         _other ->
           nil
+      end
+    end
+
+    defp continuity_audit_follow_up_path(bundle) do
+      [
+        {"resource_type", get_in(bundle, [:subject, :resource_type]) || get_in(bundle, [:subject, "resource_type"])},
+        {"resource_id", get_in(bundle, [:subject, :resource_id]) || get_in(bundle, [:subject, "resource_id"])}
+      ]
+      |> Enum.reject(fn {_key, value} -> is_nil(value) or value == "" end)
+      |> case do
+        [] -> nil
+        params -> "/ops/jobs/audit?" <> URI.encode_query(params)
+      end
+    end
+
+    defp follow_up_variant(item) do
+      item
+      |> ControlPlanePresenter.follow_up_render_variant()
+      |> Atom.to_string()
+    end
+
+    defp follow_up_ownership_label(continuity) do
+      continuity
+      |> Map.get("ownership")
+      |> case do
+        nil ->
+          continuity
+          |> Map.get("venue")
+          |> ControlPlanePresenter.runbook_ownership_label()
+
+        ownership ->
+          ControlPlanePresenter.runbook_ownership_label(ownership)
       end
     end
 

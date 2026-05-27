@@ -167,15 +167,33 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                     <ol class="mt-3 space-y-2">
                       <li>
                         1. Return to limiter diagnosis —
-                        <span class="font-medium"><%= ControlPlanePresenter.runbook_ownership_label(:powertools_native) %></span>
+                        <span
+                          data-runbook-ownership={ControlPlanePresenter.runbook_ownership_label("Powertools-native")}
+                          data-runbook-variant={follow_up_variant("Powertools-native")}
+                          class={follow_up_row_class("Powertools-native")}
+                        >
+                          <%= ControlPlanePresenter.runbook_ownership_label("Powertools-native") %>
+                        </span>
                       </li>
                       <li>
                         2. Inspect audit trail —
-                        <span class="font-medium"><%= ControlPlanePresenter.runbook_ownership_label("Inspection only") %></span>
+                        <span
+                          data-runbook-ownership={ControlPlanePresenter.runbook_ownership_label("Oban Web bridge")}
+                          data-runbook-variant={follow_up_variant("Oban Web bridge")}
+                          class={follow_up_row_class("Oban Web bridge")}
+                        >
+                          <%= ControlPlanePresenter.runbook_ownership_label("Oban Web bridge") %>
+                        </span>
                       </li>
                       <li>
                         3. Coordinate capacity policy follow-up —
-                        <span class="font-medium"><%= ControlPlanePresenter.runbook_ownership_label(:host_owned) %></span>
+                        <span
+                          data-runbook-ownership={ControlPlanePresenter.runbook_ownership_label("host-owned follow-up")}
+                          data-runbook-variant={follow_up_variant("host-owned follow-up")}
+                          class={follow_up_row_class("host-owned follow-up")}
+                        >
+                          <%= ControlPlanePresenter.runbook_ownership_label("host-owned follow-up") %>
+                        </span>
                       </li>
                     </ol>
                     <a
@@ -278,6 +296,20 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp forensics_path(name),
       do: "/ops/jobs/forensics?resource_type=limiter&resource_id=#{URI.encode_www_form(name)}"
+
+    defp follow_up_variant(path_or_venue) do
+      path_or_venue
+      |> ControlPlanePresenter.follow_up_render_variant()
+      |> Atom.to_string()
+    end
+
+    defp follow_up_row_class(path_or_venue) do
+      case ControlPlanePresenter.follow_up_render_variant(path_or_venue) do
+        :native_primary -> "rounded border border-indigo-300 bg-indigo-100 px-2 py-1 font-medium"
+        :bridge_guidance -> "rounded border border-slate-300 bg-white px-2 py-1"
+        :host_guidance -> "rounded border border-amber-300 bg-amber-100 px-2 py-1"
+      end
+    end
 
     defp can_view_forensics?(actor),
       do: LiveAuth.authorized?(actor, :view_forensics, %{type: :page, id: "forensics"})

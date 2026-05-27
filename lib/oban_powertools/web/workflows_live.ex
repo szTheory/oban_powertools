@@ -235,9 +235,29 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               <strong>Venue:</strong>
               <%= ControlPlanePresenter.runbook_ownership_label(:powertools_native) %>
             </p>
-            <p class="mt-1 text-xs">
-              <%= ControlPlanePresenter.runbook_ownership_label("Inspection only") %> remains available for generic job inspection; <%= ControlPlanePresenter.runbook_ownership_label(:host_owned) %> stays outside Powertools action ownership.
-            </p>
+            <div class="mt-2 space-y-1 text-xs">
+              <div
+                data-runbook-ownership={ControlPlanePresenter.runbook_ownership_label("Powertools-native")}
+                data-runbook-variant={follow_up_variant("Powertools-native")}
+                class={follow_up_row_class("Powertools-native")}
+              >
+                <%= ControlPlanePresenter.runbook_ownership_label("Powertools-native") %>
+              </div>
+              <div
+                data-runbook-ownership={ControlPlanePresenter.runbook_ownership_label("Oban Web bridge")}
+                data-runbook-variant={follow_up_variant("Oban Web bridge")}
+                class={follow_up_row_class("Oban Web bridge")}
+              >
+                <%= ControlPlanePresenter.runbook_ownership_label("Oban Web bridge") %>
+              </div>
+              <div
+                data-runbook-ownership={ControlPlanePresenter.runbook_ownership_label("host-owned follow-up")}
+                data-runbook-variant={follow_up_variant("host-owned follow-up")}
+                class={follow_up_row_class("host-owned follow-up")}
+              >
+                <%= ControlPlanePresenter.runbook_ownership_label("host-owned follow-up") %>
+              </div>
+            </div>
             <a href={forensic_path(@workflow, @selected_step)} class="mt-3 inline-block text-sm text-indigo-700 underline">
               evidence link
             </a>
@@ -437,6 +457,20 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> ControlPlane.workflow_status()
       |> Map.fetch!(:operator_status)
       |> ControlPlanePresenter.status_label()
+    end
+
+    defp follow_up_variant(path_or_venue) do
+      path_or_venue
+      |> ControlPlanePresenter.follow_up_render_variant()
+      |> Atom.to_string()
+    end
+
+    defp follow_up_row_class(path_or_venue) do
+      case ControlPlanePresenter.follow_up_render_variant(path_or_venue) do
+        :native_primary -> "rounded border border-indigo-300 bg-indigo-100 px-2 py-1"
+        :bridge_guidance -> "rounded border border-slate-300 bg-white px-2 py-1"
+        :host_guidance -> "rounded border border-amber-300 bg-amber-100 px-2 py-1"
+      end
     end
 
     defp repo, do: Application.fetch_env!(:oban_powertools, :repo)

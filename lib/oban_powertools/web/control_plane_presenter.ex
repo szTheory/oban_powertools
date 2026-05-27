@@ -76,6 +76,36 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
 
   def runbook_path_posture(_path_or_venue), do: "host-owned follow-up"
 
+  def follow_up_kind(%{} = follow_up) do
+    follow_up
+    |> follow_up_value("ownership")
+    |> case do
+      nil ->
+        follow_up
+        |> follow_up_value("venue")
+        |> follow_up_kind()
+
+      ownership ->
+        follow_up_kind(ownership)
+    end
+  end
+
+  def follow_up_kind(path_or_venue) do
+    case runbook_path_posture(path_or_venue) do
+      "Powertools-native" -> :powertools_native
+      "Oban Web bridge" -> :oban_web_bridge
+      _other -> :host_owned
+    end
+  end
+
+  def follow_up_render_variant(path_or_venue_or_follow_up) do
+    case follow_up_kind(path_or_venue_or_follow_up) do
+      :powertools_native -> :native_primary
+      :oban_web_bridge -> :bridge_guidance
+      :host_owned -> :host_guidance
+    end
+  end
+
   def runbook_boundary_note(:powertools_native),
     do: "Powertools-native path stays inside the audited native control plane."
 
@@ -188,4 +218,8 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
 
   defp refusal_reason_label(nil), do: "This action is not available right now."
   defp refusal_reason_label(code), do: Phoenix.Naming.humanize(code)
+
+  defp follow_up_value(map, key) do
+    Map.get(map, key) || Map.get(map, String.to_atom(key))
+  end
 end
