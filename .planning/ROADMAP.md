@@ -38,55 +38,69 @@
 ## Phase Details
 
 ### Phase 43: Read-Only Job Browse
+
 **Goal**: Operators can browse and inspect jobs natively without touching the Oban Web bridge
 **Depends on**: Phase 42 (v1.4 complete baseline)
 **Requirements**: QRY-01, QRY-02
 **Success Criteria** (what must be TRUE):
+
   1. Operator can open a native `/ops/jobs/jobs` (or equivalent route) page listing jobs filtered by state — state is the primary navigation dimension
   2. Operator can narrow the job list by queue, worker, and tags without triggering a sequential scan (state leads the WHERE clause; tags filter requires documented host-owned GIN index)
   3. Operator can click any job row and see its full detail — args, meta, errors, attempt history, and timing — with `DisplayPolicy` redaction applied to args and meta
   4. Filter state is URL-serialized so deep-links and browser back/forward preserve the current view
   5. Unauthorized actors see a read-only banner and cannot reach mutation surfaces from the browse or detail pages
+
 **Plans**: 3 plans
-  - [ ] 43-01-PLAN.md — Data layer: ObanPowertools.Jobs context module + %JobFilter{} + DisplayPolicy render_job_field/3 + Selectors :jobs path + unit tests
+
+  - [x] 43-01-PLAN.md — Data layer: ObanPowertools.Jobs context module + %JobFilter{} + DisplayPolicy render_job_field/3 + Selectors :jobs path + unit tests
   - [ ] 43-02-PLAN.md — Wave 2: LiveAuth atoms + router routes + JobsLive :index action (list page, state tabs, filter, push_patch) + LiveView tests
   - [ ] 43-03-PLAN.md — Wave 3: JobsLive :show action (detail render with DisplayPolicy redaction, errors/attempt panels, back link) + detail tests
+
 **UI hint**: yes
 
 ### Phase 44: Single-Job Actions
+
 **Goal**: Operators can retry, cancel, or discard an individual job through the full audited Lifeline pipeline
 **Depends on**: Phase 43
 **Requirements**: QRY-03
 **Success Criteria** (what must be TRUE):
+
   1. Operator can initiate retry, cancel, or discard from the job detail page and sees a preview of the action before committing
   2. Operator must supply a reason string before executing any mutation — no mutation fires without a reason
   3. Each executed action produces a durable audit record via `Lifeline.execute_repair` — no direct `Oban` function calls occur in the LiveView event handler
   4. A concurrent-modification guard returns a visible error (not a silent success) when another operator has already changed the job's state before the action executes
   5. `"job_discard"` is registered in `Lifeline.@supported_actions`; nil-incident browse-initiated actions are explicitly permitted through the Lifeline guard
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 45: Bulk Operations
+
 **Goal**: Operators can retry, cancel, or discard a visible selection of jobs with clear per-job outcome reporting
 **Depends on**: Phase 44
 **Requirements**: QRY-04
 **Success Criteria** (what must be TRUE):
+
   1. Operator can select multiple jobs via checkbox on the job list page (MapSet-backed selection via `JS.push/3`) and see a count of selected jobs
   2. Operator can bulk retry, cancel, or discard the selection (capped at configurable max, default 100) and sees a count-preview before committing
   3. Each job in the selection runs its own `Lifeline.execute_repair` call — no single Ecto.Multi wraps all N jobs
   4. After execution, the operator sees a per-job breakdown of successes and failures — partially-failed bulk operations are reported honestly, not collapsed
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 46: Operator Elixir API
+
 **Goal**: Host app code can programmatically retry, cancel, or discard jobs with the same audit guarantee as the UI
 **Depends on**: Phase 45
 **Requirements**: API-01, API-02
 **Success Criteria** (what must be TRUE):
+
   1. `ObanPowertools.Operator` exposes typed functions for single-job retry, cancel, and discard — each requires a non-nil actor and produces a durable audit record
   2. `ObanPowertools.Operator` exposes typed functions for bulk retry, cancel, and discard accepting a list of job IDs — returns per-job result reporting matching the UI behavior
   3. API functions call the same `Lifeline.execute_repair` pipeline the UI phases established — no parallel mutation path exists
   4. Telemetry emitted from API calls carries `source: "api"` metadata and remains within the frozen `@contract` (no new high-cardinality keys added)
+
 **Plans**: TBD
 
 ## Progress
@@ -108,7 +122,7 @@
 | 40    | v1.4      | 2/2           | Complete    | 2026-05-27 |
 | 41    | v1.4      | 1/1           | Complete    | 2026-05-27 |
 | 42    | v1.4      | 1/1           | Complete    | 2026-05-27 |
-| 43    | v1.5      | 0/3           | Not started | —          |
+| 43    | v1.5      | 1/3 | In Progress|  |
 | 44    | v1.5      | 0/?           | Not started | —          |
 | 45    | v1.5      | 0/?           | Not started | —          |
 | 46    | v1.5      | 0/?           | Not started | —          |

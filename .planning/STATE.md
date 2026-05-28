@@ -4,8 +4,8 @@ milestone: v1.5
 milestone_name: Native Job Surface & Automation API
 status: executing
 stopped_at: Phase 43 UI-SPEC approved
-last_updated: "2026-05-27T23:04:55.298Z"
-last_activity: 2026-05-27 -- Phase 43 planning complete
+last_updated: "2026-05-28T00:49:49.635Z"
+last_activity: 2026-05-28 -- Phase 43 execution started
 progress:
   total_phases: 4
   completed_phases: 0
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-27)
 
 **Core value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-**Current focus:** Phase 43 — Read-Only Job Browse (QRY-01, QRY-02)
+**Current focus:** Phase 43 — read-only-job-browse
 
 ## Current Position
 
-Phase: 43 — Read-Only Job Browse
-Plan: —
-Status: Ready to execute
+Phase: 43 (read-only-job-browse) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 43
 Progress: [ ] [ ] [ ] [ ] — 0/4 phases complete
 
-Last activity: 2026-05-27 -- Phase 43 planning complete
+Last activity: 2026-05-28 -- Phase 43 execution started
 
 ## Performance Metrics
 
