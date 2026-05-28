@@ -1,0 +1,324 @@
+if Code.ensure_loaded?(Phoenix.LiveView) do
+  defmodule ObanPowertools.Web.JobsLive do
+    @moduledoc false
+
+    use Phoenix.LiveView
+
+    alias ObanPowertools.{DisplayPolicy, Jobs}
+    alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth, Selectors}
+
+    @impl true
+    def mount(params, %{"oban_dashboard_path" => dashboard_path}, socket) do
+      action = socket.assigns.live_action
+
+      {permission, resource_type, resource_id} =
+        case action do
+          :show -> {:view_job_detail, :job, params["id"]}
+          _ -> {:view_jobs, :page, "jobs"}
+        end
+
+      with {:ok, socket} <-
+             LiveAuth.authorize_page(socket, permission, %{type: resource_type, id: resource_id}) do
+        :ok = DisplayPolicy.assert_configured!()
+
+        {:ok,
+         socket
+         |> assign(:oban_dashboard_path, dashboard_path)
+         |> assign_defaults()}
+      else
+        {:error, socket} -> {:ok, socket}
+      end
+    end
+
+    @impl true
+    def handle_params(%{"id" => id}, _uri, socket) do
+      # Wave 2 stub — Wave 3 will implement the real detail loader.
+      {:noreply, socket |> assign(:job, nil) |> assign(:job_id, id)}
+    end
+
+    def handle_params(params, _uri, socket) do
+      case {connected?(socket), Map.get(params, "state")} do
+        {true, nil} ->
+          # Live (connected) phase with no state param — redirect to default state.
+          {:noreply, push_patch(socket, to: Selectors.jobs_path([{"state", "available"}]))}
+
+        _ ->
+          # Dead render (conn.params is %Plug.Conn.Unfetched{} regardless of URL query string),
+          # or live phase with state param present — build filter and load jobs.
+          filter = filter_from_params(params)
+          {:noreply, load_jobs(socket, filter)}
+      end
+    end
+
+    @impl true
+    def handle_event("select_state", %{"state" => state}, socket) do
+      filter = socket.assigns.filter
+      new_filter = %{filter | state: String.to_existing_atom(state), page: 1}
+
+      {:noreply, push_patch(socket, to: Selectors.jobs_path(filter_path(new_filter)))}
+    end
+
+    def handle_event("filter", %{"filter" => %{"queue" => q, "worker" => w, "tags" => tags_str}}, socket) do
+      filter = socket.assigns.filter
+
+      tags =
+        case tags_str do
+          nil -> nil
+          "" -> nil
+          str -> str |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
+        end
+
+      new_filter = %{filter | queue: q, worker: w, tags: tags, page: 1}
+      {:noreply, push_patch(socket, to: Selectors.jobs_path(filter_path(new_filter)))}
+    end
+
+    def handle_event("paginate", %{"page" => page_str}, socket) do
+      filter = socket.assigns.filter
+      new_filter = %{filter | page: String.to_integer(page_str)}
+      {:noreply, push_patch(socket, to: Selectors.jobs_path(filter_path(new_filter)))}
+    end
+
+    @impl true
+    def render(assigns) do
+      ~H"""
+      <div class="space-y-6 p-6">
+        <%= if @live_action == :show do %>
+          <%!-- Wave 3 owns this view — this is a Wave 2 stub placeholder. Do not delete this comment in Wave 2. --%>
+          <div class="text-sm text-zinc-600">Job detail loading — Wave 3 owns this view.</div>
+        <% else %>
+          <div>
+            <h1 class="text-2xl font-semibold">Jobs</h1>
+            <p class="text-sm text-zinc-600">
+              Browse and inspect Oban jobs by state. <%= ControlPlanePresenter.native_banner() %>
+            </p>
+          </div>
+
+          <p :if={@read_only?} class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <%= LiveAuth.page_read_only_banner(:jobs) %>
+          </p>
+
+          <nav class="flex flex-wrap gap-2">
+            <%= for state <- ~w(available scheduled executing retryable cancelled discarded completed) do %>
+              <button
+                phx-click="select_state"
+                phx-value-state={state}
+                class={state_tab_class(@filter.state == String.to_existing_atom(state))}
+              >
+                <%= state %> (<%= Map.get(@counts, state, 0) %>)
+              </button>
+            <% end %>
+          </nav>
+
+          <form phx-change="filter">
+            <div class="flex flex-wrap gap-4">
+              <div>
+                <label class="block text-sm font-semibold text-zinc-700">Queue</label>
+                <input
+                  type="text"
+                  name="filter[queue]"
+                  value={@filter.queue || ""}
+                  placeholder="All queues"
+                  class="mt-1 rounded border px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-zinc-700">Worker</label>
+                <input
+                  type="text"
+                  name="filter[worker]"
+                  value={@filter.worker || ""}
+                  placeholder="All workers"
+                  class="mt-1 rounded border px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-zinc-700">Tags</label>
+                <input
+                  type="text"
+                  name="filter[tags]"
+                  value={if @filter.tags, do: Enum.join(@filter.tags, ","), else: ""}
+                  placeholder="Any tag"
+                  class="mt-1 rounded border px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+          </form>
+
+          <%= if @jobs == [] do %>
+            <div class="rounded-lg border bg-white p-6">
+              <h2 class="text-base font-semibold">No <%= @filter.state %> jobs</h2>
+              <p class="mt-2 text-sm text-zinc-600">
+                No jobs are currently in the <%= @filter.state %> state. Try a different state or filter.
+              </p>
+            </div>
+          <% else %>
+            <div class="overflow-hidden rounded-lg border bg-white">
+              <table class="min-w-full divide-y">
+                <thead class="bg-slate-50 text-left text-sm">
+                  <tr>
+                    <th class="px-4 py-3 font-semibold">State</th>
+                    <th class="px-4 py-3 font-semibold">Worker</th>
+                    <th class="px-4 py-3 font-semibold">Queue</th>
+                    <th class="px-4 py-3 font-semibold">Job ID</th>
+                    <th class="px-4 py-3 font-semibold">Scheduled At</th>
+                    <th class="px-4 py-3 font-semibold">Attempts</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y text-sm">
+                  <tr :for={job <- @jobs}>
+                    <td class="px-4 py-3">
+                      <span class={"rounded border px-2 py-1 text-xs font-semibold " <> state_badge_class(job.state)}>
+                        <%= job.state %>
+                      </span>
+                    </td>
+                    <td class="px-4 py-3">
+                      <.link navigate={"/ops/jobs/jobs/#{job.id}"} class="text-indigo-700 underline">
+                        <%= short_worker_name(job.worker) %>
+                      </.link>
+                    </td>
+                    <td class="px-4 py-3"><%= job.queue %></td>
+                    <td class="px-4 py-3"><%= job.id %></td>
+                    <td class="px-4 py-3"><%= timestamp_copy(job.scheduled_at) %></td>
+                    <td class="px-4 py-3"><%= job.attempt %> / <%= job.max_attempts %></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          <% end %>
+
+          <div class="flex gap-2">
+            <%= if @filter.page <= 1 do %>
+              <span class="cursor-not-allowed rounded border px-3 py-2 text-sm text-zinc-400">Previous</span>
+            <% else %>
+              <button
+                phx-click="paginate"
+                phx-value-page={@filter.page - 1}
+                class="rounded border px-3 py-2 text-sm"
+              >
+                Previous
+              </button>
+            <% end %>
+            <%= if length(@jobs) < @filter.page_size do %>
+              <span class="cursor-not-allowed rounded border px-3 py-2 text-sm text-zinc-400">Next</span>
+            <% else %>
+              <button
+                phx-click="paginate"
+                phx-value-page={@filter.page + 1}
+                class="rounded border px-3 py-2 text-sm"
+              >
+                Next
+              </button>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+      """
+    end
+
+    # --- Private helpers ---
+
+    defp assign_defaults(socket) do
+      socket
+      |> assign(:jobs, [])
+      |> assign(:filter, %Jobs{})
+      |> assign(:counts, Map.new(~w(available scheduled executing retryable cancelled discarded completed), &{&1, 0}))
+      |> assign(:job, nil)
+      |> assign(:read_only?, not LiveAuth.authorized?(
+           Map.get(socket.assigns, :current_actor),
+           :retry_job,
+           %{type: :page, id: "jobs"}
+         ))
+    end
+
+    defp load_jobs(socket, filter) do
+      jobs = Jobs.list(repo(), filter)
+      counts = Jobs.count_by_state(repo(), filter)
+
+      socket
+      |> assign(:jobs, jobs)
+      |> assign(:counts, counts)
+      |> assign(:filter, filter)
+      |> assign(:read_only?, not LiveAuth.authorized?(
+           Map.get(socket.assigns, :current_actor),
+           :retry_job,
+           %{type: :page, id: "jobs"}
+         ))
+    end
+
+    defp filter_from_params(params) do
+      tags =
+        case Map.get(params, "tags") do
+          nil -> nil
+          "" -> nil
+          str -> str |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
+        end
+
+      %Jobs{
+        state: String.to_existing_atom(Map.get(params, "state", "available")),
+        queue: Map.get(params, "queue"),
+        worker: Map.get(params, "worker"),
+        tags: tags,
+        page: String.to_integer(Map.get(params, "page", "1")),
+        page_size: 20
+      }
+    end
+
+    defp filter_path(filter) do
+      [
+        {"state", to_string(filter.state)},
+        {"queue", filter.queue},
+        {"worker", filter.worker},
+        {"tags", if(filter.tags, do: Enum.join(filter.tags, ","))},
+        {"page", if(filter.page > 1, do: to_string(filter.page))}
+      ]
+    end
+
+    defp state_tab_class(true),
+      do: "rounded border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700"
+
+    defp state_tab_class(false),
+      do: "rounded border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600"
+
+    defp state_badge_class("available"), do: "border-slate-200 bg-slate-50 text-slate-700"
+    defp state_badge_class("scheduled"), do: "border-slate-200 bg-slate-50 text-slate-700"
+    defp state_badge_class("executing"), do: "border-indigo-200 bg-indigo-50 text-indigo-700"
+    defp state_badge_class("retryable"), do: "border-amber-200 bg-amber-50 text-amber-700"
+    defp state_badge_class("cancelled"), do: "border-slate-200 bg-slate-50 text-slate-500"
+    defp state_badge_class("discarded"), do: "border-red-200 bg-red-50 text-red-700"
+    defp state_badge_class("completed"), do: "border-emerald-200 bg-emerald-50 text-emerald-700"
+    defp state_badge_class(_), do: "border-slate-200 bg-slate-50 text-slate-700"
+
+    defp short_worker_name(worker) when is_binary(worker),
+      do: worker |> String.split(".") |> List.last()
+
+    defp short_worker_name(nil), do: "—"
+
+    defp timestamp_copy(nil), do: "Unknown"
+
+    defp timestamp_copy(%NaiveDateTime{} = timestamp) do
+      timestamp
+      |> DateTime.from_naive!("Etc/UTC")
+      |> timestamp_copy()
+    end
+
+    defp timestamp_copy(%DateTime{} = timestamp) do
+      seconds = DateTime.diff(DateTime.utc_now(), timestamp, :second)
+
+      relative =
+        cond do
+          seconds < 60 -> "#{seconds}s ago"
+          seconds < 3_600 -> "#{div(seconds, 60)}m ago"
+          seconds < 86_400 -> "#{div(seconds, 3_600)}h ago"
+          true -> "#{div(seconds, 86_400)}d ago"
+        end
+
+      exact = Calendar.strftime(timestamp, "%Y-%m-%d %H:%M:%S UTC")
+      "#{relative} (#{exact})"
+    end
+
+    defp timestamp_copy(timestamp) when is_binary(timestamp), do: timestamp
+    defp timestamp_copy(_timestamp), do: "Unknown"
+
+    defp repo, do: Application.fetch_env!(:oban_powertools, :repo)
+  end
+end
