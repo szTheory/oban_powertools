@@ -53,7 +53,7 @@
 **Plans**: 3 plans
 
   - [x] 43-01-PLAN.md — Data layer: ObanPowertools.Jobs context module + %JobFilter{} + DisplayPolicy render_job_field/3 + Selectors :jobs path + unit tests
-  - [ ] 43-02-PLAN.md — Wave 2: LiveAuth atoms + router routes + JobsLive :index action (list page, state tabs, filter, push_patch) + LiveView tests
+  - [x] 43-02-PLAN.md — Wave 2: LiveAuth atoms + router routes + JobsLive :index action (list page, state tabs, filter, push_patch) + LiveView tests
   - [ ] 43-03-PLAN.md — Wave 3: JobsLive :show action (detail render with DisplayPolicy redaction, errors/attempt panels, back link) + detail tests
 
 **UI hint**: yes
@@ -122,7 +122,7 @@
 | 40    | v1.4      | 2/2           | Complete    | 2026-05-27 |
 | 41    | v1.4      | 1/1           | Complete    | 2026-05-27 |
 | 42    | v1.4      | 1/1           | Complete    | 2026-05-27 |
-| 43    | v1.5      | 1/3 | In Progress|  |
+| 43    | v1.5      | 2/3 | In Progress|  |
 | 44    | v1.5      | 0/?           | Not started | —          |
 | 45    | v1.5      | 0/?           | Not started | —          |
 | 46    | v1.5      | 0/?           | Not started | —          |
