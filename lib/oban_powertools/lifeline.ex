@@ -20,7 +20,7 @@ defmodule ObanPowertools.Lifeline do
   @heartbeat_retention_seconds 6 * 60 * 60
   @preview_retention_seconds 7 * 24 * 60 * 60
   @audit_retention_seconds 90 * 24 * 60 * 60
-  @supported_actions ~w(job_rescue job_retry job_cancel workflow_step_retry workflow_step_cancel workflow_request_cancel)
+  @supported_actions ~w(job_rescue job_retry job_cancel job_discard workflow_step_retry workflow_step_cancel workflow_request_cancel)
 
   def refresh_heartbeats(repo, executors, opts \\ []) when is_list(executors) do
     now = Keyword.get(opts, :now, DateTime.utc_now())
@@ -172,11 +172,12 @@ defmodule ObanPowertools.Lifeline do
         existing ||
           repo.insert!(RepairPreview.changeset(%RepairPreview{}, preview_attrs))
 
-      Telemetry.execute_lifeline_event(:repair_previewed, %{count: 1}, %{
+      telemetry_metadata = Keyword.get(opts, :telemetry_metadata, %{})
+      Telemetry.execute_lifeline_event(:repair_previewed, %{count: 1}, Map.merge(%{
         action: preview.action,
         incident_class: preview.incident_class,
         target_type: preview.target_type
-      })
+      }, telemetry_metadata))
 
       {:ok, preview}
     end
@@ -191,7 +192,7 @@ defmodule ObanPowertools.Lifeline do
          :ok <- validate_reason(reason, preview.reason_required),
          {:ok, current_hash} <- recompute_plan_hash(repo, preview),
          :ok <- ensure_not_drifted(repo, preview, current_hash, now),
-         {:ok, result} <- apply_repair(repo, preview, actor, reason, now) do
+         {:ok, result} <- apply_repair(repo, preview, actor, reason, now, opts) do
       {:ok, result}
     else
       nil -> {:error, :preview_not_found}
@@ -589,7 +590,7 @@ defmodule ObanPowertools.Lifeline do
       incident = resolve_incident(repo, attrs)
 
       case {target_type, action} do
-        {"job", action} when action in ["job_rescue", "job_retry", "job_cancel"] ->
+        {"job", action} when action in ["job_rescue", "job_retry", "job_cancel", "job_discard"] ->
           build_job_preview(repo, incident, target_id, action, now)
 
         {"workflow_step", action}
@@ -803,6 +804,7 @@ defmodule ObanPowertools.Lifeline do
 
   defp next_job_state(action) when action in ["job_rescue", "job_retry"], do: "available"
   defp next_job_state("job_cancel"), do: "cancelled"
+  defp next_job_state("job_discard"), do: "discarded"
 
   defp next_step_state("workflow_step_retry"), do: "available"
   defp next_step_state("workflow_step_cancel"), do: "cancelled"
@@ -1029,7 +1031,7 @@ defmodule ObanPowertools.Lifeline do
     end
   end
 
-  defp apply_repair(repo, preview, actor, reason, now) do
+  defp apply_repair(repo, preview, actor, reason, now, opts) do
     trimmed_reason = String.trim(reason)
 
     Multi.new()
@@ -1084,11 +1086,12 @@ defmodule ObanPowertools.Lifeline do
         _host_follow_up =
           emit_host_follow_up(repo, preview_record, actor, runbook_context)
 
-        Telemetry.execute_lifeline_event(:repair_executed, %{count: 1}, %{
+        telemetry_metadata = Keyword.get(opts, :telemetry_metadata, %{})
+        Telemetry.execute_lifeline_event(:repair_executed, %{count: 1}, Map.merge(%{
           action: preview.action,
           incident_class: preview.incident_class,
           target_type: preview.target_type
-        })
+        }, telemetry_metadata))
 
         {:ok, %{target: target, preview: preview_record}}
 
@@ -1155,6 +1158,10 @@ defmodule ObanPowertools.Lifeline do
       {"job", "job_cancel"} ->
         job = repo.get!(Oban.Job, preview.target_id)
         {:ok, repo.update!(Ecto.Changeset.change(job, state: "cancelled", cancelled_at: now))}
+
+      {"job", "job_discard"} ->
+        job = repo.get!(Oban.Job, preview.target_id)
+        {:ok, repo.update!(Ecto.Changeset.change(job, state: "discarded", discarded_at: now))}
 
       {"workflow_step", "workflow_step_retry"} ->
         Runtime.recover_step_by_id(repo, preview.target_id, :retry,
@@ -1234,6 +1241,9 @@ defmodule ObanPowertools.Lifeline do
 
   defp repair_summary("job_cancel", "job", target_id),
     do: "Cancel job #{target_id} from the native repair flow."
+
+  defp repair_summary("job_discard", "job", target_id),
+    do: "Discard job #{target_id} from the native repair flow."
 
   defp repair_summary("workflow_step_retry", "workflow_step", target_id),
     do: "Retry workflow step #{target_id} from the native repair flow."

@@ -782,5 +782,84 @@ defmodule ObanPowertools.LifelineTest do
     count
   end
 
+  test "execute_repair correctly discards a job via job_discard action" do
+    incident = insert_dead_executor_incident!("executor-missing-for-discard")
+    job = insert_executing_job!("executor-missing-for-discard")
+    actor = %{id: "operator-1", permissions: [:preview_repair, :execute_repair]}
+
+    {:ok, preview} =
+      Lifeline.preview_repair(repo(), actor, %{
+        incident_fingerprint: incident.incident_fingerprint,
+        action: "job_discard",
+        target_type: "job",
+        target_id: job.id
+      })
+
+    assert {:ok, %{target: discarded_job, preview: executed_preview}} =
+             Lifeline.execute_repair(
+               repo(),
+               actor,
+               preview.preview_token,
+               "Discarding the job"
+             )
+
+    assert discarded_job.state == "discarded"
+    assert discarded_job.discarded_at
+    assert executed_preview.consumed_at
+  end
+
+  test "preview_repair and execute_repair inject telemetry_metadata from opts" do
+    Application.delete_env(:oban_powertools, :host_escalation_handler)
+
+    incident = insert_dead_executor_incident!("executor-missing-telemetry")
+    job = insert_executing_job!("executor-missing-telemetry")
+    actor = %{id: "operator-1", permissions: [:preview_repair, :execute_repair]}
+    
+    parent = self()
+    handler_id_preview = "test-preview-handler-#{System.unique_integer()}"
+    handler_id_execute = "test-execute-handler-#{System.unique_integer()}"
+
+    :telemetry.attach(handler_id_preview, [:oban_powertools, :lifeline, :repair_previewed], fn _event, _measurements, metadata, _config ->
+      send(parent, {:preview_telemetry, metadata})
+    end, nil)
+
+    :telemetry.attach(handler_id_execute, [:oban_powertools, :lifeline, :repair_executed], fn _event, _measurements, metadata, _config ->
+      send(parent, {:execute_telemetry, metadata})
+    end, nil)
+
+    assert {:ok, preview} =
+             Lifeline.preview_repair(
+               repo(),
+               actor,
+               %{
+                 incident_fingerprint: incident.incident_fingerprint,
+                 action: "job_rescue",
+                 target_type: "job",
+                 target_id: job.id
+               },
+               telemetry_metadata: %{source: "api"}
+             )
+
+    assert_receive {:preview_telemetry, preview_metadata}
+    assert preview_metadata.source == "api"
+    assert preview_metadata.action == "job_rescue"
+
+    assert {:ok, _result} =
+             Lifeline.execute_repair(
+               repo(),
+               actor,
+               preview.preview_token,
+               "Rescuing with telemetry",
+               telemetry_metadata: %{source: "api"}
+             )
+
+    assert_receive {:execute_telemetry, execute_metadata}
+    assert execute_metadata.source == "api"
+    assert execute_metadata.action == "job_rescue"
+
+    :telemetry.detach(handler_id_preview)
+    :telemetry.detach(handler_id_execute)
+  end
+
   defp repo, do: ObanPowertools.TestRepo
 end
