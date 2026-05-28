@@ -7,6 +7,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     alias ObanPowertools.{DisplayPolicy, Jobs}
     alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth, Selectors}
 
+    @valid_states ~w(available scheduled executing retryable cancelled discarded completed)
+
     @impl true
     def mount(params, %{"oban_dashboard_path" => dashboard_path}, socket) do
       action = socket.assigns.live_action
@@ -51,14 +53,20 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     @impl true
     def handle_event("select_state", %{"state" => state}, socket) do
-      filter = socket.assigns.filter
-      new_filter = %{filter | state: String.to_existing_atom(state), page: 1}
+      if state in @valid_states do
+        filter = socket.assigns.filter
+        new_filter = %{filter | state: String.to_existing_atom(state), page: 1}
 
-      {:noreply, push_patch(socket, to: Selectors.jobs_path(filter_path(new_filter)))}
+        {:noreply, push_patch(socket, to: Selectors.jobs_path(filter_path(new_filter)))}
+      else
+        {:noreply, socket}
+      end
     end
 
     def handle_event("filter", %{"filter" => %{"queue" => q, "worker" => w, "tags" => tags_str}}, socket) do
       filter = socket.assigns.filter
+      queue = if q == "", do: nil, else: q
+      worker = if w == "", do: nil, else: w
 
       tags =
         case tags_str do
@@ -67,14 +75,19 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           str -> str |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
         end
 
-      new_filter = %{filter | queue: q, worker: w, tags: tags, page: 1}
+      new_filter = %{filter | queue: queue, worker: worker, tags: tags, page: 1}
       {:noreply, push_patch(socket, to: Selectors.jobs_path(filter_path(new_filter)))}
     end
 
     def handle_event("paginate", %{"page" => page_str}, socket) do
-      filter = socket.assigns.filter
-      new_filter = %{filter | page: String.to_integer(page_str)}
-      {:noreply, push_patch(socket, to: Selectors.jobs_path(filter_path(new_filter)))}
+      case Integer.parse(page_str) do
+        {page, ""} when page >= 1 ->
+          filter = socket.assigns.filter
+          new_filter = %{filter | page: page}
+          {:noreply, push_patch(socket, to: Selectors.jobs_path(filter_path(new_filter)))}
+        _ ->
+          {:noreply, socket}
+      end
     end
 
     @impl true
@@ -245,7 +258,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <button
               phx-click="select_state"
               phx-value-state={state}
-              class={state_tab_class(@filter.state == String.to_existing_atom(state))}
+              class={state_tab_class(to_string(@filter.state) == state)}
             >
               <%= state %> (<%= Map.get(@counts, state, 0) %>)
             </button>
@@ -315,7 +328,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                     </span>
                   </td>
                   <td class="px-4 py-3">
-                    <.link navigate={"/ops/jobs/jobs/#{job.id}"} class="text-indigo-700 underline">
+                    <.link navigate={Selectors.job_detail_path(job.id)} class="text-indigo-700 underline">
                       <%= short_worker_name(job.worker) %>
                     </.link>
                   </td>
@@ -379,6 +392,11 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           |> assign(:args_display, args_display)
           |> assign(:meta_display, meta_display)
           |> assign(:back_path, back_path_from_session(socket))
+          |> assign(:read_only?, not LiveAuth.authorized?(
+               Map.get(socket.assigns, :current_actor),
+               :retry_job,
+               %{type: :job, id: to_string(job.id)}
+             ))
       end
     end
 
@@ -401,7 +419,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       socket
       |> assign(:jobs, [])
       |> assign(:filter, %Jobs{})
-      |> assign(:counts, Map.new(~w(available scheduled executing retryable cancelled discarded completed), &{&1, 0}))
+      |> assign(:counts, Map.new(@valid_states, &{&1, 0}))
       |> assign(:job, nil)
       |> assign(:job_not_found?, false)
       |> assign(:args_display, nil)
@@ -422,11 +440,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> assign(:jobs, jobs)
       |> assign(:counts, counts)
       |> assign(:filter, filter)
-      |> assign(:read_only?, not LiveAuth.authorized?(
-           Map.get(socket.assigns, :current_actor),
-           :retry_job,
-           %{type: :page, id: "jobs"}
-         ))
+      |> assign_read_only()
+    end
+
+    defp assign_read_only(socket) do
+      assign(socket, :read_only?, not LiveAuth.authorized?(
+        Map.get(socket.assigns, :current_actor),
+        :retry_job,
+        %{type: :page, id: "jobs"}
+      ))
     end
 
     defp filter_from_params(params) do
@@ -437,13 +459,27 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           str -> str |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
         end
 
+      state_str = Map.get(params, "state", "available")
+      state =
+        if state_str in @valid_states do
+          String.to_existing_atom(state_str)
+        else
+          :available
+        end
+
+      page =
+        case Integer.parse(Map.get(params, "page", "1")) do
+          {p, ""} when p >= 1 -> p
+          _ -> 1
+        end
+
       %Jobs{
-        state: String.to_existing_atom(Map.get(params, "state", "available")),
+        state: state,
         queue: Map.get(params, "queue"),
         worker: Map.get(params, "worker"),
         tags: tags,
-        page: String.to_integer(Map.get(params, "page", "1")),
-        page_size: 20
+        page: page,
+        page_size: %Jobs{}.page_size
       }
     end
 
@@ -489,11 +525,21 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       seconds = DateTime.diff(DateTime.utc_now(), timestamp, :second)
 
       relative =
-        cond do
-          seconds < 60 -> "#{seconds}s ago"
-          seconds < 3_600 -> "#{div(seconds, 60)}m ago"
-          seconds < 86_400 -> "#{div(seconds, 3_600)}h ago"
-          true -> "#{div(seconds, 86_400)}d ago"
+        if seconds < 0 do
+          abs_s = abs(seconds)
+          cond do
+            abs_s < 60 -> "in #{abs_s}s"
+            abs_s < 3_600 -> "in #{div(abs_s, 60)}m"
+            abs_s < 86_400 -> "in #{div(abs_s, 3_600)}h"
+            true -> "in #{div(abs_s, 86_400)}d"
+          end
+        else
+          cond do
+            seconds < 60 -> "#{seconds}s ago"
+            seconds < 3_600 -> "#{div(seconds, 60)}m ago"
+            seconds < 86_400 -> "#{div(seconds, 3_600)}h ago"
+            true -> "#{div(seconds, 86_400)}d ago"
+          end
         end
 
       exact = Calendar.strftime(timestamp, "%Y-%m-%d %H:%M:%S UTC")

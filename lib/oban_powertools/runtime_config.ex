@@ -73,6 +73,12 @@ defmodule ObanPowertools.RuntimeConfig do
       "workflow_callback_handler: MyApp.ObanPowertoolsWorkflowCallbacks before dispatching " <>
       "the post-commit, at-least-once workflow callbacks. Handlers must be idempotent."
   end
+
+  defp setup_error(:host_escalation_handler) do
+    "Oban Powertools requires :host_escalation_handler in config :oban_powertools, " <>
+      "host_escalation_handler: MyApp.ObanPowertoolsEscalationHandler before dispatching " <>
+      "host escalation callbacks."
+  end
 end
 
 defmodule ObanPowertools.DisplayPolicy do

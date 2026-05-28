@@ -81,4 +81,7 @@ defmodule ObanPowertools.Web.Selectors do
 
   @doc "Returns the `/ops/jobs/jobs` path with the given params encoded."
   def jobs_path(params \\ []), do: encode(:jobs, params)
+
+  @doc "Returns the path for a specific job detail page."
+  def job_detail_path(id), do: "#{@canonical_paths.jobs}/#{id}"
 end

@@ -161,6 +161,4 @@ defmodule ObanPowertools.JobsTest do
       |> TestRepo.update!()
     end
   end
-
-  defp repo, do: TestRepo
 end
