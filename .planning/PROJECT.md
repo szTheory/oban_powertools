@@ -43,11 +43,11 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 - ✓ Limiter/cron diagnostics closure with canonical phase-level verification backfills (`OPS-01`, `OPS-02`) — v1.4 Phase 37
 - ✓ Support-truthful docs and fixture closure for forensics/runbook surfaces (`DOC-05`) — v1.4 Phase 38
 - ✓ Merge-blocking CI continuity proof coverage for forensics and runbook surfaces (`VER-04`) — v1.4 Phase 39
+- ✓ Native job listing with filter/search (`QRY-01`) — v1.5 Phase 43
+- ✓ Native job detail view (`QRY-02`) — v1.5 Phase 43
 
 ### Active
 
-- [ ] Native job listing with filter/search — QRY-01
-- [ ] Native job detail view — QRY-02
 - [ ] Native job actions (retry, cancel, discard) with reason/preview/audit — QRY-03
 - [ ] Bulk job operations — QRY-04
 - [ ] Operator actions Elixir API — API-01
