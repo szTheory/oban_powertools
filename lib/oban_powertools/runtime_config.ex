@@ -133,6 +133,17 @@ defmodule ObanPowertools.DisplayPolicy do
     end
   end
 
+  def render_job_field(kind, value, context) do
+    case apply_policy(kind, value, context) do
+      nil -> {:raw_json, Jason.encode!(value || %{}, pretty: true)}
+      text when is_binary(text) -> {:string, text}
+      %{} = redacted_map -> {:raw_json, Jason.encode!(redacted_map, pretty: true)}
+      other -> raise ArgumentError, invalid_return_message(kind, other)
+    end
+  rescue
+    _ -> {:fallback, "[redacted]"}
+  end
+
   defp render_text(kind, value, context, fallback) do
     case apply_policy(kind, value, context) do
       nil -> fallback.()

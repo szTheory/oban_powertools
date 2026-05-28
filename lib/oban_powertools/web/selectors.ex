@@ -39,7 +39,8 @@ defmodule ObanPowertools.Web.Selectors do
     forensics: "/ops/jobs/forensics",
     audit: "/ops/jobs/audit",
     limiters: "/ops/jobs/limiters",
-    cron: "/ops/jobs/cron"
+    cron: "/ops/jobs/cron",
+    jobs: "/ops/jobs/jobs"
   }
 
   @doc """
@@ -77,4 +78,7 @@ defmodule ObanPowertools.Web.Selectors do
 
   @doc "Returns the `/ops/jobs/cron` path with the given params encoded."
   def cron_path(params), do: encode(:cron, params)
+
+  @doc "Returns the `/ops/jobs/jobs` path with the given params encoded."
+  def jobs_path(params \\ []), do: encode(:jobs, params)
 end
