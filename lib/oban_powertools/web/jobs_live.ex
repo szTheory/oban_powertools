@@ -4,7 +4,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     use Phoenix.LiveView
 
-    alias ObanPowertools.{DisplayPolicy, Jobs}
+    alias ObanPowertools.{DisplayPolicy, Jobs, Lifeline}
     alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth, Selectors}
 
     @valid_states ~w(available scheduled executing retryable cancelled discarded completed)
@@ -57,7 +57,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         filter = socket.assigns.filter
         new_filter = %{filter | state: String.to_existing_atom(state), page: 1}
 
-        {:noreply, push_patch(socket, to: Selectors.jobs_path(filter_path(new_filter)))}
+        {:noreply,
+         socket
+         |> assign(:selected_jobs, MapSet.new())
+         |> push_patch(to: Selectors.jobs_path(filter_path(new_filter)))}
       else
         {:noreply, socket}
       end
@@ -76,7 +79,37 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         end
 
       new_filter = %{filter | queue: queue, worker: worker, tags: tags, page: 1}
-      {:noreply, push_patch(socket, to: Selectors.jobs_path(filter_path(new_filter)))}
+      {:noreply,
+       socket
+       |> assign(:selected_jobs, MapSet.new())
+       |> push_patch(to: Selectors.jobs_path(filter_path(new_filter)))}
+    end
+
+    def handle_event("toggle_job", %{"id" => id_str}, socket) do
+      id = String.to_integer(id_str)
+      selected_jobs = socket.assigns.selected_jobs
+
+      selected_jobs = if MapSet.member?(selected_jobs, id) do
+        MapSet.delete(selected_jobs, id)
+      else
+        MapSet.put(selected_jobs, id)
+      end
+
+      {:noreply, assign(socket, :selected_jobs, selected_jobs)}
+    end
+
+    def handle_event("toggle_all", _, socket) do
+      jobs = socket.assigns.jobs
+      selected_jobs = socket.assigns.selected_jobs
+      all_selected? = length(jobs) > 0 and Enum.all?(jobs, &(&1.id in selected_jobs))
+
+      selected_jobs = if all_selected? do
+        Enum.reduce(jobs, selected_jobs, &MapSet.delete(&2, &1.id))
+      else
+        Enum.reduce(jobs, selected_jobs, &MapSet.put(&2, &1.id))
+      end
+
+      {:noreply, assign(socket, :selected_jobs, selected_jobs)}
     end
 
     def handle_event("paginate", %{"page" => page_str}, socket) do
@@ -89,6 +122,102 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           {:noreply, socket}
       end
     end
+
+    def handle_event("preview", %{"action" => action}, socket) do
+      with :ok <- LiveAuth.authorize_action(socket, :preview_repair, %{type: :job, id: to_string(socket.assigns.job.id)}),
+           {:ok, preview} <- Lifeline.preview_repair(repo(), socket.assigns.current_actor, %{
+             incident_id: nil,
+             action: action,
+             target_type: "job",
+             target_id: socket.assigns.job.id
+           }) do
+        {:noreply,
+         socket
+         |> assign(:preview, preview)
+         |> assign(:reason, "")
+         |> assign(:error_message, nil)}
+      else
+        {:error, :unauthorized} -> {:noreply, socket}
+        {:error, msg} -> {:noreply, assign(socket, :error_message, to_string(msg))}
+      end
+    end
+
+    def handle_event("preview_bulk", %{"action" => action}, socket) do
+      {:noreply,
+       socket
+       |> assign(:bulk_preview_action, action)
+       |> assign(:reason, "")
+       |> assign(:error_message, nil)}
+    end
+
+    def handle_event("close_preview", _, socket) do
+      {:noreply, assign(socket, preview: nil, bulk_preview_action: nil, reason: "", error_message: nil)}
+    end
+
+    def handle_event("reason", %{"reason" => r}, socket) do
+      {:noreply, assign(socket, :reason, r)}
+    end
+
+    def handle_event("execute", params, socket) do
+      reason_from_params = Map.get(params, "reason")
+      reason = String.trim(reason_from_params || socket.assigns.reason)
+
+      if reason == "" do
+        {:noreply, socket}
+      else
+        with :ok <- LiveAuth.authorize_action(socket, :execute_repair, %{type: :job, id: to_string(socket.assigns.job.id)}),
+             {:ok, %{target: target}} <- Lifeline.execute_repair(repo(), socket.assigns.current_actor, socket.assigns.preview.preview_token, reason) do
+          socket =
+            socket
+            |> put_flash(:info, "Job ##{target.id} successfully " <> action_word(socket.assigns.preview.action) <> ".")
+            |> push_patch(to: Selectors.job_detail_path(target.id))
+          {:noreply, load_job_detail(socket, target.id)}
+        else
+          {:error, :unauthorized} ->
+            {:noreply, socket}
+          {:error, :preview_drifted} ->
+            {:noreply, assign(socket, :error_message, "Could not execute action. The job's state was changed by another process or operator. Please refresh to see the latest state.")}
+          {:error, reason} ->
+            {:noreply, assign(socket, :error_message, "Error: #{inspect(reason)}")}
+        end
+      end
+    end
+
+    def handle_event("execute_bulk", params, socket) do
+      reason_from_params = Map.get(params, "reason")
+      reason = String.trim(reason_from_params || socket.assigns.reason)
+      action = socket.assigns.bulk_preview_action
+
+      if reason == "" or is_nil(action) do
+        {:noreply, socket}
+      else
+        actor = socket.assigns.current_actor
+
+        {successes, failures} =
+          Enum.reduce(socket.assigns.selected_jobs, {0, 0}, fn job_id, {succ, fail} ->
+            case Lifeline.preview_repair(repo(), actor, %{incident_id: nil, action: action, target_type: "job", target_id: job_id}) do
+              {:ok, preview} ->
+                case Lifeline.execute_repair(repo(), actor, preview.preview_token, reason) do
+                  {:ok, _} -> {succ + 1, fail}
+                  _ -> {succ, fail + 1}
+                end
+              _ -> {succ, fail + 1}
+            end
+          end)
+
+        socket =
+          socket
+          |> put_flash(:info, "Bulk action complete: #{successes} successes, #{failures} failures.")
+          |> assign(:selected_jobs, MapSet.new())
+          |> assign(:bulk_preview_action, nil)
+
+        {:noreply, load_jobs(socket, socket.assigns.filter)}
+      end
+    end
+
+    defp action_word("job_retry"), do: "retried"
+    defp action_word("job_cancel"), do: "cancelled"
+    defp action_word("job_discard"), do: "discarded"
 
     @impl true
     def render(%{live_action: :show} = assigns) do
@@ -107,7 +236,14 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         <% else %>
           <div class="flex flex-wrap items-start justify-between gap-4">
             <h1 class="text-2xl font-semibold">Job #<%= @job.id %></h1>
-            <.link navigate={@back_path} class="text-indigo-700 underline">Back to Jobs</.link>
+            <div class="flex gap-2 items-center">
+              <%= if not @read_only? do %>
+                <button :if={@job.state in ["retryable", "discarded", "cancelled", "completed"]} phx-click="preview" phx-value-action="job_retry" class="rounded bg-white px-4 py-2 text-sm font-semibold text-indigo-600 border border-indigo-200 hover:bg-indigo-50">Retry Job</button>
+                <button :if={@job.state in ["available", "scheduled", "executing", "retryable"]} phx-click="preview" phx-value-action="job_cancel" class="rounded bg-white px-4 py-2 text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50">Cancel Job</button>
+                <button :if={@job.state in ["available", "scheduled", "executing", "retryable"]} phx-click="preview" phx-value-action="job_discard" class="rounded bg-white px-4 py-2 text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50">Discard Job</button>
+              <% end %>
+              <.link navigate={@back_path} class="text-indigo-700 underline">Back to Jobs</.link>
+            </div>
           </div>
 
           <p :if={@read_only?} class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -235,6 +371,47 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <% end %>
           </div>
         <% end %>
+
+        <%!-- Action Preview Modal --%>
+        <%= if @preview do %>
+          <div class="fixed inset-0 bg-zinc-900/50 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div class="relative bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+              <h2 class="text-base font-semibold">
+                <%= case @preview.action do %>
+                  <% "job_retry" -> %> Retry Job #<%= @job.id %>
+                  <% "job_cancel" -> %> Cancel Job #<%= @job.id %>
+                  <% "job_discard" -> %> Discard Job #<%= @job.id %>
+                <% end %>
+              </h2>
+
+              <div class="mt-4 rounded bg-slate-50 p-4 text-sm space-y-1">
+                <div><strong>Job ID:</strong> <%= @job.id %></div>
+                <div><strong>Current State:</strong> <%= @job.state %></div>
+                <div><strong>Action:</strong> <%= @preview.action %></div>
+              </div>
+
+              <form phx-change="reason" phx-submit="execute" class="mt-4 space-y-4">
+                <label class="block text-sm font-semibold text-zinc-700">Reason (required)</label>
+                <input type="text" name="reason" value={@reason} placeholder="e.g., Network timeout, operator intervention..." class="w-full rounded-md border-gray-300 text-sm" />
+
+                <div :if={@error_message} class="mt-4 rounded bg-red-50 p-4 text-sm text-red-800 border border-red-200">
+                  <%= @error_message %>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-4">
+                  <button type="button" phx-click="close_preview" class="text-sm font-semibold text-slate-600">Keep Job</button>
+                  <button type="submit" disabled={String.trim(@reason) == ""} class={"rounded px-4 py-2 text-sm font-semibold text-white " <> if(@preview.action == "job_retry", do: "bg-indigo-600 hover:bg-indigo-700", else: "bg-red-600 hover:bg-red-700")}>
+                    <%= case @preview.action do %>
+                      <% "job_retry" -> %> Confirm Retry
+                      <% "job_cancel" -> %> Confirm Cancel
+                      <% "job_discard" -> %> Confirm Discard
+                    <% end %>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        <% end %>
       </div>
       """
     end
@@ -252,6 +429,19 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         <p :if={@read_only?} class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <%= LiveAuth.page_read_only_banner(:jobs) %>
         </p>
+
+        <%= if MapSet.size(@selected_jobs) > 0 do %>
+          <div class="flex items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3">
+            <span class="text-sm font-semibold text-indigo-800"><%= MapSet.size(@selected_jobs) %> jobs selected</span>
+            <div class="flex gap-2">
+              <%= if not @read_only? do %>
+                <button :if={to_string(@filter.state) in ["retryable", "cancelled", "discarded", "completed"]} phx-click="preview_bulk" phx-value-action="job_retry" class="rounded bg-white px-4 py-2 text-sm font-semibold text-indigo-600 border border-indigo-200 hover:bg-indigo-50">Retry</button>
+                <button :if={to_string(@filter.state) in ["available", "scheduled", "executing", "retryable"]} phx-click="preview_bulk" phx-value-action="job_cancel" class="rounded bg-white px-4 py-2 text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50">Cancel</button>
+                <button :if={to_string(@filter.state) in ["available", "scheduled", "executing", "retryable"]} phx-click="preview_bulk" phx-value-action="job_discard" class="rounded bg-white px-4 py-2 text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50">Discard</button>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
 
         <nav class="flex flex-wrap gap-2">
           <%= for state <- ~w(available scheduled executing retryable cancelled discarded completed) do %>
@@ -312,6 +502,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <table class="min-w-full divide-y">
               <thead class="bg-slate-50 text-left text-sm">
                 <tr>
+                  <th class="px-4 py-3 font-semibold w-10">
+                    <input type="checkbox" checked={length(@jobs) > 0 and Enum.all?(@jobs, &(&1.id in @selected_jobs))} phx-click="toggle_all" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                  </th>
                   <th class="px-4 py-3 font-semibold">State</th>
                   <th class="px-4 py-3 font-semibold">Worker</th>
                   <th class="px-4 py-3 font-semibold">Queue</th>
@@ -322,6 +515,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               </thead>
               <tbody class="divide-y text-sm">
                 <tr :for={job <- @jobs}>
+                  <td class="px-4 py-3">
+                    <input type="checkbox" checked={job.id in @selected_jobs} phx-click="toggle_job" phx-value-id={job.id} class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                  </td>
                   <td class="px-4 py-3">
                     <span class={"rounded border px-2 py-1 text-xs font-semibold " <> state_badge_class(job.state)}>
                       <%= job.state %>
@@ -366,6 +562,45 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             </button>
           <% end %>
         </div>
+
+        <%!-- Bulk Action Preview Modal --%>
+        <%= if @bulk_preview_action do %>
+          <div class="fixed inset-0 bg-zinc-900/50 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div class="relative bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+              <h2 class="text-base font-semibold">
+                <%= case @bulk_preview_action do %>
+                  <% "job_retry" -> %> Bulk Retry <%= MapSet.size(@selected_jobs) %> Jobs
+                  <% "job_cancel" -> %> Bulk Cancel <%= MapSet.size(@selected_jobs) %> Jobs
+                  <% "job_discard" -> %> Bulk Discard <%= MapSet.size(@selected_jobs) %> Jobs
+                <% end %>
+              </h2>
+
+              <p class="mt-2 text-sm text-zinc-600">
+                You are about to <%= case @bulk_preview_action do %><% "job_retry" -> %>retry<% "job_cancel" -> %>cancel<% "job_discard" -> %>discard<% end %> <%= MapSet.size(@selected_jobs) %> jobs. This will execute independent repairs for each job.
+              </p>
+
+              <form phx-change="reason" phx-submit="execute_bulk" class="mt-4 space-y-4">
+                <label class="block text-sm font-semibold text-zinc-700">Reason (required)</label>
+                <input type="text" name="reason" value={@reason} placeholder="e.g., Network timeout, operator intervention..." class="w-full rounded-md border-gray-300 text-sm" />
+
+                <div :if={@error_message} class="mt-4 rounded bg-red-50 p-4 text-sm text-red-800 border border-red-200">
+                  <%= @error_message %>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-4">
+                  <button type="button" phx-click="close_preview" class="text-sm font-semibold text-slate-600">Cancel</button>
+                  <button type="submit" disabled={String.trim(@reason) == ""} class={"rounded px-4 py-2 text-sm font-semibold text-white " <> if(@bulk_preview_action == "job_retry", do: "bg-indigo-600 hover:bg-indigo-700", else: "bg-red-600 hover:bg-red-700")}>
+                    <%= case @bulk_preview_action do %>
+                      <% "job_retry" -> %> Confirm Bulk Retry
+                      <% "job_cancel" -> %> Confirm Bulk Cancel
+                      <% "job_discard" -> %> Confirm Bulk Discard
+                    <% end %>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        <% end %>
       </div>
       """
     end
@@ -391,6 +626,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           |> assign(:job_not_found?, false)
           |> assign(:args_display, args_display)
           |> assign(:meta_display, meta_display)
+          |> assign(:preview, nil)
+          |> assign(:reason, "")
+          |> assign(:error_message, nil)
+          |> assign(:success_message, nil)
           |> assign(:back_path, back_path_from_session(socket))
           |> assign(:read_only?, not LiveAuth.authorized?(
                Map.get(socket.assigns, :current_actor),
@@ -424,6 +663,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> assign(:job_not_found?, false)
       |> assign(:args_display, nil)
       |> assign(:meta_display, nil)
+      |> assign(:preview, nil)
+      |> assign(:bulk_preview_action, nil)
+      |> assign(:selected_jobs, MapSet.new())
+      |> assign(:reason, "")
+      |> assign(:error_message, nil)
+      |> assign(:success_message, nil)
       |> assign(:back_path, Selectors.jobs_path([]))
       |> assign(:read_only?, not LiveAuth.authorized?(
            Map.get(socket.assigns, :current_actor),

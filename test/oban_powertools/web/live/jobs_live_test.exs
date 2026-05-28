@@ -471,6 +471,60 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       # Back link should point to the jobs list path
       assert html =~ "/ops/jobs/jobs"
     end
+
+    test "renders action buttons depending on state when operator has retry permission", %{conn: conn} do
+      conn = Plug.Test.init_test_session(conn, current_actor: %{id: "ops-1", permissions: [:view_job_detail, :retry_job]})
+
+      # Executing job
+      job_executing = insert_job!(worker: "W1", queue: :default, state: "executing")
+      {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job_executing.id}")
+      assert html =~ "Cancel Job"
+      assert html =~ "Discard Job"
+      refute html =~ "Retry Job"
+
+      # Retryable job
+      job_retryable = insert_job!(worker: "W2", queue: :default, state: "retryable")
+      {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job_retryable.id}")
+      assert html =~ "Cancel Job"
+      assert html =~ "Discard Job"
+      assert html =~ "Retry Job"
+    end
+
+    test "executing an action opens preview, accepts reason, and executes", %{conn: conn} do
+      conn = Plug.Test.init_test_session(conn, current_actor: %{id: "ops-1", permissions: [:view_job_detail, :retry_job, :preview_repair, :execute_repair]})
+      job = insert_job!(worker: "W", queue: :default, state: "retryable")
+
+      {:ok, view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
+
+      assert html =~ "Cancel Job"
+
+      html = view |> element("button[phx-click=\"preview\"][phx-value-action=\"job_cancel\"]") |> render_click()
+      assert html =~ "Cancel Job ##{job.id}"
+      assert html =~ "Reason (required)"
+
+      # Execute with reason
+      view |> form("form[phx-submit=\"execute\"]", %{"reason" => "Operator requested cancellation"}) |> render_submit()
+
+      # Should flash success and reload (modal closes, state updates)
+      assert_patch(view, "/ops/jobs/jobs/#{job.id}")
+      assert view |> render() |> String.contains?("cancelled")
+    end
+
+    test "concurrent modification displays drift error in modal", %{conn: conn} do
+      conn = Plug.Test.init_test_session(conn, current_actor: %{id: "ops-1", permissions: [:view_job_detail, :retry_job, :preview_repair, :execute_repair]})
+      job = insert_job!(worker: "W", queue: :default, state: "retryable")
+
+      {:ok, view, _html} = live(conn, "/ops/jobs/jobs/#{job.id}")
+
+      view |> element("button[phx-click=\"preview\"][phx-value-action=\"job_discard\"]") |> render_click()
+
+      # Drift the state
+      job |> Ecto.Changeset.change(state: "cancelled") |> TestRepo.update!()
+
+      html = view |> form("form[phx-submit=\"execute\"]", %{"reason" => "Discard it"}) |> render_submit()
+
+      assert html =~ "Could not execute action. The job&#39;s state was changed by another process or operator."
+    end
   end
 
   # ---------------------------------------------------------------------------
@@ -492,6 +546,61 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       job
       |> Ecto.Changeset.change(state: state)
       |> TestRepo.update!()
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Test 11: Bulk Job Selection and Execution
+  # ---------------------------------------------------------------------------
+
+  describe "Bulk actions" do
+    test "job selection state and UI", %{conn: conn} do
+      job1 = insert_job!(worker: "MyApp.Worker1", queue: :default)
+      job2 = insert_job!(worker: "MyApp.Worker2", queue: :default)
+
+      conn = Plug.Test.init_test_session(conn, current_actor: %{id: "ops-1", permissions: [:view_jobs]})
+      {:ok, view, html} = live(conn, "/ops/jobs/jobs?state=available")
+
+      # Checkboxes are rendered
+      assert html =~ "type=\"checkbox\""
+      refute html =~ "jobs selected"
+
+      # Toggle one job
+      html = view |> element("input[phx-click=\"toggle_job\"][phx-value-id=\"#{job1.id}\"]") |> render_click()
+      assert html =~ "1 jobs selected"
+
+      # Toggle all jobs
+      html = view |> element("input[phx-click=\"toggle_all\"]") |> render_click()
+      assert html =~ "2 jobs selected"
+
+      # Change state to clear selection
+      view |> element("button[phx-value-state=executing]") |> render_click()
+      html = render(view)
+      refute html =~ "jobs selected"
+    end
+
+    test "executing bulk action", %{conn: conn} do
+      job1 = insert_job!(worker: "MyApp.Worker1", queue: :default, state: "retryable")
+      job2 = insert_job!(worker: "MyApp.Worker2", queue: :default, state: "retryable")
+
+      conn = Plug.Test.init_test_session(conn, current_actor: %{id: "ops-1", permissions: [:view_jobs, :retry_job, :preview_repair, :execute_repair]})
+      {:ok, view, _html} = live(conn, "/ops/jobs/jobs?state=retryable")
+
+      # Select all
+      view |> element("input[phx-click=\"toggle_all\"]") |> render_click()
+
+      # Click preview
+      html = view |> element("button[phx-click=\"preview_bulk\"][phx-value-action=\"job_discard\"]") |> render_click()
+      assert html =~ "Bulk Discard 2 Jobs"
+
+      # Execute
+      view |> form("form[phx-submit=\"execute_bulk\"]", %{"reason" => "Bulk discard test"}) |> render_submit()
+
+      html = render(view)
+      assert html =~ "No retryable jobs"
+
+      # Selection should be cleared
+      refute html =~ "jobs selected"
     end
   end
 end
