@@ -37,11 +37,14 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     def handle_params(params, _uri, socket) do
-      case Map.get(params, "state") do
-        nil ->
+      case {connected?(socket), Map.get(params, "state")} do
+        {true, nil} ->
+          # Live (connected) phase with no state param — redirect to default state.
           {:noreply, push_patch(socket, to: Selectors.jobs_path([{"state", "available"}]))}
 
-        _state ->
+        _ ->
+          # Dead render (conn.params is %Plug.Conn.Unfetched{} regardless of URL query string),
+          # or live phase with state param present — build filter and load jobs.
           filter = filter_from_params(params)
           {:noreply, load_jobs(socket, filter)}
       end
@@ -265,8 +268,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         {"state", to_string(filter.state)},
         {"queue", filter.queue},
         {"worker", filter.worker},
-        {"tags", filter.tags && Enum.join(filter.tags, ",")},
-        {"page", filter.page > 1 && to_string(filter.page)}
+        {"tags", if(filter.tags, do: Enum.join(filter.tags, ","))},
+        {"page", if(filter.page > 1, do: to_string(filter.page))}
       ]
     end
 
