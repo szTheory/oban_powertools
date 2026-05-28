@@ -31,7 +31,17 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       preview_repair:
         "Permission: read-only. You can inspect this Powertools-native incident, but you do not have permission to preview this Audited action.",
       execute_repair:
-        "Permission: read-only. You can inspect this Powertools-native preview, but you do not have permission to execute this Audited action."
+        "Permission: read-only. You can inspect this Powertools-native preview, but you do not have permission to execute this Audited action.",
+      view_jobs:
+        "Permission: read-only. You can inspect the Powertools-native job list, but mutation controls stay disabled until you receive broader permission.",
+      view_job_detail:
+        "Permission: read-only. You can inspect this Powertools-native job detail, but mutation controls stay disabled until you receive broader permission.",
+      retry_job:
+        "Permission: read-only. You can inspect this Powertools-native job, but you do not have permission to retry it.",
+      cancel_job:
+        "Permission: read-only. You can inspect this Powertools-native job, but you do not have permission to cancel it.",
+      discard_job:
+        "Permission: read-only. You can inspect this Powertools-native job, but you do not have permission to discard it."
     }
     @page_read_only_banners %{
       cron:
@@ -43,7 +53,11 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       workflows:
         "Permission: read-only. Diagnose workflow causality here, but use Powertools-native pages for preview, reason, and Audited action controls.",
       forensics:
-        "Permission: read-only. Powertools-native forensic bundles stay visible, while scoped audit follow-up remains Inspection only."
+        "Permission: read-only. Powertools-native forensic bundles stay visible, while scoped audit follow-up remains Inspection only.",
+      jobs:
+        "Permission: read-only. Job list stays visible, but mutation controls stay disabled until you receive broader permission.",
+      job_detail:
+        "Permission: read-only. Job detail stays visible, but retry, cancel, and discard controls stay disabled until you receive broader permission."
     }
 
     def on_mount(:default, _params, session, socket) do

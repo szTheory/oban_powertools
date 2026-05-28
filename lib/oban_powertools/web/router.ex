@@ -61,6 +61,8 @@ defmodule ObanPowertools.Web.Router do
           live("/forensics", ObanPowertools.Web.ForensicsLive, :index)
           live("/workflows", ObanPowertools.Web.WorkflowsLive, :index)
           live("/workflows/:id", ObanPowertools.Web.WorkflowsLive, :show)
+          live("/jobs", ObanPowertools.Web.JobsLive, :index)
+          live("/jobs/:id", ObanPowertools.Web.JobsLive, :show)
         end
 
         unquote(bridge_routes)
