@@ -66,6 +66,57 @@ defmodule ObanPowertools.OperatorTest do
              Operator.retry_job(repo(), actor2, job.id, "   ")
   end
 
+  describe "bulk operations" do
+    setup do
+      actor = %{id: "operator-bulk", permissions: [:preview_repair, :execute_repair]}
+      %{actor: actor}
+    end
+
+    test "bulk_retry_jobs succeeds for valid jobs and fails for invalid ones", %{actor: actor} do
+      # Valid for retry
+      job1 = insert_job!("executing")
+      job2 = insert_job!("retryable")
+
+      result = Operator.bulk_retry_jobs(repo(), actor, [job1.id, job2.id, -1], "Bulk retry")
+
+      assert length(result.successes) == 2
+      assert job1.id in result.successes
+      assert job2.id in result.successes
+
+      assert length(result.failures) == 1
+      assert Enum.any?(result.failures, fn {id, err} -> id == -1 and err == :not_found end)
+    end
+
+    test "bulk_cancel_jobs processes a batch independently", %{actor: actor} do
+      job1 = insert_job!("executing")
+      job2 = insert_job!("available")
+
+      result = Operator.bulk_cancel_jobs(repo(), actor, [job1.id, job2.id, -1], "Bulk cancel")
+
+      assert length(result.successes) == 2
+      assert Enum.sort(result.successes) == Enum.sort([job1.id, job2.id])
+      
+      assert length(result.failures) == 1
+      assert [{ -1, :not_found }] = result.failures
+    end
+
+    test "bulk_discard_jobs works with mixed results", %{actor: actor} do
+      job1 = insert_job!("retryable")
+      job2 = insert_job!("executing")
+
+      result = Operator.bulk_discard_jobs(repo(), actor, [job1.id, -1, job2.id], "Bulk discard")
+
+      assert length(result.successes) == 2
+      assert job1.id in result.successes
+      assert job2.id in result.successes
+
+      assert length(result.failures) == 1
+      assert [{id, err}] = result.failures
+      assert id == -1
+      assert err == :not_found
+    end
+  end
+
   defp insert_job!(state) do
     %{}
     |> Oban.Job.new(
