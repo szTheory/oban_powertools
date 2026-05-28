@@ -73,8 +73,8 @@
 
 **Plans**: 2 plans
 
-  - [ ] 44-01-PLAN.md — Implement Lifeline job_discard Action Support
-  - [ ] 44-02-PLAN.md — Implement Single-Job UI Actions in JobsLive
+  - [x] 44-01-PLAN.md — Implement Lifeline job_discard Action Support
+  - [x] 44-02-PLAN.md — Implement Single-Job UI Actions in JobsLive
 **UI hint**: yes
 
 ### Phase 45: Bulk Operations
@@ -89,7 +89,12 @@
   3. Each job in the selection runs its own `Lifeline.execute_repair` call — no single Ecto.Multi wraps all N jobs
   4. After execution, the operator sees a per-job breakdown of successes and failures — partially-failed bulk operations are reported honestly, not collapsed
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+  - [ ] 46-01-PLAN.md — Update Lifeline Telemetry & Implement Single-Job Operator API
+  - [ ] 46-02-PLAN.md — Implement Bulk-Job Operator API
+
+
 **UI hint**: yes
 
 ### Phase 46: Operator Elixir API
@@ -129,3 +134,4 @@
 | 44    | v1.5      | 0/?           | Not started | —          |
 | 45    | v1.5      | 0/?           | Not started | —          |
 | 46    | v1.5      | 0/?           | Not started | —          |
+arted | —          |
