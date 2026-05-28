@@ -54,6 +54,50 @@
 
 ---
 
+## Milestone: v1.5 — Native Job Surface & Automation API
+
+**Shipped:** 2026-05-28
+**Phases:** 4 (43-46) | **Plans:** 9
+
+### What Was Built
+
+- Ecto-native `ObanPowertools.Jobs` query context with `%JobFilter{}`, state-leading queries, offset pagination (documented keyset upgrade path), and a `DisplayPolicy.render_job_field/3` redaction helper.
+- Native `/ops/jobs/jobs` list + detail surface: filter by state/queue/worker/tags, URL-serialized filter state for deep-links, and args/meta redaction on the detail view.
+- Single-job retry/cancel/discard through the full Lifeline preview → reason → execute → audit pipeline, with a concurrent-modification (`preview_drifted`) guard and no direct `Oban` calls from the LiveView.
+- Bulk operations: MapSet-backed multi-select, an independent `Lifeline.execute_repair` per job (no single `Ecto.Multi` over N), and honest per-job success/failure reporting.
+- `ObanPowertools.Operator` typed single + bulk API requiring a non-nil actor, routed through the same Lifeline pipeline as the UI and emitting `source: "api"` telemetry within the frozen low-cardinality contract.
+
+### What Worked
+
+- **Pipeline reuse over parallel paths:** Anchoring both the UI and the Elixir API to the single `Lifeline.execute_repair` pipeline meant the API phase (46) inherited the audit, preview-drift, and telemetry guarantees the UI phases already proved — no second mutation surface to secure.
+- **Phase ordering discipline:** Building read-only browse first (43), then single-job actions (44), then bulk (45), then the API wrapper (46) meant each phase derived its contract from a proven predecessor. The API signatures fell out of the established UI pipeline rather than being designed speculatively.
+- **Tight milestone arc:** 4 phases / 9 plans with zero gap-closure tail — the audit passed 6/6 first time, a marked improvement over v1.4's 37-42 tail.
+
+### What Was Inefficient
+
+- **Phase 44/45 implementation was never committed during execution.** Both phases had completed SUMMARY files claiming "all tests passing," but the `JobsLive` UI implementation existed only as uncommitted working-tree changes — no `feat(44-*)`/`feat(45-*)` commits ever landed. The milestone audit reported `passed` because it validated working-tree state, not committed state. This was caught only at milestone close and recovered by committing the working tree (`0ea569d`, 270 tests green).
+- **Botched-edit debris reached the tree:** a malformed test-file tail (a stray comment block after the module's closing `end`), a corrupted ROADMAP.md table row, and ~950 KB of un-gitignored scratch artifacts (`test_output.txt`, `*.json`, `*.patch`) were all sitting in the working tree at close.
+- **ROADMAP plan-list copy-paste errors:** Phase 45's plan list referenced `46-01/46-02` plan files, and 45/46 checkbox + Progress-table state diverged from reality — symptoms of edits applied to the wrong section.
+
+### Patterns Established
+
+- **Pipeline-anchored API wrapper:** When exposing a programmatic API for capability the UI already has, wrap the *same* internal pipeline rather than building a parallel path. The API phase then inherits proven guarantees and only needs signature + actor-attribution work.
+- **Commit-state is the source of truth at close, not working-tree state.** Verification and audit must run against committed state (or at minimum assert a clean tree), or "passing" can mean "passing in an uncommitted tree."
+
+### Key Lessons
+
+1. **A phase is not done until its implementation is committed.** SUMMARY files and green tests are necessary but not sufficient — execution must verify a commit actually landed for the phase's code. The audit's `passed` was misleading because it never checked `git log` for the phase's feat commit.
+2. **Audits should assert a clean working tree.** An audit that validates uncommitted changes will certify work that does not exist in history. Add a `git status --porcelain` clean-tree precondition (or explicit commit-existence check per phase) to the audit/verification contract.
+3. **Gitignore agent scratch early.** Run artifacts (`test_output.txt`, `*.json`, `*.patch`) accumulated untracked at repo root and were one `git add .` away from being committed. Ignore patterns belong in `.gitignore` from the first execution phase.
+4. **Update ROADMAP checkboxes/tables in the same edit that completes the work** — deferred or mis-targeted edits produced corrupted rows and wrong plan references that had to be repaired at close (an echo of the v1.4 Phase 42 checkbox lesson).
+
+### Cost Observations
+
+- Model mix: Opus for discuss/plan/audit, Sonnet for execution/verification/completion (per `balanced` model profile).
+- Notable: the milestone arc itself was efficient (no gap-closure tail), but the close required unplanned recovery work (committing lost phase code, repairing debris) that disciplined execution-time commit verification would have eliminated.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -65,9 +109,11 @@
 | v1.2      | 11     | 31    | Verification backfill pattern introduced |
 | v1.3      | 5      | 15    | Tighter scoping; control-plane convergence |
 | v1.4      | 11     | 28    | Audit-driven gap-closure phases; CI proof enforcement; automated acceptance proxies |
+| v1.5      | 4      | 9     | Tight arc, no gap-closure tail; but lost phase commits exposed audit-vs-commit-state gap |
 
 ### Top Lessons (Verified Across Milestones)
 
 1. **Proof artifacts at phase close prevent gap-closure tails.** Every milestone that skipped phase-level verification produced a backfill obligation in a later phase.
 2. **Bounded scope + explicit support-truth beats broad capability claims.** Narrowing each milestone to one coherent operator story produces more useful audit and docs outcomes than broad feature sprawl.
 3. **Reconciliation phases are legitimate work.** Additive reconciliation (adjusting ownership, traceability, and canonical references) has appeared in v1.2 (Phase 24/25), v1.3, and v1.4. It should be planned for, not treated as scope failure.
+4. **Verify commit-state, not working-tree state.** v1.5 shipped phases whose code was never committed yet still audited `passed`. Verification/audit must assert a clean tree or per-phase commit existence — green tests in a dirty tree are not proof of shipped work.
