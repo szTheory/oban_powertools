@@ -8,8 +8,8 @@
 
 ### Native Job Browse
 
-- [ ] **QRY-01**: User can browse jobs filtered by state, queue, worker, and tags — state is the primary navigation dimension; tags filtering requires a host-owned GIN index on `oban_jobs.tags` (documented in module and host guide)
-- [ ] **QRY-02**: User can view a job's full detail including args, meta, errors, attempt history, and timing — DisplayPolicy redaction applied to args and meta
+- [x] **QRY-01**: User can browse jobs filtered by state, queue, worker, and tags — state is the primary navigation dimension; tags filtering requires a host-owned GIN index on `oban_jobs.tags` (documented in module and host guide)
+- [x] **QRY-02**: User can view a job's full detail including args, meta, errors, attempt history, and timing — DisplayPolicy redaction applied to args and meta
 - [ ] **QRY-03**: User can retry, cancel, or discard a single job via preview → reason capture → execute → audit flow through the native Lifeline pipeline — no direct Oban function calls from the LiveView
 - [ ] **QRY-04**: User can bulk retry, cancel, or discard a visible selection of jobs (capped at configurable max, default 100) with per-job success/failure reporting
 
@@ -46,14 +46,15 @@
 
 | Requirement | Phase | Status  |
 |-------------|-------|---------|
-| QRY-01      | 43    | Pending |
-| QRY-02      | 43    | Pending |
+| QRY-01      | 43    | Complete |
+| QRY-02      | 43    | Complete |
 | QRY-03      | 44    | Pending |
 | QRY-04      | 45    | Pending |
 | API-01      | 46    | Pending |
 | API-02      | 46    | Pending |
 
 **Coverage:**
+
 - v1.5 requirements: 6 total
 - Mapped to phases: 6 (100%)
 - Unmapped: 0

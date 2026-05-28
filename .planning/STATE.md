@@ -4,14 +4,14 @@ milestone: v1.5
 milestone_name: Native Job Surface & Automation API
 status: executing
 stopped_at: Phase 43 UI-SPEC approved
-last_updated: "2026-05-28T00:49:49.635Z"
-last_activity: 2026-05-28 -- Phase 43 execution started
+last_updated: "2026-05-28T02:21:30.942Z"
+last_activity: 2026-05-28
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 0
-  percent: 0
+  completed_plans: 3
+  percent: 25
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-27)
 
 ## Current Position
 
-Phase: 43 (read-only-job-browse) — EXECUTING
-Plan: 1 of 3
+Phase: 44
+Plan: Not started
 Status: Executing Phase 43
 Progress: [ ] [ ] [ ] [ ] — 0/4 phases complete
 
-Last activity: 2026-05-28 -- Phase 43 execution started
+Last activity: 2026-05-28
 
 ## Performance Metrics
 
