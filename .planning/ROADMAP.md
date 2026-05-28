@@ -33,7 +33,7 @@
 - [x] **Phase 43: Read-Only Job Browse** — Native job list and detail views with filter/search and DisplayPolicy redaction (completed 2026-05-28)
 - [ ] **Phase 44: Single-Job Actions** — Retry, cancel, discard on individual jobs through the full Lifeline preview/reason/audit pipeline
 - [ ] **Phase 45: Bulk Operations** — Bulk retry/cancel/discard for a visible job selection with per-job result reporting
-- [ ] **Phase 46: Operator Elixir API** — Typed programmatic surface for single and bulk job mutations with actor attribution
+- [x] **Phase 46: Operator Elixir API** — Typed programmatic surface for single and bulk job mutations with actor attribution (completed 2026-05-28)
 
 ## Phase Details
 
@@ -92,7 +92,7 @@
 **Plans**: 2 plans
 
   - [x] 46-01-PLAN.md — Update Lifeline Telemetry & Implement Single-Job Operator API
-  - [ ] 46-02-PLAN.md — Implement Bulk-Job Operator API
+  - [x] 46-02-PLAN.md — Implement Bulk-Job Operator API
 
 
 **UI hint**: yes
@@ -111,7 +111,7 @@
 
 **Plans**: 2 plans
 
-  - [ ] 46-01-PLAN.md — Update Lifeline Telemetry & Implement Single-Job Operator API
+  - [x] 46-01-PLAN.md — Update Lifeline Telemetry & Implement Single-Job Operator API
   - [ ] 46-02-PLAN.md — Implement Bulk-Job Operator API
 
 ## Progress
@@ -136,4 +136,4 @@
 | 43    | v1.5      | 3/3 | Complete    | 2026-05-28 |
 | 44    | v1.5      | 0/?           | Not started | —          |
 | 45    | v1.5      | 0/?           | Not started | —          |
-| 46    | v1.5      | 1/2 | In Progress|  |
+| 46    | v1.5      | 2/2 | Complete   | 2026-05-28 |
