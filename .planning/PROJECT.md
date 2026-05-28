@@ -45,12 +45,14 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 - ✓ Merge-blocking CI continuity proof coverage for forensics and runbook surfaces (`VER-04`) — v1.4 Phase 39
 - ✓ Native job listing with filter/search (`QRY-01`) — v1.5 Phase 43
 - ✓ Native job detail view (`QRY-02`) — v1.5 Phase 43
+- ✓ Native single-job actions (retry/cancel/discard) via preview/reason/audit through Lifeline (`QRY-03`) — v1.5 Phase 44
+- ✓ Bulk job operations with honest per-job result reporting (`QRY-04`) — v1.5 Phase 45
+- ✓ Single-job Operator Elixir API with actor attribution (`API-01`) — v1.5 Phase 46
+- ✓ Bulk Operator Elixir API with per-job reporting (`API-02`) — v1.5 Phase 46
 
 ### Active
 
-- [ ] Native job actions (retry, cancel, discard) with reason/preview/audit — QRY-03
-- [ ] Bulk job operations — QRY-04
-- [ ] Operator actions Elixir API — API-01
+(None — v1.5 shipped. Next milestone candidates carried in REQUIREMENTS.md backlog: QRY-05 args/meta filter, QRY-06 real-time counts, QRY-07 Lifeline→job deep-link, QRY-08 cross-page select-all, API-03 programmatic job query.)
 
 ### Out of Scope
 
@@ -70,6 +72,9 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 - ✓ Make limiter, workflow, and repair behavior explicit and inspectable rather than implicit.
 - ✓ Require auth before previewing or mutating operator actions.
 - ✓ Preserve implementation ownership while using later phases to close evidence gaps.
+- ✓ All native job mutations (UI and API) route through `Lifeline.execute_repair` — no direct `Oban` calls and no parallel mutation path. — v1.5
+- ✓ Bulk operations run an independent repair per job (no single `Ecto.Multi` over N jobs) and report per-job success/failure honestly. — v1.5
+- ✓ `ObanPowertools.Operator` requires a non-nil actor for every action and emits `source: "api"` telemetry within the frozen low-cardinality `@contract`. — v1.5
 
 ## Decision Posture
 
@@ -91,20 +96,28 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 ## Current State
 
-Version `v1.3` shipped on 2026-05-26. The native `/ops/jobs` shell now reads as one coherent operator control plane: shared vocabulary and ownership boundaries span overview, cron, limiters, workflows, Lifeline, audit, and bounded Oban Web handoffs; the overview is diagnosis-first; drilldowns preserve durable context; and the public docs plus example-host proof tell the same native-shell versus bridge-only story. Milestone `v1.4` is complete. Phases 32-35 added forensic bundle foundations, limiter/cron history diagnostics, historical attention projection, and runbook-guided remediation continuity with explicit host-owned escalation seams. Phase 37 then backfilled canonical verification artifacts for phases 32 and 33 and reconciled FRN/OPS traceability in top-level requirements. Phase 38 closed `DOC-05` with canonical forensics/runbook docs alignment and executable claim-level docs-contract coverage. Phase 39 completed `VER-04` CI continuity proof closure with deterministic claim artifacts and merge-blocking continuity status enforcement. Phase 36 is now reconciled as an additive closure umbrella that indexes canonical ownership back to Phase 38 (`DOC-05`) and Phase 39 (`VER-04`) without reopening runtime scope.
+Version `v1.5` shipped on 2026-05-28. The native `/ops/jobs` shell now owns the full job lifecycle without leaning on the Oban Web bridge: operators browse jobs at `/ops/jobs/jobs` filtered by state/queue/worker/tags with URL-serialized filter state and `DisplayPolicy` redaction on args/meta; inspect full job detail; and retry/cancel/discard single jobs or bulk selections through the same Lifeline preview → reason → execute → audit pipeline, with a concurrent-modification guard and honest per-job bulk reporting. The new `ObanPowertools.Operator` module gives host code a typed, actor-attributed programmatic surface for the same single and bulk mutations, routed through the identical Lifeline pipeline and emitting `source: "api"` telemetry within the frozen low-cardinality contract. Milestone audit passed 6/6 requirements; full suite at 270 tests, 0 failures.
 
-## Current Milestone: v1.5 Native Job Surface & Automation API
+(Earlier: `v1.4` delivered operator forensics and SRE runbooks; `v1.3` unified the native control plane and explainability story.)
 
-**Goal:** Close the UI asymmetry with Oban Web by shipping a native operator job browse surface, and provide a typed Elixir API for the same operator mutations.
+## Next Milestone
 
-**Target features:**
-- Native job listing with filter/search by queue, state, worker, and tags
-- Native job detail view (args, meta, errors, history)
-- Native job actions: retry, cancel, discard — with reason capture, preview, and consistent audit trail
-- Bulk operations: retry/cancel/discard multiple selected jobs
-- Operator actions Elixir API — typed programmatic surface mirroring the UI's mutation capabilities
+Not yet defined. Run `/gsd:new-milestone` to scope v1.6. Candidate work carried as deferred requirements: args/meta filtering with JSONB guardrails (QRY-05), real-time count updates via `oban_met` (QRY-06), Lifeline→job deep-linking (QRY-07), cross-page bulk select-all (QRY-08), and a programmatic `Operator.list/2` query surface (API-03).
 
 ## Recently Shipped
+
+<details>
+<summary>v1.5 Native Job Surface & Automation API (shipped 2026-05-28)</summary>
+
+Goal: close the UI asymmetry with Oban Web by shipping a native operator job surface and a typed Elixir API for the same audited mutations.
+
+Delivered:
+- Native job browse/detail (`/ops/jobs/jobs`) with state/queue/worker/tags filtering, URL-serialized filter state, and DisplayPolicy redaction.
+- Single-job retry/cancel/discard through the full Lifeline preview/reason/execute/audit pipeline with a concurrent-modification guard.
+- Bulk operations with independent per-job repairs and honest per-job success/failure reporting.
+- `ObanPowertools.Operator` typed single + bulk API requiring actor attribution, routed through the same Lifeline pipeline with `source: "api"` telemetry.
+
+</details>
 
 <details>
 <summary>v1.3 Unified Control Plane & Explainability</summary>
@@ -153,4 +166,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-27 — Milestone v1.5 started. Native Job Surface & Automation API.*
+*Last updated: 2026-05-28 after v1.5 milestone — Native Job Surface & Automation API shipped.*

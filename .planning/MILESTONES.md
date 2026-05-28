@@ -1,5 +1,30 @@
 # Milestones
 
+## v1.5 Native Job Surface & Automation API
+
+- **Status:** Shipped 2026-05-28
+- **Phases:** 43-46
+- **Plans:** 9
+- **Timeline:** 2026-05-27 -> 2026-05-28
+- **Git range:** `6468cff` -> `0ea569d`
+- **Code:** 12 files changed, +2071/-11 (3 new modules: `Jobs`, `Operator`, `Web.JobsLive`)
+- **Requirements:** 6/6 satisfied (QRY-01..04, API-01..02); milestone audit `passed`
+
+### Delivered
+
+Closed the UI asymmetry with Oban Web by shipping a native operator job surface, plus a typed Elixir API for the same audited mutations.
+
+- **Native job browse (QRY-01, QRY-02):** Ecto-native `ObanPowertools.Jobs` context with `%JobFilter{}`, state-leading queries, offset pagination (keyset upgrade path documented), and a `/ops/jobs/jobs` list + detail surface — filter by state/queue/worker/tags with URL-serialized filter state and `DisplayPolicy.render_job_field/3` redaction on args/meta.
+- **Single-job actions (QRY-03):** Retry/cancel/discard from the detail page through the full Lifeline preview → reason → execute → audit pipeline, with a concurrent-modification (`preview_drifted`) guard and no direct `Oban` calls from the LiveView.
+- **Bulk operations (QRY-04):** MapSet-backed multi-select with capped selection, an independent `Lifeline.execute_repair` per job (no single `Ecto.Multi` wrapping N jobs), and honest per-job success/failure reporting.
+- **Operator Elixir API (API-01, API-02):** `ObanPowertools.Operator` typed single + bulk retry/cancel/discard requiring a non-nil actor, routed through the same Lifeline pipeline as the UI, emitting `source: "api"` telemetry within the frozen low-cardinality `@contract`.
+
+### Notes
+
+- Phases 44 and 45 had completed SUMMARY files but their `JobsLive` UI implementation was never committed during execution; it was recovered from the working tree and committed as `0ea569d` during milestone close (full suite: 270 tests, 0 failures). A malformed test-file tail and a corrupted ROADMAP table row were also repaired at close.
+
+---
+
 ## v1
 
 - **Status:** Shipped 2026-05-21
