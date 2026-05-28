@@ -71,7 +71,10 @@
   4. A concurrent-modification guard returns a visible error (not a silent success) when another operator has already changed the job's state before the action executes
   5. `"job_discard"` is registered in `Lifeline.@supported_actions`; nil-incident browse-initiated actions are explicitly permitted through the Lifeline guard
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+  - [ ] 44-01-PLAN.md — Implement Lifeline job_discard Action Support
+  - [ ] 44-02-PLAN.md — Implement Single-Job UI Actions in JobsLive
 **UI hint**: yes
 
 ### Phase 45: Bulk Operations
