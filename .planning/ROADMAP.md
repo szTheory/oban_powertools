@@ -91,7 +91,7 @@
 
 **Plans**: 2 plans
 
-  - [ ] 46-01-PLAN.md — Update Lifeline Telemetry & Implement Single-Job Operator API
+  - [x] 46-01-PLAN.md — Update Lifeline Telemetry & Implement Single-Job Operator API
   - [ ] 46-02-PLAN.md — Implement Bulk-Job Operator API
 
 
@@ -109,7 +109,10 @@
   3. API functions call the same `Lifeline.execute_repair` pipeline the UI phases established — no parallel mutation path exists
   4. Telemetry emitted from API calls carries `source: "api"` metadata and remains within the frozen `@contract` (no new high-cardinality keys added)
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+  - [ ] 46-01-PLAN.md — Update Lifeline Telemetry & Implement Single-Job Operator API
+  - [ ] 46-02-PLAN.md — Implement Bulk-Job Operator API
 
 ## Progress
 
@@ -133,5 +136,4 @@
 | 43    | v1.5      | 3/3 | Complete    | 2026-05-28 |
 | 44    | v1.5      | 0/?           | Not started | —          |
 | 45    | v1.5      | 0/?           | Not started | —          |
-| 46    | v1.5      | 0/?           | Not started | —          |
-arted | —          |
+| 46    | v1.5      | 1/2 | In Progress|  |

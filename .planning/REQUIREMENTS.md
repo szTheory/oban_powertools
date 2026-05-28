@@ -15,8 +15,8 @@
 
 ### Operator Elixir API
 
-- [ ] **API-01**: Host app code can retry, cancel, or discard a single job programmatically via `ObanPowertools.Operator` — actor required, same audit guarantee as the UI
-- [ ] **API-02**: Host app code can bulk retry, cancel, or discard a list of jobs by ID via `ObanPowertools.Operator` — with per-job result reporting
+- [x] **API-01**: Host app code can retry, cancel, or discard a single job programmatically via `ObanPowertools.Operator` — actor required, same audit guarantee as the UI
+- [x] **API-02**: Host app code can bulk retry, cancel, or discard a list of jobs by ID via `ObanPowertools.Operator` — with per-job result reporting
 
 ## Future Requirements (post-v1.5)
 
@@ -50,8 +50,8 @@
 | QRY-02      | 43    | Complete |
 | QRY-03      | 44    | Pending |
 | QRY-04      | 45    | Pending |
-| API-01      | 46    | Pending |
-| API-02      | 46    | Pending |
+| API-01      | 46    | Complete |
+| API-02      | 46    | Complete |
 
 **Coverage:**
 

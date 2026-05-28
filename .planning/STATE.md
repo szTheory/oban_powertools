@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Native Job Surface & Automation API
-status: executing
+status: planning
 stopped_at: Phase 44 execution completed
-last_updated: "2026-05-28T18:30:00.000Z"
+last_updated: "2026-05-28T20:30:58.535Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
-  percent: 50
+  completed_phases: 3
+  total_plans: 9
+  completed_plans: 8
+  percent: 75
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-27)
 
 ## Current Position
 
-Phase: 45
-Plan: Not started
-Status: Planning Phase 45
-Progress: [x] [x] [ ] [ ] — 2/4 phases complete
+Phase: 46
+Plan: 01
+Status: Executing Phase 46
+Progress: [█████████░] 89%
 
 Last activity: 2026-05-28
 
@@ -36,6 +36,9 @@ Last activity: 2026-05-28
 
 - Phases: 2/4 complete
 - Plans: 5/5 complete
+| Phase | Plan | Duration | Tasks | Files |
+|-------|------|----------|-------|-------|
+| 46    | 01   | 2m       | 2     | 4     |
 
 ## Accumulated Context
 
@@ -44,6 +47,10 @@ Last activity: 2026-05-28
 See PROJECT.md Key Decisions section for the full locked decision list.
 
 **v1.5 decisions:**
+
+- Operator API explicitly requires an actor map for all actions, maintaining strict authorization boundaries.
+- Programmatic actions always route through the Lifeline preview and execute flows rather than directly mutating the job database, ensuring full auditability and host callbacks.
+- Telemetry metadata is threaded down through opts and merged into the final telemetry event, allowing the Operator module to identify itself via source: api.
 
 - Phase order is non-negotiable: QRY-01 leads (zero Lifeline risk); QRY-03 must come after QRY-02 (actions anchor to detail context); QRY-04 iterates the single-job pipeline proven in Phase 44; API wraps last so signatures derive from the proven UI pipeline.
 - All mutations must route through `Lifeline.execute_repair` — no direct `Oban` function calls from LiveViews or the API module.
@@ -65,6 +72,6 @@ None.
 
 ## Session Continuity
 
-- **Last session:** 2026-05-28T18:30:00.000Z
+- **Last session:** 2026-05-28T20:30:58.532Z
 - **Stopped at:** Phase 44 execution completed
 - **Next action:** `/gsd-plan-phase 45` — Bulk Operations (QRY-04)
