@@ -30,7 +30,7 @@
 
 ### 📋 v1.5 Native Job Surface & Automation API (Phases 43-46)
 
-- [ ] **Phase 43: Read-Only Job Browse** — Native job list and detail views with filter/search and DisplayPolicy redaction
+- [x] **Phase 43: Read-Only Job Browse** — Native job list and detail views with filter/search and DisplayPolicy redaction (completed 2026-05-28)
 - [ ] **Phase 44: Single-Job Actions** — Retry, cancel, discard on individual jobs through the full Lifeline preview/reason/audit pipeline
 - [ ] **Phase 45: Bulk Operations** — Bulk retry/cancel/discard for a visible job selection with per-job result reporting
 - [ ] **Phase 46: Operator Elixir API** — Typed programmatic surface for single and bulk job mutations with actor attribution
@@ -54,7 +54,7 @@
 
   - [x] 43-01-PLAN.md — Data layer: ObanPowertools.Jobs context module + %JobFilter{} + DisplayPolicy render_job_field/3 + Selectors :jobs path + unit tests
   - [x] 43-02-PLAN.md — Wave 2: LiveAuth atoms + router routes + JobsLive :index action (list page, state tabs, filter, push_patch) + LiveView tests
-  - [ ] 43-03-PLAN.md — Wave 3: JobsLive :show action (detail render with DisplayPolicy redaction, errors/attempt panels, back link) + detail tests
+  - [x] 43-03-PLAN.md — Wave 3: JobsLive :show action (detail render with DisplayPolicy redaction, errors/attempt panels, back link) + detail tests
 
 **UI hint**: yes
 
@@ -122,7 +122,7 @@
 | 40    | v1.4      | 2/2           | Complete    | 2026-05-27 |
 | 41    | v1.4      | 1/1           | Complete    | 2026-05-27 |
 | 42    | v1.4      | 1/1           | Complete    | 2026-05-27 |
-| 43    | v1.5      | 2/3 | In Progress|  |
+| 43    | v1.5      | 3/3 | Complete   | 2026-05-28 |
 | 44    | v1.5      | 0/?           | Not started | —          |
 | 45    | v1.5      | 0/?           | Not started | —          |
 | 46    | v1.5      | 0/?           | Not started | —          |
