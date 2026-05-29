@@ -132,6 +132,41 @@ defmodule ObanPowertools.Limits do
     }
   end
 
+  @doc """
+  Pure token-bucket reservation decision with zero side effects.
+
+  Takes a limiter state, resource config, request weight, and current time.
+  Returns a verdict tuple without touching the database, telemetry, or history.
+
+  This is the single source of truth for the token-bucket decision logic,
+  callable from both `reserve/3` (which adds side effects) and
+  `mix oban_powertools.limiter.simulate` (which needs zero side effects).
+  """
+  @spec compute_reservation(State.t(), Resource.t(), non_neg_integer(), DateTime.t()) ::
+          {:reserved, tokens_used_after :: non_neg_integer()}
+          | {:blocked, code :: String.t(), retry_at :: DateTime.t() | nil, details :: map()}
+  def compute_reservation(%State{} = state, %Resource{} = resource, weight, now) do
+    normalized = normalize_bucket(state, resource.bucket_span_ms, now)
+
+    cond do
+      cooldown_active?(normalized, now) ->
+        {:blocked, "cooldown", normalized.cooldown_until,
+         %{reason: normalized.cooldown_reason}}
+
+      normalized.tokens_used + weight > resource.bucket_capacity ->
+        retry_at =
+          normalized.bucket_started_at
+          |> DateTime.add(resource.bucket_span_ms, :millisecond)
+          |> max_datetime(now)
+
+        {:blocked, "limit_reached", retry_at,
+         %{capacity: resource.bucket_capacity, used: normalized.tokens_used}}
+
+      true ->
+        {:reserved, normalized.tokens_used + weight}
+    end
+  end
+
   defp do_reserve(_repo, nil, _now), do: {:ok, nil}
 
   defp do_reserve(repo, snapshot, now) do
@@ -208,22 +243,16 @@ defmodule ObanPowertools.Limits do
   end
 
   defp attempt_reservation(repo, resource, state, snapshot, now) do
-    normalized = normalize_bucket(state, resource.bucket_span_ms, now)
+    # Normalize exactly once; pass the pre-normalized state to compute_reservation
+    # so that both the verdict and the write/blocker paths use the same state.
+    normalized_state = normalize_bucket(state, resource.bucket_span_ms, now)
 
-    cond do
-      cooldown_active?(normalized, now) ->
-        blockers = [cooldown_blocker(resource, normalized)]
-        blocked(repo, snapshot, blockers, now)
-
-      normalized.tokens_used + snapshot.weight > resource.bucket_capacity ->
-        blockers = [limit_blocker(resource, normalized, now)]
-        blocked(repo, snapshot, blockers, now)
-
-      true ->
-        normalized
+    case compute_reservation(normalized_state, resource, snapshot.weight, now) do
+      {:reserved, new_tokens_used} ->
+        normalized_state
         |> State.changeset(%{
-          tokens_used: normalized.tokens_used + snapshot.weight,
-          bucket_started_at: normalized.bucket_started_at || now,
+          tokens_used: new_tokens_used,
+          bucket_started_at: normalized_state.bucket_started_at || now,
           last_reserved_at: now,
           reservation_snapshot: snapshot
         })
@@ -243,6 +272,12 @@ defmodule ObanPowertools.Limits do
           {:error, reason} ->
             {:error, reason}
         end
+
+      {:blocked, "cooldown", _retry_at, _details} ->
+        blocked(repo, snapshot, [cooldown_blocker(resource, normalized_state)], now)
+
+      {:blocked, _code, _retry_at, _details} ->
+        blocked(repo, snapshot, [limit_blocker(resource, normalized_state, now)], now)
     end
   end
 
