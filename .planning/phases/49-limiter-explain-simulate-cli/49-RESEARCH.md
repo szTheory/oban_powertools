@@ -717,7 +717,7 @@ D-08 requires one string that feeds both `@moduledoc` (in both task files) and t
 ### Pitfall 5: explain_snapshot Returns Status as String, Not Atom
 **What goes wrong:** `explain_snapshot/2` returns `status: snapshot.status` where `snapshot.status` is a string (e.g., `"blocked"`) from the DB field. Formatters expecting `:blocked` atom will fail pattern matches.
 **Why it happens:** The Ecto schema field is `field(:status, :string, default: "blocked")` — not an atom type.
-**How to avoid:** The formatter must handle both string and atom status, or normalize to atom at the task boundary: `String.to_atom(status)` is safe here since values are a closed set from the codebase.
+**How to avoid:** The formatter must handle both string and atom status, or normalize to atom at the task boundary using a CLOSED `case` (`"runnable" -> :runnable; "blocked" -> :blocked; _ -> :unknown`) — NOT `String.to_atom(status)`. Even though the status set is a closed codebase set, `String.to_atom` on a DB-sourced value is forbidden by T-48-05 / D-01; a closed case is unambiguously safe and self-documenting.
 **Warning signs:** Pattern match `status == :runnable` fails when status is `"runnable"`.
 
 ### Pitfall 6: `@requirements ["app.config"]` Instead of Inline `Mix.Task.run`
@@ -853,22 +853,19 @@ No missing dependencies.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Simulate DB interaction for config lookup**
-   - What we know: D-05 says `--worker MOD` reads limits via `Worker.limit_snapshot/2`; D-07 says "fresh (empty) bucket"
-   - What's unclear: Should `--resource NAME` be a supported simulate input to read the resource's current config (capacity/span) from the DB as defaults? CONTEXT.md only mentions `--worker MOD`.
-   - Recommendation: Implement `--worker`-only for simulate (no `--resource` flag for simulate); keep repo connection optional for simulate.
+1. **Simulate DB interaction for config lookup** — RESOLVED: worker-only simulate per D-05.
+   - What we knew: D-05 says `--worker MOD` reads limits via `Worker.limit_snapshot/2`; D-07 says "fresh (empty) bucket".
+   - Resolution: Simulate is `--worker`-only — no `--resource` config-source flag. Per D-05 the operator points at a worker module; per D-07 the bucket is synthetic/fresh, so no live State row is read. The repo is opened via `with_repo` for CLI-family consistency only; the simulation loop touches no DB. (See Plan 49-03 Task 1.)
 
-2. **Glossary shared string mechanism**
-   - What we know: D-08 says "single shared string"; two consumers are `@moduledoc` and the guide
-   - What's unclear: Whether a small module (`ObanPowertools.Limits.Glossary`) is warranted vs. a module attribute in one task file
-   - Recommendation: Module attribute in the Explain task file; Simulate imports/references it. Or planner decides (Claude's Discretion).
+2. **Glossary shared string mechanism** — RESOLVED: dedicated `ObanPowertools.Limits.Glossary` module (Plan 49-01 Task 2).
+   - What we knew: D-08 says "single shared string"; two consumers are `@moduledoc` and the guide.
+   - Resolution: Plan 49-01 Task 2 creates a dedicated `ObanPowertools.Limits.Glossary` module exposing `text/0` as the single source of truth (chosen over a per-task module attribute for a clean import surface from both Mix tasks). The guide carries a verbatim copy; `docs_contract_test.exs` locks the full D-08 term set across the guide and both task `@moduledoc`s (no drift).
 
-3. **Explain output for `explain/3` (secondary path) when worker has no limits**
-   - What we know: `explain/3` returns `{:ok, nil}` via passthrough when `limit_snapshot` returns `{:ok, nil}`
-   - What's unclear: Should the CLI render "worker has no limits configured" or treat it as runnable?
-   - Recommendation: Exit 2 with clear "worker has no limits configured" message (consistent with D-04 "honest").
+3. **Explain output for `explain/3` (secondary path) when worker has no limits / unknown worker** — RESOLVED: exit 2 per D-04.
+   - What we knew: `explain/3` returns `{:ok, nil}` passthrough when `limit_snapshot` returns `{:ok, nil}`.
+   - Resolution: A worker with no `:limits` prints "worker has no limits configured" and exits 2; an unknown/non-existent `--worker` module prints "unknown --worker module: MOD" and exits 2 (D-04 cannot-run posture). (See Plan 49-02 Task 1 and its exit-2 test in Task 2.)
 
 ---
 
