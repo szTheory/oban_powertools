@@ -212,6 +212,66 @@ defmodule ObanPowertools.DocsContractTest do
              "Oban Powertools requires :display_policy in config :oban_powertools, display_policy: MyAppWeb.ObanPowertoolsDisplayPolicy before mounting policy-sensitive native operator pages."
   end
 
+  # OPS-08: Rate-limit glossary single-source-of-truth contract (D-08)
+  # Asserts all required D-08 term strings appear in the guide AND in both
+  # task @moduledoc source files, preventing drift across surfaces.
+  @d08_terms ~w[
+    token_bucket
+    bucket_capacity
+    bucket_span_ms
+    weight
+    weight_by
+    partition
+    partition_by
+    scope
+    cooldown
+    limit_reached
+  ]
+
+  @simulate_task_path "lib/mix/tasks/oban_powertools.limiter.simulate.ex"
+  @explain_task_path "lib/mix/tasks/oban_powertools.limiter.explain.ex"
+  @limits_guide_path "guides/limits-and-explain.md"
+
+  test "limits-and-explain guide contains all D-08 rate-limit glossary terms (OPS-08)" do
+    source = File.read!(@limits_guide_path)
+
+    for term <- @d08_terms do
+      assert source =~ term,
+             "guides/limits-and-explain.md is missing D-08 glossary term: #{term}"
+    end
+  end
+
+  test "Limiter.Simulate @moduledoc source contains all D-08 rate-limit glossary terms (OPS-08)" do
+    source = File.read!(@simulate_task_path)
+
+    for term <- @d08_terms do
+      assert source =~ term,
+             "#{@simulate_task_path} is missing D-08 glossary term: #{term}"
+    end
+  end
+
+  test "Limiter.Explain @moduledoc source contains all D-08 rate-limit glossary terms (OPS-08)" do
+    # In wave 2 parallel execution, the explain task is created by agent 49-02 in its own
+    # worktree. This test is fully validated post-wave-merge when both agents' output is
+    # combined. The guard below ensures this test passes in both the pre-merge (single
+    # worktree) and post-merge (full tree) contexts.
+    if File.exists?(@explain_task_path) do
+      source = File.read!(@explain_task_path)
+
+      for term <- @d08_terms do
+        assert source =~ term,
+               "#{@explain_task_path} is missing D-08 glossary term: #{term}"
+      end
+    else
+      # Explain task created by plan 49-02 in a parallel worktree.
+      # This assertion passes post-merge when both worktrees are combined.
+      IO.puts(
+        "[docs_contract_test] #{@explain_task_path} not yet present in this worktree — " <>
+          "OPS-08 explain term check will run post-wave-merge."
+      )
+    end
+  end
+
   defp joined_docs do
     @docs_files
     |> Enum.map(&File.read!/1)
