@@ -53,13 +53,21 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 **Goal:** Package and publish Oban Powertools to hex.pm at a deliberate 0.5.0 with correctly rendering documentation, so adopters can install it as a real dependency.
 
 **Requirements:** REL-01, REL-02, REL-03
-
 **Plans:** 3 plans
+**Wave 1**
+
 - [ ] 47-01-PLAN.md — CHANGELOG.md (0.5.0 + path-to-1.0) and Apache-2.0 LICENSE
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 47-02-PLAN.md — mix.exs package/0 + docs/0 + igniter scope, tarball/docs verification, README ~> 0.5
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 47-03-PLAN.md — release-please pipeline (config + manifest + workflow) and operator publish handoff
 
 **Success Criteria:**
+
 1. `mix hex.build --unpack` shows the package ships `priv/` migration generators and excludes `.planning/`, `test/`, and dev cruft.
 2. The library publishes to hex.pm at version 0.5.0 and the package page renders.
 3. ExDoc documentation builds with `source_ref` pinned to the release tag and renders on hexdocs with guides as extras.
@@ -72,6 +80,7 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 **Requirements:** OPS-03, OPS-04, OPS-05
 
 **Success Criteria:**
+
 1. `mix oban_powertools.doctor` reports Oban index presence and flags `INVALID` indexes, fully read-only over `pg_catalog`.
 2. The task detects migration drift and validates config, honoring a custom Oban prefix/schema.
 3. The task flags uniqueness-timeout risk.
@@ -85,6 +94,7 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 **Requirements:** OPS-06, OPS-07, OPS-08
 
 **Success Criteria:**
+
 1. `mix oban_powertools.limiter.explain` explains a limiter's current blocking state via the existing `Explain` API.
 2. `mix oban_powertools.limiter.simulate` previews limiter behavior for a config without mutating real state.
 3. The CLI ships the rate-limit glossary in its help/documentation output.
@@ -97,6 +107,7 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 **Requirements:** TEL-01, TEL-02, TEL-03
 
 **Success Criteria:**
+
 1. `ObanPowertools.Telemetry.metrics/0` returns `Telemetry.Metrics` definitions over the frozen low-cardinality contract.
 2. `telemetry_metrics`/`telemetry_poller` are optional deps gated like `oban_web` — no runtime cost or failure when absent.
 3. A Parapet/SLO telemetry guide documents golden-signals/SLO setup with no `oban_met` dependency.
@@ -109,6 +120,7 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 **Requirements:** REL-04
 
 **Success Criteria:**
+
 1. A fresh host app adds the dependency from hex and installs cleanly.
 2. The getting-started quickstart reaches a first successful operator session from the published package.
 3. The verification asserts a clean working tree (or per-phase commit existence) per the v1.5-graduated convention.

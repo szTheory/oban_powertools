@@ -673,9 +673,11 @@ jobs:
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **`googleapis/release-please-action` exact current version (v4 vs v5)**
+> All three carried into the plans as explicit tasks/notes (Phase 47 planning): A1 → 47-03 Task 1 (human-verify checkpoint confirms the action version before the workflow YAML is written); A2 → documented operator-awareness note in 47-03 Task 4; A3 → operator pre-flight in `user_setup` + 47-03 Task 5. None block execution.
+
+1. **`googleapis/release-please-action` exact current version (v4 vs v5)** — RESOLVED: 47-03 Task 1 checkpoint verifies the current tag before writing the workflow.
    - What we know: The GitHub repo README documents v4. One WebFetch result mentioned v5.0.0 released April 2026.
    - What's unclear: Whether `@v4` or `@v5` is the correct pin for new setups.
    - Recommendation: Before writing the workflow YAML, check `github.com/googleapis/release-please-action/releases` to confirm the current latest tag. If v5 exists, check whether its inputs changed. If in doubt, pin to `@v4` (the documented stable version) and note for future upgrade.
