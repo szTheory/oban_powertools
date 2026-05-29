@@ -124,6 +124,16 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 **Goal:** Give hosts an opt-in, reporter-agnostic metrics surface and an SLO guide over the frozen telemetry contract, with no new runtime dependency.
 
 **Requirements:** TEL-01, TEL-02, TEL-03
+**Plans:** 3 plans
+
+**Wave 0**
+
+- [ ] 50-01-PLAN.md — Optional telemetry deps (telemetry_metrics/telemetry_poller, gated like oban_web) + Operations guide group entry in mix.exs + failing metrics/0 tests (RED scaffold)
+
+**Wave 1** *(blocked on Wave 0 completion)*
+
+- [ ] 50-02-PLAN.md — Implement `ObanPowertools.Telemetry.metrics/0` (counter-only, tags strictly within the frozen @contract) + Code.ensure_loaded? raise-when-absent guard + prod-tree compile proof
+- [ ] 50-03-PLAN.md — `guides/telemetry-and-slos.md` 4-part reporter-agnostic SLO guide (Oban-core vs Powertools seam, Parapet as one consumer, no oban_met)
 
 **Success Criteria:**
 
