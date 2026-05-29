@@ -2,8 +2,20 @@ defmodule ObanPowertools.Doctor.ChecksTest do
   use ObanPowertools.DataCase, async: false
 
   alias ObanPowertools.Doctor.Checks
-  alias ObanPowertools.Doctor.Finding
   alias ObanPowertools.TestRepo
+
+  # Helper to create a direct Postgrex connection for DDL in on_exit callbacks.
+  # on_exit runs after sandbox teardown, so we need a raw connection (no pool/sandbox).
+  defp direct_postgrex_query!(sql) do
+    db_config =
+      Application.get_env(:oban_powertools, ObanPowertools.TestRepo)
+      |> Keyword.delete(:pool)
+      |> Keyword.put(:pool_size, 1)
+
+    {:ok, conn} = Postgrex.start_link(db_config)
+    Postgrex.query!(conn, sql, [])
+    GenServer.stop(conn)
+  end
 
   describe "index_validity/2" do
     test "returns [] on a clean DB with no INVALID indexes" do
@@ -51,10 +63,11 @@ defmodule ObanPowertools.Doctor.ChecksTest do
         "DROP INDEX IF EXISTS public.oban_jobs_args_index"
       )
 
+      # Restore the index via direct Postgrex connection (on_exit runs after sandbox teardown).
+      # CONCURRENTLY cannot run inside a transaction; use plain CREATE INDEX for tests.
       on_exit(fn ->
-        Ecto.Adapters.SQL.query!(
-          TestRepo,
-          "CREATE INDEX CONCURRENTLY IF NOT EXISTS oban_jobs_args_index ON public.oban_jobs USING GIN (args)"
+        direct_postgrex_query!(
+          "CREATE INDEX IF NOT EXISTS oban_jobs_args_index ON public.oban_jobs USING GIN (args)"
         )
       end)
 
@@ -111,10 +124,10 @@ defmodule ObanPowertools.Doctor.ChecksTest do
         "DROP INDEX IF EXISTS public.oban_jobs_args_index"
       )
 
+      # Restore index via direct Postgrex connection (on_exit runs after sandbox teardown).
       on_exit(fn ->
-        Ecto.Adapters.SQL.query!(
-          TestRepo,
-          "CREATE INDEX CONCURRENTLY IF NOT EXISTS oban_jobs_args_index ON public.oban_jobs USING GIN (args)"
+        direct_postgrex_query!(
+          "CREATE INDEX IF NOT EXISTS oban_jobs_args_index ON public.oban_jobs USING GIN (args)"
         )
       end)
 
@@ -128,10 +141,10 @@ defmodule ObanPowertools.Doctor.ChecksTest do
         "DROP INDEX IF EXISTS public.oban_jobs_args_index"
       )
 
+      # Restore index via direct Postgrex connection (on_exit runs after sandbox teardown).
       on_exit(fn ->
-        Ecto.Adapters.SQL.query!(
-          TestRepo,
-          "CREATE INDEX CONCURRENTLY IF NOT EXISTS oban_jobs_args_index ON public.oban_jobs USING GIN (args)"
+        direct_postgrex_query!(
+          "CREATE INDEX IF NOT EXISTS oban_jobs_args_index ON public.oban_jobs USING GIN (args)"
         )
       end)
 
