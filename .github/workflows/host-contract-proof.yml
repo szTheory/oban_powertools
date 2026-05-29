@@ -232,7 +232,8 @@ jobs:
   continuity-ver04-c1:
     runs-on: ubuntu-latest
     env:
-      OBAN_POWERTOOLS_SKIP_DB_BOOT: "1"
+      PGUSER: postgres
+      PGPASSWORD: postgres
     services:
       postgres:
         image: postgres:16
@@ -305,7 +306,8 @@ jobs:
   continuity-ver04-c2:
     runs-on: ubuntu-latest
     env:
-      OBAN_POWERTOOLS_SKIP_DB_BOOT: "1"
+      PGUSER: postgres
+      PGPASSWORD: postgres
     services:
       postgres:
         image: postgres:16
@@ -378,7 +380,8 @@ jobs:
   continuity-ver04-c3:
     runs-on: ubuntu-latest
     env:
-      OBAN_POWERTOOLS_SKIP_DB_BOOT: "1"
+      PGUSER: postgres
+      PGPASSWORD: postgres
     services:
       postgres:
         image: postgres:16
@@ -451,7 +454,8 @@ jobs:
   continuity-ver04-c4:
     runs-on: ubuntu-latest
     env:
-      OBAN_POWERTOOLS_SKIP_DB_BOOT: "1"
+      PGUSER: postgres
+      PGPASSWORD: postgres
     services:
       postgres:
         image: postgres:16
@@ -564,7 +568,7 @@ jobs:
             "seed_policy": "deterministic --seed 0"
           }
           EOF
-          python - <<'PY'
+          python3 - <<'PY'
           import json
           from pathlib import Path
           claims_dir = Path("tmp/ver04/claims")
@@ -639,7 +643,7 @@ jobs:
       - name: Scan proof packet for unsafe content
         id: redaction_scan
         run: |
-          python - <<'PY'
+          python3 - <<'PY'
           import json
           import re
           from pathlib import Path
