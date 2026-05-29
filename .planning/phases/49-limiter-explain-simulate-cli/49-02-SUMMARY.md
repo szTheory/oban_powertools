@@ -89,3 +89,12 @@ None — all paths return real data or honest empty-state messages.
 ## Threat Flags
 
 None — no new network endpoints, no auth paths, no schema changes introduced. The task is read-only by construction (only `repo.one/2` queries, no inserts or updates).
+
+## Self-Check: PASSED
+
+- lib/mix/tasks/oban_powertools.limiter.explain.ex: FOUND
+- test/mix/tasks/oban_powertools.limiter.explain_test.exs: FOUND
+- .planning/phases/49-limiter-explain-simulate-cli/49-02-SUMMARY.md: FOUND
+- commit be97468: FOUND
+- commit ec55f37: FOUND
+- commit 81422dc: FOUND
