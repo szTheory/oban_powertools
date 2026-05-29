@@ -22,9 +22,9 @@
 
 ### Operability — Limiter CLI
 
-- [ ] **OPS-06**: Operator can run `mix oban_powertools.limiter.explain` to explain a limiter's current blocking state, reusing the existing `Explain` API rather than duplicating limiter logic.
-- [ ] **OPS-07**: Operator can run `mix oban_powertools.limiter.simulate` to preview limiter behavior for a given config without mutating any real limiter state.
-- [ ] **OPS-08**: The limiter CLI ships the rate-limit glossary in its help/documentation output.
+- [x] **OPS-06**: Operator can run `mix oban_powertools.limiter.explain` to explain a limiter's current blocking state, reusing the existing `Explain` API rather than duplicating limiter logic.
+- [x] **OPS-07**: Operator can run `mix oban_powertools.limiter.simulate` to preview limiter behavior for a given config without mutating any real limiter state.
+- [x] **OPS-08**: The limiter CLI ships the rate-limit glossary in its help/documentation output.
 
 ### Telemetry & SLOs
 
@@ -90,9 +90,9 @@ Which phases cover which requirements. Populated during roadmap creation.
 | OPS-03 | Phase 48 | Complete |
 | OPS-04 | Phase 48 | Complete |
 | OPS-05 | Phase 48 | Complete |
-| OPS-06 | Phase 49 | Pending |
-| OPS-07 | Phase 49 | Pending |
-| OPS-08 | Phase 49 | Pending |
+| OPS-06 | Phase 49 | Complete |
+| OPS-07 | Phase 49 | Complete |
+| OPS-08 | Phase 49 | Complete |
 | TEL-01 | Phase 50 | Pending |
 | TEL-02 | Phase 50 | Pending |
 | TEL-03 | Phase 50 | Pending |
