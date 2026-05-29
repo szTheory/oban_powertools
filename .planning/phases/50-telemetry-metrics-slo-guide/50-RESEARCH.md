@@ -601,22 +601,21 @@ The guide should show that Powertools telemetry drops cleanly into Parapet SLO a
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED during planning — Phase 50)
+
+> All three resolved by the plan decisions; annotations added for audit trail.
 
 1. **Should `sum/2` variants for `archived_count`/`pruned_count` be included?**
+   - **RESOLVED:** No — 50-02 ships `counter/2`-only for v1.0; `sum/2` quantity metrics omitted (those keys are metadata, not measurements, and would be a cardinality/complexity risk). Within Claude's Discretion per D-02.
    - What we know: D-02 mentions them; the values are in metadata not measurements map; requires function form
    - What's unclear: Whether the complexity is worth it for v1.0 of this feature
    - Recommendation: Include the `counter/2` for event occurrence; defer the `sum/2` quantity metrics or include as commented-out examples in code. The planner should decide.
 
 2. **Should `:heartbeat_refresh` and `:incident_projection` be included in `metrics/0`?**
-   - What we know: Both are emitted in production; their metadata is minimal (only `action: "..."`)
-   - What's unclear: Operational value of tracking heartbeat refresh frequency vs. clutter in metric list
-   - Recommendation: Include both as `counter/2` with no tags — they're useful for health monitoring (is the heartbeat cycle running?)
+   - **RESOLVED:** Yes — both included in 50-02 as `counter/2` with no tags (useful health-monitoring signal that the cycle is running).
 
 3. **`@tag :requires_telemetry_metrics` test gating:**
-   - What we know: `telemetry_metrics` is an optional dep; it won't be in the test deps unless explicitly added
-   - What's unclear: Should the lib add `telemetry_metrics` as a `:test`-only dep to enable full test coverage?
-   - Recommendation: Add `{:telemetry_metrics, "~> 1.0", only: [:test, :dev], optional: true}` so the CI/test suite can run the `metrics/0` tests. The `optional: true` retains the contract that it's not a required runtime dep.
+   - **RESOLVED:** No skip-tag needed — 50-01 adds `{:telemetry_metrics, "~> 1.0", only: [:test, :dev], optional: true}` so `Telemetry.Metrics` is loadable under `mix test`; `optional: true` retains the no-runtime-dep contract.
 
 ---
 
