@@ -9,7 +9,7 @@ progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -24,9 +24,9 @@ See: .planning/PROJECT.md (updated 2026-05-28)
 
 ## Current Position
 
-Phase: 47 (hex-release-foundation) — EXECUTING
-Plan: 3 of 3
-Status: Ready to execute
+Phase: 47 (hex-release-foundation) — EXECUTING (awaiting operator Task 5)
+Plan: 3 of 3 — files complete (commit ad2ba53), blocked on operator-only hex.pm bootstrap
+Status: Plan 47-03 complete pending operator Task 5 (HEX_API_KEY secret, Release-As: 0.5.0 footer commit, merge Release PR). Phase 47 closes when 0.5.0 is live on hex.pm.
 Last activity: 2026-05-29
 
 ## Accumulated Context
