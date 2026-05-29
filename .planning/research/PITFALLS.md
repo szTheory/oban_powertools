@@ -1,266 +1,407 @@
 # Pitfalls Research
 
-**Domain:** Native job query surface and typed operator API added to an existing Phoenix/LiveView/Oban operator control plane
-**Researched:** 2026-05-27
-**Confidence:** HIGH — derived from direct inspection of the existing Lifeline pipeline, audit module, telemetry contract, ObanWebBridge, LiveAuth, and router; augmented with known Postgres/Oban/LiveView failure patterns.
+**Domain:** First hex release + read-only DB doctor task + limiter explain/simulate CLI + opt-in telemetry metrics, added to a mature unpublished Elixir/Phoenix/Oban ops library
+**Researched:** 2026-05-28
+**Confidence:** HIGH — derived from direct inspection of mix.exs, telemetry.ex, the frozen @contract, RETROSPECTIVE.md, post-v1.5 thread, and known Hex/Postgres/Mix task failure patterns.
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Querying oban_jobs Without Index-Aware Filters — Seq Scans at Scale
+### Pitfall 1: `package` key absent from mix.exs — ships test/dev cruft or omits migrations
 
 **What goes wrong:**
-A query filter combining `state`, `queue`, `worker`, and `tags` without matching the existing `oban_jobs` index layout degrades to a sequential scan. At 100k+ historical jobs (including completed and discarded), this blocks the repo connection pool during operator page load, which is the worst time — operators are usually looking at the UI because something is wrong.
+`mix hex.publish` includes everything not `.gitignore`d unless the project defines an explicit `:files` list inside a `package/0` key. This codebase has no `package/0` function in mix.exs. Without it, `examples/phoenix_host/`, `examples/phoenix_host_upgrade_source/`, `prompts/`, `test/`, `erl_crash.dump`, `.planning/`, and all guide source files go into the tarball. Worse, if migrations are ever placed under `priv/repo/migrations/` (which `doctor` may need), the absence of an explicit `:files` list is the one silent way they get omitted — the hex tarball can build cleanly in-repo while adopters get `{:error, :enoent}` at runtime when the installed package is missing those files.
 
 **Why it happens:**
-Developers reach for intuitive multi-column `WHERE` clauses (`state = 'available' AND queue = 'default' AND worker = 'MyWorker'`) without verifying which indexes Oban creates. Oban's default indexes favor `(state, queue)` and `(state, scheduled_at)` — a filter on `worker` alone or `tags` (JSONB) without a GIN index will not benefit from those. Tags filtering via `@>` against a non-GIN-indexed column is especially dangerous.
+Developers test `mix hex.build` from the repo, where the filesystem has everything. The tarball contains more than intended (or less, if priv files are missed). The asymmetry only surfaces when someone installs from hex.
 
 **How to avoid:**
-- Inspect Oban's migration-generated indexes before designing the filter API. Run `\d oban_jobs` in psql to confirm which composite indexes exist.
-- Make `state` the leading WHERE clause column in every query — it matches the most selective Oban index.
-- Never offer a "filter by tags" option unless a GIN index on `tags` is in place. Either add the index in a Powertools migration or make tag filtering an explicit advanced feature with a query-cost warning.
-- Use Ecto's `explain/2` on the query in test to detect seq scans before shipping.
-- Enforce a page size limit (e.g., 50 rows) at the query layer, not only the rendering layer, so a user who removes all filters cannot accidentally issue `SELECT *`.
+- Add an explicit `package/0` to mix.exs before publishing: `files: ~w[lib guides priv .formatter.exs mix.exs mix.lock README.md CHANGELOG.md LICENSE]`.
+- Run `mix hex.build && tar tf oban_powertools-*.tar` and audit every file.
+- Confirm that no `test/support/` module is reachable from the published lib (the existing `elixirc_paths` guard is correct but must be verified against the published tarball, not just the dev build).
+- `mix.lock` belongs in the tarball so adopters can reproduce exact transitive versions.
 
 **Warning signs:**
-- Filter queries taking > 200ms against a test dataset of 10k jobs.
-- `EXPLAIN ANALYZE` showing `Seq Scan on oban_jobs` rather than `Index Scan`.
-- Operator page load time increasing proportionally to total job count rather than result set count.
+- `mix.exs` has no `package/0` function (current state — confirmed via inspection).
+- `mix hex.build` output says "All files included" without an explicit list.
+- `mix hex.publish --dry-run` shows files under `test/`, `examples/`, or `prompts/`.
 
-**Phase to address:** QRY-01 (native job listing) — must be the first design decision before any LiveView filter state work begins.
+**Phase to address:**
+Phase 47 (Hex Release Prep) — must be the first gate before any publishing step.
 
 ---
 
-### Pitfall 2: Pagination State Living Only in LiveView Assigns — Lost on Filter Change
+### Pitfall 2: Publishing at a version that implies API stability (`1.0.0`) before real adopter feedback
 
 **What goes wrong:**
-Cursor or offset pagination state stored in socket assigns resets silently when the operator changes a filter. The operator changes the queue filter, the page resets to 1, but the `before`/`after` cursor from the previous result set is still being applied in the background — returning an empty or wrong page. Alternatively, the URL encodes page number but not the filter parameters, so a refresh or a copied link lands on page 3 of a different filter set.
+A `1.0.0` release signals SemVer stability. The library has 0 public adopters and 0 external validation. After five internal milestones, several APIs (Lifeline, Operator, Telemetry contract, migration internals) still reflect the needs of one szTheory host. Publishing at `1.0.0` then making a breaking rename forces a `2.0.0` bump within months, destroying the "stable ops library" positioning.
 
 **Why it happens:**
-LiveView makes it tempting to keep pagination state in assigns and filter state in separate assigns, treating them as independent. They are not. The cursor is only meaningful relative to the filter set that produced it.
+The repo feels "done" internally after a successful v1.5 milestone audit. The milestone naming (`v1.x`) is internal and does not map to hex versions, but the milestone numbering creates a false impression of maturity.
 
 **How to avoid:**
-- Represent both filter state and pagination state together in the URL via `push_patch`. When any filter parameter changes, reset the page/cursor to initial.
-- Use `handle_params/3` as the single point of truth for applying filter + pagination together. Never have two separate event handlers that each partially rebuild the query.
-- Prefer keyset/cursor pagination over offset for `oban_jobs` — offset pagination degrades with large offsets and `oban_jobs` can have millions of rows. Use `id > :cursor` or `(scheduled_at, id)` as a stable cursor pair.
-- Encode cursor in the URL only when there is an explicit "next page" navigation, not on every filter change.
+- Publish at `0.5.0` as documented in PROJECT.md. The `0.x` range signals "no API freeze yet" by SemVer convention, which is accurate.
+- Commit to `1.0` only after at least one external adopter has exercised the install, Operator API, and upgrade path.
+- Update `CHANGELOG.md` and `README.md` to state the `0.x` instability window explicitly.
 
 **Warning signs:**
-- A browser refresh on page 2 shows different rows than clicking "next" shows.
-- Changing queue filter while on page 3 stays on "page 3" but shows fewer results than expected.
-- The `handle_event("filter", ...)` and `handle_event("next_page", ...)` handlers both call the job query with slightly different parameter construction.
+- Any plan or phase description that says "bump to 1.0" without citing external adopter evidence.
 
-**Phase to address:** QRY-01 (listing) — define the filter+pagination URL contract before implementing any filter event handler.
+**Phase to address:**
+Phase 47 (Hex Release Prep) — set the version, changelog, and README stability statement.
 
 ---
 
-### Pitfall 3: Action Buttons on the Job Listing That Bypass the Lifeline Preview Pipeline
+### Pitfall 3: Getting-started only works in-repo (not from the published hex package)
 
 **What goes wrong:**
-A "Retry" or "Cancel" button directly on the job list row calls `Oban.retry_job/1` or sets `state = "cancelled"` inline, bypassing `Lifeline.preview_repair` and `Lifeline.execute_repair`. The repair audit event is not written. The plan_hash drift check is not applied. The action is not covered by reason capture. The operator later has no audit evidence for what they did or why.
+The Igniter installer (`mix oban_powertools.install`) and the getting-started guide are tested only with `path: "../oban_powertools"` or the in-repo dev alias. After publishing, adopters run the installer from the hex release. Bugs common in this scenario: the installer references a module that is test-only (excluded from the tarball), migrations are missing from `priv/`, a guide references a file path that doesn't exist after `mix deps.get`, or an `@moduledoc` references a guide that the hex tarball doesn't include at the expected relative path.
 
 **Why it happens:**
-The native job browse surface looks like a CRUD interface. It is tempting to wire actions directly to Oban functions because Oban exposes them at `Oban.retry_job/1`, `Oban.cancel_job/1`, etc. The Lifeline pipeline feels like it is "for incidents" rather than for all audited operator actions.
+CI runs against the repo checkout, not an isolated hex consumer. Nobody ever creates a fresh `mix new` project, adds `{:oban_powertools, "~> 0.5"}` to deps, runs `mix deps.get`, and follows the README from scratch.
 
 **How to avoid:**
-- The existing `Lifeline.execute_repair/4` multi-step pipeline (preview → drift check → mutate → audit → host follow-up) must be the only mutation path for retry, cancel, and discard operations — regardless of whether the job has an associated Incident record.
-- The `build_job_preview` private function in `Lifeline` already handles the case where `incident` is `nil` (see `incident_fingerprint_for_job/2` and `infer_incident_class/1`). Extend that path rather than creating a parallel one.
-- The new job actions phase (QRY-03) should add `action` atoms matching the existing `@supported_actions` list in `Lifeline`, not bypass it. If "discard" is a new action, add it to `@supported_actions` and implement its `mutate_target` clause there.
-- Reason capture, preview token, and audit record are non-optional for all mutations. The LiveView for the job detail should replicate the exact preview → reason → execute → audit UX flow from `LifelineLive`.
+- Create an `examples/hex_consumer/` project (distinct from the existing `examples/phoenix_host`) that uses `{:oban_powertools, "~> 0.5"}` from hex (or `git:` with a version tag) — not a local `path:` dep.
+- Run the full install + first-session flow in this isolated consumer as part of the release gate.
+- Add a `source_url_pattern` to `docs/0` in mix.exs so ExDoc links point to the correct tagged commit on hex, not the `main` branch.
 
 **Warning signs:**
-- Any code path that calls `Oban.retry_job/1`, `Oban.cancel_job/1`, or issues `UPDATE oban_jobs SET state = ...` directly from a LiveView `handle_event`.
-- An audit event missing the `plan_hash`, `preview_token`, or `reason` metadata fields.
-- A job action that does not write a `lifeline.repair_executed` audit event.
+- CI only tests against the local workspace (current state).
+- No hex_consumer example project exists; `examples/phoenix_host` uses `path:` dep.
+- `source_ref` in `docs/0` is absent or defaults to `main` (current state — `docs/0` in mix.exs has no `source_ref` key).
 
-**Phase to address:** QRY-03 (native job actions) — this is the highest-risk phase and must design against the Lifeline pipeline from the start, not as a retrofit.
+**Phase to address:**
+Phase 47 (Hex Release Prep) adds the `source_ref`; Phase 48 (Getting-Started Verification) creates and exercises the isolated hex consumer.
 
 ---
 
-### Pitfall 4: Bulk Operations With No Partial Failure Handling — Silent Subset Failures
+### Pitfall 4: `doctor` task executing write operations or holding locks against pg_catalog
 
 **What goes wrong:**
-A bulk retry of 50 selected jobs sends all 50 through a single `Ecto.Multi` or a `Repo.update_all`. If even one job has drifted state (e.g., already completed since the operator selected it), the whole transaction rolls back and the operator sees a generic error with no indication of which jobs succeeded and which failed. Alternatively, each job is processed in an `Enum.map` with no transaction — partial success happens and there is no audit trail for which subset was actually mutated.
+`mix oban_powertools.doctor` is marketed as read-only diagnostics. If any query inside doctor acquires an `AccessShareLock` that blocks DDL on a busy system, or worse, if a developer accidentally issues `CREATE INDEX` / `ALTER TABLE` / `ANALYZE` (all plausible when "fixing" a detected problem), adopters run doctor in production and cause an outage instead of diagnosing one.
 
 **Why it happens:**
-Developers reach for `Repo.update_all` for efficiency (correct) but forget that audit records, plan_hash checks, and drift detection cannot be skipped in bulk mode. Or they iterate with individual `execute_repair` calls, which is slow and leaves partial success if the process crashes midway.
+`pg_catalog` queries (`pg_indexes`, `pg_class`, `pg_attribute`, `pg_constraint`) are intrinsically read-only, but developers unfamiliar with Postgres internals sometimes also query live user tables (e.g., `SELECT COUNT(*) FROM oban_jobs`) inside the same task for "completeness." Count queries hold `AccessShareLock` for the duration and can pile up behind DDL. More subtle: `ANALYZE oban_jobs` looks like a diagnostic but is a write operation.
 
 **How to avoid:**
-- Bulk operations require a two-phase design: (1) preview phase that validates each job individually and collects preview tokens, (2) execute phase that runs each action and accumulates per-job results.
-- Do not wrap all N jobs in one Ecto.Multi transaction. The correct model for bulk is: for each job, attempt the action in its own transaction, collect `{:ok, _}` or `{:error, reason}`. After all jobs are processed, write a single bulk audit summary event that records how many succeeded, failed, and why.
-- Emit a per-job audit event for each successfully mutated job (reusing `Lifeline.execute_repair`), plus a single bulk-action summary audit event keyed to the operator's bulk action token.
-- Surface per-job results back to the operator in the UI: "42 of 50 jobs retried. 8 jobs could not be retried (state changed). See audit for details."
-- Reason is required at the bulk level — the operator provides one reason that applies to all jobs in the selection.
+- Restrict all doctor queries strictly to `pg_catalog` and `information_schema` views — never query `oban_jobs` or any application table directly.
+- No `UPDATE`, `DELETE`, `CREATE`, `ALTER`, `ANALYZE`, or `VACUUM` in doctor code paths. Add a comment to each query asserting this.
+- Open all Ecto queries inside an explicit `Repo.transaction(fn -> ... end, mode: :read_only)` to make the guarantee machine-checked.
+- Skip `CREATE INDEX CONCURRENTLY` advice output from inside the task — just report the missing index and tell the operator what command to run.
 
 **Warning signs:**
-- Bulk action UI shows only "success" or "failure" with no per-job breakdown.
-- `Audit.list_all` for a bulk action shows either zero events (bypassed audit) or exactly N events with no summary event.
-- A crash during bulk processing leaves the database in a state where some jobs are retried and no audit evidence exists.
+- Any query in `doctor` that references a non-catalog table name.
+- Doctor taking more than ~200ms to run (catalog queries should be sub-5ms on a healthy system; slow doctor = lock contention or seq scan on live tables).
 
-**Phase to address:** QRY-04 (bulk operations) — design the per-job vs. bulk audit event schema before writing any bulk LiveView code.
+**Phase to address:**
+Phase 49 (doctor task implementation) — the read-only constraint must be part of the implementation spec, not an afterthought.
 
 ---
 
-### Pitfall 5: Double-Action via Rapid UI Click or Concurrent Operator Sessions
+### Pitfall 5: `doctor` assuming a fixed Oban prefix/schema and breaking multi-schema setups
 
 **What goes wrong:**
-An operator clicks "Execute Retry" twice in quick succession, or two operators act on the same job concurrently from different browser sessions. The Lifeline pipeline's plan_hash drift check prevents the second `execute_repair` from running if state has changed — but the preview token is scoped per session, so two concurrent sessions each have their own "ready" preview and both may execute before either mutation completes.
+Oban supports a configurable `prefix:` (default `"public"`). If `doctor` hardcodes `oban_jobs` without respecting the configured prefix, it silently reports "no index found" for hosts using `prefix: "myapp"`, which has `myapp.oban_jobs`. Worse, it may succeed against the `public` schema (where there's no Oban table) and return a false healthy status.
 
 **Why it happens:**
-The current Lifeline pipeline uses the `preview_token` uniqueness as the idempotency key for a single session. When the same `target_id` + `action` combination is executed from two different actor sessions within the same clock tick, both can have valid "ready" previews simultaneously.
+Developers test against the default prefix only. The `pg_catalog` query for indexes against `oban_jobs` must qualify the table by schema; without the schema the query matches any table named `oban_jobs` in any schema the search path finds first.
 
 **How to avoid:**
-- Add a database-level optimistic concurrency check at the job level. At `mutate_target` time for job actions, verify that `oban_jobs.state` has not changed from `preview.before_snapshot["state"]` using a `WHERE state = :expected_state` in the UPDATE. If the update affects 0 rows, the mutation failed due to concurrent modification.
-- For the QRY-03 and API-01 phases, the `mutate_target` function should return `{:error, :concurrent_modification}` if the UPDATE affects 0 rows, not just assume success.
-- The existing `ensure_not_drifted` drift check in Lifeline is the right pattern — extend it to also catch the concurrent same-state race at the UPDATE level, not only at the preview generation level.
-- In the UI, use `phx-disable-with` on Execute buttons to prevent double-click within a single session. This does not prevent two operators, but it is the correct first layer.
+- Read the Oban prefix from `Application.get_env(:oban, Oban)` (or `Config.fetch_env!/2`) at task startup; default to `"public"`.
+- Pass `schemaname = $1` to all `pg_indexes` and `pg_class` queries.
+- Test doctor against both `prefix: "public"` and `prefix: "myapp"` in the doctor test suite.
+- If multiple Oban instances are configured (multiple repos, multiple prefixes), doctor must either iterate over all or document that it only checks the primary configuration and exits non-zero if it can't resolve one.
 
 **Warning signs:**
-- Two audit events for the same `(target_id, action)` combination within the same second.
-- A job that ends up in an unexpected state (e.g., double-cancelled with `cancelled_at` written twice).
-- Tests that pass in isolation but fail under concurrent load.
+- `doctor` test suite only has a single `prefix: "public"` fixture.
+- `pg_indexes` query body has no `schemaname` clause.
 
-**Phase to address:** QRY-03 for single-job actions; QRY-04 for bulk. The database-level UPDATE guard should be part of the initial `mutate_target` implementation, not a follow-up hardening phase.
+**Phase to address:**
+Phase 49 (doctor implementation).
 
 ---
 
-### Pitfall 6: LiveView Filter State Growing Into an Unstructured Assign Bag
+### Pitfall 6: `doctor` false positive on valid non-default or dynamic index setups
 
 **What goes wrong:**
-Each filter dimension (queue, state, worker, tags, inserted_after, scheduled_before) gets its own assign: `@queue_filter`, `@state_filter`, `@worker_filter`, etc. Each filter change event partially updates its own assign. The query builder reads from all of them. Over time, adding a new filter requires changing the event handler, the assign initialization, the query builder, the URL encoding, and the reset logic — in five different places with no type safety.
+Doctor reports "missing index" for configurations that are intentionally different from Oban's default migration layout — for example: a host that uses a partial index instead of a full composite index, a host that ran a manual `CREATE INDEX CONCURRENTLY` without going through Oban's migration, or a custom index naming convention from an ORM migration. Doctor reports a failure; the host's DB is actually fine. The operator spends time chasing a phantom.
 
 **Why it happens:**
-LiveView encourages individual assigns for individual UI elements. The natural path is to add one assign per filter.
+Doctor checks for index existence by name or by column-set pattern. Partial indexes and non-default names are invisible to a name-based check.
 
 **How to avoid:**
-- Define a single `%JobFilter{}` struct that holds all filter dimensions with typed fields. Initialize it from URL params in `handle_params`, not from `phx-value-*` events.
-- A single `"apply_filters"` event replaces the entire filter struct from the submitted form params. There is no partial filter assignment.
-- URL encoding and decoding go through a `JobFilter.from_params/1` and `JobFilter.to_params/1` pair. All filter-to-query translation happens in one `build_query(filter)` function.
-- This struct should live in its own module (e.g., `ObanPowertools.Web.JobFilter`) because the API layer (API-01) will need to construct the same filter to run queries programmatically.
+- Check for index coverage by definition (column set + predicate), not by Oban's expected migration-generated name. `pg_index` joined to `pg_attribute` lets you verify whether a covering index exists for the column set, regardless of name.
+- Distinguish between "missing index" (covered columns not present in any index) and "non-standard index name" (covered columns present but named differently). Report the latter as INFO/warn, not ERROR.
+- Provide an escape hatch: an env var or Mix config flag (e.g., `DOCTOR_SKIP_INDEX_CHECKS=1`) so hosts with custom index layouts can suppress that check in CI.
 
 **Warning signs:**
-- More than 4 individual filter-related assigns in the socket.
-- A `handle_event("change_queue", ...)` handler that directly calls `assign(socket, :queue_filter, ...)`.
-- A filter change that does not also reset pagination state.
+- Doctor checks index names with a string match (e.g., `index_name = 'oban_jobs_state_scheduled_at_id_index'`) rather than checking covering columns.
 
-**Phase to address:** QRY-01 (listing) — the filter struct must be designed before any LiveView event handlers are written.
+**Phase to address:**
+Phase 49 (doctor implementation).
 
 ---
 
-### Pitfall 7: The Native Job Surface Duplicating Oban Web's Patterns Instead of Closing the UI Asymmetry
+### Pitfall 7: `doctor` exit code not honest — CI breaks on informational findings
 
 **What goes wrong:**
-The native job listing recreates the Oban Web dashboard look and feel — including its raw job args/meta display, its state tabs, and its inspection-only posture. The result is two parallel job inspection surfaces with no clear ownership boundary, and operators use Oban Web for inspection and then navigate back to native pages for actions — defeating the purpose of the native surface.
+If `doctor` exits non-zero for any finding — including INFO/warn-level items like "migration at version X, latest is Y" — hosts wire it into CI and every non-latest migration state breaks the build, even for intentionally pinned migration versions. Conversely, if doctor exits 0 even when it found a CRITICAL issue (e.g., uniqueness index missing), it gives the host false assurance.
 
 **Why it happens:**
-Oban Web is the mental model for "job listing." It is easy to replicate its UI patterns without questioning whether they serve the Powertools operator model.
+Exit code semantics are underspecified. Developers default to `Mix.raise/1` or `System.halt(1)` on any non-empty finding, which is too aggressive.
 
 **How to avoid:**
-- The native job listing is a diagnosis-and-action surface, not a raw inspection dump. Its primary job is to get operators to the right job quickly and then perform audited actions — not to show raw args/meta.
-- Apply `DisplayPolicy` to all args/meta rendering (the `ObanWebBridge` already demonstrates this pattern via `format_job_args` and `format_job_meta`). The native job detail must go through the same `DisplayPolicy.display(:job_args, ...)` seam.
-- The Oban Web bridge (`/ops/jobs/oban`) should remain the destination for deep raw inspection. The native job detail page links to the bridge for "Open Generic Job Inspection in Oban Web bridge" — maintain this boundary and do not replicate raw inspection capability in the native detail page.
-- The native surface should expose actions the bridge cannot: audited retry/cancel/discard with reason capture, preview, and audit trail. That is the differentiator.
+- Define a three-tier exit code convention before writing a line of task code:
+  - `0` — all checks passed with no ERROR-level findings
+  - `1` — at least one ERROR-level finding (index missing, config invalid, migration drift exceeds threshold)
+  - `2` — task itself failed to run (DB unreachable, config missing)
+- INFO and WARN findings always exit 0.
+- Document the exit codes in the task's `@shortdoc` and in the guide.
 
 **Warning signs:**
-- The native job detail page renders raw `inspect(job.args)` or `Jason.encode!(job.args)` without going through `DisplayPolicy`.
-- The native job listing has tabs mirroring Oban Web's `available | executing | scheduled | retryable | cancelled | discarded | completed` state tab strip.
-- The native surface has no action buttons — it has become read-only inspection like the bridge.
+- Task uses `Mix.raise/1` for non-fatal findings (this exits 1 for warnings).
+- No test asserting exit code behavior.
 
-**Phase to address:** QRY-02 (job detail) and QRY-03 (job actions) — the detail page design must start from the operator action workflow, not from raw data display.
+**Phase to address:**
+Phase 49 (doctor implementation).
 
 ---
 
-### Pitfall 8: The Operator API (API-01) Allowing Unbounded Queries — Automation Misuse
+### Pitfall 8: `doctor` running migrations as a side effect
 
 **What goes wrong:**
-The public Elixir API provides a `list_jobs/1` function that accepts arbitrary filter maps. Automation scripts pass no filters and iterate over all jobs. Or automation retries entire queues by calling `retry_job` in a loop. The API has no built-in limits, so it becomes an unbounded mutation surface under automation.
+A developer adds `Mix.Task.run("ecto.migrate", [])` or `Ecto.Migrator` calls inside doctor "to ensure a clean baseline before checking." This is catastrophic: doctor gets wired into a read-only staging check, then silently migrates production on the first run.
 
 **Why it happens:**
-Library APIs feel like they should be maximally flexible. Rate limiting and quotas feel like application concerns, not library concerns.
+The impulse is to be helpful — "fix detected migration drift automatically." In an ops library, helpful = dangerous.
 
 **How to avoid:**
-- `list_jobs/1` must have a mandatory `:limit` option with a hard ceiling (e.g., max 500). The default limit should be 50. Omitting limit does not mean "all jobs" — it means the default limit applies.
-- Bulk mutation functions (`retry_jobs/2`, `cancel_jobs/2`) must accept a list of job IDs, not a filter. The caller is responsible for retrieving the IDs and selecting the scope. This prevents "retry all failed jobs" from being a single function call.
-- All mutation functions in the API must go through the same Lifeline pipeline as the UI — preview, drift check, reason, audit. The API does not expose a "fast path" that skips preview.
-- Design the typed API around `actor` as a required first argument. Every mutation function signature is `action(repo, actor, ...)`. This mirrors the existing `Lifeline.execute_repair(repo, actor, ...)` pattern and makes audit attribution non-optional.
-- Document what the API does not do: it does not replace a cron system, it does not enable queue draining automation, and it does not expose raw DB writes.
+- doctor NEVER calls any task that modifies the DB schema, not even conditionally.
+- Doctor outputs the migration commands the operator should run, as copy-pasteable strings.
+- Add an explicit `# NO WRITES — read-only` comment block at the top of the doctor task module.
 
 **Warning signs:**
-- `list_jobs(repo, %{})` returns all jobs (no limit applied).
-- Any API function that does not require an `actor` argument.
-- Any API function that directly calls `Oban.retry_job/1` or `Repo.update_all` without going through the audit pipeline.
+- Any `Mix.Task.run` call inside doctor that is not itself a read-only task.
+- Any `Ecto.Migrator` call inside doctor.
 
-**Phase to address:** API-01 — define the typed function signatures and required options before implementing any API function body.
+**Phase to address:**
+Phase 49 (doctor implementation).
 
 ---
 
-### Pitfall 9: Telemetry Cardinality Explosion From Job-Level Metadata
+### Pitfall 9: Limiter CLI duplicating `Explain`/`Limits` logic instead of delegating to existing modules
 
 **What goes wrong:**
-New telemetry events for job actions include job-specific metadata — `worker`, `queue`, `job_id`, or `reason` — as metadata keys. These become high-cardinality dimensions in metrics systems (Prometheus, Datadog). A monitor that previously had 5 time series now has 5 × N_workers × N_queues × N_reasons time series. The metric store runs out of label cardinality budget and starts dropping events.
+`mix oban_powertools.limiter.explain` and `.simulate` re-implement blocker resolution or rate window arithmetic inline in the Mix task rather than calling `ObanPowertools.Explain` and `ObanPowertools.Limits`. The task output then drifts from runtime behavior within a few commits, producing a CLI that describes a subtly different limiter than the one actually running.
 
 **Why it happens:**
-The natural way to enrich a telemetry event with context is to add all available context. `worker`, `queue`, and `job_id` all feel like "low-cardinality" until the system has 50 workers and 20 queues.
+Mix tasks feel like "plumbing code" and developers copy-paste core logic rather than requiring the app modules. In a Mix task, the app may not be started, so `Application.get_env` calls or GenServer calls into `Limits` appear to fail — the temptation is to inline the logic instead.
 
 **How to avoid:**
-- The existing `Telemetry` module's public contract (defined in `@contract`) is the constraint boundary. Adding new events for job actions must follow the same low-cardinality rule: allowed metadata keys are `:action`, `:source`, `:target_type`, `:outcome`. Not `:worker`, `:queue`, `:job_id`, `:reason`.
-- The new operator_action family is the right home for job action telemetry: `[:oban_powertools, :operator_action, :job_action_executed]` with `%{count: 1}` measurement and `%{action: "retry", source: "ui"|"api", outcome: "ok"|"error"}` metadata. Queue and worker identity belong in audit events, not telemetry events.
-- If `queue` or `worker` is truly needed for observability, add them to the `@contract` as explicit low-cardinality additions and document the cardinality expectation.
-- The `Telemetry.execute_operator_action/3` function already exists — use it, do not add a new `execute_job_action/3` variant that bypasses the contract.
+- Call `Mix.Task.run("app.start")` (or target the repo only with `Mix.Task.run("app.config")`) at the top of the task, then delegate to `ObanPowertools.Explain.explain/1` and `ObanPowertools.Limits.query/1` directly — the same public functions the runtime uses.
+- The task is responsible only for formatting output and parsing CLI flags. All logic lives in the existing modules.
+- Add a test that calls the Mix task and asserts its output matches the output of calling `Explain.explain/1` directly with the same input.
 
 **Warning signs:**
-- A new telemetry event call that passes `worker: job.worker` or `queue: job.queue` or `job_id: job.id` as metadata.
-- A new event family added outside the five frozen families in `@contract`.
-- An event that passes `reason: reason` from free-form user input as a metadata key.
+- The task module contains arithmetic involving rate windows, token buckets, or blocker codes.
+- The task does not call `app.start` or `app.config` before querying limiter state.
 
-**Phase to address:** QRY-03 (actions) and API-01 (api mutations) — check telemetry metadata against the contract before writing any `Telemetry.execute_*` call.
+**Phase to address:**
+Phase 50 (limiter CLI implementation).
 
 ---
 
-### Pitfall 10: The Selectors Module Not Extended for Job Surface Paths — Inconsistent Deep-Link URLs
+### Pitfall 10: `limiter.simulate` mutating real rate limiter state
 
 **What goes wrong:**
-New pages (`/ops/jobs/jobs`, `/ops/jobs/jobs/:id`) generate their URLs with hardcoded path strings or `Routes.live_path(...)` calls rather than going through the `Selectors` module. Other pages that deep-link into a job detail (e.g., Lifeline's "Open Generic Job Inspection in Oban Web bridge" link) use `build_job_path(@oban_dashboard_path, job_id)` — a private helper. The result is two different helpers for job paths, with no canonical contract.
+`.simulate` is supposed to show what would happen if a job were enqueued. If simulate calls the actual `Limits.decrement/2` or `Limits.check_and_reserve/2` path, it consumes a real token from the limiter's running counter. Under load, a developer running simulate repeatedly to demo the feature accidentally depletes the live rate limit budget for production jobs.
 
 **Why it happens:**
-`Selectors` currently only has entries for the 5 existing destinations (`:lifeline`, `:forensics`, `:audit`, `:limiters`, `:cron`). Adding new paths to `Selectors` requires updating `@canonical_paths`, which might feel like extra work for the first phase.
+The simulate command is written against the real limiter without a dry-run path, because the limiter module has no dry-run variant yet.
 
 **How to avoid:**
-- Add `:jobs` and `:job_detail` to `@canonical_paths` in `Selectors` when adding the new routes to the router. `job_path/1` and `job_detail_path/1` should be public helpers on `Selectors`, not private helpers on individual LiveView modules.
-- The existing `build_job_path(@oban_dashboard_path, job_id)` helper in `LifelineLive` is a bridge path (Oban Web), not a native path. Keep it. Add a separate `Selectors.job_detail_path/1` for the native job detail.
-- When `LifelineLive` or `ForensicsLive` links to the native job detail in QRY-02, they should use `Selectors.job_detail_path([{"id", job_id}])`, not a hardcoded `"/ops/jobs/jobs/#{job_id}"`.
+- `.simulate` must call only the read path (`Limits.explain/1` or equivalent) — never the reservation/decrement path.
+- Implement simulate as: "fetch current limiter state, compute whether the hypothetical job would be admitted, print the result" — no state change.
+- Document in the task `@shortdoc` and the guide that `.simulate` is read-only and never affects live counters.
 
 **Warning signs:**
-- A hardcoded `"/ops/jobs/jobs"` string anywhere outside of `Selectors` or the router.
-- A `link` or `navigate` in any LiveView that constructs a job path with string interpolation rather than calling `Selectors`.
-- The router adds new routes for job pages but `Selectors.@canonical_paths` is not updated.
+- `.simulate` calling any function whose name includes `reserve`, `decrement`, `acquire`, or `consume`.
+- `.simulate` test assertions that check limiter counter state before and after the task runs.
 
-**Phase to address:** QRY-01 — add the canonical paths to `Selectors` when adding the routes, not after.
+**Phase to address:**
+Phase 50 (limiter CLI implementation).
 
 ---
 
-### Pitfall 11: Auth Actions Not Declared for Job Operations — Silent Read-Only Default
+### Pitfall 11: Telemetry metrics using high-cardinality tags, violating the frozen `@contract`
 
 **What goes wrong:**
-The native job listing and detail pages load and render without any auth check because `LiveAuth.authorize_page` is only called for actions that are already enumerated (`:view_lifeline`, `:view_oban_web`). The job surface is accessible to any authenticated user with no per-action check. When job actions are added, the action atoms (e.g., `:retry_job`, `:cancel_job`) are not in the host's auth module because the host was never told they were expected — so all job mutations silently fail auth and appear disabled with no explanation.
+`Telemetry.metrics/0` returns a list of `Telemetry.Metrics` structs. Each metric has a `:tags` key that pulls values from the event metadata. If a tag is `job_id`, `worker` (unbounded — any module name), `reason` (free text), or `args` (user data), the metrics backend (StatsD, Prometheus, etc.) creates one time series per distinct value. A host with 500 workers generates 500 distinct metric label combinations per event family, overwhelming most metric backends and violating the low-cardinality contract that is explicitly frozen in `telemetry.ex`.
 
 **Why it happens:**
-Each new page and action type requires a corresponding auth action atom. The host application must enumerate these in its auth module. If the new atoms are not documented clearly, the host keeps the old module and operators wonder why the buttons are always greyed out.
+The `@contract` in `ObanPowertools.Telemetry` defines allowed metadata keys per event family. `Telemetry.metrics/0` is written by a different phase (or a different plan) without cross-checking the `@contract` allowed list. The available metadata map looks rich; the temptation is to expose it all.
 
 **How to avoid:**
-- Define and document the new auth action atoms in `LiveAuth`'s `@permission_messages` map before the pages ship: `:view_jobs`, `:retry_job`, `:cancel_job`, `:discard_job`.
-- Add corresponding `@page_read_only_banners` entries for the jobs surface.
-- The `LiveAuth.authorize_page` call must be present in `mount/3` of `JobsLive` and `JobDetailLive`, not skipped.
-- The example-host test app must add the new atoms to its fake auth module — this is the integration proof that the auth contract is complete.
-- Write a docs-contract test that verifies the new action atoms are documented in the operator guide.
+- `Telemetry.metrics/0` must only reference tag keys that are explicitly in `@contract.families` for each event family. Concretely:
+  - `:operator_action` events: only `[:action, :source]` as tags
+  - `:limiter` events: only `[:action, :blocker_code, :resource, :scope]`
+  - `:cron` events: only `[:action, :source, :overlap_policy, :catch_up_policy]`
+  - `:lifeline` events: only `[:action, :incident_class, :target_type, :outcome]` — note that `:archived_count` and `:pruned_count` are counts/measurements, not labels; they belong as metric values, not tags
+  - `:workflow` events: only the keys listed per sub-event in `@contract.families.workflow`
+- Add a compile-time assertion (or a test) that verifies every tag key used in `Telemetry.metrics/0` is present in `@contract.families` for the corresponding event.
+- Never add `worker`, `job_id`, `reason`, `args`, `meta`, or any user-data-derived key as a tag.
 
 **Warning signs:**
-- A new `JobsLive` that calls `mount/3` without a `LiveAuth.authorize_page` call.
-- Action buttons in `JobDetailLive` that are always disabled because `LiveAuth.authorized?(actor, :retry_job, ...)` always returns false (the action is not in the host's auth module).
-- No new atoms added to `@permission_messages` in `LiveAuth`.
+- A `Telemetry.Metrics.counter/2` call with `tags: [:worker]` or `tags: [:job_id]`.
+- Any tag key in `Telemetry.metrics/0` that is not listed in `@contract`.
 
-**Phase to address:** QRY-01 (listing) — declare the auth atoms when creating the page, not when adding actions.
+**Phase to address:**
+Phase 51 (opt-in `Telemetry.metrics/0` implementation).
+
+---
+
+### Pitfall 12: `Telemetry.metrics/0` forcing a reporter dependency or being called unconditionally
+
+**What goes wrong:**
+The guide or the library calls `Telemetry.metrics/0` inside `Application.start/2` or wires it automatically during `mix oban_powertools.install`. This forces adopters to either ship a `telemetry_metrics_statsd` / `telemetry_metrics_prometheus` reporter they didn't choose, or it crashes at startup when no reporter is configured. This directly violates the "no new runtime deps" and "opt-in" constraints.
+
+**Why it happens:**
+Libraries that want to "just work" are tempted to include a default reporter. Oban itself takes the correct approach (no default reporter, just events). Departing from Oban's convention in an Oban extension is a footgun.
+
+**How to avoid:**
+- `Telemetry.metrics/0` is a pure function that returns a list of metric definitions. It does nothing at call time.
+- The guide documents how to pass `ObanPowertools.Telemetry.metrics()` into the host's existing `Telemetry` supervisor (e.g., `TelemetryMetricsStatsd` or `TelemetryMetricsPrometheus`).
+- The installer (`mix oban_powertools.install`) must not add any reporter to the host's supervision tree. It may add a commented-out example snippet.
+- `mix.exs` must not list any `telemetry_metrics_*` package as a dep — not even `optional: true`. Keep the current `{:telemetry, "~> 1.4"}` as the only telemetry dep.
+
+**Warning signs:**
+- `mix oban_powertools.install` modifying `Application.start/2` or `application.ex` to wire a reporter.
+- Any `telemetry_metrics` package appearing in `mix.exs`.
+- `Telemetry.metrics/0` calling `:telemetry.attach` or `:telemetry.attach_many`.
+
+**Phase to address:**
+Phase 51 (opt-in telemetry metrics).
+
+---
+
+### Pitfall 13: Metric names in `Telemetry.metrics/0` diverging from `@contract` event names
+
+**What goes wrong:**
+`Telemetry.Metrics.counter("oban_powertools.operator_action.executed")` matches the event `[:oban_powertools, :operator_action, :executed]` only if the dotted name in the metric definition perfectly mirrors the list representation used in `:telemetry.execute/3`. If the metric uses `"oban_powertools.operator.action"` (wrong grouping) or `"powertools.operator_action.executed"` (wrong prefix), the metric is silently never incremented — no error, just zero counts forever.
+
+**Why it happens:**
+`Telemetry.Metrics` uses a dotted-string name that gets split on `.` to find the matching event. A typo or grouping error in the string produces a metric that attaches to an event that never fires.
+
+**How to avoid:**
+- Derive metric names programmatically from `@contract.families` keys rather than writing them as free-form strings. Use a helper that converts `[:oban_powertools, :limiter, :blocked]` to `"oban_powertools.limiter.blocked"`.
+- Add tests that verify `Telemetry.metrics/0` returns a non-empty list and that each metric's event name matches a known event emitted by the telemetry module.
+- Cross-check: for every `execute_*_event/3` call in `telemetry.ex`, there should be at most one corresponding `Telemetry.Metrics` entry in `metrics/0`.
+
+**Warning signs:**
+- Metric definitions written as raw string literals without a corresponding reference to the `@contract` map.
+- `Telemetry.metrics/0` test that only checks `length(metrics) > 0` without checking event name accuracy.
+
+**Phase to address:**
+Phase 51 (opt-in telemetry metrics).
+
+---
+
+### Pitfall 14: `igniter` is a hard runtime dep instead of dev-only
+
+**What goes wrong:**
+The current `mix.exs` lists `{:igniter, "~> 0.8.0"}` without `only: :dev` or `runtime: false`. This means `igniter` — a code-generation/AST-transformation library — is a runtime dependency that every host app must compile and ship to production. Igniter is only needed during `mix oban_powertools.install`, not at runtime. Hex adopters will see igniter pulled into their production release, adding compilation time and a transitive dep footprint they didn't choose.
+
+**Why it happens:**
+Igniter is added as a dep to make the installer work during development, and developers forget to scope it because it "has to be available" when running mix tasks. In fact, Mix tasks run in the dev/test environment; the production release does not need installer machinery.
+
+**How to avoid:**
+- Scope igniter: `{:igniter, "~> 0.8.0", only: [:dev, :test], runtime: false}`.
+- Verify after the change: `mix hex.build` should not include igniter as a runtime dep in the package manifest.
+- Cross-check all deps in `mix.exs` for similar scope issues before publishing:
+  - `ex_doc` already has `only: :dev, runtime: false` — correct.
+  - `lazy_html` already has `only: :test` — correct.
+  - `igniter` does not — fix before publish.
+
+**Warning signs:**
+- `mix hex.info oban_powertools` after publish shows igniter as a runtime dep.
+- `mix hex.build` output lists igniter without a `(dev)` qualifier.
+
+**Phase to address:**
+Phase 47 (Hex Release Prep) — fix in the same edit that adds `package/0`.
+
+---
+
+### Pitfall 15: ExDoc `source_ref` absent — hex docs link to `main` instead of the release tag
+
+**What goes wrong:**
+ExDoc publishes documentation to hexdocs.pm. Without `source_ref` set to the published git tag (e.g., `"v0.5.0"`), all "View source" links in the published docs point to `main` on GitHub. For adopters reading the docs for `0.5.0`, source links open code on `main` that may have diverged. This is a first-impression trust issue for a library publishing for the first time.
+
+**Why it happens:**
+`source_ref` is an opt-in ExDoc config key. The current `docs/0` in mix.exs has no `source_ref` or `source_url_pattern` keys (confirmed by inspection).
+
+**How to avoid:**
+- Add to `docs/0`:
+  ```elixir
+  source_url: "https://github.com/szTheory/oban_powertools",
+  source_ref: "v#{@version}",
+  source_url_pattern: "https://github.com/szTheory/oban_powertools/blob/v#{@version}/%{path}#L%{line}"
+  ```
+- Define `@version` as a module attribute at the top of mix.exs referencing the version string.
+- Verify links in `mix docs` output before publishing.
+
+**Warning signs:**
+- `docs/0` in mix.exs has no `source_ref` key (current state — confirmed).
+- "View source" links in local `mix docs` output all resolve to `/main/` instead of a version tag.
+
+**Phase to address:**
+Phase 47 (Hex Release Prep).
+
+---
+
+### Pitfall 16: `CHANGELOG.md` absent — adopters can't evaluate version-to-version changes
+
+**What goes wrong:**
+Hex.pm surfaces the changelog on the package page. Adopters deciding whether to upgrade from `0.5.0` to `0.6.0` rely on it. Without one, the library appears unmaintained. Additionally, `mix hex.publish` warns if `CHANGELOG.md` is absent, and some CI pipelines treat that warning as an error.
+
+**Why it happens:**
+The project never had a public changelog because it was never published. Internal milestones use `RETROSPECTIVE.md` instead, which is internal and not in a hex-conventional format.
+
+**How to avoid:**
+- Create `CHANGELOG.md` before the first `mix hex.publish` with an `## [0.5.0] — 2026-05-28` section summarizing the first release contents.
+- Include `CHANGELOG.md` in the `package/0` `:files` list.
+- Add a `changelog:` key to `docs/0` so hexdocs renders it.
+
+**Warning signs:**
+- No `CHANGELOG.md` at repo root (current state — confirmed by directory listing).
+- `mix hex.build --dry-run` emits a changelog warning.
+
+**Phase to address:**
+Phase 47 (Hex Release Prep).
+
+---
+
+### Pitfall 17: Audit/verification passing while working tree is dirty — v1.5 repeat risk
+
+**What goes wrong:**
+v1.5 phases 44 and 45 had SUMMARY files claiming "all tests passing" while the `JobsLive` implementation existed only as uncommitted working-tree changes. The audit reported `passed` because it validated working-tree state, not committed state. For v1.6, the hex publish step makes this materially worse: `mix hex.publish` ships whatever is in the working tree at publish time, not the last committed state. A dirty tree at publish time risks shipping uncommitted, partially-written, or partially-reverted code to hex adopters.
+
+**Why it happens:**
+Agents (and developers) verify "green tests" and "SUMMARY complete" as phase-done signals without asserting `git status --porcelain` is clean. The audit step also checks working-tree files for milestone verification instead of checking `git log` for the expected phase commit.
+
+**How to avoid:**
+- Every phase verification step must run `git status --porcelain` and assert empty output before declaring the phase complete. Non-empty output = phase is not done, regardless of test results.
+- The milestone audit must include an explicit `git status --porcelain` clean-tree assertion as its first check, before any functional tests.
+- Before `mix hex.publish` (Phase 47), add a CI gate that fails if `git status --porcelain` is non-empty.
+- Per the post-v1.5 thread: this is a cross-phase GSD process rule that should be graduated into the audit/verification contract for all remaining milestones, not just noted in the retrospective.
+
+**Warning signs:**
+- A SUMMARY file for a phase says "tests pass" but there is no `feat(XX-*)` commit in `git log` for that phase.
+- The milestone audit script does not invoke `git status`.
+- `mix hex.publish` is executed without first asserting a clean tree.
+
+**Phase to address:**
+Phase 47 (Hex Release Prep) — add the clean-tree check as the first gate. All subsequent v1.6 phases must include `git status --porcelain` assertion in their verification steps as a standing contract.
 
 ---
 
@@ -268,27 +409,28 @@ Each new page and action type requires a corresponding auth action atom. The hos
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Using `Audit.list_all/0` to find job-related audit events | Simple, no query optimization needed | Full table scan on audit_events; breaks as audit log grows | Never for production; acceptable only in test harness |
-| Skipping `DisplayPolicy` for job args/meta on the native detail page | Faster initial implementation | Leaks redacted fields; breaks the bridge/native display-policy parity contract | Never — apply `DisplayPolicy` from the first render |
-| Putting `filter` state in raw assigns instead of a `%JobFilter{}` struct | Fewer files to create initially | Each new filter dimension requires touching 5 places; no type safety | Never — define `%JobFilter{}` before writing any filter handler |
-| Using `Repo.update_all` for bulk job state changes without per-row audit | Single query, very fast | No audit trail; no per-job drift detection; silent partial failures on constraint violations | Never — audit trail is a hard constraint |
-| Hardcoding the Lifeline `@supported_actions` list: not extending it for new job action atoms | Avoids touching the existing `Lifeline` module | New actions bypass the centralized action guard; support-truth breaks | Never — add new atoms to `@supported_actions` in `Lifeline` |
-| Offset-based pagination for the job listing | Simpler to implement initially | Degrades with large offsets on high-volume oban_jobs tables | Acceptable for MVP only if total job count is known to be < 50k |
+| Skipping `package/0` in mix.exs | No extra config to write | Publishes test/dev cruft or silently omits priv files; only surfaces after install from hex | Never — add `package/0` before first publish |
+| Testing installer only via `path:` dep | Fast iteration in dev | Installation from hex is never validated; adopters hit install bugs on day one | Never for the release gate; acceptable in pre-publish dev phases |
+| Using metric tag keys not in `@contract` | Richer dashboards in dev | High-cardinality tag explosion in production metric backends; violates frozen contract | Never |
+| Writing doctor queries against live `oban_jobs` table | Simpler code path | Table locks in production during operator diagnosis; defeats the read-only guarantee | Never |
+| Checking working-tree state instead of committed state in audits | Slightly faster audit | Audit passes for uncommitted work; dirty-tree code ships to hex | Never |
+| Scoping `igniter` as a runtime dep | No dep scoping needed | Every host's production release ships installer machinery; bloated release | Never — fix before first publish |
+| Publishing at `1.0.0` before external validation | Appears stable and complete | Breaking rename forces `2.0.0` within months; undermines trust | Never — use `0.x` until adoption confirms stability |
 
 ---
 
 ## Integration Gotchas
 
 | Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| Oban Web bridge (`/ops/jobs/oban`) | Adding a native "job listing" that looks identical to Oban Web, causing operators to be unsure which surface owns mutations | Native listing is action-first (retry/cancel/discard with audit); bridge stays inspection-only. Link from native detail to bridge for raw args/meta inspection. |
-| Lifeline `preview_repair` / `execute_repair` | Calling Oban functions directly for retry/cancel, bypassing the pipeline | All job mutations must go through `Lifeline.execute_repair` with a valid preview token, even for jobs with no associated Incident |
-| `Telemetry.execute_operator_action` | Adding `worker:` or `queue:` metadata keys to telemetry events | Only low-cardinality atoms from the frozen `@contract` are allowed as metadata keys |
-| `Audit.list_all/0` | Using it to find audit events for a specific job on the job detail page | Use `Audit.list/1` with `%{type: :job, id: job_id}` or `Audit.list_all/2` with filters; never load the full audit table into memory |
-| `DisplayPolicy` | Rendering `job.args` or `job.meta` directly in HEEx without going through `DisplayPolicy.display/3` | Call `DisplayPolicy.display(:job_args, job.args, %{surface: :jobs, ...})` for every args/meta render; fall back to redacted placeholder if display policy returns nil |
-| `Selectors` module | Creating private path helpers in LiveView modules for job URLs | Add `:jobs` and `:job_detail` to `Selectors.@canonical_paths` and use `Selectors.job_path/1`, `Selectors.job_detail_path/1` |
-| `LiveAuth` permission messages | Using a new job action atom in `authorize_action` that is not in `@permission_messages` | Causes a `Map.fetch!` error at runtime — add the atom to `@permission_messages` before using it |
-| `LifelineLive`'s `build_job_path` helper | Repurposing it for native job detail links | Keep `build_job_path` for the bridge (Oban Web URL); add a separate `Selectors.job_detail_path/1` for native destination links |
+|-------------|----------------|-----------------|
+| Igniter installer + hex release | Installer tested with `path:` dep only; breaks from hex | Test with an isolated `examples/hex_consumer/` using the published package or a git tag ref |
+| Frozen telemetry `@contract` + `Telemetry.metrics/0` | Writing metric tags without cross-checking `@contract.families` | Derive tag lists programmatically from `@contract`; add a test asserting tag keys are a subset of the allowed list |
+| Oban prefix config + doctor | Hardcoding `"public"` schema in `pg_catalog` queries | Read `prefix` from Oban config at task startup; parameterize all catalog queries with `schemaname = $1` |
+| `Limits`/`Explain` + limiter CLI | Inlining limiter arithmetic in the Mix task | Task delegates entirely to `Explain`/`Limits` modules; no arithmetic in the task module |
+| `mix hex.publish` + dirty working tree | Publishing after a test-only fix without committing | Assert `git status --porcelain` empty as the first step in the publish checklist |
+| ExDoc + hex publish | Source links resolve to `main` instead of the release tag | Set `source_ref: "v#{@version}"` and `source_url_pattern` in `docs/0` before first `mix hex.build` |
+| `Telemetry.metrics/0` + optional reporters | Wiring a default reporter in the installer | `Telemetry.metrics/0` is a pure function; reporter wiring belongs entirely in the host's supervision tree |
+| Deterministic host-owned migrations + doctor | Doctor triggering migrations or assuming migration sequence | Doctor reads migration table as a catalog query only; outputs commands for operators to run, never runs them |
 
 ---
 
@@ -296,65 +438,31 @@ Each new page and action type requires a corresponding auth action atom. The hos
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Filter query without `state` as leading WHERE clause | Slow listing page; DB CPU spike on operator actions | Always lead with `state` in the WHERE clause; it matches the most selective Oban index | Beyond ~50k total oban_jobs rows |
-| JSONB tag filter without GIN index | Filter by tags takes seconds | Either add a migration for a GIN index on `tags`, or exclude tag filtering from the initial feature set | Beyond ~10k rows |
-| Loading all audit events for a job with `Audit.list_all/0` + Enum.filter | Audit tab on job detail slows as audit log grows | Use `Audit.list/1` with a resource identifier; add DB-level filter | Beyond ~5k audit events |
-| Bulk operation iterating N individual `execute_repair` calls synchronously | Bulk retry of 100 jobs takes 30+ seconds; UI times out | Batch preview generation, then parallel-safe per-job execute with aggregated results | Beyond ~20 jobs selected |
-| No `LIMIT` in the API `list_jobs` query | Full table scan from automation scripts | Enforce a hard limit in the query builder; reject requests with no explicit limit above ceiling | Any automation script |
-| Offset pagination on oban_jobs | Page 50+ is slower than page 1 due to scan-then-skip | Use keyset/cursor pagination with `(state, id)` as cursor | Beyond page 10 with large result sets |
-
----
-
-## Security Mistakes
-
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| Exposing full `job.args` / `job.meta` without `DisplayPolicy` | Leaks sensitive data (PII, credentials, internal IDs) in the operator UI | Apply `DisplayPolicy.display(:job_args, ...)` on every render; never pass raw args to the template |
-| API-01 functions that accept `actor: nil` or skip `actor` | Any system process can perform audited mutations without attribution | All API mutation functions require a non-nil `actor`; `Auth.actor_id(nil)` returning nil must be a hard error, not a soft skip |
-| Bulk cancel/discard on an unbounded job set from the API | An automation script cancels the entire production queue | `cancel_jobs` and `discard_jobs` require an explicit list of job IDs, never a filter-and-all pattern |
-| Job detail page accessible without `authorize_page` auth check | Any authenticated user can inspect operator job details including worker module name and routing metadata | Every `mount/3` in `JobsLive` and `JobDetailLive` must call `LiveAuth.authorize_page(socket, :view_jobs, ...)` |
-| `reason` field from user input included as a telemetry metadata key | Free-form user text creates high-cardinality and potential injection in metrics labels | `reason` is stored in audit events only; it must never appear as a telemetry metadata key |
-
----
-
-## UX Pitfalls
-
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| Job listing defaults to showing all states | Operators see thousands of completed jobs and cannot find actionable jobs | Default filter to `state in [available, executing, scheduled, retryable]`; require explicit opt-in to show completed/discarded |
-| Retry/cancel buttons visible but always disabled (auth misconfiguration) | Operators assume the feature is broken; support load increases | Show the read-only banner from `LiveAuth.page_read_only_banner/1` and link to the doc on configuring the new auth atoms |
-| Bulk select does not show a count of selected jobs | Operator selects 200 jobs by accident | Show selected count prominently; require a confirmation step for bulk actions over a threshold (e.g., > 10 jobs) |
-| Job detail page does not link back to the job listing with preserved filters | Operator drills into a job, acts on it, then loses their filter context | Use `push_patch` or a "Back to list" link that preserves the filter URL params |
-| After a job action succeeds, the page does not update the job's state | Operator thinks the action failed and clicks again | Reload the job record after a successful `execute_repair` and update the assigns; show the new state prominently |
-| Oban Web bridge link appears even when Oban Web is not installed | Broken link confuses operator | Conditionally render the bridge link only when `Code.ensure_loaded?(Oban.Web.Router)` is true — same pattern the router already uses |
+| `doctor` querying live `oban_jobs` for row counts | Doctor takes 10s+ on large job tables; holds `AccessShareLock` | Restrict to `pg_catalog` and `information_schema` only | Any production host with >100k jobs |
+| `doctor` without `schemaname` in `pg_indexes` query | False healthy result on non-default Oban prefix; or false error on default prefix with a same-named table elsewhere | Always parameterize by `schemaname = $1` from Oban config | Any host using `prefix: "myapp"` |
+| `limiter.simulate` calling the reservation path | Depletes live token budget under repeated CLI invocation | Read-only explain path only in simulate | Any host with a rate-limited resource under load |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Job listing filters:** Filter state is in a `%JobFilter{}` struct encoded in URL params — not in raw assigns — verify with a `push_patch` test that filter changes preserve the URL.
-- [ ] **Job detail DisplayPolicy:** Every `job.args` and `job.meta` render goes through `DisplayPolicy.display/3` — verify by checking no HEEx template calls `Jason.encode!(job.args)` or `inspect(job.args)`.
-- [ ] **Job actions audit trail:** Every retry/cancel/discard action writes a `lifeline.repair_executed` audit event with `plan_hash`, `preview_token`, and `reason` — verify with an audit log assertion in the action test.
-- [ ] **Bulk partial failure reporting:** A bulk action test that has 2 of 5 jobs already in terminal state reports exactly 3 successes and 2 failures back to the operator — verify with a mixed-state fixture test.
-- [ ] **API-01 actor requirement:** Every API mutation function raises or returns `{:error, :actor_required}` when called with `actor: nil` — verify with a nil-actor unit test for each public function.
-- [ ] **Telemetry cardinality:** No new telemetry event includes `worker`, `queue`, `job_id`, or `reason` as metadata keys — verify with a `Telemetry.contract/0` assertion test against the new events.
-- [ ] **Auth atoms documented:** The new auth action atoms (`:view_jobs`, `:retry_job`, `:cancel_job`, `:discard_job`) are listed in `LiveAuth.@permission_messages` and in the operator guide — verify with the docs-contract test pattern from Phase 38.
-- [ ] **Selectors extended:** `Selectors.job_path/1` and `Selectors.job_detail_path/1` exist and are used by all cross-surface links — verify by grepping for hardcoded `"/ops/jobs/jobs"` strings outside of `Selectors` and the router.
-- [ ] **Oban Web bridge boundary preserved:** The native job detail page links to the bridge for raw inspection but does not replicate it — verify that there is no second `format_job_args`/`format_job_meta` call path outside of `ObanWebBridge`.
-- [ ] **Concurrent action guard:** The `mutate_target` implementation for job actions includes a `WHERE state = :expected_state` guard that returns `{:error, :concurrent_modification}` on 0-row updates — verify with a concurrent-update integration test.
-
----
-
-## Recovery Strategies
-
-| Pitfall | Recovery Cost | Recovery Steps |
-|---------|---------------|----------------|
-| Job listing seq scan discovered in production | MEDIUM | Add missing index via migration (Oban's JSONB `tags` GIN index or `(state, worker)` composite); can be done concurrently without downtime using `CONCURRENTLY` |
-| Actions found to bypass Lifeline pipeline | HIGH | Retroactive audit events are impossible for already-lost records; implement the Lifeline pipeline correctly going forward; publish a support-truth notice to adopters |
-| Telemetry high-cardinality events already shipped | HIGH | Requires removing or replacing metric label dimensions; existing dashboards break; requires coordinated rollout with host apps |
-| Bulk operation partial failures with no audit trail | HIGH | Audit log gap is unrecoverable — affected jobs must be manually investigated and re-audited; implement proper per-job audit events going forward |
-| Filter state in raw assigns causing stale pagination | LOW | Refactor to `%JobFilter{}` struct + URL-encoded state; no data loss, only UI regression |
-| API-01 shipped without actor requirement | MEDIUM | Add actor validation and bump API version; document breaking change; automation scripts need update |
+- [ ] **Hex release:** `mix hex.build && tar tf *.tar` audited — no `test/`, `examples/`, `prompts/`, `.planning/` files; all `priv/` and `guides/` files present
+- [ ] **Hex release:** `CHANGELOG.md` exists at repo root and is included in `package/0 :files`
+- [ ] **Hex release:** `source_ref` set to the release tag in `docs/0`
+- [ ] **Hex release:** `igniter` scoped to `only: [:dev, :test], runtime: false`
+- [ ] **Hex release:** version is `0.5.0`, not `1.0.0`
+- [ ] **Hex release:** `git status --porcelain` is empty before `mix hex.publish`
+- [ ] **Getting-started verification:** install flow exercised from an isolated hex consumer (not a `path:` dep)
+- [ ] **doctor:** all queries qualified by Oban prefix from config
+- [ ] **doctor:** no query references a non-catalog table
+- [ ] **doctor:** exit code 0/1/2 behavior has a test
+- [ ] **doctor:** no `Mix.Task.run("ecto.migrate")` or `Ecto.Migrator` call anywhere in the task
+- [ ] **limiter CLI:** `.simulate` calls no function with `reserve`, `decrement`, `acquire`, or `consume` in its name
+- [ ] **limiter CLI:** task delegates to `Explain`/`Limits` modules; no arithmetic inlined in the task module
+- [ ] **Telemetry.metrics/0:** every tag key is present in `@contract.families` for its event family
+- [ ] **Telemetry.metrics/0:** `mix.exs` has no `telemetry_metrics_*` dep (even optional)
+- [ ] **Telemetry.metrics/0:** installer does not wire a reporter or modify `Application.start/2`
+- [ ] **All phases:** phase verification includes `git status --porcelain` clean-tree assertion before declaring done
 
 ---
 
@@ -362,33 +470,34 @@ Each new page and action type requires a corresponding auth action atom. The hos
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Seq scan on oban_jobs filters | QRY-01 (listing) — index analysis before query design | `EXPLAIN ANALYZE` on filter query in test; assert no Seq Scan |
-| Pagination state reset on filter change | QRY-01 (listing) — define `%JobFilter{}` + URL contract | Test: change queue filter, assert cursor resets; page URL changes |
-| Actions bypassing Lifeline pipeline | QRY-03 (actions) — design constraint, not retrofit | Test: every action writes `lifeline.repair_executed` audit event with required metadata fields |
-| Bulk partial failure handling | QRY-04 (bulk) — per-job result accumulation design | Test: mixed-state bulk fixture reports per-job success/failure |
-| Double-action race condition | QRY-03 and QRY-04 — `WHERE state = expected` guard in `mutate_target` | Concurrent-update test: two simultaneous executes, only one succeeds |
-| Filter state as raw assigns | QRY-01 (listing) — `%JobFilter{}` struct defined first | No single filter-dimension assign in socket; all filter in one struct |
-| Native surface duplicating Oban Web | QRY-02 (detail) — design review before first template render | Check: no `inspect(job.args)` or `Jason.encode!(job.args)` in any native template |
-| API-01 unbounded queries | API-01 — mandatory `:limit` in API spec | Test: calling `list_jobs(repo, actor, %{})` with no limit applies default limit; limit ceiling is enforced |
-| Telemetry cardinality explosion | QRY-03 and API-01 — `@contract` check before any `Telemetry.execute_*` call | Test: telemetry events for job actions assert no high-cardinality metadata keys |
-| Selectors not extended for job paths | QRY-01 — add to `Selectors.@canonical_paths` with route addition | Test: no hardcoded job path strings outside Selectors; `job_path/1` and `job_detail_path/1` exist |
-| Auth atoms not declared | QRY-01 — add to `LiveAuth.@permission_messages` before `authorize_page` call | Test: new atoms in `@permission_messages`; example-host auth module includes new atoms |
+| `package/0` absent — cruft included or priv omitted | Phase 47 (Hex Release Prep) | `tar tf` audit of `mix hex.build` output |
+| Version implies premature API stability (`1.0`) | Phase 47 | Version is `0.5.0` in mix.exs and CHANGELOG |
+| `igniter` is a runtime dep | Phase 47 | `mix hex.build` output shows igniter as dev-only dep |
+| ExDoc `source_ref` absent | Phase 47 | `mix docs` "View source" links resolve to tag, not `main` |
+| `CHANGELOG.md` absent | Phase 47 | `CHANGELOG.md` present and in `package/0 :files` |
+| Dirty-tree audit passes (v1.5 recurrence) | Phase 47 (release gate) + all phases (standing contract) | `git status --porcelain` assertion in every verification step |
+| Getting-started only works in-repo | Phase 48 (Hex Consumer Verification) | Install + first session passes from `examples/hex_consumer/` with published package |
+| `doctor` write operations or table locks | Phase 49 (doctor implementation) | All queries in `Repo.transaction(mode: :read_only)`; no non-catalog table refs |
+| `doctor` fixed schema / multi-prefix blindness | Phase 49 | Test suite exercises both `"public"` and `"myapp"` prefixes |
+| `doctor` false positive on valid non-default indexes | Phase 49 | Index check uses column coverage query, not name match |
+| `doctor` exit code ambiguity breaks CI | Phase 49 | Exit 0/1/2 semantics tested with asserting task return value |
+| `doctor` running migrations | Phase 49 | Code review gate: no `Ecto.Migrator` or `ecto.migrate` task call in doctor module |
+| Limiter CLI duplicates logic | Phase 50 (limiter CLI) | Task delegates to `Explain`/`Limits`; no arithmetic in task module |
+| `.simulate` mutates live state | Phase 50 | `.simulate` has no `reserve`/`decrement` call path; counter is unchanged after task run |
+| Telemetry metrics high-cardinality tags | Phase 51 (opt-in metrics) | Test: every tag in `Telemetry.metrics/0` is a key in `@contract.families` for its event |
+| Metric names diverge from `@contract` events | Phase 51 | Test: every metric event name matches a known `execute_*_event/3` call in telemetry.ex |
+| `Telemetry.metrics/0` forces a reporter dep | Phase 51 | `mix.exs` has no `telemetry_metrics_*`; installer diff shows no reporter wiring |
 
 ---
 
 ## Sources
 
-- Direct inspection of `ObanPowertools.Lifeline` (preview pipeline, `@supported_actions`, `mutate_target`, `ensure_not_drifted`, `plan_hash` drift check)
-- Direct inspection of `ObanPowertools.Web.LifelineLive` (Lifeline UX, audit event filtering, filter/selection state patterns, `build_job_path` bridge helper)
-- Direct inspection of `ObanPowertools.Audit` (`list_all/0` full-scan pattern, `list/1` resource-scoped pattern, `list_all/2` filter variant)
-- Direct inspection of `ObanPowertools.Telemetry` (`@contract` frozen families, low-cardinality constraint, `execute_operator_action/3`)
-- Direct inspection of `ObanPowertools.Web.ObanWebBridge` (DisplayPolicy application pattern for `format_job_args` and `format_job_meta`)
-- Direct inspection of `ObanPowertools.Web.LiveAuth` (`@permission_messages`, `@page_read_only_banners`, `authorize_page/3`, `authorize_action/4`)
-- Direct inspection of `ObanPowertools.Web.Selectors` (canonical path contract, `@canonical_paths`, current 5-destination scope)
-- Direct inspection of `ObanPowertools.Web.Router` (route structure, `Code.ensure_loaded?(oban_web_router)` conditional pattern)
-- Known Postgres `oban_jobs` index layout (state/queue/scheduled_at composite, no default GIN on tags)
-- v1.4 requirements archive (API-02 and QRY-01 deferred context, telemetry low-cardinality contract from POL-03)
+- Direct inspection: `/Users/jon/projects/oban_powertools/mix.exs` — confirmed `package/0` absent, `source_ref` absent, `igniter` unscoped as runtime dep, no `CHANGELOG.md`
+- Direct inspection: `/Users/jon/projects/oban_powertools/lib/oban_powertools/telemetry.ex` — frozen `@contract` with per-family allowed metadata key lists; `:archived_count` and `:pruned_count` are measurement keys, not tag keys
+- `/Users/jon/projects/oban_powertools/.planning/RETROSPECTIVE.md` — v1.5 uncommitted-phase lesson (phases 44/45 audited `passed` while never committed); v1.4 gap-closure tail from deferred proof artifacts
+- `/Users/jon/projects/oban_powertools/.planning/threads/2026-05-28-post-v1.5-next-milestone.md` — clean-working-tree graduation candidate; overbuilding verdict; `igniter` and `oban_met` dep constraints; zero-new-deps requirement
+- `/Users/jon/projects/oban_powertools/.planning/PROJECT.md` — "no new runtime deps", frozen low-cardinality telemetry constraint, host-ownership boundary, Decision Posture, defer-until-signal list
 
 ---
-*Pitfalls research for: native job query surface and typed operator API (v1.5 — QRY-01..04, API-01)*
-*Researched: 2026-05-27*
+*Pitfalls research for: Oban Powertools v1.6 Release & Operability*
+*Researched: 2026-05-28*
