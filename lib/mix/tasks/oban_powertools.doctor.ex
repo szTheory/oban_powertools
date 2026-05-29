@@ -65,6 +65,13 @@ defmodule Mix.Tasks.ObanPowertools.Doctor do
 
   @impl Mix.Task
   def run(argv) do
+    # Load the host application's configuration and code paths so the repo module
+    # and Oban app env are available, WITHOUT starting any application (D-09/D-10).
+    # "app.config" loads config + code paths but never *starts* apps, so Oban's
+    # supervision tree stays down. Called inline (not via a module-attribute task
+    # requirement) and never via "app.start", which would start Oban (Pitfall 1).
+    Mix.Task.run("app.config")
+
     {opts, _args, _invalid} = OptionParser.parse(argv, strict: @switches)
 
     repo_module = resolve_repo(opts)
@@ -79,10 +86,15 @@ defmodule Mix.Tasks.ObanPowertools.Doctor do
           findings = ObanPowertools.Doctor.run(repo, prefix: prefix, strict: strict)
           exit_code = ObanPowertools.Doctor.exit_code_for(findings)
 
+          # Map the --format string flag to a known atom explicitly. Avoids
+          # String.to_existing_atom (fragile: the target atom may not be
+          # registered yet at runtime) and never creates atoms from arbitrary
+          # CLI input (T-48-05). Unknown values fall back to the human report.
           format =
-            opts
-            |> Keyword.get(:format, "human")
-            |> String.to_existing_atom()
+            case Keyword.get(opts, :format, "human") do
+              "json" -> :json
+              _ -> :human
+            end
 
           ObanPowertools.Doctor.Formatter.print(
             findings,
