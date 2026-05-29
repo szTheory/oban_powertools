@@ -9,6 +9,11 @@ Oban Powertools ships a unified native `/ops/jobs` control plane at `/ops/jobs`.
 The native pages are `Powertools-native` surfaces for `Audited action`, while the bridge remains `Inspection only`.
 The diagnosis-first overview, cross-surface audit follow-up, and bounded native actions all belong to that same native control plane story.
 
+> **0.x stability window:** This library is published at `0.x` on Hex. There is no API freeze yet
+> — public surfaces may change before `1.0`. The internal `v1.x` planning milestone numbers
+> (v1.5, v1.6, etc.) track shipped tranches of work and do **not** map to published Hex versions.
+> Adopt `~> 0.5` and expect occasional breaking changes until `1.0`.
+
 ## 60-Second Install
 
 Start from a fresh Phoenix host, then add Oban Powertools. The default paved road is the native
@@ -22,7 +27,7 @@ mix phx.new my_app --database postgres
 ```elixir
 def deps do
   [
-    {:oban_powertools, "~> 0.1.0"},
+    {:oban_powertools, "~> 0.5"},
     {:oban_web, "~> 2.10", optional: true}
   ]
 end
