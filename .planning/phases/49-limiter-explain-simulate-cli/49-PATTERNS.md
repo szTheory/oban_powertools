@@ -398,7 +398,7 @@ defmodule Mix.Tasks.ObanPowertools.Limiter.Simulate do
 
         {:ok, %{
           resource_name: limits[:name],
-          scope_kind: Atom.to_string(limits[:scope]),
+          scope_kind: Atom.to_string(limits[:scope] || :global),  # nil-safe: :scope is absent for default-scoped (global) workers
           bucket_capacity: limits[:bucket_capacity],
           bucket_span_ms: limits[:bucket_span_ms],
           weight: weight,
@@ -493,11 +493,13 @@ end
 defp attempt_reservation(repo, resource, state, snapshot, now) do
   case compute_reservation(state, resource, snapshot.weight, now) do
     {:reserved, new_tokens_used} ->
-      state
-      |> normalize_bucket(resource.bucket_span_ms, now)
+      # Normalize ONCE up front and reuse the binding (no redundant double normalize_bucket call).
+      normalized_state = normalize_bucket(state, resource.bucket_span_ms, now)
+
+      normalized_state
       |> State.changeset(%{
         tokens_used: new_tokens_used,
-        bucket_started_at: normalize_bucket(state, resource.bucket_span_ms, now).bucket_started_at || now,
+        bucket_started_at: normalized_state.bucket_started_at || now,
         last_reserved_at: now,
         reservation_snapshot: snapshot
       })

@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Release & Operability
 status: ready_to_plan
-last_updated: "2026-05-29T18:43:02.433Z"
-last_activity: 2026-05-29
+last_updated: "2026-05-29T19:18:49.772Z"
+last_activity: 2026-05-29 -- Phase 49 planning complete
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 5
+  total_plans: 8
   completed_plans: 5
   percent: 40
 ---
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-28)
 Phase: 49
 Plan: Not started
 Next: Phase 48 (doctor-health-check) — not yet planned.
-Last activity: 2026-05-29
+Last activity: 2026-05-29 -- Phase 49 planning complete
 
 Release automation (beyond the original 47 plans): full shift-left CI/CD shipped — ci.yml (ci-gate), release.yml (release-please→gate-ci-green→publish), publish-hex.yml recovery, pr-title lint, Dependabot, SHA-pinned actions, branch protection (ci-gate + host-contract-gate), RELEASE_PLEASE_TOKEN + HEX_API_KEY. Tag v0.5.0 + oban_powertools-v0.5.0 both exist; future tags are v* (include-component-in-tag: false). See memory: hex-release-pipeline-gotchas.
 
