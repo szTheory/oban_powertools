@@ -55,7 +55,10 @@ defmodule ObanPowertools.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md" | Path.wildcard("guides/*.md")],
+      source_url: @source_url,
+      source_ref: "v#{@version}",
+      source_url_pattern: "#{@source_url}/blob/v#{@version}/%{path}#L%{line}",
+      extras: ["README.md", "CHANGELOG.md" | Path.wildcard("guides/*.md")],
       groups_for_extras: [
         "Day 0": [
           "guides/installation.md",
@@ -74,7 +77,8 @@ defmodule ObanPowertools.MixProject do
           "guides/support-truth-and-ownership-boundaries.md",
           "guides/production-hardening.md",
           "guides/troubleshooting.md",
-          "guides/upgrade-and-compatibility.md"
+          "guides/upgrade-and-compatibility.md",
+          "guides/forensics-and-runbook-handoffs.md"
         ]
       ]
     ]
