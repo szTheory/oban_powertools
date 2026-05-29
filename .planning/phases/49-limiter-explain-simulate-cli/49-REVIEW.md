@@ -13,7 +13,12 @@ findings:
   warning: 3
   info: 3
   total: 7
-status: issues_found
+status: resolved
+remediation:
+  fixed: [CR-01, WR-01, WR-02, WR-03]
+  deferred: [IN-01, IN-02, IN-03]
+  commit: 357f68e
+  note: "Critical + all 3 Warnings fixed with regression tests; 3 Info nitpicks deferred."
 ---
 
 # Phase 49: Code Review Report
@@ -209,6 +214,21 @@ is confusing and invites future drift if one is changed without the other.
 `Keyword.get`.
 
 ---
+
+## Remediation (commit 357f68e)
+
+- **CR-01 — FIXED.** `run_worker_path/3` now resolves the worker's declared snapshot via
+  `Worker.limit_snapshot/2` first and exits 2 when it is `nil` ("worker has no limits
+  configured"). The empty-args `ArgumentError` (partition_by/weight_by, Pitfall 4) is
+  rescued to exit 2. Dead `:unknown_module`/`nil` clauses removed.
+- **WR-01 — FIXED.** `--count` is validated as a positive integer (exit 2 otherwise).
+- **WR-03 — FIXED.** `--bucket-capacity`/`--bucket-span-ms`/`--weight` effective values are
+  validated positive via `validate_positive/1` (exit 2 otherwise).
+- **WR-02 — FIXED.** Inert `--prefix`/`--oban-name` switches and their `@moduledoc`
+  sections removed from both tasks.
+- **IN-01/IN-02/IN-03 — DEFERRED** (cosmetic nitpicks; no behavioral impact).
+
+Source-inspection regression tests added for CR-01 (explain) and WR-01/WR-03 (simulate).
 
 _Reviewed: 2026-05-29_
 _Reviewer: Claude (gsd-code-reviewer)_
