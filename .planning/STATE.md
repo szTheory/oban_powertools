@@ -7,10 +7,10 @@ last_updated: "2026-05-29T12:32:54.196Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
   completed_plans: 3
-  percent: 0
+  percent: 20
 ---
 
 # Project State
@@ -20,14 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28)
 
 **Core value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-**Current focus:** Phase 47 — hex-release-foundation
+**Current focus:** Phase 48 — doctor-health-check (next)
 
 ## Current Position
 
-Phase: 47 (hex-release-foundation) — EXECUTING (awaiting operator Task 5)
-Plan: 3 of 3 — files complete (commit ad2ba53), blocked on operator-only hex.pm bootstrap
-Status: Plan 47-03 complete pending operator Task 5 (HEX_API_KEY secret, Release-As: 0.5.0 footer commit, merge Release PR). Phase 47 closes when 0.5.0 is live on hex.pm.
+Phase: 47 (hex-release-foundation) — ✅ COMPLETE (oban_powertools 0.5.0 live on hex.pm 2026-05-29)
+Plan: 3 of 3 complete; operator Task 5 done — 0.5.0 published via the automated release-please → hex pipeline.
+Next: Phase 48 (doctor-health-check) — not yet planned.
 Last activity: 2026-05-29
+
+Release automation (beyond the original 47 plans): full shift-left CI/CD shipped — ci.yml (ci-gate), release.yml (release-please→gate-ci-green→publish), publish-hex.yml recovery, pr-title lint, Dependabot, SHA-pinned actions, branch protection (ci-gate + host-contract-gate), RELEASE_PLEASE_TOKEN + HEX_API_KEY. Tag v0.5.0 + oban_powertools-v0.5.0 both exist; future tags are v* (include-component-in-tag: false). See memory: hex-release-pipeline-gotchas.
 
 ## Accumulated Context
 
