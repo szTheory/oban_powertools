@@ -102,7 +102,7 @@ defmodule Mix.Tasks.ObanPowertools.Doctor do
             prefix: prefix,
             exit_code: exit_code,
             oban_version_installed: Oban.Migrations.Postgres.current_version(),
-            oban_version_db: nil
+            oban_version_db: ObanPowertools.Doctor.Checks.oban_db_version(repo, prefix)
           )
 
           exit_code

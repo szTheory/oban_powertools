@@ -157,25 +157,11 @@ defmodule ObanPowertools.Doctor.Checks do
   returns error findings for absence or drift.
   """
   def oban_migration_version(repo, prefix) do
-    sql = """
-    SELECT pg_catalog.obj_description(pg_class.oid, 'pg_class')
-    FROM pg_class
-    LEFT JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
-    WHERE pg_class.relname = 'oban_jobs'
-    AND pg_namespace.nspname = $1
-    """
-
-    db_version =
-      case repo.query(sql, [prefix], log: false) do
-        {:ok, %{rows: [[v]]}} when is_binary(v) -> String.to_integer(v)
-        {:ok, _} -> 0
-        {:error, _} -> 0
-      end
-
+    db_version = oban_db_version(repo, prefix)
     expected_version = Oban.Migrations.Postgres.current_version()
 
     cond do
-      db_version == 0 ->
+      is_nil(db_version) ->
         [
           %Finding{
             check: :oban_migration_version,
@@ -197,8 +183,50 @@ defmodule ObanPowertools.Doctor.Checks do
           }
         ]
 
+      db_version > expected_version ->
+        [
+          %Finding{
+            check: :oban_migration_version,
+            severity: :warning,
+            message:
+              "Oban migrations at v#{db_version}, but the installed library expects v#{expected_version} — " <>
+                "the database was migrated by a newer Oban than this app runs",
+            remediation:
+              "Upgrade the `oban` dependency to match the migrated schema (v#{db_version}), " <>
+                "or confirm the version skew is intentional."
+          }
+        ]
+
       true ->
         []
+    end
+  end
+
+  @doc """
+  Read the Oban migration version recorded in the `oban_jobs` table comment
+  (`pg_catalog.obj_description`) for the given prefix/schema. Returns the integer
+  version, or `nil` when the table is absent or the comment is missing/unparseable.
+  Parses defensively — a non-integer comment (e.g. a DBA note) yields `nil`, never
+  a crash (a raised `String.to_integer/1` would take down the whole run/2 pipeline).
+  """
+  def oban_db_version(repo, prefix) do
+    sql = """
+    SELECT pg_catalog.obj_description(pg_class.oid, 'pg_class')
+    FROM pg_class
+    LEFT JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
+    WHERE pg_class.relname = 'oban_jobs'
+    AND pg_namespace.nspname = $1
+    """
+
+    case repo.query(sql, [prefix], log: false) do
+      {:ok, %{rows: [[v]]}} when is_binary(v) ->
+        case Integer.parse(v) do
+          {n, _rest} -> n
+          :error -> nil
+        end
+
+      _ ->
+        nil
     end
   end
 
@@ -337,8 +365,18 @@ defmodule ObanPowertools.Doctor.Checks do
           }
         end)
 
-      {:error, _reason} ->
-        []
+      {:error, reason} ->
+        # A query error is NOT a clean result — surface it as a cannot-run error so
+        # the check never silently reports healthy (honest exit codes, D-06/T-48-07).
+        [
+          %Finding{
+            check: :uniqueness_timeout_risk,
+            severity: :error,
+            message:
+              "Cannot query pg_catalog (uniqueness_timeout_risk GIN check): #{inspect(reason)}",
+            remediation: "Check DB connectivity and permissions."
+          }
+        ]
     end
   end
 
@@ -374,8 +412,18 @@ defmodule ObanPowertools.Doctor.Checks do
         {:ok, _} ->
           []
 
-        {:error, _reason} ->
-          []
+        {:error, reason} ->
+          # Don't swallow a query failure as healthy — report cannot-run so the
+          # exit code stays honest (D-06/T-48-07).
+          [
+            %Finding{
+              check: :uniqueness_timeout_risk,
+              severity: :error,
+              message:
+                "Cannot query eligible job count for #{prefix}.oban_jobs: #{inspect(reason)}",
+              remediation: "Check that #{prefix}.oban_jobs exists and the DB is reachable."
+            }
+          ]
       end
     else
       [
