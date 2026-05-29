@@ -349,9 +349,12 @@ defmodule ObanPowertools.Doctor.Checks do
   defp check_eligible_job_count(repo, prefix, severity) do
     if valid_identifier?(prefix) do
       # Safe to use prefix as identifier because it passed the allowlist regex.
-      # The states are hardcoded constants — no user input in the query string.
+      # The states come from the @eligible_states compile-time constant — no user
+      # input in the query string.
+      states_list = Enum.map_join(@eligible_states, ",", &"'#{&1}'")
+
       sql =
-        "SELECT count(*) FROM #{prefix}.oban_jobs WHERE state IN ('available','scheduled','retryable','executing')"
+        "SELECT count(*) FROM #{prefix}.oban_jobs WHERE state IN (#{states_list})"
 
       case repo.query(sql, [], log: false) do
         {:ok, %{rows: [[count]]}} when count >= @uniqueness_backlog_threshold ->
