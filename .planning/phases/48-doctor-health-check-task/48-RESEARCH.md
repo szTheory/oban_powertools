@@ -134,7 +134,7 @@ Mix.Tasks.ObanPowertools.Doctor.run/1
     |----> Checks.index_validity(repo, prefix)      -> [%Finding{}]
     |----> Checks.missing_indexes(repo, prefix)     -> [%Finding{}]
     |----> Checks.oban_migration_version(repo, prefix)  -> [%Finding{}]
-    |----> Checks.powertools_tables(repo, prefix)   -> [%Finding{}]
+    |----> Checks.powertools_tables(repo)            -> [%Finding{}]
     |----> Checks.uniqueness_timeout_risk(repo, prefix) -> [%Finding{}]
     |
     v
@@ -603,7 +603,7 @@ Note: `Application.get_env(:oban, key)` where `key` is the Oban instance name (a
 - `index_validity(repo, prefix)` → `[%Finding{}]`
 - `missing_indexes(repo, prefix)` → `[%Finding{}]`
 - `oban_migration_version(repo, prefix)` → `[%Finding{}]`
-- `powertools_tables(repo, prefix)` → `[%Finding{}]`
+- `powertools_tables(repo)` → `[%Finding{}]` (always queries the `public` schema — Powertools tables are not Oban-prefixed; see RESOLVED Open Q3)
 - `uniqueness_timeout_risk(repo, prefix, opts)` → `[%Finding{}]`
 - Each function: runs its SQL, returns zero or more findings
 - Testing: DataCase, manipulate catalog state in test setup (e.g., `CREATE INDEX`, `ALTER INDEX ... REBUILD`, check presence/absence)
@@ -836,23 +836,25 @@ end
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Oban prefix auto-detection OTP app key**
    - What we know: Host Oban config is typically `config :my_app, Oban, prefix: "..."` — OTP app key is the host app, not `:oban`.
    - What's unclear: There is no reliable way for the doctor to know the host OTP app name at compile time.
    - Recommendation: Document `--prefix` as the canonical production flag. Implement best-effort auto-detect that iterates `Application.started_applications()` looking for config key `Oban` or the `--oban-name` atom, but always falls back to `"public"` with a notice. Planner to decide how much effort to invest here.
+   - **RESOLVED:** Prefix auto-detection is best-effort only — read the host Oban config from application env (no Oban started); on any failure fall back to `"public"` and emit a notice that `"public"` was assumed. `--prefix` is documented as the reliable production path (Plan 48-02 Task 2 @moduledoc + resolve_prefix/1). No iteration of `Application.started_applications()` is required for v1; the flag-first fallback-to-public path is sufficient and side-effect-free (D-07/D-10).
 
 2. **Test isolation for INVALID index findings**
    - What we know: Creating a real INVALID index requires a concurrent DDL failure.
    - What's unclear: Whether to introduce a thin behaviour/mock or accept a narrower integration test.
    - Recommendation: Add a `@doc false` test helper that accepts pre-formed catalog rows and tests the finding-construction logic directly. Integration test just verifies the query succeeds on a clean DB. Planner to decide.
+   - **RESOLVED:** Split the SQL-execution layer from finding construction. `Checks.index_validity/2` extracts a separately-testable private `findings_for_index_rows/2` (rows → findings) helper; unit-test it directly with fake catalog rows where `indisvalid=false` to exercise the `:error` mapping (no real INVALID index needed). Add an integration smoke test asserting `index_validity/2` returns `[]` on the clean migrated test DB. (Plan 48-01 Task 2 behavior + action.)
 
 3. **`powertools_tables` check prefix awareness**
    - What we know: Powertools tables are always in the `public` schema (they don't follow the Oban prefix — Oban's prefix is for `oban_jobs`, not Powertools tables).
    - What's unclear: Whether Lane 2 should use `prefix` for Powertools table lookup or always use `public`.
    - Recommendation: Always check Powertools tables in `public` schema (they are Powertools-owned, not Oban-prefixed). The `prefix` flag only affects Lane 1 (oban_jobs) and the index checks. Planner should confirm this is the correct interpretation.
-
+   - **RESOLVED:** Powertools tables are always checked in the `public` schema regardless of `--prefix`. The check signature is therefore arity-1, `powertools_tables(repo)` — it takes no prefix argument. `--prefix` affects only Lane 1 (`oban_jobs` migration version) and the index checks. (Plan 48-01 Task 2 action; architecture diagram and Research Q7 module shape updated to arity-1.)
 ---
 
 ## Environment Availability
