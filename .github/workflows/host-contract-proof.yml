@@ -531,7 +531,7 @@ jobs:
       - continuity-ver04-c4
     steps:
       - name: Download continuity evidence from all claim jobs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: tmp/ver04/inbox
       - name: Compose deterministic claim matrix outputs
