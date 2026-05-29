@@ -708,3 +708,49 @@ jobs:
             echo "Proof packet upload failed or required files were missing."
             exit 1
           fi
+
+  host-contract-gate:
+    name: host-contract-gate
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - structural
+      - fresh-host
+      - docs-contract
+      - native-first
+      - first-session
+      - optional-bridge
+      - control-plane
+      - upgrade-proof
+      - workflow-compatibility
+      - continuity-proof-status
+    steps:
+      - name: Verify required host-contract lanes
+        env:
+          STRUCTURAL: ${{ needs.structural.result }}
+          FRESH_HOST: ${{ needs.fresh-host.result }}
+          DOCS_CONTRACT: ${{ needs.docs-contract.result }}
+          NATIVE_FIRST: ${{ needs.native-first.result }}
+          FIRST_SESSION: ${{ needs.first-session.result }}
+          OPTIONAL_BRIDGE: ${{ needs.optional-bridge.result }}
+          CONTROL_PLANE: ${{ needs.control-plane.result }}
+          UPGRADE_PROOF: ${{ needs.upgrade-proof.result }}
+          WORKFLOW_COMPATIBILITY: ${{ needs.workflow-compatibility.result }}
+          CONTINUITY_PROOF_STATUS: ${{ needs.continuity-proof-status.result }}
+        run: |
+          set -euo pipefail
+          failed=0
+          for lane in STRUCTURAL FRESH_HOST DOCS_CONTRACT NATIVE_FIRST FIRST_SESSION \
+                      OPTIONAL_BRIDGE CONTROL_PLANE UPGRADE_PROOF WORKFLOW_COMPATIBILITY \
+                      CONTINUITY_PROOF_STATUS; do
+            result="${!lane}"
+            if [[ "$result" != "success" ]]; then
+              echo "Required host-contract lane $lane: $result"
+              failed=1
+            fi
+          done
+          if [[ "$failed" -ne 0 ]]; then
+            echo "host-contract-gate failed: one or more lanes did not succeed."
+            exit 1
+          fi
+          echo "host-contract-gate passed: all host-contract lanes succeeded."
