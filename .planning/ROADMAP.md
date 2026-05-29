@@ -101,6 +101,16 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 **Goal:** Ship `mix oban_powertools.limiter.explain` and `.simulate` so operators can diagnose and preview limiter behavior from the command line, reusing existing seams.
 
 **Requirements:** OPS-06, OPS-07, OPS-08
+**Plans:** 3 plans
+
+**Wave 1**
+
+- [ ] 49-01-PLAN.md — Extract pure `compute_reservation/4` from `limits.ex` (D-06) + single-source rate-limit Glossary module embedded in the guide (D-08)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 49-02-PLAN.md — `mix oban_powertools.limiter.explain` task (resource-primary + worker fallback over the Explain API) + tests
+- [ ] 49-03-PLAN.md — `mix oban_powertools.limiter.simulate` task (pure-core, side-effect-free) + side-effect-freedom/no-DB-write tests + glossary docs-contract test
 
 **Success Criteria:**
 
