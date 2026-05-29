@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Release & Operability
 status: executing
-last_updated: "2026-05-29T16:34:29.539Z"
-last_activity: 2026-05-29 -- Phase 48 planning complete
+last_updated: "2026-05-29T16:36:48.909Z"
+last_activity: 2026-05-29 -- Phase 48 execution started
 progress:
   total_phases: 5
   completed_phases: 1
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28)
 
 **Core value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-**Current focus:** Phase 48 — doctor-health-check (next)
+**Current focus:** Phase 48 — doctor-health-check-task
 
 ## Current Position
 
-Phase: 47 (hex-release-foundation) — ✅ COMPLETE (oban_powertools 0.5.0 live on hex.pm 2026-05-29)
-Plan: 3 of 3 complete; operator Task 5 done — 0.5.0 published via the automated release-please → hex pipeline.
+Phase: 48 (doctor-health-check-task) — EXECUTING
+Plan: 1 of 2
 Next: Phase 48 (doctor-health-check) — not yet planned.
-Last activity: 2026-05-29 -- Phase 48 planning complete
+Last activity: 2026-05-29 -- Phase 48 execution started
 
 Release automation (beyond the original 47 plans): full shift-left CI/CD shipped — ci.yml (ci-gate), release.yml (release-please→gate-ci-green→publish), publish-hex.yml recovery, pr-title lint, Dependabot, SHA-pinned actions, branch protection (ci-gate + host-contract-gate), RELEASE_PLEASE_TOKEN + HEX_API_KEY. Tag v0.5.0 + oban_powertools-v0.5.0 both exist; future tags are v* (include-component-in-tag: false). See memory: hex-release-pipeline-gotchas.
 
