@@ -8,6 +8,18 @@ Oban Powertools is a host-owned operations layer for Oban-backed Phoenix applica
 
 Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
 
+## Current Milestone: v1.6 Release & Operability
+
+**Goal:** Make Oban Powertools real for adopters — publish it to hex and ship the two named operability footguns — before adding any more capability.
+
+**Target features:**
+- First public hex release at a deliberate `0.x` (recommend `0.5.0`; document a path to `1.0` after real adopter feedback), with getting-started verified from the published package.
+- `mix oban_powertools.doctor` — index / invalid-index / uniqueness-timeout / config / migration-drift health checks over read-only `pg_catalog`, with honest exit codes.
+- `mix oban_powertools.limiter.explain` / `.simulate` — CLI over the existing `Explain` + `Limits`, shipping the rate-limit glossary.
+- Parapet/SLO telemetry guide and opt-in `Telemetry.metrics/0` over the frozen low-cardinality contract — no `oban_met` dependency.
+
+**Key context:** Post-v1.5 assessment (`threads/2026-05-28-post-v1.5-next-milestone.md`) put the project at ~87% done with mild overbuilding risk; the foundational gap is that the lib is `0.1.0` and unpublished after 5 milestones, not a missing feature. Zero new deps, near-zero runtime risk. Phase numbering continues from v1.5 — v1.6 starts at Phase 47. Worker Lifecycle (v1.7) and Batches (v1.8) are explicitly deferred until adoption signals demand.
+
 ## Requirements
 
 ### Validated
@@ -52,7 +64,9 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 
 ### Active
 
-(None — v1.5 shipped. Next milestone candidates carried in REQUIREMENTS.md backlog: QRY-05 args/meta filter, QRY-06 real-time counts, QRY-07 Lifeline→job deep-link, QRY-08 cross-page select-all, API-03 programmatic job query.)
+v1.6 Release & Operability — see `## Current Milestone` above and `REQUIREMENTS.md` for the scoped, REQ-ID'd list (hex release, `mix oban_powertools.doctor`, limiter explain/simulate CLI, Parapet/SLO telemetry guide).
+
+Carried backlog (not in v1.6): QRY-05 args/meta filter, QRY-06 real-time counts (→ v1.9), QRY-07 Lifeline→job deep-link, QRY-08 cross-page select-all, API-03 programmatic job query.
 
 ### Out of Scope
 
@@ -183,4 +197,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-28 — post-v1.5 milestone assessment: recommended next-milestone ordering (v1.6 Release & Operability first), hex-release decision, and defer-until-signal scope recorded.*
+*Last updated: 2026-05-28 — started milestone v1.6 Release & Operability (hex publish + doctor + limiter CLI + telemetry guide); Active requirements and Current Milestone section set.*

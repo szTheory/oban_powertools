@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.5
-milestone_name: Native Job Surface & Automation API
-status: complete
-stopped_at: Milestone v1.5 completed and archived
-last_updated: "2026-05-28T21:18:09.001Z"
-last_activity: 2026-05-28 — Milestone v1.5 completed and archived
+milestone: v1.6
+milestone_name: Release & Operability
+status: planning
+last_updated: "2026-05-29T00:50:47.887Z"
+last_activity: 2026-05-29
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 9
-  completed_plans: 9
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-05-28)
 
 ## Current Position
 
-Phase: Milestone v1.5 complete (Phases 43-46)
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-05-28 — Milestone v1.5 completed and archived
+Status: Defining requirements
+Last activity: 2026-05-29 — Milestone v1.6 started
 
 ## Accumulated Context
 
