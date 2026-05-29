@@ -61,6 +61,13 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 - Presenting the workflow layer as a general orchestration platform.
 - Rebuilding the full generic Oban Web dashboard surface before the native Powertools control plane clearly demands it.
 
+**Defer-until-signal (2026-05-28 assessment — don't build until evidence/demand):**
+- Field-level arg **encryption** (`encrypt:`) — defer until an adopter asks; collides with the args-hashing idempotency fingerprint, blinds the v1.5 job filter (encrypted args aren't searchable), and leaks via meta/errors/stacktraces. Ship `redact:` (at-persist drop) instead.
+- Prioritizer / autoscaler — don't build until adoption proves demand.
+- Nested / chunked / growable batches — out of first batch milestone (Sidekiq's worst reliability area).
+- `oban_met` as a hard dependency or a native generic-metrics dashboard — that's rebuilding Oban Web; use it only as an optional read source for live counts.
+- Mobile/companion operator surfaces; generic event bus / webhook platform.
+
 ## Context
 
 Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes installer/runtime wiring, typed worker contracts, limiter and cron control planes, workflow persistence and signaling, a native Lifeline operator flow with durable repair auditability and resolved-incident continuity, and a unified native control plane story across the existing operator surfaces.
@@ -75,6 +82,8 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 - ✓ All native job mutations (UI and API) route through `Lifeline.execute_repair` — no direct `Oban` calls and no parallel mutation path. — v1.5
 - ✓ Bulk operations run an independent repair per job (no single `Ecto.Multi` over N jobs) and report per-job success/failure honestly. — v1.5
 - ✓ `ObanPowertools.Operator` requires a non-nil actor for every action and emits `source: "api"` telemetry within the frozen low-cardinality `@contract`. — v1.5
+- — Hex publication is a near-term goal; first public release at `0.x` (recommend `0.5.0`) before committing to `1.0` SemVer, so the public API meets real adopters before it's frozen. — 2026-05-28 assessment
+- — Worker Lifecycle precedes Batches: batch callbacks reuse the worker hook contract and output recording reuses a generalized `Workflow.Result` table; building Batches first forces a refactor. — 2026-05-28 assessment
 
 ## Decision Posture
 
@@ -87,6 +96,8 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 - When escalation is necessary, present the recommended path first and ask the narrowest possible question rather than running a broad design interview.
 - Favor idiomatic Phoenix/LiveView/Ecto/Postgres patterns, least-surprise UX, strong DX, and ecosystem lessons from comparable operator/admin systems.
 - Treat prior locked CONTEXT decisions as defaults unless a later phase must reopen them for one of the material reasons above.
+- At milestone boundaries, run an adopter-first "done" assessment (repo-grounded, not phase-counting) and research candidate milestones with parallel subagents before committing — surface overbuilding risk explicitly.
+- Apply an idiomatic-Elixir/Phoenix/Ecto + DX/UX-first lens; prefer reusing existing seams (Lifeline pipeline, callback outbox, `Workflow.Result`, `Redactor`/`DisplayPolicy` behaviours) over inventing new abstraction families.
 
 ## Constraints
 
@@ -102,7 +113,13 @@ Version `v1.5` shipped on 2026-05-28. The native `/ops/jobs` shell now owns the 
 
 ## Next Milestone
 
-Not yet defined. Run `/gsd:new-milestone` to scope v1.6. Candidate work carried as deferred requirements: args/meta filtering with JSONB guardrails (QRY-05), real-time count updates via `oban_met` (QRY-06), Lifeline→job deep-linking (QRY-07), cross-page bulk select-all (QRY-08), and a programmatic `Operator.list/2` query surface (API-03).
+Recommended ordering from the 2026-05-28 post-v1.5 assessment (see `threads/2026-05-28-post-v1.5-next-milestone.md`). Done-% ~87%; the foundational gap is that the lib is unpublished, not a missing feature.
+
+1. **v1.6 Release & Operability** *(the pick)* — first public hex release at `0.x` (recommend `0.5.0`; document a path to `1.0` after real adopter feedback) + `mix oban_powertools.doctor` (index / uniqueness-timeout / config / migration-drift health) + `mix oban_powertools.limiter.explain` / `.simulate` CLI + Parapet/SLO telemetry guide & opt-in `Telemetry.metrics/0` over the frozen contract (no `oban_met` dep) + getting-started verified from hex.
+2. **v1.7 Worker Lifecycle & Safety** — hooks (on_start/success/failure/discard, observe-only, crash-caught), soft `deadline:` + `timeout:` pass-through to Oban, output recording (generalize `Workflow.Result`), `redact:` at-rest. Defer `encrypt:`. (Must precede Batches — shared hook + recordings infra.)
+3. **v1.8 Batches & Composition** — dedicated `batches` / `batch_jobs` tables (not a DAG), `completed` + `exhausted` callbacks via the generalized callback outbox, chains as linear-DAG sugar, native Batches page with Lifeline-routed bulk-retry. Defer chunks / nested / growable batches.
+4. **v1.9 Observability / live counts (QRY-06)** — `oban_met` as an optional read source, never a hard dep.
+5. **Native job-surface polish** — QRY-05 (args/meta filter), QRY-07 (Lifeline→job deep-link), QRY-08 (cross-page select), API-03 (`Operator.list/2`). Opportunistic.
 
 ## Recently Shipped
 
@@ -166,4 +183,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-28 after v1.5 milestone — Native Job Surface & Automation API shipped.*
+*Last updated: 2026-05-28 — post-v1.5 milestone assessment: recommended next-milestone ordering (v1.6 Release & Operability first), hex-release decision, and defer-until-signal scope recorded.*

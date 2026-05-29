@@ -1,7 +1,7 @@
 # Adopter Readiness And v1.3 Ordering
 
 Date: 2026-05-25
-Status: Updated 2026-05-27 — v1.3 and v1.4 shipped; new assessment at bottom
+Status: SUPERSEDED 2026-05-28 by `2026-05-28-post-v1.5-next-milestone.md` — v1.3/v1.4/v1.5 all shipped; current ordering lives in the newer thread. Kept for historical context.
 
 ## Question
 
