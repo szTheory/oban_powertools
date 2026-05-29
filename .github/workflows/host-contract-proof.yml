@@ -98,6 +98,32 @@ jobs:
       - run: mix deps.get
       - run: mix test test/oban_powertools/example_host_contract_test.exs --only native-only
 
+  doctor:
+    runs-on: ubuntu-latest
+    env:
+      OBAN_POWERTOOLS_SKIP_DB_BOOT: "1"
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: phoenix_host_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: erlef/setup-beam@fc68ffb90438ef2936bbb3251622353b3dcb2f93 # v1.24.0
+        with:
+          elixir-version: "1.19.5"
+          otp-version: "27.3"
+      - run: mix deps.get
+      - run: mix test test/oban_powertools/example_host_contract_test.exs --only doctor
+
   first-session:
     runs-on: ubuntu-latest
     env:
@@ -722,6 +748,7 @@ jobs:
       - fresh-host
       - docs-contract
       - native-first
+      - doctor
       - first-session
       - optional-bridge
       - control-plane
@@ -735,6 +762,7 @@ jobs:
           FRESH_HOST: ${{ needs.fresh-host.result }}
           DOCS_CONTRACT: ${{ needs.docs-contract.result }}
           NATIVE_FIRST: ${{ needs.native-first.result }}
+          DOCTOR: ${{ needs.doctor.result }}
           FIRST_SESSION: ${{ needs.first-session.result }}
           OPTIONAL_BRIDGE: ${{ needs.optional-bridge.result }}
           CONTROL_PLANE: ${{ needs.control-plane.result }}
@@ -744,7 +772,7 @@ jobs:
         run: |
           set -euo pipefail
           failed=0
-          for lane in STRUCTURAL FRESH_HOST DOCS_CONTRACT NATIVE_FIRST FIRST_SESSION \
+          for lane in STRUCTURAL FRESH_HOST DOCS_CONTRACT NATIVE_FIRST DOCTOR FIRST_SESSION \
                       OPTIONAL_BRIDGE CONTROL_PLANE UPGRADE_PROOF WORKFLOW_COMPATIBILITY \
                       CONTINUITY_PROOF_STATUS; do
             result="${!lane}"

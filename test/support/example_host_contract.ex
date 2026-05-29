@@ -64,6 +64,54 @@ defmodule ObanPowertools.ExampleHostContract do
     output
   end
 
+  @doc """
+  Doctor lane: proves the read-only `mix oban_powertools.doctor` CLI end-to-end
+  against a freshly migrated example host. This replaces the manual operator
+  smoke-test (former Phase 48 Plan 02 human-verify gate) with an automated
+  contract — no human verification required.
+
+  Runs the real Mix task as a subprocess (so `System.halt/1` exit codes are
+  observed honestly) in three modes and returns their raw `{output, status}`:
+
+  - healthy:    default human report against the migrated host (expect exit 0)
+  - json:       `--format json` machine output (expect a `schema_version: 1` payload)
+  - missing:    `--prefix <absent>` failure path (expect an error finding + exit 2)
+  """
+  def doctor! do
+    dir = prepare_host!("doctor")
+
+    _ = run!(dir, [], "mix", ["deps.get"])
+    _ = run!(dir, [], "mix", ["compile"])
+    _ = run!(dir, [{"MIX_ENV", "test"}], "mix", ["ecto.reset"])
+
+    {healthy_output, healthy_status} = run_doctor(dir, [])
+    {json_output, json_status} = run_doctor(dir, ["--format", "json"])
+
+    {missing_output, missing_status} =
+      run_doctor(dir, ["--prefix", "oban_powertools_doctor_absent"])
+
+    %{
+      dir: dir,
+      healthy_output: healthy_output,
+      healthy_status: healthy_status,
+      json_output: json_output,
+      json_status: json_status,
+      missing_output: missing_output,
+      missing_status: missing_status
+    }
+  end
+
+  # Non-raising doctor runner: the CLI honestly exits 1/2 when it finds issues,
+  # and those non-zero statuses are exactly what we assert on — so unlike run!/4
+  # this must NOT raise on a non-zero exit.
+  defp run_doctor(dir, extra_args) do
+    System.cmd("mix", ["oban_powertools.doctor" | extra_args],
+      cd: dir,
+      env: [{"MIX_ENV", "test"}],
+      stderr_to_stdout: true
+    )
+  end
+
   def proof!(lane) do
     dir = prepare_host!(lane)
 
