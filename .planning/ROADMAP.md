@@ -78,6 +78,15 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 **Goal:** Ship `mix oban_powertools.doctor` so operators can diagnose index, migration, and config health read-only before and after deploys.
 
 **Requirements:** OPS-03, OPS-04, OPS-05
+**Plans:** 2 plans
+
+**Wave 1**
+
+- [ ] 48-01-PLAN.md — Doctor core: Finding struct, run/2 orchestrator + exit_code_for/1, and the five read-only catalog checks (index validity, missing indexes, Oban migration version, Powertools tables, uniqueness-timeout risk)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 48-02-PLAN.md — Formatter (human + JSON schema_version) and the plain Mix.Task entry (flags, repo/prefix resolution, repo-only with_repo boot, honest System.halt exit codes) + operator smoke-verify
 
 **Success Criteria:**
 
