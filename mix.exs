@@ -1,15 +1,19 @@
 defmodule ObanPowertools.MixProject do
   use Mix.Project
 
+  @version "0.5.0"
+  @source_url "https://github.com/szTheory/oban_powertools"
+
   def project do
     [
       app: :oban_powertools,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
-      docs: docs()
+      docs: docs(),
+      package: package()
     ]
   end
 
@@ -24,11 +28,20 @@ defmodule ObanPowertools.MixProject do
     ]
   end
 
+  defp package do
+    [
+      description: "A host-owned operations layer for Oban-backed Phoenix applications.",
+      licenses: ["Apache-2.0"],
+      links: %{"GitHub" => @source_url},
+      files: ~w[lib guides .formatter.exs mix.exs mix.lock README.md CHANGELOG.md LICENSE]
+    ]
+  end
+
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
       {:ex_doc, "~> 0.40", only: :dev, runtime: false},
-      {:igniter, "~> 0.8.0"},
+      {:igniter, "~> 0.8.0", only: [:dev, :test], runtime: false},
       {:telemetry, "~> 1.4"},
       {:jason, "~> 1.4"},
       {:oban, "~> 2.18"},
