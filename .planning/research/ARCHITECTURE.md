@@ -1,397 +1,650 @@
 # Architecture Research
 
-**Domain:** Phoenix/LiveView operator control plane — native job browse surface and Elixir API
-**Researched:** 2026-05-27
-**Confidence:** HIGH (based on direct codebase inspection)
+**Domain:** Elixir hex library — release packaging and operability tooling integrated into a mature Oban/Ecto operator platform
+**Researched:** 2026-05-28
+**Confidence:** HIGH — grounded in direct inspection of all named modules; no speculative gaps
 
-## Standard Architecture
+---
+
+## How the Four v1.6 Deliverables Integrate
 
 ### System Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Host Router Scope                           │
-│              "/ops/jobs"  pipe_through(:browser)                │
-├─────────────────────────────────────────────────────────────────┤
-│              oban_powertools_routes("/oban")                     │
-│                                                                 │
-│  live_session :oban_powertools_native                           │
-│  on_mount: [ObanPowertools.Web.LiveAuth]                        │
-│                                                                 │
-│  Existing                         NEW (v1.5)                    │
-│  ┌──────────────┐  ┌────────────────────────────────────────┐  │
-│  │ EngineOverview│  │ JobsLive          JobDetailLive        │  │
-│  │ LifelineLive  │  │ /jobs             /jobs/:id            │  │
-│  │ LimitersLive  │  └────────────────────────────────────────┘  │
-│  │ CronLive      │                                              │
-│  │ WorkflowsLive │                                              │
-│  │ AuditLive     │                                              │
-│  │ ForensicsLive │                                              │
-│  └──────────────┘                                              │
-├─────────────────────────────────────────────────────────────────┤
-│                    Service Layer                                 │
-│  Existing                         NEW (v1.5)                    │
-│  ┌──────────────┐  ┌────────────────────────────────────────┐  │
-│  │ Lifeline      │  │ Jobs (query module)                    │  │
-│  │ Cron          │  │ ObanPowertools.Operator (API module)   │  │
-│  │ Limits        │  └────────────────────────────────────────┘  │
-│  │ Workflow      │                                              │
-│  │ Forensics     │                                              │
-│  └──────────────┘                                              │
-├─────────────────────────────────────────────────────────────────┤
-│           Shared Infrastructure (unchanged)                     │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐   │
-│  │  Auth    │  │  Audit   │  │Telemetry │  │ControlPlane  │   │
-│  │(Sigra)   │  │          │  │          │  │ Presenter    │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────────┘   │
-├─────────────────────────────────────────────────────────────────┤
-│                   Postgres / Ecto                               │
-│  ┌──────────────────┐  ┌────────────────────────────────────┐  │
-│  │ oban_jobs        │  │ oban_powertools_audit_events       │  │
-│  │ (Oban.Job schema)│  │ oban_powertools_repair_previews    │  │
-│  │                  │  │ oban_powertools_repair_archives    │  │
-│  │ Existing schema, │  └────────────────────────────────────┘  │
-│  │ no migration     │                                          │
-│  │ required         │                                          │
-│  └──────────────────┘                                          │
-└─────────────────────────────────────────────────────────────────┘
++-----------------------------------------------------------------------------+
+|  Host Application (Phoenix)                                                 |
+|  config :oban_powertools, repo: MyApp.Repo, auth_module: ..., ...          |
++-----------------------------------------------------------------------------+
+|  mix tasks (lib/mix/tasks/)   -- read-only boot, no supervision dependency  |
+|  +-----------------------------+  +----------------------------------------+|
+|  | oban_powertools.doctor      |  | oban_powertools.limiter.explain        ||
+|  |   → Doctor.Checks.*        |  | oban_powertools.limiter.simulate       ||
+|  +----------+-----------------+  +------------------+---------------------+|
+|             | pg_catalog (read-only SQL)              |                     |
+|             | RuntimeConfig.repo!/0                   | Worker.limit_snap.. |
+|             v                                         | Explain.explain/3   |
+|  Doctor findings map + exit code                      | Limits.reserve/4    |
+|  (0=pass, 1=warnings, 2=fail)                         | Limits.release/3    |
++-----------------------------------------------------------------------------+
+|  ObanPowertools.Telemetry (FROZEN -- lib/oban_powertools/telemetry.ex)      |
+|  @contract: families operator_action, limiter, cron, workflow, lifeline     |
+|             |                                                                |
+|             v NEW: Telemetry.metrics/0 (opt-in, no reporter dep)            |
+|  Returns [Telemetry.Metrics.counter(...)] structs over the frozen @contract  |
++-----------------------------------------------------------------------------+
+|  mix.exs -- MODIFIED for hex publication                                    |
+|  version: "0.5.0", package: [...], description: "...", telemetry_metrics   |
++-----------------------------------------------------------------------------+
 ```
 
-### Component Responsibilities
+---
 
-| Component | Responsibility | New or Modified |
-|-----------|----------------|-----------------|
-| `ObanPowertools.Web.JobsLive` | Job list with filter by queue/state/worker/tags, pagination, bulk selection | NEW |
-| `ObanPowertools.Web.JobDetailLive` | Job detail: args, meta, errors, attempt history, action buttons | NEW |
-| `ObanPowertools.Jobs` | Ecto query builder over `Oban.Job` schema; filter, paginate, count | NEW |
-| `ObanPowertools.Operator` | Typed Elixir API — retry, cancel, discard, bulk variants | NEW |
-| `ObanPowertools.Lifeline` | Command execution pipeline for audited mutations | MODIFIED — add `job_discard` to `@supported_actions`; add clauses to 3 private functions; relax incident guard for browse-initiated actions |
-| `ObanPowertools.Web.Router` | Route declarations | MODIFIED — add `/jobs` and `/jobs/:id` live routes inside existing `live_session` block |
-| `ObanPowertools.Web.LiveAuth` | Auth hooks, permission messages, page banners | MODIFIED — add `:view_jobs`, `:view_job_detail` permission keys and `:jobs` banner |
-| `ObanPowertools.Web.Selectors` | Canonical URL builder | MODIFIED — add `:jobs` and `:job_detail` canonical paths; add `jobs_path/1` and `job_detail_path/2` helpers |
-| `ObanPowertools.Telemetry` | Low-cardinality event contract | MODIFIED — document `source: "api"` for Operator API events under existing `:operator_action` family; no breaking change |
+## Deliverable 1: Hex Release (mix.exs changes only)
 
-## Recommended Project Structure
+### What Changes
+
+**File modified: `mix.exs`** — the only file requiring edits for hex publication.
+
+Required additions to `project/0`:
+
+1. Bump `version` from `"0.1.0"` to `"0.5.0"`.
+2. Add `description:` key — one sentence, under 300 chars for hex.pm listing.
+3. Add `package:` key with `maintainers`, `licenses`, `links` (GitHub URL), and `files`. The `files:` list must include `lib/`, `mix.exs`, `README.md`, `guides/` and must exclude `examples/` and `test/` to keep the tarball lean.
+4. Update `docs/0` to include new guides added in this milestone (see Deliverables 3 and 4). The existing three doc groups (`"Day 0"`, `"Builders"`, `"Operations"`) remain; new guides land in `"Operations"`.
+
+No new deps are introduced by the hex release itself. The existing dep set (`ex_doc`, `igniter`, `telemetry`, `jason`, `oban`, `ecto_sql`, `postgrex`, `oban_web` optional) stays unchanged, with the one addition in Deliverable 4 below.
+
+### Getting-Started Verification
+
+Manual smoke-test: install the published package (`{:oban_powertools, "~> 0.5"}`) in a clean Phoenix app, run `mix oban_powertools.install`, run migrations, start the app, open `/ops/jobs`. This is not a code change — it is a verification gate before closing v1.6.
+
+### New vs Modified
+
+- **MODIFIED:** `mix.exs` — version, package, description, docs group updates
+
+---
+
+## Deliverable 2: `mix oban_powertools.doctor`
+
+### Module Locations
 
 ```
-lib/oban_powertools/
-├── jobs.ex                        # NEW: Ecto query builder over Oban.Job
-├── operator.ex                    # NEW: typed public Elixir API
-├── web/
-│   ├── jobs_live.ex               # NEW: job list LiveView (QRY-01, QRY-03, QRY-04)
-│   ├── job_detail_live.ex         # NEW: job detail LiveView (QRY-02, QRY-03)
-│   ├── router.ex                  # MODIFIED: add /jobs and /jobs/:id routes
-│   ├── live_auth.ex               # MODIFIED: add job-surface permission keys
-│   └── selectors.ex               # MODIFIED: add jobs canonical paths
-└── lifeline.ex                    # MODIFIED: add job_discard + browse-initiated action path
+lib/mix/tasks/oban_powertools.doctor.ex      (task entry point)
+lib/oban_powertools/doctor/
+  checks.ex           (dispatcher + result accumulator)
+  index_check.ex      (pg_catalog index + invalid-index check)
+  uniqueness_check.ex (lock_timeout / statement_timeout config check)
+  config_check.ex     (oban_powertools app config vs RuntimeConfig contract)
+  migration_check.ex  (migration drift detection via information_schema)
 ```
 
-## Integration Points
+The task file lives at `lib/mix/tasks/oban_powertools.doctor.ex`, exactly matching the naming convention of the existing `lib/mix/tasks/oban_powertools.install.ex`. The internal `Doctor.Checks.*` modules live under `lib/oban_powertools/doctor/` — separate from the task so they are independently testable without invoking Mix machinery.
 
-### 1. Oban.Job Schema Access
+### How the Task Boots
 
-`Oban.Job` is already used by `Lifeline` for direct `repo.get!(Oban.Job, id)` lookups and fragment queries against `meta`. The new `Jobs` query module extends this to full filter + paginate queries. The `tags` field is `{:array, :string}` in Oban's schema; Ecto array containment queries use `fragment/1`.
-
-Key `Oban.Job` fields for the browse surface:
-
-| Field | Type | Use |
-|-------|------|-----|
-| `id` | integer | identity, detail links |
-| `state` | string | filter, display — 8 states: `available`, `scheduled`, `executing`, `retryable`, `completed`, `cancelled`, `discarded`, `suspended` |
-| `queue` | string | filter |
-| `worker` | string | filter, display |
-| `args` | map | detail display (subject to DisplayPolicy redaction) |
-| `meta` | map | detail display; `executor_id` key cross-links to Lifeline |
-| `errors` | list of maps | detail display — each entry has `at`, `attempt`, `error`, `stderr` |
-| `tags` | `[:string]` | filter |
-| `attempt` / `max_attempts` | integer | display |
-| `inserted_at` / `scheduled_at` / `attempted_at` / `completed_at` / `cancelled_at` / `discarded_at` | NaiveDateTime | sort, display |
-
-No migration is required — `oban_jobs` is entirely Oban's schema. Oban's own indexes on `(state)`, `(queue)`, and `(worker)` already exist. A composite index on `(state, queue, inserted_at DESC)` may be needed for large tables but is a host-owned operational concern, not a library migration.
-
-The query module follows the established pattern in `Lifeline` and `OverviewReadModel`:
+Mix tasks in a library that need database access must boot the host application's config without starting the full supervision tree. The established Elixir pattern:
 
 ```elixir
-defmodule ObanPowertools.Jobs do
-  import Ecto.Query
+defmodule Mix.Tasks.ObanPowertools.Doctor do
+  use Mix.Task
+  @shortdoc "Run read-only health checks against pg_catalog and Oban config"
 
-  def list(repo, filters \\ [], opts \\ []) do
-    page_size = Keyword.get(opts, :page_size, 50)
-    offset = Keyword.get(opts, :offset, 0)
-
-    Oban.Job
-    |> apply_filters(filters)
-    |> order_by([j], desc: j.inserted_at)
-    |> limit(^page_size)
-    |> offset(^offset)
-    |> repo.all()
+  def run(_args) do
+    Mix.Task.run("app.config")                    # loads config/*.exs, no supervisors
+    Application.ensure_all_started(:ecto_sql)     # starts postgrex + ecto_sql OTP apps
+    repo = ObanPowertools.RuntimeConfig.repo!()   # raises immediately if not configured
+    {:ok, _pid} = repo.start_link()              # starts just the pool
+    findings = ObanPowertools.Doctor.Checks.run(repo, oban_prefix())
+    print_findings(findings)
+    System.halt(exit_code(findings))
   end
 
-  defp apply_filters(query, filters) do
-    Enum.reduce(filters, query, fn
-      {:state, v}, q -> where(q, [j], j.state == ^v)
-      {:queue, v}, q -> where(q, [j], j.queue == ^v)
-      {:worker, v}, q -> where(q, [j], j.worker == ^v)
-      {:tag, v}, q -> where(q, [j], fragment("? @> ARRAY[?]::text[]", j.tags, ^v))
-      _, q -> q
-    end)
+  defp oban_prefix do
+    Application.get_env(:oban, Oban, [])[:prefix] || "public"
   end
 end
 ```
 
-### 2. Lifeline Command Pipeline Reuse
+`Mix.Task.run("app.config")` loads all `config/*.exs` (including the host's `config :oban_powertools, repo: MyApp.Repo`) without starting supervisors. `repo.start_link()` starts only the Ecto adapter pool. This avoids starting `ObanPowertools.Application` (which starts PubSub, WorkflowCoordinator, HeartbeatWriter) — unnecessary and potentially broken for a read-only diagnostic task.
 
-Lifeline is the canonical mutation surface. All job actions from the browse surface (retry, cancel, discard) must route through `Lifeline.preview_repair/4` → `Lifeline.execute_repair/5`. This preserves the preview token, plan hash drift check, `Ecto.Multi`-wrapped audit write, host escalation dispatch, and telemetry emit.
+`RuntimeConfig.repo!/0` is the existing canonical seam. The `!` variant raises a clear, on-brand error message if `:repo` is unconfigured — correct for a task that literally cannot run without a repo.
 
-**What changes in Lifeline:**
+### How Doctor Obtains the Oban Prefix
 
-a. `@supported_actions` — add `"job_discard"`. `job_retry` and `job_cancel` already exist; they work without incident context because `incident_fingerprint_for_job/2` handles `nil` incident by generating `"job:manual:#{job_id}"`.
+Oban's `prefix` config key (default `"public"`) determines which schema hosts `oban_jobs` and where `pg_catalog.pg_indexes` finds the Oban indexes. Resolution:
 
-b. `build_job_preview/5` — the existing guard blocks `job_rescue` when `health_state != "missing"` but does not block `job_retry` or `job_cancel`. Adding `job_discard` requires an analogous `after_state` and `plan_hash` clause. The browse-initiated path passes `incident: nil`; this already works for `job_retry` and `job_cancel` and will work for `job_discard` with the same treatment.
+1. `Application.get_env(:oban, Oban, [])[:prefix]` — standard Oban config for the default instance.
+2. Fall back to `"public"`.
 
-c. `mutate_target/5` — add the `"job_discard"` clause:
-```elixir
-{"job", "job_discard"} ->
-  job = repo.get!(Oban.Job, preview.target_id)
-  {:ok, repo.update!(Ecto.Changeset.change(job, state: "discarded", discarded_at: now))}
+After `Mix.Task.run("app.config")`, `Application.get_env/3` has the host's full config available. Calling `Oban.config()` would require the Oban supervisor to be running, which the task does not start. The `Application.get_env` path is correct here.
+
+### Data Flow: pg_catalog Checks
+
+```
+Doctor task
+  └─ Doctor.Checks.run(repo, prefix)
+       |
+       +─ ConfigCheck.run()
+       |    └─ Application.get_env(:oban_powertools, :repo | :auth_module | ...)
+       |    → %{status: :ok | :fail, findings: [...]}
+       |    (pure Elixir, no DB query)
+       |
+       +─ IndexCheck.run(repo, prefix)
+       |    └─ Ecto.Adapters.SQL.query!(repo, """
+       |         SELECT i.relname AS indexname,
+       |                ix.indisvalid,
+       |                t.relname AS tablename
+       |         FROM pg_catalog.pg_index ix
+       |         JOIN pg_catalog.pg_class t ON t.oid = ix.indrelid
+       |         JOIN pg_catalog.pg_class i ON i.oid = ix.indexrelid
+       |         JOIN pg_catalog.pg_namespace n ON n.oid = t.relnamespace
+       |         WHERE n.nspname = $1
+       |           AND t.relname LIKE 'oban%'
+       |       """, [prefix])
+       |    → findings: invalid indexes, missing GIN on oban_jobs.tags, etc.
+       |
+       +─ UniquenessCheck.run(repo)
+       |    └─ SELECT name, setting FROM pg_catalog.pg_settings
+       |         WHERE name IN ('lock_timeout', 'statement_timeout')
+       |    → findings: timeouts at 0 (unset) = warning
+       |
+       └─ MigrationCheck.run(repo)
+            └─ SELECT table_name, column_name
+               FROM information_schema.columns
+               WHERE table_name LIKE 'oban_powertools_%'
+            → compare vs hardcoded expected schema map in migration_check.ex
+            → findings: missing tables, missing columns = drift
+
+  → aggregate all findings
+  → print to Mix.shell().info / .error
+  → System.halt(exit_code)
+     0 = all checks pass
+     1 = warnings present, no failures
+     2 = one or more check failures
 ```
 
-d. `next_job_state/1` — add `defp next_job_state("job_discard"), do: "discarded"`.
+All queries are read-only SELECT against `pg_catalog` and `information_schema`. The task never writes, never starts Oban, and never calls into `ObanPowertools.Limits`, `ObanPowertools.Lifeline`, or any runtime module.
 
-e. `repair_summary/3` — add a summary clause for `"job_discard"`.
+### Migration Drift Detection
 
-**What does NOT change:** The preview token, plan hash, drift detection, `Ecto.Multi` transaction, `Audit.record/4` call, host escalation dispatch, and `Telemetry.execute_lifeline_event(:repair_executed, ...)` are all reused unmodified for browse-initiated actions.
+The `oban_powertools.install` task creates a deterministic set of tables with known column signatures. `Doctor.MigrationCheck` encodes the expected schema as a static map (table name to list of required column names) and compares it against `information_schema.columns` for all `oban_powertools_*` tables. A missing table or missing required column is a drift finding. No runtime migration tracking is needed — this is a static comparison against a hardcoded baseline.
 
-### 3. Auth Hooks
+### New vs Modified
 
-`LiveAuth` wraps `Auth` (Sigra) and provides page-level and action-level guards. The new surfaces need:
+- **NEW:** `lib/mix/tasks/oban_powertools.doctor.ex`
+- **NEW:** `lib/oban_powertools/doctor/checks.ex`
+- **NEW:** `lib/oban_powertools/doctor/index_check.ex`
+- **NEW:** `lib/oban_powertools/doctor/uniqueness_check.ex`
+- **NEW:** `lib/oban_powertools/doctor/config_check.ex`
+- **NEW:** `lib/oban_powertools/doctor/migration_check.ex`
+- **UNMODIFIED:** `lib/oban_powertools/runtime_config.ex` — `repo!/0` consumed as-is
+- **UNMODIFIED:** All runtime modules (Limits, Explain, Lifeline, etc.)
 
-- New `authorize_page` action atoms: `:view_jobs` (list page), `:view_job_detail` (detail page). Pattern matches every existing LiveView's `mount/3`.
-- For Lifeline calls from the browse surface: reuse `:preview_repair` / `:execute_repair` rather than introducing new atoms. This means host auth modules need no changes, and the audit `command_key` stays `"execute_repair"`.
-- New entries in `LiveAuth`'s `@permission_messages` for `:view_jobs` and `:view_job_detail`.
-- New entry in `@page_read_only_banners` for `:jobs`.
+---
 
-The `Auth.authorize/3` call shape `(actor, action_atom, resource_map)` is unchanged.
+## Deliverable 3: `mix oban_powertools.limiter.explain` and `.simulate`
 
-### 4. Telemetry Hooks
+### Module Locations
 
-The contract is frozen at five families: `operator_action`, `limiter`, `cron`, `workflow`, `lifeline`. Low-cardinality is a hard constraint.
+```
+lib/mix/tasks/oban_powertools.limiter.explain.ex
+lib/mix/tasks/oban_powertools.limiter.simulate.ex
+```
 
-- Browse queries: emit under `:operator_action` with `action: "job_browse"` and `source: "ui"` — both keys are already in the `:operator_action` allowed metadata set. No contract change.
-- Executed mutations (retry, cancel, discard): `Lifeline` already emits `Telemetry.execute_lifeline_event(:repair_executed, ...)` with `action`, `incident_class`, `target_type`. Browse-initiated actions produce the same emit. No change needed.
-- Operator API calls: emit under `:operator_action` with `action: "operator_api"` and `source: "api"`. Both metadata keys already allowed.
+Both tasks follow the same naming convention as `oban_powertools.install.ex` and `oban_powertools.doctor.ex`. No internal helper submodule is needed — the tasks delegate directly to existing `Explain` and `Limits` modules.
 
-No new telemetry family is needed.
+### Boot Pattern
 
-### 5. Selectors Extension
+Same as doctor: `Mix.Task.run("app.config")` + `Application.ensure_all_started(:ecto_sql)` + `repo.start_link()`. The limiter tasks also need the host's worker modules to be compiled (necessary so `Module.concat/1` resolves a real module and `__powertools_limits__/0` is callable). The mix task lifecycle guarantees compilation before `run/1` is called, so no explicit compilation step is needed.
 
-`Selectors` uses a `@canonical_paths` map with one helper per destination. Extension follows the same pattern as the existing five paths:
+### How `limiter.explain` Reuses Existing Logic
+
+`ObanPowertools.Explain.explain/3` already accepts `repo:` as a keyword option (confirmed at `explain.ex:60`). The task is a thin CLI adapter:
+
+```
+mix oban_powertools.limiter.explain MyApp.Workers.IngestWorker --args '{"user_id":42}'
+  → parse: worker_mod = Module.concat([worker_string])
+  → parse: args = Jason.decode!(args_json)
+  → call: Explain.explain(worker_mod, args, repo: repo)
+  → receive: %{status:, blockers:, live_now:, snapshot_at_block_start:}
+  → format and print to stdout
+```
+
+No changes to `Explain`. The task formats the returned map into human-readable output using `Mix.shell().info/1`.
+
+### How `limiter.simulate` Reuses Existing Logic
+
+`Limits.reserve/4` and `Limits.release/3` are the correct public API. Simulate runs N reserve+release cycles, printing each result:
+
+```
+mix oban_powertools.limiter.simulate MyApp.Workers.IngestWorker --count 5
+  → for slot in 1..count:
+       case Limits.reserve(repo, worker_mod, args) do
+         {:ok, reservation} ->
+           print "slot #{slot}: reserved"
+           Limits.release(repo, reservation)  # immediate release = net-zero state change
+         {:blocked, blockers} ->
+           print "slot #{slot}: blocked by #{blocker.code} (#{blocker.summary})"
+           break  # stop on first block — remaining slots would also block
+       end
+  → print summary: slots attempted, slots reserved, first-blocked-at
+```
+
+Simulate is a write path (real reserve+release cycles), but is safe in development and staging because the release immediately follows each reserve. Net limiter state change is zero when all slots succeed. The task prints a clear disclaimer that it exercises the live limiter state.
+
+No changes to `Limits` or `Explain`.
+
+### Rate-Limit Glossary
+
+The glossary (`bucket_capacity`, `bucket_span_ms`, `scope_kind`, `cooldown`, `weight`, `partition_key`, `partition_strategy`) ships as:
+
+- `--help` output in both limiter tasks (inline `@moduledoc` or `IO.puts/1` in `run/1`)
+- A new guide: `guides/limiter-cli-reference.md`
+
+### New vs Modified
+
+- **NEW:** `lib/mix/tasks/oban_powertools.limiter.explain.ex`
+- **NEW:** `lib/mix/tasks/oban_powertools.limiter.simulate.ex`
+- **NEW guide:** `guides/limiter-cli-reference.md`
+- **UNMODIFIED:** `lib/oban_powertools/explain.ex` — called via `explain/3` as-is
+- **UNMODIFIED:** `lib/oban_powertools/limits.ex` — called via `reserve/4` + `release/3` as-is
+- **MODIFIED (minor):** `mix.exs` `docs/0` — add new guide to `"Operations"` group
+
+---
+
+## Deliverable 4: `Telemetry.metrics/0` over the Frozen Contract
+
+### Integration Point
+
+`ObanPowertools.Telemetry` already has `@contract` (a map of families and low-cardinality metadata keys) and `contract/0` (the public accessor). The contract covers five families: `operator_action`, `limiter`, `cron`, `workflow`, `lifeline`. Each family declares the allowed low-cardinality tag keys.
+
+The new `metrics/0` function is **added to the existing `telemetry.ex`** — not a new module. It generates `Telemetry.Metrics` structs that map directly onto the frozen contract's event names and tag keys.
+
+### What `metrics/0` Returns
 
 ```elixir
-# Add to @canonical_paths:
-jobs: "/ops/jobs/jobs",
+def metrics do
+  [
+    # operator_action family
+    Telemetry.Metrics.counter("oban_powertools.operator_action.executed",
+      tags: [:action, :source]),
 
-# Add helpers:
-def jobs_path(params), do: encode(:jobs, params)
+    # limiter family -- three key events
+    Telemetry.Metrics.counter("oban_powertools.limiter.reserved",
+      tags: [:action, :resource, :scope]),
+    Telemetry.Metrics.counter("oban_powertools.limiter.blocked",
+      tags: [:action, :blocker_code, :resource, :scope]),
+    Telemetry.Metrics.counter("oban_powertools.limiter.released",
+      tags: [:action, :resource, :scope]),
 
-# For job detail, build a non-encode helper since the ID is path-embedded:
-def job_detail_path(id, params \\ []) do
-  base = "/ops/jobs/jobs/#{id}"
-  query = params |> Enum.reject(fn {_, v} -> is_nil(v) or v == "" end) |> URI.encode_query()
-  if query == "", do: base, else: "#{base}?#{query}"
+    # cron family
+    Telemetry.Metrics.counter("oban_powertools.cron.triggered",
+      tags: [:action, :source, :overlap_policy, :catch_up_policy]),
+
+    # workflow family -- four sub-events, each with their own tag set
+    Telemetry.Metrics.counter("oban_powertools.workflow.step_completed",
+      tags: [:outcome, :terminal_cause, :semantics_version]),
+    Telemetry.Metrics.counter("oban_powertools.workflow.step_unblocked",
+      tags: [:scope, :state, :semantics_version]),
+    Telemetry.Metrics.counter("oban_powertools.workflow.cascade_cancelled",
+      tags: [:scope, :outcome, :terminal_cause, :semantics_version]),
+    Telemetry.Metrics.counter("oban_powertools.workflow.workflow_terminal",
+      tags: [:state, :outcome, :terminal_cause, :semantics_version]),
+
+    # lifeline family
+    Telemetry.Metrics.counter("oban_powertools.lifeline.executed",
+      tags: [:action, :incident_class, :target_type, :outcome]),
+  ]
 end
 ```
 
-### 6. Router Extension
+Tags are taken directly from `@contract.families.*`. Event name suffixes (`:executed`, `:blocked`, `:released`, etc.) must match what the `execute_*_event/3` helpers emit — that match must be verified against the actual `execute_limiter_event/3`, `execute_operator_action/3`, etc. calls in `Limits`, `Operator`, and `Lifeline` during implementation.
 
-The new routes go inside the existing `live_session :oban_powertools_native` block, inheriting `LiveAuth` on_mount and the `oban_dashboard_path` session key:
+### Why No `oban_met` Dependency
+
+`oban_met` is a reporter (live ETS store + socket broadcaster). `Telemetry.Metrics` is the standard Elixir library for declaring metric definitions — pure structs, no runtime process. A host app passes `ObanPowertools.Telemetry.metrics()` to their reporter of choice (Parapet, PromEx, StatsD, Datadog). The library ships the definition, not the pipeline. This is identical to how Phoenix ships `Phoenix.LiveDashboard.Metrics` — declare, don't report.
+
+### Dependency Situation
+
+`Telemetry.Metrics` is not currently in `mix.exs`. It is always available in Phoenix host apps (`phoenix_live_dashboard` depends on it), but correctness requires the library to declare it explicitly as optional:
 
 ```elixir
-live("/jobs", ObanPowertools.Web.JobsLive, :index)
-live("/jobs/:id", ObanPowertools.Web.JobDetailLive, :show)
+{:telemetry_metrics, "~> 1.0", optional: true}
 ```
 
-No new `live_session` is needed. No new session key is needed.
+This lets hosts that want `metrics/0` use it without forcing it on hosts that only use raw telemetry events. The existing `{:telemetry, "~> 1.4"}` dep is sufficient for raw event emission; `telemetry_metrics` is only needed when `metrics/0` is called.
 
-### 7. Operator API Module
+### Relationship to the Frozen Contract
 
-`ObanPowertools.Operator` wraps Lifeline calls for programmatic use. The function signature follows the established `(repo, actor, ...)` convention used by `Lifeline`, `Cron`, and `Workflow`:
+`metrics/0` is a mechanical translation of `@contract` into `Telemetry.Metrics` structs. No new contract knowledge is introduced. No new events are emitted. If the frozen contract is ever amended (via the existing locked-CONTEXT amendment process), `metrics/0` is updated in the same commit as the contract change.
 
+### New vs Modified
+
+- **MODIFIED:** `lib/oban_powertools/telemetry.ex` — add `metrics/0` function only; no other changes
+- **MODIFIED:** `mix.exs` — add `{:telemetry_metrics, "~> 1.0", optional: true}` to `deps/0`
+- **NEW guide:** `guides/telemetry-and-slo.md` (Parapet integration walkthrough, PromEx/StatsD examples, SLO dashboard setup)
+- **MODIFIED (minor):** `mix.exs` `docs/0` — add new guide to `"Operations"` group
+
+---
+
+## Complete File Change Summary
+
+### New Files
+
+```
+lib/mix/tasks/oban_powertools.doctor.ex
+lib/mix/tasks/oban_powertools.limiter.explain.ex
+lib/mix/tasks/oban_powertools.limiter.simulate.ex
+lib/oban_powertools/doctor/checks.ex
+lib/oban_powertools/doctor/index_check.ex
+lib/oban_powertools/doctor/uniqueness_check.ex
+lib/oban_powertools/doctor/config_check.ex
+lib/oban_powertools/doctor/migration_check.ex
+guides/telemetry-and-slo.md
+guides/limiter-cli-reference.md
+```
+
+### Modified Files
+
+```
+lib/oban_powertools/telemetry.ex   -- add metrics/0 function
+mix.exs                            -- version bump, package block, description,
+                                      telemetry_metrics optional dep, docs group updates
+```
+
+### Unmodified (explicitly confirmed)
+
+```
+lib/oban_powertools/explain.ex          -- called as-is via explain/3
+lib/oban_powertools/limits.ex           -- called as-is via reserve/4 + release/3
+lib/oban_powertools/runtime_config.ex   -- consumed as-is via repo!/0
+lib/oban_powertools/application.ex      -- mix tasks do NOT start the supervision tree
+lib/oban_powertools/worker.ex           -- limit_snapshot/2 called indirectly via Explain
+lib/mix/tasks/oban_powertools.install.ex -- unchanged; naming convention only
+```
+
+---
+
+## Project Structure After v1.6
+
+```
+lib/
++-- mix/
+|   +-- tasks/
+|       +-- oban_powertools.install.ex            (existing)
+|       +-- oban_powertools.doctor.ex             (NEW)
+|       +-- oban_powertools.limiter.explain.ex    (NEW)
+|       +-- oban_powertools.limiter.simulate.ex   (NEW)
++-- oban_powertools/
+    +-- doctor/                                   (NEW directory)
+    |   +-- checks.ex                             (NEW)
+    |   +-- index_check.ex                        (NEW)
+    |   +-- uniqueness_check.ex                   (NEW)
+    |   +-- config_check.ex                       (NEW)
+    |   +-- migration_check.ex                    (NEW)
+    +-- telemetry.ex                              (MODIFIED: +metrics/0)
+    +-- ... (all other modules unmodified)
+
+guides/
+    +-- telemetry-and-slo.md                      (NEW)
+    +-- limiter-cli-reference.md                  (NEW)
+
+mix.exs                                           (MODIFIED)
+```
+
+---
+
+## Architectural Patterns
+
+### Pattern 1: Config-Only Application Boot for Mix Tasks
+
+**What:** Load host config via `Mix.Task.run("app.config")` without starting any OTP application supervisor, then start only the Ecto repo pool directly.
+
+**When to use:** Any mix task needing DB access that must not start Phoenix, PubSub, or Oban supervisors. Applies to `doctor`, `limiter.explain`, and `limiter.simulate`.
+
+**Trade-offs:** Minimal boot means fast task startup and no risk of crashing on missing process dependencies (e.g., no Oban supervisor = no Oban queue polling). The cost is that any feature requiring a live supervision tree (e.g., PubSub broadcast) is unavailable — not relevant for read-only diagnostic tasks.
+
+**Concrete sequence:**
 ```elixir
-defmodule ObanPowertools.Operator do
-  @doc "Retry a single job. Actor must satisfy Auth.audit_principal/1."
-  def retry_job(repo, actor, job_id, reason, opts \\ [])
-  # -> {:ok, %{target: job, preview: preview}} | {:error, reason}
+Mix.Task.run("app.config")
+Application.ensure_all_started(:ecto_sql)
+repo = ObanPowertools.RuntimeConfig.repo!()
+{:ok, _pid} = repo.start_link()
+```
 
-  def cancel_job(repo, actor, job_id, reason, opts \\ [])
-  def discard_job(repo, actor, job_id, reason, opts \\ [])
+**Why not `Mix.Task.run("app.start")`:** That starts the full OTP application tree including `ObanPowertools.Application` (PubSub + WorkflowCoordinator + HeartbeatWriter). These processes expect a fully configured host and may fail or emit misleading errors when run in a bare mix task context.
 
-  @doc "Retry multiple jobs. Returns {:ok, count} or {:error, [{id, reason}]}."
-  def bulk_retry(repo, actor, job_ids, reason, opts \\ [])
-  def bulk_cancel(repo, actor, job_ids, reason, opts \\ [])
-  def bulk_discard(repo, actor, job_ids, reason, opts \\ [])
+### Pattern 2: Thin Task Adapter (no logic in the task)
+
+**What:** Mix tasks as thin CLI adapters — parse args, resolve repo, call existing library function, format output. Zero business logic in the task module itself.
+
+**When to use:** When a public function already exists with the needed signature (`Explain.explain/3`, `Limits.reserve/4`, `Limits.release/3`). The limiter tasks use this pattern.
+
+**Trade-offs:** Tasks become trivially thin and easy to test by testing the library functions directly. Output formatting lives in the task (not in the library), so CLI UX changes never touch the library API.
+
+### Pattern 3: Compile-Time Metric Definitions (no reporter dependency)
+
+**What:** `metrics/0` returns a static list of `Telemetry.Metrics` structs derived directly from the frozen `@contract` module attribute. The function has no side effects and requires no runtime process.
+
+**When to use:** When the event schema is known at compile time (frozen contract) and the library should remain reporter-agnostic.
+
+**Trade-offs:** Host must wire the returned list into their reporter at startup. The library ships the definition; the host owns the pipeline. This is identical to how Phoenix ships LiveDashboard metric definitions.
+
+---
+
+## Data Flows
+
+### Doctor Check Flow
+
+```
+mix oban_powertools.doctor
+    |
+    +- app.config + ecto_sql + repo.start_link()
+    |
+    +- Doctor.Checks.run(repo, oban_prefix)
+    |    |
+    |    +- ConfigCheck.run()               → pure Elixir; Application.get_env
+    |    +- IndexCheck.run(repo, prefix)    → pg_catalog.pg_index + pg_class + pg_namespace
+    |    +- UniquenessCheck.run(repo)       → pg_catalog.pg_settings
+    |    +- MigrationCheck.run(repo)        → information_schema.columns
+    |
+    +- format findings → Mix.shell().info / .error
+    |
+    +- System.halt(0 | 1 | 2)
+```
+
+### Limiter Explain Flow
+
+```
+mix oban_powertools.limiter.explain WorkerMod --args '{...}'
+    |
+    +- app.config + ecto_sql + repo.start_link()
+    +- worker_mod = Module.concat([worker_string])
+    +- args = Jason.decode!(args_json)
+    |
+    +- Explain.explain(worker_mod, args, repo: repo)
+    |    |
+    |    +- Worker.limit_snapshot(worker_mod, args)    # reads @powertools_limits
+    |    +- live_blockers(repo, snapshot, now)         # queries limit_resources + limit_states
+    |    |
+    |    +- %{status:, blockers:, live_now:, snapshot_at_block_start:}
+    |
+    +- format and print to stdout
+```
+
+### Limiter Simulate Flow
+
+```
+mix oban_powertools.limiter.simulate WorkerMod --count 5
+    |
+    +- app.config + ecto_sql + repo.start_link()
+    +- worker_mod, args parsed (same as explain)
+    |
+    +- for slot in 1..count:
+    |    Limits.reserve(repo, worker_mod, args)
+    |      {:ok, reservation}    → print "slot N: reserved"; Limits.release(repo, reservation)
+    |      {:blocked, blockers}  → print "slot N: blocked by X"; stop
+    |
+    +- print summary table
+```
+
+### Telemetry.metrics/0 Host Wiring Flow
+
+```
+# Host application.ex or Telemetry module:
+def metrics do
+  ObanPowertools.Telemetry.metrics()   # pure data, no side effects
+  ++ your_app_metrics()
 end
+
+# Wired into reporter at supervision startup:
+children = [
+  {Parapet.Reporter, metrics: MyApp.Telemetry.metrics()}
+]
 ```
 
-Each single-job function calls `Lifeline.preview_repair/4` then `Lifeline.execute_repair/5`. Bulk functions call the single-job path N times and aggregate results. Bulk operations should cap at a configurable `:max_bulk` option (default 100) to bound latency and audit volume.
+---
 
-## Data Flow
+## Integration Boundaries
 
-### Job Browse and Action Flow
+### Reused Unchanged
 
-```
-Operator navigates to /ops/jobs
-    |
-    v
-JobsLive.mount/3
-  -> LiveAuth.authorize_page(socket, :view_jobs, %{type: :page, id: "jobs"})
-  -> Jobs.list(repo, filters, page_size: 50)     [queries oban_jobs directly]
-  -> assign(:jobs, jobs)
-    |
-Operator applies filter (queue, state, worker, tag)
-    |
-    v
-JobsLive.handle_event("filter", params, socket)
-  -> push_patch with new query params
-  -> handle_params -> Jobs.list(repo, new_filters)
-    |
-Operator clicks "Preview Retry" on a job row
-    |
-    v
-JobsLive.handle_event("preview_action", %{"job-id" => id, "action" => "job_retry"}, socket)
-  -> LiveAuth.authorize_action(socket, :preview_repair, %{type: :job, id: id})
-  -> Lifeline.preview_repair(repo, actor,
-       %{action: "job_retry", target_type: "job", target_id: id, incident_id: nil})
-  -> {:ok, preview}  [incident_fingerprint: "job:manual:#{id}"]
-  -> assign(:preview, preview)
-    |
-Operator enters reason + clicks "Execute"
-    |
-    v
-JobsLive.handle_event("execute_action", ...)
-  -> LiveAuth.authorize_action(socket, :execute_repair, resource)
-  -> Lifeline.execute_repair(repo, actor, preview_token, reason)
-     -> plan_hash recompute (drift check)
-     -> Ecto.Multi: mutate_target + update preview + Audit.record("lifeline.repair_executed", ...)
-     -> Telemetry.execute_lifeline_event(:repair_executed, %{count: 1}, %{action: "job_retry", ...})
-  -> {:ok, result}
-  -> reload job list
-```
+| Existing Module | Reused By | Reuse Mechanism |
+|-----------------|-----------|-----------------|
+| `RuntimeConfig.repo!/0` | `doctor`, `limiter.explain`, `limiter.simulate` | Direct call in task boot |
+| `Explain.explain/3` | `limiter.explain` task | Public API; `repo:` opt passed through |
+| `Limits.reserve/4` | `limiter.simulate` task | Public API |
+| `Limits.release/3` | `limiter.simulate` task | Public API |
+| `Telemetry.@contract` | `Telemetry.metrics/0` | Module attribute read at compile time |
+| `Ecto.Adapters.SQL.query!/3` | `Doctor.Checks.*` | Same pattern already used in `lifeline.ex:573` |
 
-### Operator API Flow
+### New and Isolated
+
+| New Module | Calls Into | Called By |
+|------------|-----------|-----------|
+| `Mix.Tasks.ObanPowertools.Doctor` | `RuntimeConfig`, `Doctor.Checks.*`, `System.halt/1` | Developer CLI |
+| `Doctor.Checks.*` | `Ecto.Adapters.SQL.query!`, `Application.get_env` | Doctor task only |
+| `Mix.Tasks.ObanPowertools.Limiter.Explain` | `RuntimeConfig`, `Explain.explain/3`, `Jason.decode!` | Developer CLI |
+| `Mix.Tasks.ObanPowertools.Limiter.Simulate` | `RuntimeConfig`, `Limits.reserve/4`, `Limits.release/3`, `Jason.decode!` | Developer CLI |
+
+### Modified and Why
+
+| Modified Module | Change | Why |
+|-----------------|--------|-----|
+| `lib/oban_powertools/telemetry.ex` | Add `metrics/0` | Exposes frozen contract as `Telemetry.Metrics` structs for opt-in host wiring |
+| `mix.exs` | Version, package, description, optional dep, docs | Hex publication + new guides |
+
+---
+
+## Suggested Build Order
 
 ```
-ObanPowertools.Operator.retry_job(repo, actor, job_id, reason)
-    |
-    v
-  Lifeline.preview_repair(repo, actor,
-    %{action: "job_retry", target_type: "job", target_id: job_id, incident_id: nil})
-    |
-  {:ok, preview}
-    |
-  Lifeline.execute_repair(repo, actor, preview.preview_token, reason)
-    -> same Ecto.Multi path as UI: audit written, telemetry emitted
-    |
-  {:ok, %{target: updated_job, preview: consumed_preview}}
+1. mix.exs: version + package block
+   → Zero risk; unblocks hex tarball verification immediately.
+
+2. Telemetry.metrics/0
+   → Single function addition to a frozen, stable module.
+   → No runtime deps; the frozen @contract is the complete spec.
+   → Build early so the telemetry guide can show working code.
+
+3. Doctor: ConfigCheck (pure Elixir, no DB)
+   → Validates RuntimeConfig contract against Application config.
+   → No DB or pg_catalog needed; fastest to build and test.
+
+4. Doctor: MigrationCheck
+   → information_schema.columns query; validates installer tables.
+   → Depends on the boot pattern proved in step 3.
+
+5. Doctor: IndexCheck + UniquenessCheck
+   → pg_catalog queries; requires understanding of prefix resolution.
+   → Both are independent of each other; can be built in parallel.
+
+6. Doctor: Checks dispatcher + task entry point + exit codes
+   → Wires steps 3-5; adds output formatting and System.halt/1.
+
+7. mix oban_powertools.limiter.explain
+   → Thin wrapper over Explain.explain/3; boot pattern from doctor reused.
+   → No dependency on simulate.
+
+8. mix oban_powertools.limiter.simulate
+   → Thin wrapper over Limits.reserve/4 + release/3; real write path.
+   → Build after explain confirms the boot pattern and arg parsing.
+   → Test fixtures need careful setup (reserve+release against real limiter state).
+
+9. New guides (telemetry-and-slo.md, limiter-cli-reference.md)
+   → Write after code is proven; update mix.exs docs/0 at this point.
+
+10. Getting-started verification
+    → Install from published hex in clean Phoenix app.
+    → Run all four new tasks; confirm exit codes and output.
+    → Final gate before closing v1.6.
 ```
 
-## New vs Modified: Explicit Component Table
+**Hard dependency:** Step 1 (mix.exs) must precede step 10 (hex verification). Step 2 (metrics/0) must precede guide writing in step 9. Steps 3–8 are independent of each other and can be phased as separate plans.
 
-### New (net-new files — zero risk to existing surfaces)
+---
 
-| Component | File | Risk |
-|-----------|------|------|
-| `ObanPowertools.Jobs` | `lib/oban_powertools/jobs.ex` | None — pure Ecto, no deps on Lifeline |
-| `ObanPowertools.Operator` | `lib/oban_powertools/operator.ex` | None — thin wrapper; depends on Lifeline Phase 3 changes |
-| `ObanPowertools.Web.JobsLive` | `lib/oban_powertools/web/jobs_live.ex` | None until Phase 3 (mutation wiring) |
-| `ObanPowertools.Web.JobDetailLive` | `lib/oban_powertools/web/job_detail_live.ex` | None until Phase 3 |
+## Anti-Patterns to Avoid
 
-### Modified (surgical additions to existing files)
+### Anti-Pattern 1: Starting the Full OTP Application in Mix Tasks
 
-| Component | File | Change Scope | Risk |
-|-----------|------|-------------|------|
-| `ObanPowertools.Lifeline` | `lib/oban_powertools/lifeline.ex` | Add `"job_discard"` to `@supported_actions`; add clauses to `build_job_preview/5`, `mutate_target/5`, `next_job_state/1`, `repair_summary/3` | Low — additive clauses, no existing match ordering affected |
-| `ObanPowertools.Web.Router` | `lib/oban_powertools/web/router.ex` | Add 2 `live/3` calls inside existing `live_session` | Minimal — pattern is identical to existing 7 routes |
-| `ObanPowertools.Web.LiveAuth` | `lib/oban_powertools/web/live_auth.ex` | Add 2 keys to `@permission_messages`; add 1 key to `@page_read_only_banners` | Minimal — module attribute additions only |
-| `ObanPowertools.Web.Selectors` | `lib/oban_powertools/web/selectors.ex` | Add `:jobs` to `@canonical_paths`; add `jobs_path/1` and `job_detail_path/2` | Minimal — additive only |
-| `ObanPowertools.Telemetry` | `lib/oban_powertools/telemetry.ex` | Doc update only if `source: "api"` needs callout; no runtime change | None |
+**What people do:** Call `Mix.Task.run("app.start")` for "easy" DB access.
 
-## Build Order to Minimize Coupling Risk
+**Why it's wrong:** `ObanPowertools.Application.start/2` starts PubSub, WorkflowCoordinator, and HeartbeatWriter. These processes expect a fully configured host app and will crash or emit misleading errors when run in a bare mix task context for a health check.
 
-**Phase A: Read-only job browse (QRY-01, QRY-02)**
+**Do this instead:** `app.config` + `Application.ensure_all_started(:ecto_sql)` + `repo.start_link()`. This is the minimal boot that provides a working Ecto adapter pool.
 
-Build `ObanPowertools.Jobs` and `JobsLive` as read-only first. Add router routes. Extend `Selectors` and `LiveAuth`. Zero Lifeline dependency. Validates `Oban.Job` query access before touching mutation code.
+### Anti-Pattern 2: Logic in the Task Module
 
-Add `JobDetailLive` (also read-only). No new integration points beyond Jobs query module.
+**What people do:** Put blocker parsing, pg_catalog query construction, or resource aggregation directly in the task's `run/1` function.
 
-**Phase B: Single-job actions (QRY-03)**
+**Why it's wrong:** Untestable without invoking Mix task machinery. The task becomes a test-hostile monolith.
 
-Modify `Lifeline` to add `job_discard` support and validate browse-initiated (no-incident) action path. Wire preview/execute events into `JobsLive` and `JobDetailLive`. This is the highest-risk phase because it modifies `Lifeline`, but the changes are purely additive — new match clauses, no existing clause reordering.
+**Do this instead:** All business logic in `Doctor.Checks.*` modules (for doctor) or delegated to `Explain`/`Limits` (for limiter tasks). Tasks handle arg parsing and output formatting only.
 
-**Phase C: Bulk operations (QRY-04)**
+### Anti-Pattern 3: Emitting New Events for `metrics/0`
 
-Add bulk selection state to `JobsLive`. Implement `Operator.bulk_*` functions using the Phase B single-job pipeline. No new Lifeline changes needed.
+**What people do:** Add new `Telemetry.execute_*/3` calls to match the metric definitions, thinking each metric definition needs a dedicated event source.
 
-**Phase D: Operator API module (API-01)**
+**Why it's wrong:** The existing `execute_limiter_event/3`, `execute_operator_action/3`, etc. already emit the correct events. `metrics/0` defines how to observe those existing events — it does not create new ones.
 
-Add `ObanPowertools.Operator` as a thin wrapper. All Lifeline changes are already in place. Entirely additive.
+**Do this instead:** `metrics/0` maps onto events the existing helpers already emit. The metric event name strings must match the actual atom paths those helpers produce.
 
-## Anti-Patterns
+### Anti-Pattern 4: Adding `oban_met` as a Dependency
 
-### Anti-Pattern 1: Raw Mass-Update Bypass
+**What people do:** Pull in `oban_met` to get "real" metric definitions or live job counts as part of the telemetry story.
 
-**What people do:** Use `Oban.cancel_all_jobs/1` or `repo.update_all/2` from the UI or API.
+**Why it's wrong:** `oban_met` is a reporter with its own ETS store and socket process. It couples the library to a significant runtime footprint, creates version coupling with `oban_web`, and drifts toward "rebuild Oban Web" — explicitly out of scope per the project constraints.
 
-**Why it's wrong:** Bypasses preview token, plan hash, audit record, and telemetry — the entire Lifeline contract. Creates unauditable mutations.
+**Do this instead:** `Telemetry.metrics/0` returns pure `Telemetry.Metrics` structs. Hosts wire them into their own reporter. The telemetry guide shows the Parapet wiring pattern. `oban_met` is a v1.9 optional-read concern only.
 
-**Do this instead:** Route all mutations through `Lifeline.preview_repair/4` + `Lifeline.execute_repair/5`.
+### Anti-Pattern 5: Blocking Simulate on First Blocked Slot Then Continuing
 
-### Anti-Pattern 2: Parallel Mutation Pipeline
+**What people do:** Continue the reserve+release loop after a blocked result, trying to show "how many out of N would be blocked."
 
-**What people do:** Build a `JobActions` module with direct `repo.update!` calls for retry/cancel/discard.
+**Why it's wrong:** Once the bucket is saturated for a given partition key, all subsequent reserve attempts for the same worker/args will also block. Continuing produces N-k identical "blocked" results and inflates the simulation table with noise.
 
-**Why it's wrong:** Duplicates preview, drift, audit, and telemetry logic immediately and diverges from the audit trail format.
+**Do this instead:** Stop the loop on the first blocked slot. Print the first-blocked-at index clearly. The output is informative: "3 of 5 slots reserved; slot 4 blocked by limit_reached."
 
-**Do this instead:** Extend Lifeline with one new action (`job_discard`) and reuse the existing pipeline for `job_retry` and `job_cancel`.
-
-### Anti-Pattern 3: New Auth Actions Requiring Host Module Changes
-
-**What people do:** Introduce `:preview_job_action` and `:execute_job_action` as new auth atoms, requiring host apps to update their auth modules.
-
-**Why it's wrong:** Host apps have already implemented auth around `:preview_repair` / `:execute_repair`. New atoms are a breaking change to the host contract.
-
-**Do this instead:** Reuse `:preview_repair` and `:execute_repair` for browse-initiated job actions. The resource map `%{type: :job, id: job_id}` already carries enough context for host auth logic.
-
-### Anti-Pattern 4: Job Query Caching
-
-**What people do:** Introduce a GenServer or ETS cache for job counts or filtered lists.
-
-**Why it's wrong:** Conflicts with the Ecto-native, no-Redis design constraint. Adds stateful complexity that none of the existing operator surfaces require.
-
-**Do this instead:** Query Postgres directly with appropriate `LIMIT` and pagination. Add `OFFSET`-based pagination for the list; switch to keyset (cursor) pagination only if table sizes warrant it.
-
-## Scaling Considerations
-
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| < 100K jobs | Default Oban indexes sufficient; `LIMIT/OFFSET` pagination fine |
-| 100K–1M jobs | Host-owned composite index on `(state, queue, inserted_at DESC)` if needed; enforce `LIMIT` ceiling; keyset pagination for deep pages |
-| > 1M jobs | Keyset pagination required; Oban Pruner discipline critical; out of scope for v1.5 |
-
-Bulk action cap: enforce a max selection size (default 100) in `JobsLive` to bound latency and audit volume. Expose as a configurable `RuntimeConfig` option or hard-coded constant in `Operator`.
+---
 
 ## Sources
 
-- `lib/oban_powertools/lifeline.ex` — canonical mutation pipeline, `@supported_actions`, `mutate_target/5`, `build_job_preview/5`, `incident_fingerprint_for_job/2`, `next_job_state/1`
-- `lib/oban_powertools/web/live_auth.ex` — auth hook extension pattern; `@permission_messages` and `@page_read_only_banners` maps
-- `lib/oban_powertools/web/router.ex` — `live_session` block structure; route addition pattern
-- `lib/oban_powertools/web/selectors.ex` — `@canonical_paths` map; path helper pattern
-- `lib/oban_powertools/telemetry.ex` — frozen contract; allowed metadata keys per family
-- `lib/oban_powertools/audit.ex` — `Audit.record/4` signature; resource identity format
-- `lib/oban_powertools/auth.ex` — `authorize/3`, `actor_id/1`, `audit_principal/1` call shapes
-- `lib/oban_powertools/runtime_config.ex` — `repo!/1` and `Application.fetch_env!` patterns
-- Oban v2.18 docs (Context7 `/oban-bg/oban`) — `Oban.Job` fields and 8-state machine; `Oban.Job.query/1`; `cancel_all_jobs/1`; `retry_all_jobs/1`
+All findings derived from direct inspection of:
+
+- `/Users/jon/projects/oban_powertools/lib/oban_powertools/telemetry.ex` — frozen `@contract`, existing `execute_*_event/3` helpers
+- `/Users/jon/projects/oban_powertools/lib/oban_powertools/explain.ex` — `explain/3` public API; `repo:` opt at line 60
+- `/Users/jon/projects/oban_powertools/lib/oban_powertools/limits.ex` — `reserve/4`, `release/3` public API
+- `/Users/jon/projects/oban_powertools/lib/oban_powertools/runtime_config.ex` — `repo!/0` seam
+- `/Users/jon/projects/oban_powertools/lib/oban_powertools/application.ex` — supervision tree (what NOT to start in tasks)
+- `/Users/jon/projects/oban_powertools/lib/oban_powertools/worker.ex` — `limit_snapshot/2` consumed by `Explain`
+- `/Users/jon/projects/oban_powertools/lib/mix/tasks/oban_powertools.install.ex` — naming convention, Igniter pattern
+- `/Users/jon/projects/oban_powertools/lib/oban_powertools/lifeline.ex:573` — precedent for `Ecto.Adapters.SQL.query!/3` in library code
+- `/Users/jon/projects/oban_powertools/mix.exs` — current deps, docs groups, version
+- `/Users/jon/projects/oban_powertools/.planning/PROJECT.md` — Decision Posture, Constraints, Key Decisions
+- `/Users/jon/projects/oban_powertools/.planning/threads/2026-05-28-post-v1.5-next-milestone.md` — v1.6 scope
+- `examples/phoenix_host/deps/oban/lib/oban/config.ex` — Oban `prefix` config key (default `"public"`)
 
 ---
-*Architecture research for: Oban Powertools v1.5 Native Job Surface & Automation API*
-*Researched: 2026-05-27*
+*Architecture research for: Oban Powertools v1.6 Release & Operability*
+*Researched: 2026-05-28*
