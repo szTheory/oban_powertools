@@ -78,7 +78,7 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 **Goal:** Ship `mix oban_powertools.doctor` so operators can diagnose index, migration, and config health read-only before and after deploys.
 
 **Requirements:** OPS-03, OPS-04, OPS-05
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 **Wave 1**
 
@@ -86,7 +86,7 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 48-02-PLAN.md — Formatter (human + JSON schema_version) and the plain Mix.Task entry (flags, repo/prefix resolution, repo-only with_repo boot, honest System.halt exit codes) + operator smoke-verify
+- [x] 48-02-PLAN.md — Formatter (human + JSON schema_version) and the plain Mix.Task entry (flags, repo/prefix resolution, repo-only with_repo boot, honest System.halt exit codes) + operator smoke-verify
 
 **Success Criteria:**
 
