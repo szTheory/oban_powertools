@@ -1,0 +1,157 @@
+# General CI lanes (format, compile, unit/integration tests, docs+package build).
+# Heavy host-contract integration lanes live in host-contract-proof.yml.
+# `ci-gate` fans every lane into a single required status check — branch
+# protection requires `ci-gate`, so adding/removing a lane never desyncs the
+# protection rule. release.yml waits for `ci-gate` to be green on the release
+# SHA before publishing to Hex.
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+    paths-ignore:
+      - ".planning/**"
+      - "prompts/**"
+  pull_request:
+    paths-ignore:
+      - ".planning/**"
+      - "prompts/**"
+  workflow_dispatch:
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: erlef/setup-beam@fc68ffb90438ef2936bbb3251622353b3dcb2f93 # v1.24.0
+        with:
+          elixir-version: "1.19.5"
+          otp-version: "27.3"
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
+      - run: mix deps.get
+      - run: mix format --check-formatted
+
+  compile:
+    name: Compile
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      MIX_ENV: test
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: erlef/setup-beam@fc68ffb90438ef2936bbb3251622353b3dcb2f93 # v1.24.0
+        with:
+          elixir-version: "1.19.5"
+          otp-version: "27.3"
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-test-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: ${{ runner.os }}-test-mix-
+      - run: mix deps.get
+      - run: mix compile --warnings-as-errors
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      MIX_ENV: test
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: oban_powertools_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: erlef/setup-beam@fc68ffb90438ef2936bbb3251622353b3dcb2f93 # v1.24.0
+        with:
+          elixir-version: "1.19.5"
+          otp-version: "27.3"
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-test-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: ${{ runner.os }}-test-mix-
+      - run: mix deps.get
+      # Heavy host-contract integration modules run in host-contract-proof.yml.
+      - run: mix test --exclude host_contract
+
+  docs_package:
+    name: Docs & Package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: erlef/setup-beam@fc68ffb90438ef2936bbb3251622353b3dcb2f93 # v1.24.0
+        with:
+          elixir-version: "1.19.5"
+          otp-version: "27.3"
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
+      # ex_doc is only: :dev, so build docs + package in the default (dev) env.
+      - run: mix deps.get
+      - run: mix docs
+      - run: mix hex.build
+
+  ci-gate:
+    name: ci-gate
+    runs-on: ubuntu-latest
+    needs: [format, compile, test, docs_package]
+    if: always()
+    steps:
+      - name: Verify required CI lanes
+        env:
+          FORMAT: ${{ needs.format.result }}
+          COMPILE: ${{ needs.compile.result }}
+          TEST: ${{ needs.test.result }}
+          DOCS_PACKAGE: ${{ needs.docs_package.result }}
+        run: |
+          set -euo pipefail
+          failed=0
+          for lane in FORMAT COMPILE TEST DOCS_PACKAGE; do
+            result="${!lane}"
+            if [[ "$result" != "success" ]]; then
+              echo "Required lane $lane: $result"
+              failed=1
+            fi
+          done
+          if [[ "$failed" -ne 0 ]]; then
+            echo "ci-gate failed: one or more required lanes did not succeed."
+            exit 1
+          fi
+          echo "ci-gate passed: all required lanes succeeded."

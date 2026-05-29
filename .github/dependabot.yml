@@ -1,0 +1,34 @@
+version: 2
+updates:
+  # Elixir/Hex dependencies. For a library, dev/test deps move freely; runtime
+  # deps use ~> constraints in mix.exs so patch/minor bumps stay in range.
+  - package-ecosystem: "mix"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    groups:
+      dev-dependencies:
+        dependency-type: "development"
+        patterns:
+          - "*"
+
+  # GitHub Actions, pinned to SHAs. Dependabot bumps the SHA and keeps the
+  # trailing `# vX` version comment in sync, so pinning has ~zero ongoing cost.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "ci"
+      include: "scope"

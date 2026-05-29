@@ -1,0 +1,108 @@
+# Manual recovery: publish an already-tagged (or pinned-SHA) revision to Hex when
+# the automated release.yml path did not run or needs a one-off retry. The default
+# path is release.yml on merge of the Release PR.
+#
+# Required repository secret: HEX_API_KEY.
+name: Publish Hex Recovery
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git tag or 40-char commit SHA to publish from (e.g. v0.5.0)."
+        required: true
+        type: string
+      release_version:
+        description: "Expected @version in mix.exs at that ref (e.g. 0.5.0)."
+        required: true
+        type: string
+      dry_run:
+        description: "Run mix hex.publish --dry-run instead of publishing."
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-hex-${{ github.event.inputs.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish to Hex.pm
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_VERSION: ${{ github.event.inputs.release_version }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.event.inputs.ref }}
+      - uses: erlef/setup-beam@fc68ffb90438ef2936bbb3251622353b3dcb2f93 # v1.24.0
+        with:
+          elixir-version: "1.19.5"
+          otp-version: "27.3"
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-publish-${{ hashFiles('mix.lock') }}
+
+      - name: Install Hex + Rebar
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+
+      - name: Verify release version in mix.exs
+        run: grep -n "@version \"${RELEASE_VERSION}\"" mix.exs
+
+      - name: Fetch deps
+        run: mix deps.get
+
+      - name: Compile (warnings as errors)
+        env:
+          MIX_ENV: test
+        run: mix compile --warnings-as-errors
+
+      - name: Build docs and Hex package
+        run: |
+          mix docs
+          mix hex.build
+
+      - name: Skip if version already on Hex
+        id: idempotency
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          if mix hex.info oban_powertools "${RELEASE_VERSION}" 2>/dev/null | grep -q "Released:"; then
+            echo "Version ${RELEASE_VERSION} of oban_powertools already on Hex — skipping publish."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Dry run Hex publish
+        if: ${{ github.event.inputs.dry_run == 'true' || steps.idempotency.outputs.skip != 'true' }}
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+        run: mix hex.publish --dry-run --yes
+
+      - name: Publish to Hex
+        if: ${{ github.event.inputs.dry_run != 'true' && steps.idempotency.outputs.skip != 'true' }}
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+        run: mix hex.publish --yes
+
+      - name: Verify version on Hex.pm
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 36); do
+            if curl -fsS "https://hex.pm/api/packages/oban_powertools/releases/${RELEASE_VERSION}" | grep -q "\"version\""; then
+              echo "Hex.pm lists oban_powertools ${RELEASE_VERSION}"
+              exit 0
+            fi
+            echo "waiting for Hex index... (${i}/36)"
+            sleep 10
+          done
+          echo "Timed out waiting for oban_powertools ${RELEASE_VERSION}"
+          exit 1

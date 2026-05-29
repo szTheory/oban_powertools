@@ -1,0 +1,213 @@
+# Release Please opens/updates a Release PR from conventional commits on main.
+# When you merge that PR (the one-click gate), Release Please creates the GitHub
+# Release + v* tag, gate-ci-green verifies CI passed on the release SHA, then
+# publish-hex publishes to Hex with HEX_API_KEY.
+#
+# Required repository secrets:
+#   HEX_API_KEY          — publish-scoped hex.pm key (account-scoped value).
+#   RELEASE_PLEASE_TOKEN — fine-grained PAT (Contents: RW, Pull requests: RW).
+#                          Required so pull_request CI runs natively on the
+#                          Release PR; GITHUB_TOKEN alone cannot trigger it.
+name: Release
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+      sha: ${{ steps.release.outputs.sha }}
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  gate-ci-green:
+    name: Verify CI is green on release SHA
+    runs-on: ubuntu-latest
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Resolve tagged SHA
+        id: resolve-sha
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const shaFromRelease = '${{ needs.release-please.outputs.sha }}';
+            if (shaFromRelease) {
+              core.setOutput('sha', shaFromRelease);
+              return;
+            }
+            const tag = '${{ needs.release-please.outputs.tag_name }}';
+            const commit = await github.rest.repos.getCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `tags/${tag}`
+            });
+            core.setOutput('sha', commit.data.sha);
+
+      - name: Wait for ci-gate on release SHA
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            // Release Please tags main immediately; ci.yml may not have started.
+            // Poll until the ci-gate job concludes success on the tagged SHA.
+            const sha = '${{ steps.resolve-sha.outputs.sha }}';
+            const tag = '${{ needs.release-please.outputs.tag_name }}';
+            const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+            const maxAttempts = 40;
+            const waitMs = 30000;
+            let lastRunUrl = '';
+            let dispatched = false;
+
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+              const { data } = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'ci.yml',
+                head_sha: sha,
+                per_page: 20
+              });
+              const runs = data.workflow_runs
+                .filter((run) => run.head_sha === sha)
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+              if (runs.length === 0) {
+                core.info(`No ci.yml run yet for ${sha} (${attempt}/${maxAttempts}).`);
+                if (attempt === 3 && !dispatched && tag) {
+                  await github.rest.actions.createWorkflowDispatch({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    workflow_id: 'ci.yml',
+                    ref: tag
+                  });
+                  dispatched = true;
+                  core.info(`Dispatched ci.yml on tag ${tag}.`);
+                }
+                await sleep(waitMs);
+                continue;
+              }
+
+              lastRunUrl = runs[0].html_url;
+              if (runs.some((run) => run.status !== 'completed')) {
+                core.info(`ci.yml in progress for ${sha} (${attempt}/${maxAttempts}).`);
+                await sleep(waitMs);
+                continue;
+              }
+
+              for (const run of runs) {
+                const jobs = await github.paginate(
+                  github.rest.actions.listJobsForWorkflowRun,
+                  { owner: context.repo.owner, repo: context.repo.repo, run_id: run.id, per_page: 100 }
+                );
+                const ciGate = jobs.find((job) => job.name === 'ci-gate');
+                if (ciGate && ciGate.conclusion === 'success') {
+                  core.info(`ci-gate succeeded on ${sha}: ${run.html_url}`);
+                  return;
+                }
+              }
+              core.info(`No successful ci-gate yet for ${sha} (${attempt}/${maxAttempts}).`);
+              await sleep(waitMs);
+            }
+            core.setFailed(`Timed out waiting for ci-gate on ${sha}. Last run: ${lastRunUrl || 'none'}`);
+
+  publish-hex:
+    name: Publish to Hex.pm
+    runs-on: ubuntu-latest
+    needs: [release-please, gate-ci-green]
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    permissions:
+      contents: read
+    env:
+      RELEASE_VERSION: ${{ needs.release-please.outputs.version }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+      - uses: erlef/setup-beam@fc68ffb90438ef2936bbb3251622353b3dcb2f93 # v1.24.0
+        with:
+          elixir-version: "1.19.5"
+          otp-version: "27.3"
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-publish-${{ hashFiles('mix.lock') }}
+
+      - name: Install Hex + Rebar
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+
+      - name: Verify release version in mix.exs
+        run: grep -n "@version \"${RELEASE_VERSION}\"" mix.exs
+
+      - name: Fetch deps
+        run: mix deps.get
+
+      - name: Compile (warnings as errors)
+        env:
+          MIX_ENV: test
+        run: mix compile --warnings-as-errors
+
+      - name: Build docs and Hex package
+        run: |
+          mix docs
+          mix hex.build
+
+      - name: Skip if version already on Hex
+        id: idempotency
+        run: |
+          if mix hex.info oban_powertools "${RELEASE_VERSION}" 2>/dev/null | grep -q "Released:"; then
+            echo "Version ${RELEASE_VERSION} of oban_powertools already on Hex — skipping publish."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Dry run Hex publish
+        if: steps.idempotency.outputs.skip != 'true'
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+        run: mix hex.publish --dry-run --yes
+
+      - name: Publish to Hex
+        if: steps.idempotency.outputs.skip != 'true'
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+        run: mix hex.publish --yes
+
+      - name: Verify version on Hex.pm
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 36); do
+            if curl -fsS "https://hex.pm/api/packages/oban_powertools/releases/${RELEASE_VERSION}" | grep -q "\"version\""; then
+              echo "Hex.pm lists oban_powertools ${RELEASE_VERSION}"
+              exit 0
+            fi
+            echo "waiting for Hex index... (${i}/36)"
+            sleep 10
+          done
+          echo "Timed out waiting for https://hex.pm/api/packages/oban_powertools/releases/${RELEASE_VERSION}"
+          exit 1
