@@ -83,25 +83,25 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REL-01 | TBD | Pending |
-| REL-02 | TBD | Pending |
-| REL-03 | TBD | Pending |
-| REL-04 | TBD | Pending |
-| OPS-03 | TBD | Pending |
-| OPS-04 | TBD | Pending |
-| OPS-05 | TBD | Pending |
-| OPS-06 | TBD | Pending |
-| OPS-07 | TBD | Pending |
-| OPS-08 | TBD | Pending |
-| TEL-01 | TBD | Pending |
-| TEL-02 | TBD | Pending |
-| TEL-03 | TBD | Pending |
+| REL-01 | Phase 47 | Pending |
+| REL-02 | Phase 47 | Pending |
+| REL-03 | Phase 47 | Pending |
+| REL-04 | Phase 51 | Pending |
+| OPS-03 | Phase 48 | Pending |
+| OPS-04 | Phase 48 | Pending |
+| OPS-05 | Phase 48 | Pending |
+| OPS-06 | Phase 49 | Pending |
+| OPS-07 | Phase 49 | Pending |
+| OPS-08 | Phase 49 | Pending |
+| TEL-01 | Phase 50 | Pending |
+| TEL-02 | Phase 50 | Pending |
+| TEL-03 | Phase 50 | Pending |
 
 **Coverage:**
 - v1.6 requirements: 13 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 13 ⚠️
+- Mapped to phases: 13
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-28*
-*Last updated: 2026-05-28 after initial v1.6 definition*
+*Last updated: 2026-05-28 — traceability populated after roadmap creation*
