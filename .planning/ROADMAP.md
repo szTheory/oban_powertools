@@ -56,7 +56,7 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 **Plans:** 3 plans
 **Wave 1**
 
-- [ ] 47-01-PLAN.md — CHANGELOG.md (0.5.0 + path-to-1.0) and Apache-2.0 LICENSE
+- [x] 47-01-PLAN.md — CHANGELOG.md (0.5.0 + path-to-1.0) and Apache-2.0 LICENSE
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
