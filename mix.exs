@@ -41,7 +41,11 @@ defmodule ObanPowertools.MixProject do
   defp deps do
     [
       {:ex_doc, "~> 0.40", only: :dev, runtime: false},
-      {:igniter, "~> 0.8.0", only: [:dev, :test], runtime: false},
+      # Available in all envs (the lib ships `mix oban_powertools.install`, which
+      # `use Igniter.Mix.Task`, so adopters need igniter loadable to compile it).
+      # `runtime: false` keeps it out of the started application list. Matches the
+      # mailglass installer-lib precedent.
+      {:igniter, "~> 0.8.0", runtime: false},
       {:telemetry, "~> 1.4"},
       {:jason, "~> 1.4"},
       {:oban, "~> 2.18"},
