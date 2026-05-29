@@ -330,15 +330,22 @@ defmodule Mix.Tasks.ObanPowertools.Limiter.Explain do
     case Keyword.get(opts, :worker) do
       nil ->
         # Should not happen given the dispatch guard, but be explicit
-        {:error, :unknown_module, "nil"}
+        {:error, :not_loaded, "nil"}
 
       worker_string ->
-        mod = Module.safe_concat([worker_string])
+        try do
+          mod = Module.safe_concat([worker_string])
 
-        if Code.ensure_loaded?(mod) do
-          {:ok, mod}
-        else
-          {:error, :not_loaded, worker_string}
+          if Code.ensure_loaded?(mod) do
+            {:ok, mod}
+          else
+            {:error, :not_loaded, worker_string}
+          end
+        rescue
+          ArgumentError ->
+            # Module.safe_concat raises ArgumentError if the module atom does not
+            # already exist in the VM — treat as unknown module (T-49-03, D-04)
+            {:error, :not_loaded, worker_string}
         end
     end
   end
