@@ -9,8 +9,8 @@
 
 ### Release & Packaging
 
-- [ ] **REL-01**: Library publishes to hex.pm at `0.5.0` with a strict `:files` whitelist that ships `priv/` migration generators and excludes `.planning/`, tests, and dev cruft.
-- [ ] **REL-02**: ExDoc API documentation builds with `source_ref` pinned to the release tag and renders correctly on hexdocs (guides included as `extras`).
+- [x] **REL-01**: Library publishes to hex.pm at `0.5.0` with a strict `:files` whitelist that ships `priv/` migration generators and excludes `.planning/`, tests, and dev cruft.
+- [x] **REL-02**: ExDoc API documentation builds with `source_ref` pinned to the release tag and renders correctly on hexdocs (guides included as `extras`).
 - [x] **REL-03**: `CHANGELOG.md` (Keep a Changelog format) documents the `0.5.0` release and the explicit, documented path to `1.0` after real adopter feedback.
 - [ ] **REL-04**: The getting-started quickstart is verified working from the **published** package — a fresh host installs from hex and reaches a first successful operator session (not just in-repo).
 
@@ -83,8 +83,8 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REL-01 | Phase 47 | Pending |
-| REL-02 | Phase 47 | Pending |
+| REL-01 | Phase 47 | Complete |
+| REL-02 | Phase 47 | Complete |
 | REL-03 | Phase 47 | Complete |
 | REL-04 | Phase 51 | Pending |
 | OPS-03 | Phase 48 | Pending |

@@ -60,7 +60,7 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 47-02-PLAN.md — mix.exs package/0 + docs/0 + igniter scope, tarball/docs verification, README ~> 0.5
+- [x] 47-02-PLAN.md — mix.exs package/0 + docs/0 + igniter scope, tarball/docs verification, README ~> 0.5
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
