@@ -16,9 +16,9 @@
 
 ### Operability — Doctor
 
-- [ ] **OPS-03**: Operator can run `mix oban_powertools.doctor` to check Oban index presence and validity, including `INVALID` indexes left by a failed `CREATE INDEX CONCURRENTLY`, fully read-only over `pg_catalog`.
-- [ ] **OPS-04**: `mix oban_powertools.doctor` detects migration drift and validates configuration — honoring a custom Oban prefix/schema — and flags uniqueness-timeout risk.
-- [ ] **OPS-05**: `mix oban_powertools.doctor` returns honest exit codes (`0` ok / `1` warnings / `2` errors) suitable for CI, with actionable remediation hints in its output.
+- [x] **OPS-03**: Operator can run `mix oban_powertools.doctor` to check Oban index presence and validity, including `INVALID` indexes left by a failed `CREATE INDEX CONCURRENTLY`, fully read-only over `pg_catalog`.
+- [x] **OPS-04**: `mix oban_powertools.doctor` detects migration drift and validates configuration — honoring a custom Oban prefix/schema — and flags uniqueness-timeout risk.
+- [x] **OPS-05**: `mix oban_powertools.doctor` returns honest exit codes (`0` ok / `1` warnings / `2` errors) suitable for CI, with actionable remediation hints in its output.
 
 ### Operability — Limiter CLI
 
@@ -87,9 +87,9 @@ Which phases cover which requirements. Populated during roadmap creation.
 | REL-02 | Phase 47 | Complete |
 | REL-03 | Phase 47 | Complete |
 | REL-04 | Phase 51 | Pending |
-| OPS-03 | Phase 48 | Pending |
-| OPS-04 | Phase 48 | Pending |
-| OPS-05 | Phase 48 | Pending |
+| OPS-03 | Phase 48 | Complete |
+| OPS-04 | Phase 48 | Complete |
+| OPS-05 | Phase 48 | Complete |
 | OPS-06 | Phase 49 | Pending |
 | OPS-07 | Phase 49 | Pending |
 | OPS-08 | Phase 49 | Pending |
