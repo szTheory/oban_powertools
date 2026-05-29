@@ -54,6 +54,11 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 
 **Requirements:** REL-01, REL-02, REL-03
 
+**Plans:** 3 plans
+- [ ] 47-01-PLAN.md — CHANGELOG.md (0.5.0 + path-to-1.0) and Apache-2.0 LICENSE
+- [ ] 47-02-PLAN.md — mix.exs package/0 + docs/0 + igniter scope, tarball/docs verification, README ~> 0.5
+- [ ] 47-03-PLAN.md — release-please pipeline (config + manifest + workflow) and operator publish handoff
+
 **Success Criteria:**
 1. `mix hex.build --unpack` shows the package ships `priv/` migration generators and excludes `.planning/`, `test/`, and dev cruft.
 2. The library publishes to hex.pm at version 0.5.0 and the package page renders.
