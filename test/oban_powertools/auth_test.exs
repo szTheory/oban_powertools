@@ -26,6 +26,7 @@ defmodule ObanPowertools.AuthTest do
     actor = %{id: "ops-1", permissions: [:view_cron]}
 
     assert ObanPowertools.Auth.current_actor(%{"current_actor" => actor}) == actor
+
     assert ObanPowertools.Auth.authorization_outcome(actor, :view_cron, %{type: :page, id: "cron"}) ==
              :ok
 
@@ -43,6 +44,7 @@ defmodule ObanPowertools.AuthTest do
 
     assert RuntimeConfig.repo(repo: ObanPowertools.TestRepo) == ObanPowertools.TestRepo
     assert RuntimeConfig.repo!(repo: ObanPowertools.TestRepo) == ObanPowertools.TestRepo
+
     assert RuntimeConfig.auth_module(auth_module: ObanPowertools.TestAuth) ==
              ObanPowertools.TestAuth
 

@@ -12,13 +12,18 @@ defmodule ObanPowertools.OperatorTest do
   test "retry_job mutates the job and emits telemetry with source: api" do
     job = insert_job!("executing")
     actor = %{id: "operator-1", permissions: [:preview_repair, :execute_repair]}
-    
+
     parent = self()
     handler_id_execute = "test-execute-handler-#{System.unique_integer()}"
 
-    :telemetry.attach(handler_id_execute, [:oban_powertools, :lifeline, :repair_executed], fn _event, _measurements, metadata, _config ->
-      send(parent, {:execute_telemetry, metadata})
-    end, nil)
+    :telemetry.attach(
+      handler_id_execute,
+      [:oban_powertools, :lifeline, :repair_executed],
+      fn _event, _measurements, metadata, _config ->
+        send(parent, {:execute_telemetry, metadata})
+      end,
+      nil
+    )
 
     assert {:ok, %{target: repaired_job}} =
              Operator.retry_job(repo(), actor, job.id, "Retrying job via API")
@@ -59,9 +64,10 @@ defmodule ObanPowertools.OperatorTest do
 
     assert {:error, :unauthorized} =
              Operator.retry_job(repo(), actor, job.id, "Unauthorized attempt")
-             
+
     # Try with empty reason
     actor2 = %{id: "operator-1", permissions: [:preview_repair, :execute_repair]}
+
     assert {:error, :reason_required} =
              Operator.retry_job(repo(), actor2, job.id, "   ")
   end
@@ -95,9 +101,9 @@ defmodule ObanPowertools.OperatorTest do
 
       assert length(result.successes) == 2
       assert Enum.sort(result.successes) == Enum.sort([job1.id, job2.id])
-      
+
       assert length(result.failures) == 1
-      assert [{ -1, :not_found }] = result.failures
+      assert [{-1, :not_found}] = result.failures
     end
 
     test "bulk_discard_jobs works with mixed results", %{actor: actor} do

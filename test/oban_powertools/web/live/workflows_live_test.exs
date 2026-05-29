@@ -275,7 +275,8 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
 
   test "renders a forensic entry link that preserves workflow and step selectors", %{conn: conn} do
     {:ok, workflow} =
-      WorkflowFixtures.workflow_fixture(name: "forensics-entry-workflow") |> Workflow.insert(TestRepo)
+      WorkflowFixtures.workflow_fixture(name: "forensics-entry-workflow")
+      |> Workflow.insert(TestRepo)
 
     conn =
       Plug.Test.init_test_session(conn,

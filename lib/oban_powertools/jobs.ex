@@ -90,7 +90,7 @@ defmodule ObanPowertools.Jobs do
     |> maybe_filter_queue(filter.queue)
     |> maybe_filter_worker(filter.worker)
     |> maybe_filter_tags(filter.tags)
-    |> order_by([j], [desc: j.scheduled_at, desc: j.id])
+    |> order_by([j], desc: j.scheduled_at, desc: j.id)
     |> limit(^filter.page_size)
     |> offset(^offset)
     |> repo.all()

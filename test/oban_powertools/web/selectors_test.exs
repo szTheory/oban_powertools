@@ -12,7 +12,9 @@ defmodule ObanPowertools.Web.SelectorsTest do
   end
 
   test "drops nil and empty string values before encoding" do
-    result = Selectors.lifeline_path([{"view", "active"}, {"incident_fingerprint", nil}, {"step", ""}])
+    result =
+      Selectors.lifeline_path([{"view", "active"}, {"incident_fingerprint", nil}, {"step", ""}])
+
     assert result == "/ops/jobs/lifeline?view=active"
   end
 

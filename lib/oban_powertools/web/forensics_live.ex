@@ -359,10 +359,6 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         follow_up_ownership_label(continuity)
     end
 
-    defp continuity_action(continuity) do
-      Map.get(continuity, "action") || Map.get(continuity, :action) || "unknown"
-    end
-
     defp continuity_reason(continuity) do
       Map.get(continuity, "reason") || Map.get(continuity, :reason) || "none provided"
     end
@@ -392,8 +388,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp continuity_audit_follow_up_path(bundle) do
       [
-        {"resource_type", get_in(bundle, [:subject, :resource_type]) || get_in(bundle, [:subject, "resource_type"])},
-        {"resource_id", get_in(bundle, [:subject, :resource_id]) || get_in(bundle, [:subject, "resource_id"])}
+        {"resource_type",
+         get_in(bundle, [:subject, :resource_type]) || get_in(bundle, [:subject, "resource_type"])},
+        {"resource_id",
+         get_in(bundle, [:subject, :resource_id]) || get_in(bundle, [:subject, "resource_id"])}
       ]
       |> Enum.reject(fn {_key, value} -> is_nil(value) or value == "" end)
       |> case do

@@ -1232,7 +1232,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp latest_audit_follow_up_path([]), do: nil
-    defp latest_audit_follow_up_path([event | _rest]), do: ControlPlanePresenter.audit_follow_up_path(event)
+
+    defp latest_audit_follow_up_path([event | _rest]),
+      do: ControlPlanePresenter.audit_follow_up_path(event)
 
     defp read_host_follow_up_status(nil), do: "host_owned_follow_up_unconfigured"
 

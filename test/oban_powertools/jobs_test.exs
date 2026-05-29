@@ -9,7 +9,9 @@ defmodule ObanPowertools.JobsTest do
 
   test "list/3 filters by state with state leading the WHERE clause" do
     available_job = insert_job!(%{}, worker: "MyApp.AvailableWorker", queue: :default)
-    _executing_job = insert_job!(%{}, worker: "MyApp.ExecutingWorker", queue: :default, state: "executing")
+
+    _executing_job =
+      insert_job!(%{}, worker: "MyApp.ExecutingWorker", queue: :default, state: "executing")
 
     result = Jobs.list(TestRepo, %Jobs{state: :available})
 
@@ -39,7 +41,9 @@ defmodule ObanPowertools.JobsTest do
   end
 
   test "list/3 narrows by tags via @> array contains" do
-    tagged_job = insert_job!(%{}, worker: "MyApp.Worker", queue: :default, tags: ["alpha", "beta"])
+    tagged_job =
+      insert_job!(%{}, worker: "MyApp.Worker", queue: :default, tags: ["alpha", "beta"])
+
     _untagged_job = insert_job!(%{}, worker: "MyApp.Worker", queue: :default, tags: ["gamma"])
 
     result = Jobs.list(TestRepo, %Jobs{state: :available, tags: ["alpha"]})
@@ -73,7 +77,8 @@ defmodule ObanPowertools.JobsTest do
     job_b_pos = Enum.find_index(ids, &(&1 == job_b.id))
     job_a_pos = Enum.find_index(ids, &(&1 == job_a.id))
 
-    assert job_b_pos < job_a_pos, "Expected higher id (#{job_b.id}) to appear before lower id (#{job_a.id})"
+    assert job_b_pos < job_a_pos,
+           "Expected higher id (#{job_b.id}) to appear before lower id (#{job_a.id})"
   end
 
   test "list/3 paginates by page/page_size" do
@@ -118,7 +123,15 @@ defmodule ObanPowertools.JobsTest do
     counts = Jobs.count_by_state(TestRepo, %Jobs{})
 
     assert Map.keys(counts) |> Enum.sort() ==
-             ["available", "cancelled", "completed", "discarded", "executing", "retryable", "scheduled"]
+             [
+               "available",
+               "cancelled",
+               "completed",
+               "discarded",
+               "executing",
+               "retryable",
+               "scheduled"
+             ]
 
     assert counts["available"] == 2
     assert counts["executing"] == 1

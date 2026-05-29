@@ -88,7 +88,8 @@ defmodule ObanPowertools.Web.RouterTest do
 
   test "the optional oban_web bridge stays a read-only inspection surface behind the shared powertools auth seam" do
     if Code.ensure_loaded?(Oban.Web.Router) do
-      assert ObanWebBridge.resolve_access(%{id: "ops-1", permissions: [:view_oban_web]}) == :read_only
+      assert ObanWebBridge.resolve_access(%{id: "ops-1", permissions: [:view_oban_web]}) ==
+               :read_only
 
       assert ObanWebBridge.resolve_access(%{id: "ops-2", permissions: []}) ==
                {:forbidden, "/ops/jobs"}

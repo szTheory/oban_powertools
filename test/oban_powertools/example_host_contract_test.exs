@@ -1,6 +1,10 @@
 defmodule ObanPowertools.ExampleHostContractTest do
   use ExUnit.Case
   @moduletag timeout: 180_000
+  # Heavy host-contract integration lanes (generate the ops-demo example host, need
+  # the host-contract-proof CI harness). Excluded from the general `test` lane via
+  # `--exclude host_contract`; run explicitly (per --only tag) in host-contract-proof.yml.
+  @moduletag :host_contract
 
   alias ObanPowertools.ExampleHostContract
 

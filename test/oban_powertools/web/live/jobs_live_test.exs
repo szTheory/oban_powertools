@@ -165,7 +165,9 @@ defmodule ObanPowertools.Web.JobsLiveTest do
 
     html =
       view
-      |> form("form[phx-change=filter]", filter: %{queue: "", worker: "MyApp.TargetWorker", tags: ""})
+      |> form("form[phx-change=filter]",
+        filter: %{queue: "", worker: "MyApp.TargetWorker", tags: ""}
+      )
       |> render_change()
 
     # After filter change, only the TargetWorker job should appear.
@@ -306,7 +308,12 @@ defmodule ObanPowertools.Web.JobsLiveTest do
 
       on_exit(fn -> Application.put_env(:oban_powertools, :display_policy, original) end)
 
-      job = insert_job!(worker: "MyApp.Worker", queue: :default, args: %{"id" => 42, "action" => "ingest"})
+      job =
+        insert_job!(
+          worker: "MyApp.Worker",
+          queue: :default,
+          args: %{"id" => 42, "action" => "ingest"}
+        )
 
       conn =
         Plug.Test.init_test_session(conn,
@@ -356,7 +363,12 @@ defmodule ObanPowertools.Web.JobsLiveTest do
 
       on_exit(fn -> Application.put_env(:oban_powertools, :display_policy, original) end)
 
-      job = insert_job!(worker: "MyApp.Worker", queue: :default, args: %{"id" => 7, "secret" => "TOP"})
+      job =
+        insert_job!(
+          worker: "MyApp.Worker",
+          queue: :default,
+          args: %{"id" => 7, "secret" => "TOP"}
+        )
 
       conn =
         Plug.Test.init_test_session(conn,
@@ -416,7 +428,13 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       job
       |> Ecto.Changeset.change(
         state: "retryable",
-        errors: [%{"at" => "2026-05-27T10:00:00Z", "attempt" => 1, "error" => "some failure\nbacktrace line"}],
+        errors: [
+          %{
+            "at" => "2026-05-27T10:00:00Z",
+            "attempt" => 1,
+            "error" => "some failure\nbacktrace line"
+          }
+        ],
         attempt: 1
       )
       |> TestRepo.update!()
@@ -472,8 +490,13 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       assert html =~ "/ops/jobs/jobs"
     end
 
-    test "renders action buttons depending on state when operator has retry permission", %{conn: conn} do
-      conn = Plug.Test.init_test_session(conn, current_actor: %{id: "ops-1", permissions: [:view_job_detail, :retry_job]})
+    test "renders action buttons depending on state when operator has retry permission", %{
+      conn: conn
+    } do
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{id: "ops-1", permissions: [:view_job_detail, :retry_job]}
+        )
 
       # Executing job
       job_executing = insert_job!(worker: "W1", queue: :default, state: "executing")
@@ -491,19 +514,32 @@ defmodule ObanPowertools.Web.JobsLiveTest do
     end
 
     test "executing an action opens preview, accepts reason, and executes", %{conn: conn} do
-      conn = Plug.Test.init_test_session(conn, current_actor: %{id: "ops-1", permissions: [:view_job_detail, :retry_job, :preview_repair, :execute_repair]})
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{
+            id: "ops-1",
+            permissions: [:view_job_detail, :retry_job, :preview_repair, :execute_repair]
+          }
+        )
+
       job = insert_job!(worker: "W", queue: :default, state: "retryable")
 
       {:ok, view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
 
       assert html =~ "Cancel Job"
 
-      html = view |> element("button[phx-click=\"preview\"][phx-value-action=\"job_cancel\"]") |> render_click()
+      html =
+        view
+        |> element("button[phx-click=\"preview\"][phx-value-action=\"job_cancel\"]")
+        |> render_click()
+
       assert html =~ "Cancel Job ##{job.id}"
       assert html =~ "Reason (required)"
 
       # Execute with reason
-      view |> form("form[phx-submit=\"execute\"]", %{"reason" => "Operator requested cancellation"}) |> render_submit()
+      view
+      |> form("form[phx-submit=\"execute\"]", %{"reason" => "Operator requested cancellation"})
+      |> render_submit()
 
       # Should flash success and reload (modal closes, state updates)
       assert_patch(view, "/ops/jobs/jobs/#{job.id}")
@@ -511,19 +547,32 @@ defmodule ObanPowertools.Web.JobsLiveTest do
     end
 
     test "concurrent modification displays drift error in modal", %{conn: conn} do
-      conn = Plug.Test.init_test_session(conn, current_actor: %{id: "ops-1", permissions: [:view_job_detail, :retry_job, :preview_repair, :execute_repair]})
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{
+            id: "ops-1",
+            permissions: [:view_job_detail, :retry_job, :preview_repair, :execute_repair]
+          }
+        )
+
       job = insert_job!(worker: "W", queue: :default, state: "retryable")
 
       {:ok, view, _html} = live(conn, "/ops/jobs/jobs/#{job.id}")
 
-      view |> element("button[phx-click=\"preview\"][phx-value-action=\"job_discard\"]") |> render_click()
+      view
+      |> element("button[phx-click=\"preview\"][phx-value-action=\"job_discard\"]")
+      |> render_click()
 
       # Drift the state
       job |> Ecto.Changeset.change(state: "cancelled") |> TestRepo.update!()
 
-      html = view |> form("form[phx-submit=\"execute\"]", %{"reason" => "Discard it"}) |> render_submit()
+      html =
+        view
+        |> form("form[phx-submit=\"execute\"]", %{"reason" => "Discard it"})
+        |> render_submit()
 
-      assert html =~ "Could not execute action. The job&#39;s state was changed by another process or operator."
+      assert html =~
+               "Could not execute action. The job&#39;s state was changed by another process or operator."
     end
   end
 
@@ -558,7 +607,11 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       job1 = insert_job!(worker: "MyApp.Worker1", queue: :default)
       job2 = insert_job!(worker: "MyApp.Worker2", queue: :default)
 
-      conn = Plug.Test.init_test_session(conn, current_actor: %{id: "ops-1", permissions: [:view_jobs]})
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{id: "ops-1", permissions: [:view_jobs]}
+        )
+
       {:ok, view, html} = live(conn, "/ops/jobs/jobs?state=available")
 
       # Checkboxes are rendered
@@ -566,7 +619,11 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       refute html =~ "jobs selected"
 
       # Toggle one job
-      html = view |> element("input[phx-click=\"toggle_job\"][phx-value-id=\"#{job1.id}\"]") |> render_click()
+      html =
+        view
+        |> element("input[phx-click=\"toggle_job\"][phx-value-id=\"#{job1.id}\"]")
+        |> render_click()
+
       assert html =~ "1 jobs selected"
 
       # Toggle all jobs
@@ -583,18 +640,31 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       job1 = insert_job!(worker: "MyApp.Worker1", queue: :default, state: "retryable")
       job2 = insert_job!(worker: "MyApp.Worker2", queue: :default, state: "retryable")
 
-      conn = Plug.Test.init_test_session(conn, current_actor: %{id: "ops-1", permissions: [:view_jobs, :retry_job, :preview_repair, :execute_repair]})
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{
+            id: "ops-1",
+            permissions: [:view_jobs, :retry_job, :preview_repair, :execute_repair]
+          }
+        )
+
       {:ok, view, _html} = live(conn, "/ops/jobs/jobs?state=retryable")
 
       # Select all
       view |> element("input[phx-click=\"toggle_all\"]") |> render_click()
 
       # Click preview
-      html = view |> element("button[phx-click=\"preview_bulk\"][phx-value-action=\"job_discard\"]") |> render_click()
+      html =
+        view
+        |> element("button[phx-click=\"preview_bulk\"][phx-value-action=\"job_discard\"]")
+        |> render_click()
+
       assert html =~ "Bulk Discard 2 Jobs"
 
       # Execute
-      view |> form("form[phx-submit=\"execute_bulk\"]", %{"reason" => "Bulk discard test"}) |> render_submit()
+      view
+      |> form("form[phx-submit=\"execute_bulk\"]", %{"reason" => "Bulk discard test"})
+      |> render_submit()
 
       html = render(view)
       assert html =~ "No retryable jobs"

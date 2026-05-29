@@ -108,7 +108,8 @@ defmodule ObanPowertools.Web.AuditLiveTest do
 
   test "forensic audit follow-up preserves scoped resource and event filters", %{conn: conn} do
     {:ok, workflow} =
-      WorkflowFixtures.workflow_fixture(name: "forensic-audit-follow-up") |> Workflow.insert(TestRepo)
+      WorkflowFixtures.workflow_fixture(name: "forensic-audit-follow-up")
+      |> Workflow.insert(TestRepo)
 
     Audit.record(
       "workflow.step_completed",
@@ -123,7 +124,8 @@ defmodule ObanPowertools.Web.AuditLiveTest do
         current_actor: %{id: "ops-1", permissions: [:view_audit, :view_forensics]}
       )
 
-    {:ok, _forensic_view, forensic_html} = live(conn, "/ops/jobs/forensics?workflow_id=#{workflow.id}")
+    {:ok, _forensic_view, forensic_html} =
+      live(conn, "/ops/jobs/forensics?workflow_id=#{workflow.id}")
 
     assert forensic_html =~
              "/ops/jobs/audit?resource_type=workflow&amp;resource_id=#{workflow.id}&amp;event_type=workflow.step_completed"

@@ -14,7 +14,8 @@ defmodule ObanPowertools.TestAuth do
     permissions = Map.get(actor, :permissions, Map.get(actor, "permissions", []))
 
     cond do
-      custom_result = Map.get(actor, :authorization_result, Map.get(actor, "authorization_result")) ->
+      custom_result =
+          Map.get(actor, :authorization_result, Map.get(actor, "authorization_result")) ->
         custom_result
 
       :all in permissions or action in permissions ->

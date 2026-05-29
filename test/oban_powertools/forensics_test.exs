@@ -21,13 +21,13 @@ defmodule ObanPowertools.ForensicsTest do
   alias ObanPowertools.WorkflowFixtures
 
   @allowed_selector_keys MapSet.new([
-    "resource_type",
-    "resource_id",
-    "workflow_id",
-    "step",
-    "incident_fingerprint",
-    "view"
-  ])
+                           "resource_type",
+                           "resource_id",
+                           "workflow_id",
+                           "step",
+                           "incident_fingerprint",
+                           "view"
+                         ])
 
   test "bundle contract preserves diagnosis-first shape, chronology ordering, and supporting evidence labels" do
     now = DateTime.utc_now()
@@ -142,7 +142,8 @@ defmodule ObanPowertools.ForensicsTest do
       Forensics.bundle(%{"workflow_id" => workflow.id, "step" => "sync_billing"}, repo: TestRepo)
 
     lifeline_bundle =
-      Forensics.bundle(%{"incident_fingerprint" => incident.incident_fingerprint, "view" => "active"},
+      Forensics.bundle(
+        %{"incident_fingerprint" => incident.incident_fingerprint, "view" => "active"},
         repo: TestRepo
       )
 

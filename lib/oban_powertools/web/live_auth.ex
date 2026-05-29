@@ -111,7 +111,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       Map.get(@mutation_errors, reason, inspect(reason))
     end
 
-    def audit_consequence_copy, do: @audit_consequence <> " " <> ControlPlanePresenter.native_banner()
+    def audit_consequence_copy,
+      do: @audit_consequence <> " " <> ControlPlanePresenter.native_banner()
 
     def page_read_only_banner(surface) do
       Map.fetch!(@page_read_only_banners, surface)

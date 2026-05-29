@@ -20,7 +20,9 @@ defmodule WorkflowTest do
     assert persisted.workflow_context["account_id"] == 123
 
     steps =
-      TestRepo.all(from(step in Step, where: step.workflow_id == ^persisted.id, order_by: step.position))
+      TestRepo.all(
+        from(step in Step, where: step.workflow_id == ^persisted.id, order_by: step.position)
+      )
 
     assert Enum.map(steps, & &1.step_name) == [
              "fetch_customer",
@@ -58,8 +60,20 @@ defmodule WorkflowTest do
       name: "raw_import",
       workflow_context: %{"source" => "fixture"},
       steps: [
-        %{name: :fetch, worker: "FetchWorker", input: %{"id" => 1}, context: %{}, queue: "default"},
-        %{name: :deliver, worker: "DeliverWorker", input: %{"fetch" => Workflow.result(:fetch)}, context: %{}, queue: "default"}
+        %{
+          name: :fetch,
+          worker: "FetchWorker",
+          input: %{"id" => 1},
+          context: %{},
+          queue: "default"
+        },
+        %{
+          name: :deliver,
+          worker: "DeliverWorker",
+          input: %{"fetch" => Workflow.result(:fetch)},
+          context: %{},
+          queue: "default"
+        }
       ],
       edges: [%{from: :fetch, to: :deliver, policy: :cancel}]
     }
@@ -86,7 +100,8 @@ defmodule WorkflowTest do
       |> Workflow.add(:fetch, FetchCustomerWorker.new(%{"account_id" => 1}))
       |> Workflow.connect(:fetch, :notify)
 
-    assert {:error, {:validation, {:missing_dependency, %{from: "fetch", to: "notify", policy: "cancel"}}}} =
+    assert {:error,
+            {:validation, {:missing_dependency, %{from: "fetch", to: "notify", policy: "cancel"}}}} =
              Workflow.insert(workflow, TestRepo)
   end
 

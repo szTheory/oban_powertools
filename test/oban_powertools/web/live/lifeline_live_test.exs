@@ -26,13 +26,13 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
   alias ObanPowertools.WorkflowFixtures
 
   @allowed_selector_keys MapSet.new([
-    "resource_type",
-    "resource_id",
-    "workflow_id",
-    "step",
-    "incident_fingerprint",
-    "view"
-  ])
+                           "resource_type",
+                           "resource_id",
+                           "workflow_id",
+                           "step",
+                           "incident_fingerprint",
+                           "view"
+                         ])
 
   setup do
     original_display_policy = Application.get_env(:oban_powertools, :display_policy)

@@ -1,5 +1,6 @@
 defmodule ObanPowertools.WorkflowFixtures do
   alias ObanPowertools.Workflow
+
   alias ObanPowertools.WorkflowTestWorkers.{
     FetchCustomerWorker,
     NotifyWorker,

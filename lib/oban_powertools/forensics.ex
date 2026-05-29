@@ -364,7 +364,9 @@ defmodule ObanPowertools.Forensics do
 
   defp latest_host_follow_up_event(audit_events, preview_token) do
     audit_events
-    |> Enum.filter(fn event -> (event.event_type || event.action) == "lifeline.host_follow_up" end)
+    |> Enum.filter(fn event ->
+      (event.event_type || event.action) == "lifeline.host_follow_up"
+    end)
     |> Enum.sort_by(
       fn event -> {event.inserted_at || ~N[1970-01-01 00:00:00], event.id || 0} end,
       :desc
@@ -375,7 +377,9 @@ defmodule ObanPowertools.Forensics do
   end
 
   defp host_follow_up_status(nil), do: "host_owned_follow_up_unconfigured"
-  defp host_follow_up_status(event), do: event.metadata["status"] || "host_owned_follow_up_unconfigured"
+
+  defp host_follow_up_status(event),
+    do: event.metadata["status"] || "host_owned_follow_up_unconfigured"
 
   defp host_follow_up_details(nil), do: %{"configuration" => "No host escalation hook configured"}
   defp host_follow_up_details(event), do: event.metadata["details"] || %{}
@@ -472,10 +476,18 @@ defmodule ObanPowertools.Forensics do
   defp incident_view(_incident), do: "active"
 
   defp audit_path(%Step{} = step),
-    do: Selectors.audit_path([{"resource_type", "workflow_step"}, {"resource_id", to_string(step.id)}])
+    do:
+      Selectors.audit_path([
+        {"resource_type", "workflow_step"},
+        {"resource_id", to_string(step.id)}
+      ])
 
   defp audit_path(%Workflow{} = workflow),
-    do: Selectors.audit_path([{"resource_type", "workflow"}, {"resource_id", to_string(workflow.id)}])
+    do:
+      Selectors.audit_path([
+        {"resource_type", "workflow"},
+        {"resource_id", to_string(workflow.id)}
+      ])
 
   defp audit_path(%{resource_type: type, resource_id: id})
        when not is_nil(type) and not is_nil(id) do

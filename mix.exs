@@ -65,14 +65,14 @@ defmodule ObanPowertools.MixProject do
           "guides/first-operator-session.md",
           "guides/example-app-walkthrough.md"
         ],
-        "Builders": [
+        Builders: [
           "guides/workers-and-idempotency.md",
           "guides/limits-and-explain.md",
           "guides/workflows.md",
           "guides/lifeline-and-repairs.md",
           "guides/policy-integration-patterns.md"
         ],
-        "Operations": [
+        Operations: [
           "guides/optional-oban-web-bridge.md",
           "guides/support-truth-and-ownership-boundaries.md",
           "guides/production-hardening.md",

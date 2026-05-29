@@ -10,13 +10,13 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
   alias ObanPowertools.WorkflowFixtures
 
   @allowed_selector_keys MapSet.new([
-    "resource_type",
-    "resource_id",
-    "workflow_id",
-    "step",
-    "incident_fingerprint",
-    "view"
-  ])
+                           "resource_type",
+                           "resource_id",
+                           "workflow_id",
+                           "step",
+                           "incident_fingerprint",
+                           "view"
+                         ])
 
   test "mounts the workflow forensic bundle and preserves step scope across remount", %{
     conn: conn

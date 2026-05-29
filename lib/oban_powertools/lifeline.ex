@@ -67,8 +67,13 @@ defmodule ObanPowertools.Lifeline do
 
       if heartbeat.health_state != status do
         case heartbeat |> Heartbeat.changeset(%{health_state: status}) |> repo.update() do
-          {:ok, _heartbeat} -> :ok
-          {:error, changeset} -> Logger.warning("Failed to update heartbeat health_state: #{inspect(changeset.errors)}")
+          {:ok, _heartbeat} ->
+            :ok
+
+          {:error, changeset} ->
+            Logger.warning(
+              "Failed to update heartbeat health_state: #{inspect(changeset.errors)}"
+            )
         end
       end
 
@@ -173,11 +178,19 @@ defmodule ObanPowertools.Lifeline do
           repo.insert!(RepairPreview.changeset(%RepairPreview{}, preview_attrs))
 
       telemetry_metadata = Keyword.get(opts, :telemetry_metadata, %{})
-      Telemetry.execute_lifeline_event(:repair_previewed, %{count: 1}, Map.merge(%{
-        action: preview.action,
-        incident_class: preview.incident_class,
-        target_type: preview.target_type
-      }, telemetry_metadata))
+
+      Telemetry.execute_lifeline_event(
+        :repair_previewed,
+        %{count: 1},
+        Map.merge(
+          %{
+            action: preview.action,
+            incident_class: preview.incident_class,
+            target_type: preview.target_type
+          },
+          telemetry_metadata
+        )
+      )
 
       {:ok, preview}
     end
@@ -1087,11 +1100,19 @@ defmodule ObanPowertools.Lifeline do
           emit_host_follow_up(repo, preview_record, actor, runbook_context)
 
         telemetry_metadata = Keyword.get(opts, :telemetry_metadata, %{})
-        Telemetry.execute_lifeline_event(:repair_executed, %{count: 1}, Map.merge(%{
-          action: preview.action,
-          incident_class: preview.incident_class,
-          target_type: preview.target_type
-        }, telemetry_metadata))
+
+        Telemetry.execute_lifeline_event(
+          :repair_executed,
+          %{count: 1},
+          Map.merge(
+            %{
+              action: preview.action,
+              incident_class: preview.incident_class,
+              target_type: preview.target_type
+            },
+            telemetry_metadata
+          )
+        )
 
         {:ok, %{target: target, preview: preview_record}}
 

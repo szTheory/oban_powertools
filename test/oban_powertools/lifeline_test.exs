@@ -360,12 +360,19 @@ defmodule ObanPowertools.LifelineTest do
              Integer.to_string(job.id)
 
     assert repair_audit_event.metadata["runbook_context"]["plan_hash"] == preview.plan_hash
-    assert repair_audit_event.metadata["runbook_context"]["preview_token"] == preview.preview_token
+
+    assert repair_audit_event.metadata["runbook_context"]["preview_token"] ==
+             preview.preview_token
 
     assert host_follow_up_event
     assert host_follow_up_event.metadata["status"] == "host_owned_follow_up_unconfigured"
-    assert host_follow_up_event.metadata["details"]["fallback"] == "host-owned follow-up unavailable"
-    assert host_follow_up_event.metadata["details"]["configuration"] == "No host escalation hook configured"
+
+    assert host_follow_up_event.metadata["details"]["fallback"] ==
+             "host-owned follow-up unavailable"
+
+    assert host_follow_up_event.metadata["details"]["configuration"] ==
+             "No host escalation hook configured"
+
     assert host_follow_up_event.metadata["incident_fingerprint"] == incident.incident_fingerprint
     assert host_follow_up_event.metadata["preview_token"] == preview.preview_token
     assert host_follow_up_event.metadata["plan_hash"] == preview.plan_hash
@@ -814,18 +821,28 @@ defmodule ObanPowertools.LifelineTest do
     incident = insert_dead_executor_incident!("executor-missing-telemetry")
     job = insert_executing_job!("executor-missing-telemetry")
     actor = %{id: "operator-1", permissions: [:preview_repair, :execute_repair]}
-    
+
     parent = self()
     handler_id_preview = "test-preview-handler-#{System.unique_integer()}"
     handler_id_execute = "test-execute-handler-#{System.unique_integer()}"
 
-    :telemetry.attach(handler_id_preview, [:oban_powertools, :lifeline, :repair_previewed], fn _event, _measurements, metadata, _config ->
-      send(parent, {:preview_telemetry, metadata})
-    end, nil)
+    :telemetry.attach(
+      handler_id_preview,
+      [:oban_powertools, :lifeline, :repair_previewed],
+      fn _event, _measurements, metadata, _config ->
+        send(parent, {:preview_telemetry, metadata})
+      end,
+      nil
+    )
 
-    :telemetry.attach(handler_id_execute, [:oban_powertools, :lifeline, :repair_executed], fn _event, _measurements, metadata, _config ->
-      send(parent, {:execute_telemetry, metadata})
-    end, nil)
+    :telemetry.attach(
+      handler_id_execute,
+      [:oban_powertools, :lifeline, :repair_executed],
+      fn _event, _measurements, metadata, _config ->
+        send(parent, {:execute_telemetry, metadata})
+      end,
+      nil
+    )
 
     assert {:ok, preview} =
              Lifeline.preview_repair(

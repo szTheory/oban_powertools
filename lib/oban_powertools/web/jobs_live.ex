@@ -66,7 +66,11 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       end
     end
 
-    def handle_event("filter", %{"filter" => %{"queue" => q, "worker" => w, "tags" => tags_str}}, socket) do
+    def handle_event(
+          "filter",
+          %{"filter" => %{"queue" => q, "worker" => w, "tags" => tags_str}},
+          socket
+        ) do
       filter = socket.assigns.filter
       queue = if q == "", do: nil, else: q
       worker = if w == "", do: nil, else: w
@@ -79,6 +83,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         end
 
       new_filter = %{filter | queue: queue, worker: worker, tags: tags, page: 1}
+
       {:noreply,
        socket
        |> assign(:selected_jobs, MapSet.new())
@@ -89,11 +94,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       id = String.to_integer(id_str)
       selected_jobs = socket.assigns.selected_jobs
 
-      selected_jobs = if MapSet.member?(selected_jobs, id) do
-        MapSet.delete(selected_jobs, id)
-      else
-        MapSet.put(selected_jobs, id)
-      end
+      selected_jobs =
+        if MapSet.member?(selected_jobs, id) do
+          MapSet.delete(selected_jobs, id)
+        else
+          MapSet.put(selected_jobs, id)
+        end
 
       {:noreply, assign(socket, :selected_jobs, selected_jobs)}
     end
@@ -103,11 +109,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       selected_jobs = socket.assigns.selected_jobs
       all_selected? = length(jobs) > 0 and Enum.all?(jobs, &(&1.id in selected_jobs))
 
-      selected_jobs = if all_selected? do
-        Enum.reduce(jobs, selected_jobs, &MapSet.delete(&2, &1.id))
-      else
-        Enum.reduce(jobs, selected_jobs, &MapSet.put(&2, &1.id))
-      end
+      selected_jobs =
+        if all_selected? do
+          Enum.reduce(jobs, selected_jobs, &MapSet.delete(&2, &1.id))
+        else
+          Enum.reduce(jobs, selected_jobs, &MapSet.put(&2, &1.id))
+        end
 
       {:noreply, assign(socket, :selected_jobs, selected_jobs)}
     end
@@ -118,19 +125,25 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           filter = socket.assigns.filter
           new_filter = %{filter | page: page}
           {:noreply, push_patch(socket, to: Selectors.jobs_path(filter_path(new_filter)))}
+
         _ ->
           {:noreply, socket}
       end
     end
 
     def handle_event("preview", %{"action" => action}, socket) do
-      with :ok <- LiveAuth.authorize_action(socket, :preview_repair, %{type: :job, id: to_string(socket.assigns.job.id)}),
-           {:ok, preview} <- Lifeline.preview_repair(repo(), socket.assigns.current_actor, %{
-             incident_id: nil,
-             action: action,
-             target_type: "job",
-             target_id: socket.assigns.job.id
-           }) do
+      with :ok <-
+             LiveAuth.authorize_action(socket, :preview_repair, %{
+               type: :job,
+               id: to_string(socket.assigns.job.id)
+             }),
+           {:ok, preview} <-
+             Lifeline.preview_repair(repo(), socket.assigns.current_actor, %{
+               incident_id: nil,
+               action: action,
+               target_type: "job",
+               target_id: socket.assigns.job.id
+             }) do
         {:noreply,
          socket
          |> assign(:preview, preview)
@@ -151,7 +164,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     def handle_event("close_preview", _, socket) do
-      {:noreply, assign(socket, preview: nil, bulk_preview_action: nil, reason: "", error_message: nil)}
+      {:noreply,
+       assign(socket, preview: nil, bulk_preview_action: nil, reason: "", error_message: nil)}
     end
 
     def handle_event("reason", %{"reason" => r}, socket) do
@@ -165,18 +179,40 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       if reason == "" do
         {:noreply, socket}
       else
-        with :ok <- LiveAuth.authorize_action(socket, :execute_repair, %{type: :job, id: to_string(socket.assigns.job.id)}),
-             {:ok, %{target: target}} <- Lifeline.execute_repair(repo(), socket.assigns.current_actor, socket.assigns.preview.preview_token, reason) do
+        with :ok <-
+               LiveAuth.authorize_action(socket, :execute_repair, %{
+                 type: :job,
+                 id: to_string(socket.assigns.job.id)
+               }),
+             {:ok, %{target: target}} <-
+               Lifeline.execute_repair(
+                 repo(),
+                 socket.assigns.current_actor,
+                 socket.assigns.preview.preview_token,
+                 reason
+               ) do
           socket =
             socket
-            |> put_flash(:info, "Job ##{target.id} successfully " <> action_word(socket.assigns.preview.action) <> ".")
+            |> put_flash(
+              :info,
+              "Job ##{target.id} successfully " <>
+                action_word(socket.assigns.preview.action) <> "."
+            )
             |> push_patch(to: Selectors.job_detail_path(target.id))
+
           {:noreply, load_job_detail(socket, target.id)}
         else
           {:error, :unauthorized} ->
             {:noreply, socket}
+
           {:error, :preview_drifted} ->
-            {:noreply, assign(socket, :error_message, "Could not execute action. The job's state was changed by another process or operator. Please refresh to see the latest state.")}
+            {:noreply,
+             assign(
+               socket,
+               :error_message,
+               "Could not execute action. The job's state was changed by another process or operator. Please refresh to see the latest state."
+             )}
+
           {:error, reason} ->
             {:noreply, assign(socket, :error_message, "Error: #{inspect(reason)}")}
         end
@@ -195,19 +231,29 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
         {successes, failures} =
           Enum.reduce(socket.assigns.selected_jobs, {0, 0}, fn job_id, {succ, fail} ->
-            case Lifeline.preview_repair(repo(), actor, %{incident_id: nil, action: action, target_type: "job", target_id: job_id}) do
+            case Lifeline.preview_repair(repo(), actor, %{
+                   incident_id: nil,
+                   action: action,
+                   target_type: "job",
+                   target_id: job_id
+                 }) do
               {:ok, preview} ->
                 case Lifeline.execute_repair(repo(), actor, preview.preview_token, reason) do
                   {:ok, _} -> {succ + 1, fail}
                   _ -> {succ, fail + 1}
                 end
-              _ -> {succ, fail + 1}
+
+              _ ->
+                {succ, fail + 1}
             end
           end)
 
         socket =
           socket
-          |> put_flash(:info, "Bulk action complete: #{successes} successes, #{failures} failures.")
+          |> put_flash(
+            :info,
+            "Bulk action complete: #{successes} successes, #{failures} failures."
+          )
           |> assign(:selected_jobs, MapSet.new())
           |> assign(:bulk_preview_action, nil)
 
@@ -631,11 +677,14 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           |> assign(:error_message, nil)
           |> assign(:success_message, nil)
           |> assign(:back_path, back_path_from_session(socket))
-          |> assign(:read_only?, not LiveAuth.authorized?(
-               Map.get(socket.assigns, :current_actor),
-               :retry_job,
-               %{type: :job, id: to_string(job.id)}
-             ))
+          |> assign(
+            :read_only?,
+            not LiveAuth.authorized?(
+              Map.get(socket.assigns, :current_actor),
+              :retry_job,
+              %{type: :job, id: to_string(job.id)}
+            )
+          )
       end
     end
 
@@ -670,11 +719,14 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> assign(:error_message, nil)
       |> assign(:success_message, nil)
       |> assign(:back_path, Selectors.jobs_path([]))
-      |> assign(:read_only?, not LiveAuth.authorized?(
-           Map.get(socket.assigns, :current_actor),
-           :retry_job,
-           %{type: :page, id: "jobs"}
-         ))
+      |> assign(
+        :read_only?,
+        not LiveAuth.authorized?(
+          Map.get(socket.assigns, :current_actor),
+          :retry_job,
+          %{type: :page, id: "jobs"}
+        )
+      )
     end
 
     defp load_jobs(socket, filter) do
@@ -689,11 +741,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp assign_read_only(socket) do
-      assign(socket, :read_only?, not LiveAuth.authorized?(
-        Map.get(socket.assigns, :current_actor),
-        :retry_job,
-        %{type: :page, id: "jobs"}
-      ))
+      assign(
+        socket,
+        :read_only?,
+        not LiveAuth.authorized?(
+          Map.get(socket.assigns, :current_actor),
+          :retry_job,
+          %{type: :page, id: "jobs"}
+        )
+      )
     end
 
     defp filter_from_params(params) do
@@ -705,6 +761,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         end
 
       state_str = Map.get(params, "state", "available")
+
       state =
         if state_str in @valid_states do
           String.to_existing_atom(state_str)
@@ -739,10 +796,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp state_tab_class(true),
-      do: "rounded border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700"
+      do:
+        "rounded border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700"
 
     defp state_tab_class(false),
-      do: "rounded border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600"
+      do:
+        "rounded border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600"
 
     defp state_badge_class("available"), do: "border-slate-200 bg-slate-50 text-slate-700"
     defp state_badge_class("scheduled"), do: "border-slate-200 bg-slate-50 text-slate-700"
@@ -772,6 +831,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       relative =
         if seconds < 0 do
           abs_s = abs(seconds)
+
           cond do
             abs_s < 60 -> "in #{abs_s}s"
             abs_s < 3_600 -> "in #{div(abs_s, 60)}m"

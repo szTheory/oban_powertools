@@ -80,7 +80,8 @@ defmodule ObanPowertools.Operator do
     }
 
     with {:ok, preview} <- Lifeline.preview_repair(repo, actor, attrs, opts),
-         {:ok, result} <- Lifeline.execute_repair(repo, actor, preview.preview_token, reason, opts) do
+         {:ok, result} <-
+           Lifeline.execute_repair(repo, actor, preview.preview_token, reason, opts) do
       {:ok, result}
     end
   end

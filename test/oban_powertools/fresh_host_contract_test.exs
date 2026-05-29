@@ -1,6 +1,10 @@
 defmodule ObanPowertools.FreshHostContractTest do
   use ExUnit.Case
   @moduletag timeout: 180_000
+  # Heavy host-contract integration lane (generates a fresh app, runs the installer,
+  # needs phx_new + the host-contract-proof CI harness). Excluded from the general
+  # `test` lane via `--exclude host_contract`; run explicitly in host-contract-proof.yml.
+  @moduletag :host_contract
 
   alias ObanPowertools.FreshHostContract
 
@@ -14,6 +18,7 @@ defmodule ObanPowertools.FreshHostContractTest do
 
     config_source = File.read!(Path.join(result.dir, "config/config.exs"))
     router_source = File.read!(Path.join([result.dir, "lib", "fresh_host_web", "router.ex"]))
+
     auth_source =
       File.read!(Path.join([result.dir, "lib", "fresh_host_web", "oban_powertools_auth.ex"]))
 
@@ -32,6 +37,8 @@ defmodule ObanPowertools.FreshHostContractTest do
     assert auth_source =~ "defmodule FreshHostWeb.ObanPowertoolsAuth"
     assert auth_source =~ "def audit_principal(actor) when is_map(actor)"
     assert display_policy_source =~ "defmodule FreshHostWeb.ObanPowertoolsDisplayPolicy"
-    assert display_policy_source =~ "def display(:reason, reason, _context) when is_binary(reason)"
+
+    assert display_policy_source =~
+             "def display(:reason, reason, _context) when is_binary(reason)"
   end
 end

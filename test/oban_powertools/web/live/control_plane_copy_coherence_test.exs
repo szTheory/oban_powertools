@@ -93,7 +93,9 @@ defmodule ObanPowertools.Web.ControlPlaneCopyCoherenceTest do
 
     cron_preview_html =
       cron_view
-      |> element("button[phx-value-entry='nightly-shared-copy'][phx-value-action='pause_cron_entry']")
+      |> element(
+        "button[phx-value-entry='nightly-shared-copy'][phx-value-action='pause_cron_entry']"
+      )
       |> render_click()
 
     assert_occurs_in_order(cron_preview_html, [

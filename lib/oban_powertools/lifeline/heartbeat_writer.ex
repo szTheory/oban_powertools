@@ -22,10 +22,18 @@ defmodule ObanPowertools.Lifeline.HeartbeatWriter do
         Keyword.get(
           opts,
           :interval_ms,
-          Application.get_env(:oban_powertools, :lifeline_heartbeat_interval_ms, @default_interval_ms)
+          Application.get_env(
+            :oban_powertools,
+            :lifeline_heartbeat_interval_ms,
+            @default_interval_ms
+          )
         ),
       provider:
-        Keyword.get(opts, :provider, Application.get_env(:oban_powertools, :lifeline_executor_provider))
+        Keyword.get(
+          opts,
+          :provider,
+          Application.get_env(:oban_powertools, :lifeline_executor_provider)
+        )
     }
 
     schedule_refresh(state.interval_ms)

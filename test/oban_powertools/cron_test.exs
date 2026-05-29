@@ -114,8 +114,12 @@ defmodule ObanPowertools.CronTest do
     {:ok, entry} = runtime_entry(name: "stateful", overlap_policy: "allow")
     now = truncate_minute(DateTime.utc_now())
 
-    assert {:ok, paused_preview} = Cron.preview_entry_action(repo(), "pause_cron_entry", entry, now: now)
-    assert {:ok, paused} = Cron.pause_cron_entry(repo(), paused_preview.preview_token, "operator-1")
+    assert {:ok, paused_preview} =
+             Cron.preview_entry_action(repo(), "pause_cron_entry", entry, now: now)
+
+    assert {:ok, paused} =
+             Cron.pause_cron_entry(repo(), paused_preview.preview_token, "operator-1")
+
     assert paused.paused_at
 
     assert {:error, :preview_consumed} =
@@ -135,7 +139,10 @@ defmodule ObanPowertools.CronTest do
              Cron.preview_entry_action(repo(), "run_cron_entry", paused, now: now)
 
     run_preview
-    |> RepairPreview.changeset(%{status: "drifted", metadata: %{"drift_reason" => "entry changed"}})
+    |> RepairPreview.changeset(%{
+      status: "drifted",
+      metadata: %{"drift_reason" => "entry changed"}
+    })
     |> repo().update!()
 
     assert {:error, :preview_drifted} =
@@ -150,11 +157,17 @@ defmodule ObanPowertools.CronTest do
     {:ok, entry} = runtime_entry(name: "manual", overlap_policy: "allow")
 
     assert {:ok, pause_preview} = Cron.preview_entry_action(repo(), "pause_cron_entry", entry)
-    assert {:ok, paused} = Cron.pause_cron_entry(repo(), pause_preview.preview_token, "operator-1")
+
+    assert {:ok, paused} =
+             Cron.pause_cron_entry(repo(), pause_preview.preview_token, "operator-1")
+
     assert paused.paused_at
 
     assert {:ok, resume_preview} = Cron.preview_entry_action(repo(), "resume_cron_entry", paused)
-    assert {:ok, resumed} = Cron.resume_cron_entry(repo(), resume_preview.preview_token, "operator-1")
+
+    assert {:ok, resumed} =
+             Cron.resume_cron_entry(repo(), resume_preview.preview_token, "operator-1")
+
     refute resumed.paused_at
 
     assert {:ok, run_preview} = Cron.preview_entry_action(repo(), "run_cron_entry", resumed)

@@ -27,7 +27,9 @@ defmodule ObanPowertools.ControlPlane do
   def limiter_status(%{blocked?: true}), do: :blocked
   def limiter_status(_resource), do: :runnable
 
-  def cron_status(%{paused_at: %_{} = _paused_at}), do: %{operator_status: :waiting, diagnosis: :paused}
+  def cron_status(%{paused_at: %_{} = _paused_at}),
+    do: %{operator_status: :waiting, diagnosis: :paused}
+
   def cron_status(%{paused_at: nil}), do: %{operator_status: :runnable, diagnosis: :ready}
   def cron_status(%{"paused_at" => paused_at}), do: cron_status(%{paused_at: paused_at})
   def cron_status(_entry), do: %{operator_status: :waiting, diagnosis: :paused}
@@ -36,11 +38,13 @@ defmodule ObanPowertools.ControlPlane do
     %{operator_status: :needs_review, diagnosis: rejection.reason_code || :rejected}
   end
 
-  def workflow_status(%{diagnosis: diagnosis}) when diagnosis in [:waiting_on_signal, :waiting_on_dependencies] do
+  def workflow_status(%{diagnosis: diagnosis})
+      when diagnosis in [:waiting_on_signal, :waiting_on_dependencies] do
     %{operator_status: :waiting, diagnosis: diagnosis}
   end
 
-  def workflow_status(%{diagnosis: diagnosis}) when diagnosis in [:missing_executor, :cancel_requested] do
+  def workflow_status(%{diagnosis: diagnosis})
+      when diagnosis in [:missing_executor, :cancel_requested] do
     %{operator_status: :blocked, diagnosis: diagnosis}
   end
 
