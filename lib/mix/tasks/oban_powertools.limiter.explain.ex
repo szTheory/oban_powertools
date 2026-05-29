@@ -34,18 +34,8 @@ defmodule Mix.Tasks.ObanPowertools.Limiter.Explain do
       --args JSON           JSON args string for --worker (default: "{}").
       --repo MyApp.Repo     Ecto repo module. Falls back to
                             `config :oban_powertools, repo: MyApp.Repo`.
-      --prefix public       Oban schema prefix. Falls back to host Oban app env,
-                            then "public". Use --prefix for reliable production results.
-      --oban-name Oban      Which Oban instance to read prefix from (default: "Oban").
       --format human|json   Output format. "human" degrades ANSI in CI/non-TTY.
                             "json" emits schema_version: 1 stability contract.
-
-  ## Prefix Resolution
-
-  Prefix auto-detection reads the host Oban configuration from the loaded application
-  environment without starting Oban. Because Oban is typically configured under the host
-  app key (e.g. `config :my_app, Oban, ...`), auto-detection may fall back to `"public"`
-  when the host app hasn't started. **Use `--prefix` for reliable production results.**
 
   ## Boot Strategy
 
@@ -107,8 +97,6 @@ defmodule Mix.Tasks.ObanPowertools.Limiter.Explain do
 
   @switches [
     repo: :string,
-    prefix: :string,
-    oban_name: :string,
     format: :string,
     resource: :string,
     partition: :string,
@@ -214,25 +202,21 @@ defmodule Mix.Tasks.ObanPowertools.Limiter.Explain do
   # ---------------------------------------------------------------------------
 
   defp run_worker_path(repo, opts, format) do
+    # Resolve the worker's declared limiter snapshot FIRST. `Explain.explain/3` returns
+    # a plain map even for a no-limits worker (its `with {:ok, snapshot}` binds nil and
+    # falls through to status: :runnable), so we cannot distinguish "no limiter at all"
+    # from "runnable" downstream — we must detect the nil snapshot here (CR-01, D-02).
     with {:ok, worker_mod} <- resolve_worker(opts),
-         {:ok, parsed_args} <- parse_args_json(opts) do
-      case ObanPowertools.Explain.explain(worker_mod, parsed_args, repo: repo) do
-        {:ok, nil} ->
-          Mix.shell().error("worker has no limits configured")
-          2
-
-        nil ->
-          Mix.shell().error("worker has no limits configured")
-          2
-
-        explanation when is_map(explanation) ->
-          normalized = normalize_status(explanation.status)
-          print_explanation(%{explanation | status: normalized}, inspect(worker_mod), format)
-          0
-      end
+         {:ok, parsed_args} <- parse_args_json(opts),
+         {:ok, snapshot} when not is_nil(snapshot) <-
+           worker_limit_snapshot(worker_mod, parsed_args) do
+      explanation = ObanPowertools.Explain.explain(worker_mod, parsed_args, repo: repo)
+      normalized = normalize_status(explanation.status)
+      print_explanation(%{explanation | status: normalized}, inspect(worker_mod), format)
+      0
     else
-      {:error, :unknown_module, mod_string} ->
-        Mix.shell().error("unknown --worker module: #{mod_string}")
+      {:ok, nil} ->
+        Mix.shell().error("worker has no limits configured")
         2
 
       {:error, :not_loaded, mod_string} ->
@@ -242,7 +226,23 @@ defmodule Mix.Tasks.ObanPowertools.Limiter.Explain do
       {:error, :invalid_json} ->
         Mix.shell().error("--args must be a valid JSON object string (e.g. '{\"key\":\"value\"}')")
         2
+
+      {:error, :bad_args, message} ->
+        Mix.shell().error(message)
+        2
     end
+  end
+
+  # `Worker.limit_snapshot/2` can raise ArgumentError for `partition_by`/`weight_by`
+  # workers when the required args key is missing (Pitfall 4). Rescue and map to a
+  # cannot-run exit 2 instead of letting the task crash.
+  defp worker_limit_snapshot(worker_mod, args) do
+    ObanPowertools.Worker.limit_snapshot(worker_mod, args)
+  rescue
+    ArgumentError ->
+      {:error, :bad_args,
+       "worker requires args to resolve its limiter (partition_by/weight_by); " <>
+         "pass --args with the required keys"}
   end
 
   # ---------------------------------------------------------------------------

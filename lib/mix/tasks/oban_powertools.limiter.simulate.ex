@@ -29,10 +29,6 @@ defmodule Mix.Tasks.ObanPowertools.Limiter.Simulate do
                                "__global__").
       --repo MyApp.Repo        Ecto repo module. Falls back to
                                `config :oban_powertools, repo: MyApp.Repo`.
-      --prefix public          Oban schema prefix (only used for app.config;
-                               simulate is pure and does not query the DB).
-      --oban-name Oban         Oban instance name for prefix lookup
-                               (default: "Oban").
       --format human|json      Output format. "human" (default) renders a
                                readable per-request sequence with ANSI color
                                that auto-degrades in CI/non-TTY. "json" emits
@@ -102,8 +98,6 @@ defmodule Mix.Tasks.ObanPowertools.Limiter.Simulate do
 
   @switches [
     repo: :string,
-    prefix: :string,
-    oban_name: :string,
     format: :string,
     worker: :string,
     bucket_capacity: :integer,
@@ -166,13 +160,19 @@ defmodule Mix.Tasks.ObanPowertools.Limiter.Simulate do
 
   defp run_simulate(opts, format) do
     with {:ok, worker_mod} <- resolve_worker(opts),
-         {:ok, config} <- resolve_worker_config(worker_mod, opts) do
-      capacity = Keyword.get(opts, :bucket_capacity, config.bucket_capacity)
-      span_ms = Keyword.get(opts, :bucket_span_ms, config.bucket_span_ms)
-      weight = Keyword.get(opts, :weight, config.weight)
-      count = Keyword.get(opts, :count, 1)
-      partition = Keyword.get(opts, :partition, config.partition_key)
-
+         {:ok, config} <- resolve_worker_config(worker_mod, opts),
+         capacity = Keyword.get(opts, :bucket_capacity, config.bucket_capacity),
+         span_ms = Keyword.get(opts, :bucket_span_ms, config.bucket_span_ms),
+         weight = Keyword.get(opts, :weight, config.weight),
+         count = Keyword.get(opts, :count, 1),
+         partition = Keyword.get(opts, :partition, config.partition_key),
+         :ok <-
+           validate_positive([
+             {capacity, "--bucket-capacity"},
+             {span_ms, "--bucket-span-ms"},
+             {weight, "--weight"},
+             {count, "--count"}
+           ]) do
       # Synthetic Resource struct — never touches the DB for simulation
       resource = %Resource{
         name: config.resource_name,
@@ -207,7 +207,26 @@ defmodule Mix.Tasks.ObanPowertools.Limiter.Simulate do
       {:error, :no_limits} ->
         Mix.shell().error("worker has no :limits configured — nothing to simulate")
         2
+
+      {:error, {:bad_override, message}} ->
+        Mix.shell().error(message)
+        2
     end
+  end
+
+  # Validate effective numeric inputs are positive integers before simulating, mirroring
+  # the worker macro's `validate_positive_integer!` contract (WR-03/WR-01). A non-positive
+  # bucket/span/weight/count would otherwise produce a preview that silently lies
+  # (e.g. `--bucket-span-ms 0` resets every call; `--count 0` iterates the descending
+  # range `1..0` and emits a bogus request "0").
+  defp validate_positive(pairs) do
+    Enum.reduce_while(pairs, :ok, fn {value, flag}, _acc ->
+      if is_integer(value) and value > 0 do
+        {:cont, :ok}
+      else
+        {:halt, {:error, {:bad_override, "#{flag} must be a positive integer"}}}
+      end
+    end)
   end
 
   # Sequential reservation loop — pure computation, no DB access, no telemetry.

@@ -59,6 +59,14 @@ defmodule Mix.Tasks.ObanPowertools.Limiter.SimulateTest do
     assert source =~ "format:"
   end
 
+  test "validates numeric overrides are positive integers before simulating (WR-01/WR-03, D-02)" do
+    source = File.read!(@task_path)
+    # `--count <= 0` would iterate the descending range `1..0` (request "0"); a zero/negative
+    # bucket capacity/span/weight produces a preview that silently lies. All must exit 2.
+    assert source =~ "validate_positive"
+    assert source =~ "must be a positive integer"
+  end
+
   test "source does not reference side-effecting limiter functions (OPS-07 purity)" do
     source = File.read!(@task_path)
     # Simulate must never call the side-effecting reservation path

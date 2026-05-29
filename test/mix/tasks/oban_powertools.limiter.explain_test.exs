@@ -60,6 +60,17 @@ defmodule Mix.Tasks.ObanPowertools.Limiter.ExplainTest do
     assert source =~ "@shortdoc"
   end
 
+  test "worker path detects no-limits workers via limit_snapshot, not explain/3 return (CR-01, D-02)" do
+    source = File.read!(@task_path)
+    # Explain.explain/3 returns a plain runnable map even for a worker with no :limits
+    # (its `with {:ok, snapshot}` binds nil and falls through), so the task MUST resolve
+    # the worker's declared snapshot itself and exit 2 on nil — otherwise a no-limits
+    # worker silently reports runnable with exit 0.
+    assert source =~ "limit_snapshot"
+    assert source =~ ~r/\{:ok, snapshot\} when not is_nil\(snapshot\)/
+    assert source =~ "worker has no limits configured"
+  end
+
   test "sources the rate-limit glossary via ObanPowertools.Limits.Glossary (OPS-08)" do
     source = File.read!(@task_path)
     # D-08: glossary is a single source of truth from Glossary module, referenced in @moduledoc
