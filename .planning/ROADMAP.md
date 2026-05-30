@@ -147,11 +147,11 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 **Goal:** Prove the published package actually works for a fresh adopter — getting-started from hex, not from the repo.
 
 **Requirements:** REL-04
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 **Wave 1**
 
-- [ ] 51-01-PLAN.md — Scaffold `examples/hex_consumer/` (mix.exs hex dep, config, lib + host-owned seams, README, regenerate.sh, .gitignore)
+- [x] 51-01-PLAN.md — Scaffold `examples/hex_consumer/` (mix.exs hex dep, config, lib + host-owned seams, README, regenerate.sh, .gitignore)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
