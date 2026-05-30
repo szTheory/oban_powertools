@@ -201,4 +201,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-30 — Phase 50 (telemetry metrics/0 + SLO guide, TEL-01/02/03) complete and verified (9/9 must-haves, 428 tests 0 failures); v1.6 now has only Phase 51 (published-package verification) remaining.*
+*Last updated: 2026-05-30 — Phase 52.1 (close gap REL-04 — fix verify-published CI Igniter conflict) complete; all 6/6 static must-haves verified. CI integration gate (live release run) pending as expected. v1.6 milestone complete pending that CI gate.*
