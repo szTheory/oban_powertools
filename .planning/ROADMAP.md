@@ -8,7 +8,7 @@
 - ✅ **v1.3 Unified Control Plane & Explainability** — Phases 27-31 (shipped 2026-05-26) — [archive](milestones/v1.3-ROADMAP.md)
 - ✅ **v1.4 Operator Forensics & SRE Runbooks** — Phases 32-42 (shipped 2026-05-27) — [archive](milestones/v1.4-ROADMAP.md)
 - ✅ **v1.5 Native Job Surface & Automation API** — Phases 43-46 (shipped 2026-05-28) — [archive](milestones/v1.5-ROADMAP.md)
-- 🚧 **v1.6 Release & Operability** — Phases 47-51 (in progress)
+- 🚧 **v1.6 Release & Operability** — Phases 47-52 (in progress)
 
 ## Phases
 
@@ -64,7 +64,7 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 47-03-PLAN.md — release-please pipeline (config + manifest + workflow) and operator publish handoff
+- [x] 47-03-PLAN.md — release-please pipeline (config + manifest + workflow) and operator publish handoff
 
 **Success Criteria:**
 
@@ -168,6 +168,23 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 3. The verification asserts a clean working tree (or per-phase commit existence) per the v1.5-graduated convention.
 4. Any drift found between in-repo and published behavior is documented or fixed.
 
+### Phase 52: Zero-Touch Release Automation
+
+**Goal:** Add `release-pr-automerge.yml` so that after the release PR's CI passes, the PR is squash-merged automatically and the release pipeline fires — no human merge step required. Transplanted from lattice_stripe with oban_powertools branch-name adaptation.
+
+**Requirements:** (pipeline operability — no REQ-ID; this is process automation)
+**Plans:** 1 plan
+
+**Wave 1**
+
+- [ ] 52-01-PLAN.md — Add release-pr-automerge.yml (lattice_stripe transplant, 2 branch-name string changes)
+
+**Success Criteria:**
+
+1. After `git push origin main`, release-please opens a release PR automatically.
+2. Once CI passes on the release PR branch, `release-pr-automerge.yml` merges it without human action.
+3. The full release pipeline (gate-ci-green → publish-hex → verify-published) completes zero-touch.
+
 </details>
 
 ## Progress
@@ -180,4 +197,9 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 | 27-31 | v1.3      | 15/15          | Complete | 2026-05-26 |
 | 32-42 | v1.4      | 27/27          | Complete | 2026-05-27 |
 | 43-46 | v1.5      | 9/9            | Complete | 2026-05-28 |
-| 47-51 | v1.6      | 0/—            | Planning | —          |
+| 47    | v1.6      | 3/3            | Complete | 2026-05-29 |
+| 48    | v1.6      | 2/2            | Complete | 2026-05-30 |
+| 49    | v1.6      | 3/3            | Complete | 2026-05-30 |
+| 50    | v1.6      | 3/3            | Complete | 2026-05-30 |
+| 51    | v1.6      | 3/3            | Complete | 2026-05-30 |
+| 52    | v1.6      | 0/1            | Not started | —       |
