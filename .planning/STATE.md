@@ -3,15 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Worker Lifecycle & Safety
 status: planning
-last_updated: 2026-05-30T00:00:00Z
-last_activity: 2026-05-30 -- v1.6 milestone archived
+last_updated: "2026-05-30T19:08:18.616Z"
+last_activity: 2026-05-30
 progress:
   total_phases: 0
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
   percent: 0
-stopped_at: Between milestones — v1.6 archived, v1.7 not yet started
 ---
 
 # Project State
@@ -25,8 +24,10 @@ See: .planning/PROJECT.md (updated 2026-05-30)
 
 ## Current Position
 
-Milestone: v1.6 Release & Operability — ARCHIVED
-Next: v1.7 Worker Lifecycle & Safety — not yet started
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-30 — Milestone v1.7 started
 
 ## Accumulated Context
 
@@ -35,6 +36,7 @@ Next: v1.7 Worker Lifecycle & Safety — not yet started
 All 7 phases complete (47-52.1), 16/16 plans, 428 tests, 0 failures. Published to hex.pm at `0.5.0`. Doctor CLI, Limiter CLI, Telemetry metrics, SLO guide, hex_consumer adoption proof, and zero-touch release pipeline all shipped. See MILESTONES.md for full details.
 
 **Deferred carry-ins for v1.7+:**
+
 - Live CI E2E gate for REL-04 `verify-published` — fix in place (Phase 52.1), resolves on next release cycle.
 - Doctor/limiter CLI/telemetry in-repo verified but not in published 0.5.0 — awaiting 0.5.1 release-please PR merge (open, unmerged).
 - Phase 47 missing VERIFICATION.md — process gap, not a deliverable gap.
@@ -44,6 +46,7 @@ All 7 phases complete (47-52.1), 16/16 plans, 428 tests, 0 failures. Published t
 See PROJECT.md Key Decisions section.
 
 **Milestone ordering (2026-05-28 assessment):**
+
 - v1.7 Worker Lifecycle & Safety (hooks, deadline, output recording, redact)
 - v1.8 Batches & Composition (dedicated tables, callbacks, chains)
 - v1.9 Observability / live counts (oban_met optional read source)
@@ -56,6 +59,7 @@ None.
 ## Operator Next Steps
 
 `/clear`, then:
+
 - `/gsd:new-milestone` — start v1.7 (questioning → research → requirements → roadmap)
 
 ## Performance Metrics

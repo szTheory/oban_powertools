@@ -8,11 +8,15 @@ Oban Powertools is a host-owned operations layer for Oban-backed Phoenix applica
 
 Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
 
-## Current Milestone: v1.7 Worker Lifecycle & Safety (Planned)
+## Current Milestone: v1.7 Worker Lifecycle & Safety
 
-**Status:** Planning — start with `/gsd:new-milestone` after `/clear`
+**Goal:** Equip every worker with observable, durable lifecycle hooks, a generalised output recording contract, and at-rest redaction before adding Batches.
 
-**Candidate focus:** Worker hooks (on_start/success/failure/discard, observe-only, crash-caught), soft `deadline:` + `timeout:` pass-through to Oban, output recording (generalize `Workflow.Result`), `redact:` at-rest. Must precede Batches — shared hook + recordings infra.
+**Target features:**
+- Worker hooks: `on_start`, `on_success`, `on_failure`, `on_discard` — observe-only callbacks, crash-caught
+- Soft `deadline:` + `timeout:` pass-through to Oban
+- Output recording: generalise `Workflow.Result` across all workers
+- `redact:` at-rest (drop at persist, not encrypt)
 
 <details>
 <summary>✅ v1.6 Release & Operability — SHIPPED 2026-05-30</summary>
