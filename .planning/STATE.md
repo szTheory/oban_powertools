@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Release & Operability
 status: milestone_complete
-last_updated: "2026-05-30T14:50:39.742Z"
+last_updated: "2026-05-30T15:04:52.904Z"
 last_activity: 2026-05-30
 progress:
   total_phases: 6
