@@ -1,74 +1,62 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.6
-milestone_name: Release & Operability
-status: milestone_complete
-last_updated: 2026-05-30T17:52:31.311Z
-last_activity: 2026-05-30 -- Phase 52.1 execution started
+milestone: v1.7
+milestone_name: Worker Lifecycle & Safety
+status: planning
+last_updated: 2026-05-30T00:00:00Z
+last_activity: 2026-05-30 -- v1.6 milestone archived
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 15
-  completed_plans: 16
-  percent: 100
-stopped_at: Milestone complete (Phase 52.1 was final phase)
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
+stopped_at: Between milestones — v1.6 archived, v1.7 not yet started
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-28)
+See: .planning/PROJECT.md (updated 2026-05-30)
 
 **Core value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-**Current focus:** Milestone complete
+**Current focus:** Planning next milestone (v1.7 Worker Lifecycle & Safety)
 
 ## Current Position
 
-Phase: 52.1
-Plan: Not started
-Next: Phase 48 (doctor-health-check) — not yet planned.
-Last activity: 2026-05-30
-
-Release automation (beyond the original 47 plans): full shift-left CI/CD shipped — ci.yml (ci-gate), release.yml (release-please→gate-ci-green→publish), publish-hex.yml recovery, pr-title lint, Dependabot, SHA-pinned actions, branch protection (ci-gate + host-contract-gate), RELEASE_PLEASE_TOKEN + HEX_API_KEY. Tag v0.5.0 + oban_powertools-v0.5.0 both exist; future tags are v* (include-component-in-tag: false). See memory: hex-release-pipeline-gotchas.
+Milestone: v1.6 Release & Operability — ARCHIVED
+Next: v1.7 Worker Lifecycle & Safety — not yet started
 
 ## Accumulated Context
 
-### Roadmap Evolution
+### v1.6 Summary
 
-- Phase 52.1 inserted after Phase 52: Close gap: REL-04 — fix verify-published CI (Igniter committed-modules conflict) (URGENT)
+All 7 phases complete (47-52.1), 16/16 plans, 428 tests, 0 failures. Published to hex.pm at `0.5.0`. Doctor CLI, Limiter CLI, Telemetry metrics, SLO guide, hex_consumer adoption proof, and zero-touch release pipeline all shipped. See MILESTONES.md for full details.
 
-Decisions, blockers, and todos carried from v1.5:
+**Deferred carry-ins for v1.7+:**
+- Live CI E2E gate for REL-04 `verify-published` — fix in place (Phase 52.1), resolves on next release cycle.
+- Doctor/limiter CLI/telemetry in-repo verified but not in published 0.5.0 — awaiting 0.5.1 release-please PR merge (open, unmerged).
+- Phase 47 missing VERIFICATION.md — process gap, not a deliverable gap.
 
 ### Decisions
 
-See PROJECT.md Key Decisions section for the full locked decision list.
+See PROJECT.md Key Decisions section.
 
-**Post-v1.5 assessment decisions (2026-05-28, see `threads/2026-05-28-post-v1.5-next-milestone.md`):**
-
-- Hex publication is a near-term goal; first public release at `0.x` (recommend `0.5.0`) before committing to `1.0`.
-- Recommended next milestone = v1.6 Release & Operability (now active).
-- Worker-Lifecycle (v1.7) must precede Batches (v1.8).
-- Done-% ~87%; ship the release before adding more capability.
-
-**v1.6 conventions:**
-
-- Zero new runtime dependencies (ExDoc dev-only; `telemetry_metrics`/`telemetry_poller` optional, gated like `oban_web`).
-- Phase verification / milestone audit must assert a clean working tree (or per-phase commit existence) — graduated from v1.5 (phases 44/45 audited `passed` while uncommitted).
-- [Phase ?]: CHANGELOG.md in Keep-a-Changelog format with 0.5.0 entry and path-to-1.0 gate
-- [Phase ?]: Apache-2.0 LICENSE verbatim text at repo root; SPDX id matches planned package/0 declaration (D-06/D-07)
+**Milestone ordering (2026-05-28 assessment):**
+- v1.7 Worker Lifecycle & Safety (hooks, deadline, output recording, redact)
+- v1.8 Batches & Composition (dedicated tables, callbacks, chains)
+- v1.9 Observability / live counts (oban_met optional read source)
+- Opportunistic: QRY-05 args/meta filter, QRY-07 deep-link, QRY-08 cross-select, API-03
 
 ### Blockers
 
 None.
 
-### Todos
-
-- Next: `/gsd:plan-phase 47` to plan the Hex Release Foundation phase.
-
 ## Operator Next Steps
 
-- `/clear`, then `/gsd:discuss-phase 47` (gather context) or `/gsd:plan-phase 47` (plan directly).
+`/clear`, then:
+- `/gsd:new-milestone` — start v1.7 (questioning → research → requirements → roadmap)
 
 ## Performance Metrics
 

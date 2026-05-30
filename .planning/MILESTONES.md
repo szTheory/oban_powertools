@@ -1,5 +1,35 @@
 # Milestones
 
+## v1.6 Release & Operability
+
+- **Status:** Shipped 2026-05-30
+- **Phases:** 47-52.1 (7 phases including inserted 52.1)
+- **Plans:** 16
+- **Timeline:** 2026-05-29 → 2026-05-30 (2 days)
+- **Git range:** `0d5b86f` → `71b0760`
+- **Code:** 121 files changed, +16,574 / −222 LOC (new modules: Doctor, Limits.compute_reservation/4, Telemetry, Glossary, Mix.Tasks.ObanPowertools.Doctor, .Limiter.Explain, .Limiter.Simulate)
+- **Requirements:** 13/13 satisfied (REL-01..04, OPS-03..08, TEL-01..03); milestone audit `gaps_found` → all closed by Phase 52.1
+- **Test suite:** 428 tests, 0 failures
+
+### Delivered
+
+Published Oban Powertools to hex.pm at `0.5.0` and shipped the two named operability footguns with zero new runtime dependencies.
+
+- **Hex publication (REL-01/02/03):** Full release-please CI/CD pipeline — `release-please` → `gate-ci-green` → `publish-hex` → `verify-published`. Zero-touch release automerge via `release-pr-automerge.yml`. Apache-2.0 LICENSE, Keep-a-Changelog CHANGELOG.md with path-to-1.0.
+- **Doctor CLI (OPS-03/04/05):** `mix oban_powertools.doctor` — five read-only `pg_catalog` checks (index validity, INVALID detection, migration drift, Powertools tables, uniqueness-timeout risk), human + `schema_version: 1` JSON output, 0/1/2 CI exit codes, actionable remediation hints.
+- **Limiter CLI (OPS-06/07/08):** `mix oban_powertools.limiter.explain` (blocking-state diagnosis over existing `Explain` API) and `mix oban_powertools.limiter.simulate` (pure `compute_reservation/4` — no DB, no mutations). Rate-limit glossary locked by `docs_contract_test.exs`.
+- **Telemetry metrics (TEL-01/02):** Opt-in `ObanPowertools.Telemetry.metrics/0` — 17 `Telemetry.Metrics` counters over the frozen low-cardinality contract. `telemetry_metrics`/`telemetry_poller` optional deps (gated like `oban_web`). `Code.ensure_loaded?` guard.
+- **SLO guide (TEL-03):** `guides/telemetry-and-slos.md` — reporter-agnostic Operations/SLO guide, Parapet as one consumer, explicit no-`oban_met` framing.
+- **Published-package verification (REL-04):** `examples/hex_consumer/` Phoenix app with `{:oban_powertools, "~> 0.5"}` hex dep; first-session test proved green via path-dep swap; `verify-published` CI job gates release pipeline on real published tarball; Phase 52.1 fixed Igniter committed-modules conflict.
+
+### Known Deferred Items at Close
+
+- Live CI E2E run for `verify-published` (REL-04) — static fix in place (Phase 52.1); live gate resolves on next release cycle.
+- Phase 47 missing `VERIFICATION.md` — process gap; external evidence strong (0.5.0 live, hexdocs renders, VALIDATION.md 35 green tests).
+- Doctor/limiter CLI/telemetry in-repo verified but not in published 0.5.0 — awaiting 0.5.1 release-please PR merge.
+
+---
+
 ## v1.5 Native Job Surface & Automation API
 
 - **Status:** Shipped 2026-05-28

@@ -98,6 +98,58 @@
 
 ---
 
+## Milestone: v1.6 — Release & Operability
+
+**Shipped:** 2026-05-30
+**Phases:** 7 (47-52.1, including inserted 52.1) | **Plans:** 16
+
+### What Was Built
+
+- Full release-please CI/CD pipeline — release-please → gate-ci-green → publish-hex → verify-published with zero-touch automerge. Published at `0.5.0` with Apache-2.0 LICENSE, Keep-a-Changelog CHANGELOG.md, and path-to-1.0 documented.
+- `mix oban_powertools.doctor` — five read-only `pg_catalog` health checks (index validity, INVALID detection, migration drift, Powertools tables, uniqueness-timeout risk), human + JSON output, 0/1/2 CI exit codes, remediation hints.
+- `mix oban_powertools.limiter.explain` and `.simulate` — CLI over existing `Explain` API + pure `compute_reservation/4` with no DB access; rate-limit `ObanPowertools.Glossary` module locked by docs-contract test.
+- Opt-in `ObanPowertools.Telemetry.metrics/0` — 17 counters over the frozen low-cardinality contract; `telemetry_metrics`/`telemetry_poller` optional deps; `Code.ensure_loaded?` guard. Zero new runtime deps.
+- `guides/telemetry-and-slos.md` — reporter-agnostic Parapet/SLO Operations guide, no `oban_met` dependency.
+- `examples/hex_consumer/` — Phoenix adoption proof with first-session test proved green via path-dep swap; `verify-published` CI job gates release pipeline on real published tarball.
+- Phase 52.1 (inserted after milestone audit) — four surgical fixes to `release.yml`, `regenerate.sh`, `.gitignore` to close the REL-04 Igniter committed-modules blocker.
+
+### What Worked
+
+- **Milestone audit-driven insertion:** Running the audit before archiving surfaced the REL-04 Igniter conflict early. Inserting Phase 52.1 to close the static half of the gap before archiving was the right call — clean audit trail, no deferred surprises.
+- **Phase 52.1 as a surgical insert:** The single-plan phase pattern for a targeted fix (4 edits across 3 files) was efficient. Naming it after the gap (`close-gap-rel-04`) made its purpose unambiguous.
+- **Nyquist VALIDATION.md already updated by the time of milestone close:** Both Phase 50 and Phase 51 VALIDATION.md files had been updated to `nyquist_compliant: true` between the audit and the milestone archive. The compliance check passed without a separate validation run.
+- **Zero gap-closure phase tail:** Unlike v1.4 (6 gap-closure phases), v1.6 needed only one inserted closure phase — Phase 52.1. Proactive verification (13/13 per-phase verification truths) and the Nyquist discipline kept the tail short.
+- **Release infrastructure investment paid off immediately:** The release-please + automerge pipeline means future releases are zero-touch from `git push`. The one-time setup cost in Phase 47/52 amortizes across every subsequent release.
+
+### What Was Inefficient
+
+- **Milestone audit still showed `gaps_found` at archive time** — because the audit ran before Phase 52.1 closed the REL-04 static gap. The audit file itself is stale. A re-run post Phase 52.1 would have shown a cleaner `passed` (or `partial` with the live CI gate explicit). Consider re-running the audit after all inserted closure phases complete.
+- **Phase 47 missing VERIFICATION.md:** Phase 47 has strong external evidence (0.5.0 live, hexdocs renders, VALIDATION.md 35 green tests) but never received a goal-backward verification report. This repeated the v1.4 pattern of strong deliverables with missing process artifacts. A VERIFICATION.md written at Phase 47 close would have moved REL-01/02/03 from `partial` to `satisfied` in the audit.
+- **Doctor/limiter CLI/telemetry not in published 0.5.0 at milestone close:** All three features were in-repo verified but the 0.5.1 release-please PR remained unmerged. v1.6 shipped the code but not the published package for 10/13 requirements. The "release IS the milestone" framing was only half-true at close.
+- **Release pipeline PAT + secrets setup required out-of-band operator action:** RELEASE_PLEASE_TOKEN, HEX_API_KEY, and branch protection rules required human setup steps. These are correct calls (security boundaries), but the setup steps weren't captured as trackable tasks — they surfaced as process gaps at close.
+
+### Patterns Established
+
+- **Audit-before-archive as a gate:** Running `gsd-audit-milestone` before `gsd-complete-milestone` and inserting a closure phase when gaps are found (rather than archiving with known blockers) is now established practice.
+- **Surgical insert pattern:** A single-plan phase named after the gap it closes (`52.1-close-gap-rel-04`) is the right shape for post-audit surgical fixes. Avoid bundling unrelated work.
+- **`verify-published` CI job as release gate:** Gating the release pipeline on a fresh-host first-session test from the published tarball closes the "works in-repo, broken on hex" failure mode.
+- **Release-please `bootstrap-sha` must be `0.0.0`, not `0.1.0`:** The first-release bootstrap pitfall — seed manifest at `0.0.0` with a `Release-As: X.Y.Z` footer commit. Seeding at the current version breaks the version-increment math.
+
+### Key Lessons
+
+1. **Re-run the milestone audit after all inserted closure phases complete.** The v1.6 audit ran before Phase 52.1 and remained stale. The final pre-archive audit should reflect the completed state.
+2. **Write VERIFICATION.md at phase close, not retroactively.** Phase 47's missing VERIFICATION.md repeated the v1.4 lesson. Treat VERIFICATION.md as a non-optional phase exit criterion.
+3. **"Release IS the milestone" requires verifying the published tarball, not just in-repo.** Doctor/limiter/telemetry were verified in-repo but not in the published 0.5.0. For release milestones, the published tarball is the only acceptable final verification artifact.
+4. **Document operator setup steps as first-class tasks.** PAT/secret/branch-protection setup should be in the plan as explicit tasks with acceptance criteria, not implied.
+
+### Cost Observations
+
+- Model mix: Opus for discuss/plan/audit phases, Sonnet for execution/verification/completion (per `balanced` model profile).
+- Sessions: ~3 days across 7 phases.
+- Notable: the milestone was dense on infrastructure (CI/CD, release pipeline, adoption proof) with relatively low LOC compared to feature-heavy milestones. Setup/verification overhead was proportionally higher than in-code work.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -110,6 +162,7 @@
 | v1.3      | 5      | 15    | Tighter scoping; control-plane convergence |
 | v1.4      | 11     | 28    | Audit-driven gap-closure phases; CI proof enforcement; automated acceptance proxies |
 | v1.5      | 4      | 9     | Tight arc, no gap-closure tail; but lost phase commits exposed audit-vs-commit-state gap |
+| v1.6      | 7      | 16    | Release milestone: hex publication + operability CLIs; audit-before-archive gate; one surgical insert (52.1) |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -117,3 +170,5 @@
 2. **Bounded scope + explicit support-truth beats broad capability claims.** Narrowing each milestone to one coherent operator story produces more useful audit and docs outcomes than broad feature sprawl.
 3. **Reconciliation phases are legitimate work.** Additive reconciliation (adjusting ownership, traceability, and canonical references) has appeared in v1.2 (Phase 24/25), v1.3, and v1.4. It should be planned for, not treated as scope failure.
 4. **Verify commit-state, not working-tree state.** v1.5 shipped phases whose code was never committed yet still audited `passed`. Verification/audit must assert a clean tree or per-phase commit existence — green tests in a dirty tree are not proof of shipped work.
+5. **Audit-before-archive is a gate, not a formality.** v1.6 inserted Phase 52.1 based on the audit finding; skipping the audit would have archived a broken `verify-published` CI job. Re-run the audit after all inserted closure phases complete.
+6. **For release milestones, the published tarball is the only final verification artifact.** In-repo green ≠ published green. `verify-published` CI job is the right closing gate for any hex release milestone.

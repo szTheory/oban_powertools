@@ -8,17 +8,22 @@ Oban Powertools is a host-owned operations layer for Oban-backed Phoenix applica
 
 Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
 
-## Current Milestone: v1.6 Release & Operability
+## Current Milestone: v1.7 Worker Lifecycle & Safety (Planned)
+
+**Status:** Planning — start with `/gsd:new-milestone` after `/clear`
+
+**Candidate focus:** Worker hooks (on_start/success/failure/discard, observe-only, crash-caught), soft `deadline:` + `timeout:` pass-through to Oban, output recording (generalize `Workflow.Result`), `redact:` at-rest. Must precede Batches — shared hook + recordings infra.
+
+<details>
+<summary>✅ v1.6 Release & Operability — SHIPPED 2026-05-30</summary>
 
 **Goal:** Make Oban Powertools real for adopters — publish it to hex and ship the two named operability footguns — before adding any more capability.
 
-**Target features:**
-- First public hex release at a deliberate `0.x` (recommend `0.5.0`; document a path to `1.0` after real adopter feedback), with getting-started verified from the published package.
-- `mix oban_powertools.doctor` — index / invalid-index / uniqueness-timeout / config / migration-drift health checks over read-only `pg_catalog`, with honest exit codes.
-- `mix oban_powertools.limiter.explain` / `.simulate` — CLI over the existing `Explain` + `Limits`, shipping the rate-limit glossary.
-- Parapet/SLO telemetry guide and opt-in `Telemetry.metrics/0` over the frozen low-cardinality contract — no `oban_met` dependency.
+**Shipped:** First public hex release at `0.5.0` with full release-please CI/CD, `mix oban_powertools.doctor` (index/migration/uniqueness health with honest exit codes), `mix oban_powertools.limiter.explain` / `.simulate` (CLI over existing `Explain` + `Limits`, rate-limit glossary), opt-in `Telemetry.metrics/0` over the frozen low-cardinality contract (no `oban_met` dep), Parapet/SLO guide, and first-session adoption verified from the published tarball.
 
-**Key context:** Post-v1.5 assessment (`threads/2026-05-28-post-v1.5-next-milestone.md`) put the project at ~87% done with mild overbuilding risk; the foundational gap is that the lib is `0.1.0` and unpublished after 5 milestones, not a missing feature. Zero new deps, near-zero runtime risk. Phase numbering continues from v1.5 — v1.6 starts at Phase 47. Worker Lifecycle (v1.7) and Batches (v1.8) are explicitly deferred until adoption signals demand.
+**Test suite at close:** 428 tests, 0 failures. Zero new runtime dependencies.
+
+</details>
 
 ## Requirements
 
@@ -63,10 +68,13 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 - ✓ Bulk Operator Elixir API with per-job reporting (`API-02`) — v1.5 Phase 46
 - ✓ Read-only Oban health-check CLI (`mix oban_powertools.doctor`) — index/INVALID, migration-drift, Powertools-table, and uniqueness-timeout diagnostics over `pg_catalog` with honest 0/1/2 CI exit codes, human + JSON (`schema_version: 1`) output, and a CI-enforced host-contract e2e lane (`OPS-03`, `OPS-04`, `OPS-05`) — v1.6 Phase 48
 - ✓ Published-package end-to-end verification — `examples/hex_consumer/` Phoenix app installs `{:oban_powertools, "~> 0.5"}` from Hex, first-session operator test (cron pause + audit evidence) proved green via path-dep swap, `verify-published` CI job gates release pipeline on real published tarball (`REL-04`) — v1.6 Phase 51
+- ✓ First hex.pm publication at `0.5.0` with full release-please CI/CD pipeline — release-please → gate-ci-green → publish-hex → verify-published, zero-touch automerge via `release-pr-automerge.yml` (`REL-01`, `REL-02`, `REL-03`) — v1.6 Phase 47
+- ✓ `mix oban_powertools.doctor` — read-only `pg_catalog` health checks (index validity, INVALID detection, migration drift, Powertools tables, uniqueness-timeout risk), human + `schema_version: 1` JSON output, 0/1/2 CI exit codes (`OPS-03`, `OPS-04`, `OPS-05`) — v1.6 Phase 48
+- ✓ `mix oban_powertools.limiter.explain` and `.simulate` — CLI over existing `Explain` API + pure `compute_reservation/4`, rate-limit glossary locked by docs-contract test (`OPS-06`, `OPS-07`, `OPS-08`) — v1.6 Phase 49
+- ✓ Opt-in `ObanPowertools.Telemetry.metrics/0` — 17 counters over frozen low-cardinality contract, `telemetry_metrics`/`telemetry_poller` optional deps, no new runtime dependency (`TEL-01`, `TEL-02`) — v1.6 Phase 50
+- ✓ `guides/telemetry-and-slos.md` — reporter-agnostic Parapet/SLO Operations guide, no `oban_met` dependency (`TEL-03`) — v1.6 Phase 50
 
 ### Active
-
-v1.6 Release & Operability — see `## Current Milestone` above and `REQUIREMENTS.md` for the scoped, REQ-ID'd list (hex release, `mix oban_powertools.doctor`, limiter explain/simulate CLI, Parapet/SLO telemetry guide).
 
 Carried backlog (not in v1.6): QRY-05 args/meta filter, QRY-06 real-time counts (→ v1.9), QRY-07 Lifeline→job deep-link, QRY-08 cross-page select-all, API-03 programmatic job query.
 
@@ -98,8 +106,10 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 - ✓ All native job mutations (UI and API) route through `Lifeline.execute_repair` — no direct `Oban` calls and no parallel mutation path. — v1.5
 - ✓ Bulk operations run an independent repair per job (no single `Ecto.Multi` over N jobs) and report per-job success/failure honestly. — v1.5
 - ✓ `ObanPowertools.Operator` requires a non-nil actor for every action and emits `source: "api"` telemetry within the frozen low-cardinality `@contract`. — v1.5
-- — Hex publication is a near-term goal; first public release at `0.x` (recommend `0.5.0`) before committing to `1.0` SemVer, so the public API meets real adopters before it's frozen. — 2026-05-28 assessment
-- — Worker Lifecycle precedes Batches: batch callbacks reuse the worker hook contract and output recording reuses a generalized `Workflow.Result` table; building Batches first forces a refactor. — 2026-05-28 assessment
+- ✓ Hex publication at `0.5.0` before `1.0` — shipped v1.6. Public API meets real adopters before freeze. — v1.6
+- ✓ Worker Lifecycle precedes Batches — batch callbacks reuse the worker hook contract; building Batches first forces a refactor. — 2026-05-28 assessment (carried to v1.7 planning)
+- ✓ `include-component-in-tag: false` — future release tags are `v*` only (no `oban_powertools-v*` duplication). — v1.6 Phase 47
+- ✓ RELEASE_PLEASE_TOKEN = PAT (not GitHub App token) — required for workflow triggers; provenance attestation skipped (not available for third-party registries). — v1.6 Phase 47
 
 ## Decision Posture
 
@@ -125,7 +135,7 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 Version `v1.5` shipped on 2026-05-28. The native `/ops/jobs` shell now owns the full job lifecycle without leaning on the Oban Web bridge: operators browse jobs at `/ops/jobs/jobs` filtered by state/queue/worker/tags with URL-serialized filter state and `DisplayPolicy` redaction on args/meta; inspect full job detail; and retry/cancel/discard single jobs or bulk selections through the same Lifeline preview → reason → execute → audit pipeline, with a concurrent-modification guard and honest per-job bulk reporting. The new `ObanPowertools.Operator` module gives host code a typed, actor-attributed programmatic surface for the same single and bulk mutations, routed through the identical Lifeline pipeline and emitting `source: "api"` telemetry within the frozen low-cardinality contract. Milestone audit passed 6/6 requirements; full suite at 270 tests, 0 failures.
 
-**v1.6 Release & Operability — in progress.** Phase 47 (hex release foundation), Phase 48 (`mix oban_powertools.doctor` health check), Phase 49 (limiter CLI), and Phase 50 (telemetry/SLO guide) are complete. Phase 49 shipped `mix oban_powertools.limiter.explain` (read-only blocking-state diagnostics, OPS-06) and `mix oban_powertools.limiter.simulate` (pure reservation preview via the new side-effect-free `Limits.compute_reservation/4`, OPS-07), plus a single-source rate-limit glossary surfaced across both task docs and the guide (OPS-08). Phase 50 added an opt-in, reporter-agnostic `ObanPowertools.Telemetry.metrics/0` (17 `Telemetry.Metrics` counters over the frozen control-plane contract, TEL-01) behind optional `telemetry_metrics`/`telemetry_poller` deps with no new runtime dependency (TEL-02), plus `guides/telemetry-and-slos.md`, a reporter-agnostic Operations/SLO guide with explicit no-`oban_met` framing (TEL-03). Suite at 428 tests, 0 failures. Remaining: Phase 51 (published-package verification).
+**v1.6 Release & Operability — SHIPPED 2026-05-30.** All 7 phases complete (47-52.1), 16/16 plans, 428 tests, 0 failures, 121 files changed (+16,574/−222 LOC). Published to hex.pm at `0.5.0` with zero-touch release-please CI/CD. Shipped `mix oban_powertools.doctor` (five read-only `pg_catalog` checks, 0/1/2 exit codes, human + JSON output), `mix oban_powertools.limiter.explain` + `.simulate` (CLI over existing `Explain` API + pure `compute_reservation/4`, rate-limit glossary), opt-in `ObanPowertools.Telemetry.metrics/0` (17 counters over frozen contract, optional deps), `guides/telemetry-and-slos.md`, `examples/hex_consumer/` Phoenix adoption proof, and `verify-published` CI job. Phase 52.1 (inserted) fixed the Igniter committed-modules conflict in `verify-published`. Deferred: live CI E2E gate for REL-04 (resolves on next release cycle).
 
 (Earlier: `v1.4` delivered operator forensics and SRE runbooks; `v1.3` unified the native control plane and explainability story.)
 
@@ -201,4 +211,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-30 — Phase 52.1 (close gap REL-04 — fix verify-published CI Igniter conflict) complete; all 6/6 static must-haves verified. CI integration gate (live release run) pending as expected. v1.6 milestone complete pending that CI gate.*
+*Last updated: 2026-05-30 after v1.6 Release & Operability milestone*
