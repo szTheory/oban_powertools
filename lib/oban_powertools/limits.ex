@@ -150,8 +150,7 @@ defmodule ObanPowertools.Limits do
 
     cond do
       cooldown_active?(normalized, now) ->
-        {:blocked, "cooldown", normalized.cooldown_until,
-         %{reason: normalized.cooldown_reason}}
+        {:blocked, "cooldown", normalized.cooldown_until, %{reason: normalized.cooldown_reason}}
 
       normalized.tokens_used + weight > resource.bucket_capacity ->
         retry_at =

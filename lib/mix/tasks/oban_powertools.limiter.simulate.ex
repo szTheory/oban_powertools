@@ -276,7 +276,9 @@ defmodule Mix.Tasks.ObanPowertools.Limiter.Simulate do
 
         :blocked ->
           retry_str =
-            if verdict.retry_at, do: " retry_at=#{DateTime.to_iso8601(verdict.retry_at)}", else: ""
+            if verdict.retry_at,
+              do: " retry_at=#{DateTime.to_iso8601(verdict.retry_at)}",
+              else: ""
 
           Mix.shell().info(
             "  Request #{verdict.request}: #{colorize("blocked", IO.ANSI.red())} " <>
@@ -401,5 +403,4 @@ defmodule Mix.Tasks.ObanPowertools.Limiter.Simulate do
         {:ok, Module.safe_concat([worker_string])}
     end
   end
-
 end

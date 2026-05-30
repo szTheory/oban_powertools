@@ -224,7 +224,10 @@ defmodule Mix.Tasks.ObanPowertools.Limiter.Explain do
         2
 
       {:error, :invalid_json} ->
-        Mix.shell().error("--args must be a valid JSON object string (e.g. '{\"key\":\"value\"}')")
+        Mix.shell().error(
+          "--args must be a valid JSON object string (e.g. '{\"key\":\"value\"}')"
+        )
+
         2
 
       {:error, :bad_args, message} ->

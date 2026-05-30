@@ -40,6 +40,7 @@ defmodule ObanPowertools.Limits.GlossaryTest do
 
     test "guide contains a Rate-Limit Glossary section" do
       guide = File.read!(@guide_path)
+
       assert String.contains?(guide, "## Rate-Limit Glossary"),
              "Expected guide to contain a '## Rate-Limit Glossary' section"
     end

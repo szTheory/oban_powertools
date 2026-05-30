@@ -14,7 +14,8 @@ defmodule ObanPowertools.Doctor.FormatterTest do
     check: :uniqueness_timeout_risk,
     severity: :warning,
     message: "Uniqueness-timeout risk: GIN index absent",
-    remediation: "Run: CREATE INDEX CONCURRENTLY oban_jobs_args_index ON public.oban_jobs USING GIN (args)"
+    remediation:
+      "Run: CREATE INDEX CONCURRENTLY oban_jobs_args_index ON public.oban_jobs USING GIN (args)"
   }
 
   describe "format/2 with human format" do
@@ -84,7 +85,9 @@ defmodule ObanPowertools.Doctor.FormatterTest do
       assert finding["check"] == "index_validity"
       assert finding["severity"] == "error"
       assert finding["message"] == "INVALID index oban_jobs_args_index on public.oban_jobs"
-      assert finding["remediation"] == "Run: REINDEX INDEX CONCURRENTLY public.oban_jobs_args_index"
+
+      assert finding["remediation"] ==
+               "Run: REINDEX INDEX CONCURRENTLY public.oban_jobs_args_index"
     end
 
     test "findings is an empty list when no findings" do
