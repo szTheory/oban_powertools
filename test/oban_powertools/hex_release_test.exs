@@ -8,7 +8,7 @@ defmodule ObanPowertools.HexReleaseTest do
   #
   # Run without a database: OBAN_POWERTOOLS_SKIP_DB_BOOT=1 mix test test/oban_powertools/hex_release_test.exs
 
-  @current_version "0.5.0"
+  @current_version Mix.Project.config()[:version]
 
   @changelog_path "CHANGELOG.md"
   @license_path "LICENSE"
@@ -92,7 +92,7 @@ defmodule ObanPowertools.HexReleaseTest do
   # ---------------------------------------------------------------------------
 
   describe "REL-01 packaging (mix.exs)" do
-    test "mix.exs @version is 0.5.0" do
+    test "mix.exs @version matches current release" do
       version = Mix.Project.config()[:version]
 
       assert version == @current_version,
@@ -263,11 +263,9 @@ defmodule ObanPowertools.HexReleaseTest do
              "packages[\".\"][\"package-name\"] must be \"oban_powertools\", got #{inspect(dot_pkg["package-name"])}"
     end
 
-    test ".release-please-manifest.json '.' value equals the current mix.exs @version (0.5.0)" do
-      # The manifest was seeded at 0.0.0 at phase-47 bootstrap time, then release-please
-      # bumped it to 0.5.0 after the 0.5.0 release was cut (commit 96a5cca). The manifest
-      # must stay in sync with mix.exs @version so the next release-please run proposes
-      # the correct bump. We assert the current value equals @version, not the seed value.
+    test ".release-please-manifest.json '.' value equals the current mix.exs @version" do
+      # The manifest must stay in sync with mix.exs @version so the next release-please run
+      # proposes the correct bump. We assert dynamically so this test survives version bumps.
       manifest = rp_manifest()
       dot_version = manifest["."]
 
