@@ -174,10 +174,9 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 
 **Requirements:** (pipeline operability — no REQ-ID; this is process automation)
 **Plans:** 1 plan
-
 **Wave 1**
 
-- [ ] 52-01-PLAN.md — Add release-pr-automerge.yml (lattice_stripe transplant, 2 branch-name string changes)
+- [ ] 52-01-PLAN.md — Add actionlint lane to ci.yml (wired into ci-gate) + six-item inspection checklist for the already-committed release-pr-automerge.yml (verify-only; D-01/D-02/D-03)
 
 **Success Criteria:**
 
