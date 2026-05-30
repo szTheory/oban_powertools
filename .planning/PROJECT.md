@@ -62,6 +62,7 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 - ✓ Single-job Operator Elixir API with actor attribution (`API-01`) — v1.5 Phase 46
 - ✓ Bulk Operator Elixir API with per-job reporting (`API-02`) — v1.5 Phase 46
 - ✓ Read-only Oban health-check CLI (`mix oban_powertools.doctor`) — index/INVALID, migration-drift, Powertools-table, and uniqueness-timeout diagnostics over `pg_catalog` with honest 0/1/2 CI exit codes, human + JSON (`schema_version: 1`) output, and a CI-enforced host-contract e2e lane (`OPS-03`, `OPS-04`, `OPS-05`) — v1.6 Phase 48
+- ✓ Published-package end-to-end verification — `examples/hex_consumer/` Phoenix app installs `{:oban_powertools, "~> 0.5"}` from Hex, first-session operator test (cron pause + audit evidence) proved green via path-dep swap, `verify-published` CI job gates release pipeline on real published tarball (`REL-04`) — v1.6 Phase 51
 
 ### Active
 
