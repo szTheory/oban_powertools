@@ -36,6 +36,14 @@ replace_once \
   "{:postgrex, \">= 0.0.0\"}," \
   "{:postgrex, \">= 0.0.0\"},\n      {:oban, \"~> 2.18\"},\n      {:oban_powertools, \"~> 0.5\"},"
 
+# NOTE: oban_powertools_auth.ex and oban_powertools_display_policy.ex are committed
+# in examples/hex_consumer/lib/hex_consumer_web/ as local dev scaffolding so that
+# `mix test` and `mix compile` work without running the installer. The CI
+# verify-published job deletes these files before running `mix oban_powertools.install`
+# so that Igniter generates them fresh from the published tarball (which also triggers
+# the 6 required migration files). If you regenerate the scaffold, these files will be
+# overwritten by `mix oban_powertools.install` — that is expected and correct.
+
 (
   cd "${TARGET_DIR}"
   mix deps.get

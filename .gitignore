@@ -31,6 +31,7 @@ examples/hex_consumer/mix.lock
 examples/hex_consumer/priv/repo/migrations/
 examples/hex_consumer/_build/
 examples/hex_consumer/deps/
+examples/hex_consumer_local_proof/
 
 # GSD / agent run scratch artifacts (root-level, never committed).
 /audit_uat.json
