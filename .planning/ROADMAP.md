@@ -202,3 +202,13 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 | 50    | v1.6      | 3/3            | Complete | 2026-05-30 |
 | 51    | v1.6      | 3/3            | Complete | 2026-05-30 |
 | 52    | v1.6      | 1/1 | Complete    | 2026-05-30 |
+
+### Phase 52.1: Close gap: REL-04 — fix verify-published CI (Igniter committed-modules conflict) (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 52
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 52.1 to break down)

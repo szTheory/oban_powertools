@@ -3,15 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Release & Operability
 status: milestone_complete
-last_updated: 2026-05-30T14:07:47.597Z
-last_activity: 2026-05-30 -- Phase 52 execution started
+last_updated: "2026-05-30T14:50:39.742Z"
+last_activity: 2026-05-30
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 15
   completed_plans: 15
-  percent: 83
-stopped_at: Milestone complete (Phase 52 was final phase)
+  percent: 100
 ---
 
 # Project State
@@ -25,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-05-28)
 
 ## Current Position
 
-Phase: 52
+Phase: 52.1
 Plan: Not started
 Next: Phase 48 (doctor-health-check) — not yet planned.
 Last activity: 2026-05-30
@@ -33,6 +32,10 @@ Last activity: 2026-05-30
 Release automation (beyond the original 47 plans): full shift-left CI/CD shipped — ci.yml (ci-gate), release.yml (release-please→gate-ci-green→publish), publish-hex.yml recovery, pr-title lint, Dependabot, SHA-pinned actions, branch protection (ci-gate + host-contract-gate), RELEASE_PLEASE_TOKEN + HEX_API_KEY. Tag v0.5.0 + oban_powertools-v0.5.0 both exist; future tags are v* (include-component-in-tag: false). See memory: hex-release-pipeline-gotchas.
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 52.1 inserted after Phase 52: Close gap: REL-04 — fix verify-published CI (Igniter committed-modules conflict) (URGENT)
 
 Decisions, blockers, and todos carried from v1.5:
 
