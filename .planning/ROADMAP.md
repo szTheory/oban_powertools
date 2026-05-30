@@ -147,7 +147,7 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 **Goal:** Prove the published package actually works for a fresh adopter — getting-started from hex, not from the repo.
 
 **Requirements:** REL-04
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 **Wave 1**
 
@@ -155,7 +155,7 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 51-02-PLAN.md — First-session test + nightly_sync seed + support fixtures, proven green locally via a temporary path-dep swap
+- [x] 51-02-PLAN.md — First-session test + nightly_sync seed + support fixtures, proven green locally via a temporary path-dep swap
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
