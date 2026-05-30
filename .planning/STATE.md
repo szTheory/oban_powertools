@@ -3,14 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Release & Operability
 status: milestone_complete
-last_updated: "2026-05-30T17:41:16.625Z"
+last_updated: 2026-05-30T17:52:31.311Z
 last_activity: 2026-05-30 -- Phase 52.1 execution started
 progress:
   total_phases: 6
   completed_phases: 6
   total_plans: 15
-  completed_plans: 15
+  completed_plans: 16
   percent: 100
+stopped_at: Milestone complete (Phase 52.1 was final phase)
 ---
 
 # Project State
@@ -20,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28)
 
 **Core value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-**Current focus:** Phase 52.1 — close-gap-rel-04-fix-verify-published-ci-igniter-committed-m
+**Current focus:** Milestone complete
 
 ## Current Position
 
-Phase: 52.1 (close-gap-rel-04-fix-verify-published-ci-igniter-committed-m) — EXECUTING
-Plan: 1 of 1
+Phase: 52.1
+Plan: Not started
 Next: Phase 48 (doctor-health-check) — not yet planned.
-Last activity: 2026-05-30 -- Phase 52.1 execution started
+Last activity: 2026-05-30
 
 Release automation (beyond the original 47 plans): full shift-left CI/CD shipped — ci.yml (ci-gate), release.yml (release-please→gate-ci-green→publish), publish-hex.yml recovery, pr-title lint, Dependabot, SHA-pinned actions, branch protection (ci-gate + host-contract-gate), RELEASE_PLEASE_TOKEN + HEX_API_KEY. Tag v0.5.0 + oban_powertools-v0.5.0 both exist; future tags are v* (include-component-in-tag: false). See memory: hex-release-pipeline-gotchas.
 
