@@ -52,6 +52,8 @@ defmodule ObanPowertools.MixProject do
       {:ecto_sql, "~> 3.10"},
       {:postgrex, "~> 0.17"},
       {:oban_web, "~> 2.10", optional: true},
+      {:telemetry_metrics, "~> 1.0", only: [:test, :dev], optional: true},
+      {:telemetry_poller, "~> 1.0", optional: true},
       {:lazy_html, ">= 0.1.0", only: :test}
     ]
   end
@@ -78,6 +80,7 @@ defmodule ObanPowertools.MixProject do
         ],
         Operations: [
           "guides/optional-oban-web-bridge.md",
+          "guides/telemetry-and-slos.md",
           "guides/support-truth-and-ownership-boundaries.md",
           "guides/production-hardening.md",
           "guides/troubleshooting.md",
