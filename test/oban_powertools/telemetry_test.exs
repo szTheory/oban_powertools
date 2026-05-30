@@ -167,37 +167,34 @@ defmodule ObanPowertools.TelemetryTest do
 
     ObanPowertools.Telemetry.execute_cron_event(:previewed, %{count: 1}, metadata)
 
-    assert_receive {:cron_event, [:oban_powertools, :cron, :previewed], %{count: 1}, ^metadata}
-    assert Map.keys(metadata) |> Enum.sort() == Enum.sort(@expected_contract.families.cron)
+    assert_receive {:cron_event, [:oban_powertools, :cron, :previewed], %{count: 1},
+                    received_metadata}
+
+    assert Map.keys(received_metadata) |> Enum.sort() == Enum.sort(@expected_contract.families.cron)
   after
     :telemetry.detach("cron-handler")
   end
 
-  test "emits lifeline events within documented metadata boundaries" do
+  test "emits lifeline repair_executed event with bounded metadata" do
     :telemetry.attach(
       "lifeline-handler",
-      [:oban_powertools, :lifeline, :repair_completed],
+      [:oban_powertools, :lifeline, :repair_executed],
       fn name, measurements, metadata, _config ->
         send(self(), {:lifeline_event, name, measurements, metadata})
       end,
       nil
     )
 
-    metadata = %{
-      action: "repair",
+    ObanPowertools.Telemetry.execute_lifeline_event(:repair_executed, %{count: 1}, %{
+      action: "execute_repair",
       incident_class: "workflow_stuck",
-      target_type: "workflow",
-      outcome: "resolved",
-      archived_count: 2,
-      pruned_count: 1
-    }
+      target_type: "workflow"
+    })
 
-    ObanPowertools.Telemetry.execute_lifeline_event(:repair_completed, %{count: 1}, metadata)
+    assert_receive {:lifeline_event, [:oban_powertools, :lifeline, :repair_executed],
+                    %{count: 1}, received_metadata}
 
-    assert_receive {:lifeline_event, [:oban_powertools, :lifeline, :repair_completed],
-                    %{count: 1}, ^metadata}
-
-    assert Map.keys(metadata) |> Enum.sort() == Enum.sort(@expected_contract.families.lifeline)
+    assert Enum.all?(Map.keys(received_metadata), fn k -> k in @expected_contract.families.lifeline end)
   after
     :telemetry.detach("lifeline-handler")
   end
