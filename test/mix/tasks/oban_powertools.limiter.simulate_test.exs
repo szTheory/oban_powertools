@@ -283,8 +283,7 @@ defmodule Mix.Tasks.ObanPowertools.Limiter.SimulateSideEffectFreedomTest do
     Enum.reduce(1..count, {initial_state, []}, fn i, {state, acc} ->
       case Limits.compute_reservation(state, resource, weight, now) do
         {:reserved, new_tokens_used} ->
-          {%{state | tokens_used: new_tokens_used},
-           [%{request: i, result: :reserved} | acc]}
+          {%{state | tokens_used: new_tokens_used}, [%{request: i, result: :reserved} | acc]}
 
         {:blocked, code, _retry_at, _details} ->
           {state, [%{request: i, result: :blocked, blocker_code: code} | acc]}
@@ -302,8 +301,10 @@ defmodule Mix.Tasks.ObanPowertools.Limiter.SimulateSideEffectFreedomTest do
       handler_id,
       [:oban_powertools, :limiter, :blocked],
       fn _event, _measurements, _metadata, _ ->
-        flunk("simulate must not emit [:oban_powertools, :limiter, :blocked] telemetry — " <>
-                "compute_reservation/4 is pure and must never trigger the blocked/4 side-effecting path")
+        flunk(
+          "simulate must not emit [:oban_powertools, :limiter, :blocked] telemetry — " <>
+            "compute_reservation/4 is pure and must never trigger the blocked/4 side-effecting path"
+        )
       end,
       nil
     )

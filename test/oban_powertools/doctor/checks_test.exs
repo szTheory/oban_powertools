@@ -73,11 +73,12 @@ defmodule ObanPowertools.Doctor.ChecksTest do
 
       result = Checks.missing_indexes(TestRepo, "public")
       assert length(result) >= 1
+
       assert Enum.any?(result, fn f ->
-        f.check == :missing_indexes and
-          f.severity == :error and
-          f.message =~ "oban_jobs_args_index"
-      end)
+               f.check == :missing_indexes and
+                 f.severity == :error and
+                 f.message =~ "oban_jobs_args_index"
+             end)
     end
   end
 
@@ -93,7 +94,9 @@ defmodule ObanPowertools.Doctor.ChecksTest do
       [finding] = result
       assert finding.check == :oban_migration_version
       assert finding.severity == :error
-      assert finding.message =~ "absent" or finding.message =~ "not migrated" or finding.message =~ "v0"
+
+      assert finding.message =~ "absent" or finding.message =~ "not migrated" or
+               finding.message =~ "v0"
     end
   end
 

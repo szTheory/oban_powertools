@@ -99,7 +99,8 @@ defmodule ObanPowertools.Telemetry do
       ),
       counter.("oban_powertools.operator_action.complete.count",
         tags: [:action, :source],
-        description: "Operator action completed (pause_cron_entry, resume_cron_entry, run_cron_entry)"
+        description:
+          "Operator action completed (pause_cron_entry, resume_cron_entry, run_cron_entry)"
       ),
 
       # limiter — :action omitted where it mirrors the event-name suffix (D-02 / Pitfall 4)

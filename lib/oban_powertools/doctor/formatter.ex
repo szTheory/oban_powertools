@@ -169,7 +169,12 @@ defmodule ObanPowertools.Doctor.Formatter do
     Jason.encode!(payload)
   end
 
-  defp finding_to_map(%Finding{check: check, severity: severity, message: message, remediation: remediation}) do
+  defp finding_to_map(%Finding{
+         check: check,
+         severity: severity,
+         message: message,
+         remediation: remediation
+       }) do
     %{
       check: to_string(check),
       severity: to_string(severity),
