@@ -21,6 +21,36 @@ defmodule ObanPowertools.TelemetryTest do
     assert ObanPowertools.Telemetry.contract() == @expected_contract
   end
 
+  test "metrics/0 returns a non-empty list of Telemetry.Metrics structs" do
+    metrics = ObanPowertools.Telemetry.metrics()
+    assert is_list(metrics)
+    assert length(metrics) > 0
+
+    valid_types = [Telemetry.Metrics.Counter, Telemetry.Metrics.Sum]
+    assert Enum.all?(metrics, fn m -> m.__struct__ in valid_types end)
+  end
+
+  test "metrics/0 tags stay within frozen contract" do
+    contract = ObanPowertools.Telemetry.contract()
+    metrics = ObanPowertools.Telemetry.metrics()
+
+    for metric <- metrics do
+      [_oban_powertools, family, suffix | _] = metric.event_name
+
+      allowed_tags =
+        case get_in(contract, [:families, family]) do
+          %{} = per_suffix_map -> Map.get(per_suffix_map, suffix, [])
+          tag_list when is_list(tag_list) -> tag_list
+        end
+
+      for tag <- metric.tags do
+        assert tag in allowed_tags,
+               "Tag #{inspect(tag)} for #{inspect(metric.event_name)} not in contract " <>
+                 "(allowed: #{inspect(allowed_tags)})"
+      end
+    end
+  end
+
   test "emits operator action complete event" do
     :telemetry.attach(
       "test-handler",
