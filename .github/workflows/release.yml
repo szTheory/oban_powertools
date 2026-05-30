@@ -211,3 +211,83 @@ jobs:
           done
           echo "Timed out waiting for https://hex.pm/api/packages/oban_powertools/releases/${RELEASE_VERSION}"
           exit 1
+
+  verify-published:
+    name: Verify published package (REL-04)
+    runs-on: ubuntu-latest
+    needs: [release-please, publish-hex]
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    permissions:
+      contents: read
+    env:
+      OBAN_POWERTOOLS_SKIP_DB_BOOT: "1"
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hex_consumer_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - uses: erlef/setup-beam@fc68ffb90438ef2936bbb3251622353b3dcb2f93 # v1.24.0
+        with:
+          elixir-version: "1.19.5"
+          otp-version: "27.3"
+
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: |
+            examples/hex_consumer/deps
+            examples/hex_consumer/_build
+          key: ${{ runner.os }}-hex-consumer-${{ needs.release-please.outputs.version }}
+
+      - name: Install Hex + Rebar
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+
+      - name: Pin consumer to exact published version
+        run: |
+          VERSION="${{ needs.release-please.outputs.version }}"
+          sed -i "s|{:oban_powertools, \"~> 0.5\"}|{:oban_powertools, \"== ${VERSION}\"}|" \
+            examples/hex_consumer/mix.exs
+
+      - name: Fetch hex consumer deps (from hex.pm)
+        run: mix deps.get
+        working-directory: examples/hex_consumer
+
+      - name: Run installer from published tarball
+        run: mix oban_powertools.install
+        working-directory: examples/hex_consumer
+
+      - name: Compile hex consumer
+        run: mix compile --warnings-as-errors
+        working-directory: examples/hex_consumer
+
+      - name: Create and migrate database
+        env:
+          MIX_ENV: test
+        run: mix ecto.create && mix ecto.migrate
+        working-directory: examples/hex_consumer
+
+      - name: Seed nightly_sync cron entry
+        env:
+          MIX_ENV: test
+        run: mix run priv/repo/seeds.exs
+        working-directory: examples/hex_consumer
+
+      - name: Run first-session proof (REL-04)
+        env:
+          MIX_ENV: test
+        run: mix test test/hex_consumer_web/oban_powertools_first_session_test.exs --trace
+        working-directory: examples/hex_consumer
