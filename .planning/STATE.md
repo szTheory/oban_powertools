@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Release & Operability
 status: ready_to_plan
-last_updated: "2026-05-29T21:58:08.623Z"
-last_activity: 2026-05-29 -- Phase 50 planning complete
+last_updated: "2026-05-30T00:14:26.667Z"
+last_activity: 2026-05-30
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 11
-  completed_plans: 8
+  completed_plans: 9
   percent: 60
 ---
 
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28)
 
 **Core value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-**Current focus:** Phase 50 — telemetry metrics & slo guide
+**Current focus:** Phase 50 — telemetry-metrics-slo-guide
 
 ## Current Position
 
-Phase: 50
-Plan: Not started
+Phase: 50 (telemetry-metrics-slo-guide) — EXECUTING
+Plan: 2 of 3
 Next: Phase 48 (doctor-health-check) — not yet planned.
-Last activity: 2026-05-29 -- Phase 50 planning complete
+Last activity: 2026-05-30
 
 Release automation (beyond the original 47 plans): full shift-left CI/CD shipped — ci.yml (ci-gate), release.yml (release-please→gate-ci-green→publish), publish-hex.yml recovery, pr-title lint, Dependabot, SHA-pinned actions, branch protection (ci-gate + host-contract-gate), RELEASE_PLEASE_TOKEN + HEX_API_KEY. Tag v0.5.0 + oban_powertools-v0.5.0 both exist; future tags are v* (include-component-in-tag: false). See memory: hex-release-pipeline-gotchas.
 
@@ -71,3 +71,4 @@ None.
 |-------|------|----------|-------|
 | Phase 47-hex-release-foundation P01 | 145 | 2 tasks | 2 files |
 | Phase 47-hex-release-foundation P02 | 3m | 3 tasks | 2 files |
+| Phase 50-telemetry-metrics-slo-guide P01 | 5m | 2 tasks | 3 files |

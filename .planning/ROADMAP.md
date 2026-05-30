@@ -124,11 +124,11 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 **Goal:** Give hosts an opt-in, reporter-agnostic metrics surface and an SLO guide over the frozen telemetry contract, with no new runtime dependency.
 
 **Requirements:** TEL-01, TEL-02, TEL-03
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 **Wave 0**
 
-- [ ] 50-01-PLAN.md — Optional telemetry deps (telemetry_metrics/telemetry_poller, gated like oban_web) + Operations guide group entry in mix.exs + failing metrics/0 tests (RED scaffold)
+- [x] 50-01-PLAN.md — Optional telemetry deps (telemetry_metrics/telemetry_poller, gated like oban_web) + Operations guide group entry in mix.exs + failing metrics/0 tests (RED scaffold)
 
 **Wave 1** *(blocked on Wave 0 completion)*
 

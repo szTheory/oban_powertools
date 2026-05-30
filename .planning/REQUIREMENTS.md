@@ -29,7 +29,7 @@
 ### Telemetry & SLOs
 
 - [ ] **TEL-01**: Host can call `ObanPowertools.Telemetry.metrics/0` to obtain `Telemetry.Metrics` definitions over the frozen low-cardinality contract — opt-in and reporter-agnostic.
-- [ ] **TEL-02**: `telemetry_metrics` and `telemetry_poller` are optional dependencies gated like the existing `oban_web` integration — no runtime cost or failure when absent.
+- [x] **TEL-02**: `telemetry_metrics` and `telemetry_poller` are optional dependencies gated like the existing `oban_web` integration — no runtime cost or failure when absent.
 - [ ] **TEL-03**: A Parapet/SLO telemetry guide documents golden-signals/SLO setup over the metrics surface, with no `oban_met` dependency.
 
 ## Future Requirements
@@ -94,7 +94,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | OPS-07 | Phase 49 | Complete |
 | OPS-08 | Phase 49 | Complete |
 | TEL-01 | Phase 50 | Pending |
-| TEL-02 | Phase 50 | Pending |
+| TEL-02 | Phase 50 | Complete |
 | TEL-03 | Phase 50 | Pending |
 
 **Coverage:**
