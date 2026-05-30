@@ -1,347 +1,216 @@
-# Research Summary: Oban Powertools v1.6 — Release & Operability
+# Research Summary: Oban Powertools v1.7 Worker Lifecycle & Safety
 
-**Project:** Oban Powertools
-**Domain:** Elixir/Phoenix Hex library — operator control plane for Oban
-**Researched:** 2026-05-28
+**Project:** Oban Powertools v1.7
+**Domain:** Elixir job processing library extension (Oban wrapper)
+**Researched:** 2026-05-30
 **Confidence:** HIGH
-
----
-
-> **Note on research files:** The four research files (STACK.md, FEATURES.md, ARCHITECTURE.md,
-> PITFALLS.md) in this directory were produced by the v1.5 milestone research pass (2026-05-27)
-> and cover the native job surface and operator API shipped in that milestone. They are committed
-> here as the standing research corpus. The v1.6 synthesis below is derived from those files
-> **plus** the post-v1.5 milestone-ordering assessment
-> (`.planning/threads/2026-05-28-post-v1.5-next-milestone.md`), which supersedes them for
-> scoping and priority decisions. The research files themselves are accurate as v1.5 deliverable
-> records and remain valid reference for v1.6 build context.
 
 ---
 
 ## Executive Summary
 
-Oban Powertools has shipped five milestones of production-quality operator infrastructure —
-typed workers, idempotency, limiters, cron, durable workflows, Lifeline repair,
-forensics/runbooks, and a native job browse/action surface with a full Elixir API. It is 87%
-"done" for its stated scope, coherent, tested (40 test files, 4 CI lanes, 13 guides), and
-carries a frozen low-cardinality telemetry contract. **The single largest barrier to adopter
-value is not a missing feature: the library is `0.1.0` and unpublished on Hex after five
-milestones.** v1.6 fixes that with zero new runtime dependencies and near-zero risk to existing
-surfaces.
+v1.7 adds four features to every `ObanPowertools.Worker`: lifecycle hooks (`on_start`, `on_success`, `on_failure`, `on_discard`), soft deadline and timeout pass-through, output recording, and at-rest field redaction. All four are buildable entirely on the existing locked stack — Oban 2.23.0, Ecto 3.14.0, Telemetry 1.4.2, Jason 1.4.5, Postgrex 0.22.2 — with zero new runtime dependencies. The milestone follows the established pattern of v1.6: extend the existing `Worker.__using__` macro and shared seams rather than introducing new supervision trees, GenServers, or external processes.
 
-v1.6 "Release & Operability" has exactly four deliverables: (1) first public Hex release at
-`0.5.0` with getting-started verified from the published package; (2) a read-only
-`mix oban_powertools.doctor` health-check Mix task; (3) `mix oban_powertools.limiter.explain`
-and `mix oban_powertools.limiter.simulate` CLI commands wrapping the existing `Explain`+`Limits`
-modules; and (4) an opt-in `ObanPowertools.Telemetry.metrics/0` function plus a Parapet/SLO
-telemetry guide over the existing frozen low-cardinality contract. No new runtime dependencies
-are introduced. `oban_met` is explicitly out of scope. ExDoc is the only dev-only addition.
+The recommended approach is to build all four features as compile-time macro extensions to `ObanPowertools.Worker`, with one new Ecto schema (`ObanPowertools.JobRecord` / `oban_powertools_job_records`) for output recording. Hooks run synchronously inside `perform/1`, crash-caught, observe-only. Deadline is a soft pre-run cancellation check (not a mid-execution interrupt). Redaction drops fields from `oban_jobs.args` at persist time after the idempotency fingerprint is computed. The natural build order is hooks first (establishes the `perform/1` wrapper), then deadline/timeout (compile-time only, depends on wrapper shape), then output recording (new schema), then redaction (depends on recording pipeline).
 
-The ordering principle is: prepare the release metadata first (hex files whitelist, ExDoc,
-moduledocs, `mix hex.publish --dry-run`), then deliver the three operability features in build
-order (doctor, limiter CLI, telemetry guide + metrics/0), then verify getting-started from the
-published tarball and cut the release. Every change is additive and read-only at runtime. The
-clean-working-tree rule — established as a graduation criterion in the post-v1.5 assessment —
-applies here: all phases must commit before audit/verify, and the working tree must be clean at
-release time.
+The primary risks are correctness traps that look like working code: redacting before fingerprinting (causes false dedup collisions), hooks that are not crash-caught (retries the job on hook failure), and outputting PII into recorded payloads despite redacting it from args. A second class of risk is semantic confusion: `timeout:` is per-attempt execution duration in milliseconds; `deadline:` is wall-clock expiry (do not conflate them); `on_failure` fires on retry-eligible failures but NOT after a timeout kill (BEAM EXIT signal bypasses all `rescue`/`after` wrappers); and `on_discard` is terminal-only (retry exhaustion), not every failed attempt.
 
 ---
 
-## Key Findings
+## Stack Additions
 
-### Recommended Stack
+**Zero new dependencies.** Every v1.7 capability builds on the existing locked stack. No constraint changes to mix.exs.
 
-The locked stack (Oban 2.22.1, Phoenix LiveView 1.1.30, Ecto SQL 3.13.5, Telemetry 1.4,
-Jason 1.4, Postgrex 0.22.2) requires no additions at runtime for v1.6. ExDoc is the only new
-dependency, added as `{:ex_doc, only: :dev}` to generate the Hex package documentation that
-adopters will read on hexdocs.pm.
+| Library | Locked | v1.7 usage |
+|---------|--------|------------|
+| oban | 2.23.0 | `timeout/1` callback override; `[:oban, :job, :start/:stop/:exception]` telemetry events |
+| ecto_sql | 3.14.0 | New `oban_powertools_job_records` migration and schema |
+| postgrex | 0.22.2 | JSONB storage for recording payload (no change) |
+| telemetry | 1.4.2 | Additive `:worker_hook` family in frozen `@contract` |
+| jason | 1.4.5 | `byte_size(Jason.encode!(payload))` for recording byte cap |
+| telemetry_metrics | 1.1.0 (optional) | `metrics/0` addendum for new `:worker_hook` counter |
 
-`telemetry_metrics` and `telemetry_poller` are optional additions if `Telemetry.metrics/0`
-returns typed `Telemetry.Metrics` structs rather than plain maps. Given the frozen contract,
-`metrics/0` can be implemented using only the `telemetry` package already in the stack. Whether
-to add `telemetry_metrics` as an optional or dev-only dep is a requirements-time design decision,
-not a mandatory v1.6 dependency.
-
-**Core technologies for v1.6 additions:**
-
-- `ExDoc` (dev-only) — hex package docs, `@moduledoc`, `@doc`, guides linked as `extras:` in
-  `mix.exs`; required for hexdocs.pm publication
-- `Telemetry 1.4` (already locked) — `Telemetry.metrics/0` emits no new events; it exposes the
-  frozen contract as metric descriptors so Parapet/SLO setups can consume them without guessing
-- `Mix.Task` (stdlib) — doctor and limiter CLI are Mix tasks; no new library required
-- `Ecto.Repo` + `pg_catalog` (already locked) — doctor health checks query `pg_catalog.pg_indexes`
-  and `pg_stat_activity` read-only via the host's configured Repo; no migrations, no writes
-
-**What NOT to add:**
-
-| Avoid | Why |
-|-------|-----|
-| `oban_met` | Explicitly deferred to v1.9; would pull in a significant optional dep and drift toward rebuilding Oban Web |
-| `telemetry_metrics` as a hard dep | `metrics/0` can return plain maps without a hard dep; decide at requirements time |
-| `telemetry_poller` as a hard dep | Polling is a host concern; the guide teaches hosts to configure it; Powertools does not own the polling loop |
-| Any new runtime dep for doctor | `pg_catalog` is reachable via the host's existing Repo; no extra client needed |
-
-### Expected Features
-
-The four deliverables map to distinct feature sets. All are additive; none modify existing
-runtime behavior.
-
-**Deliverable 1 — Hex Publication (`0.5.0`) — table stakes:**
-
-- `version: "0.5.0"` in `mix.exs` with `description:`, `licenses:`, `links:`, `package:`
-- `files:` whitelist — must include `lib/`, `mix.exs`, `README.md`, `CHANGELOG.md`, `guides/`;
-  must EXCLUDE `.planning/`, `test/`, `priv/dev-seeds`, internal scripts
-- All public modules have `@moduledoc` and `@doc` strings suitable for hexdocs.pm
-- `mix hex.publish --dry-run` passes cleanly; tarball file list inspected and confirmed correct
-- Getting-started verified from the published tarball (install via `mix deps.get`, configure,
-  mount routes, see overview) — NOT from the local development path dep
-- Clean working tree at publish time (enforced by the graduation rule)
-- CHANGELOG.md `0.5.0` entry
-- Semantic versioning commitment documented: `0.x` = evolving API; `1.0` only after real adopter
-  feedback from at least three independent production adopters
-
-**Deliverable 2 — `mix oban_powertools.doctor` — table stakes:**
-
-- Read-only health checks only; zero writes, zero schema changes, zero Oban engine mutations
-- Checks: index presence (Powertools-expected indexes), invalid indexes (`indisvalid = false`),
-  uniqueness timeout risk, config sanity (required Application env keys present), migration drift
-  (expected tables: `oban_powertools_audit_events`, `oban_powertools_repair_previews`,
-  `oban_powertools_repair_archives`)
-- Exit code 0 (clean), 1 (warnings), 2 (errors) — scriptable for CI health gates
-- Human-readable PASS/WARN/FAIL per check; optional `--format json`
-- Queries `pg_catalog.pg_indexes` and `pg_stat_user_indexes` via the host Repo
-- No Oban engine interaction; no `Oban.*` function calls from within the task
-
-**Deliverable 3 — `mix oban_powertools.limiter.explain` / `.simulate` — table stakes:**
-
-- `.explain` — CLI surface over existing `ObanPowertools.Explain` and `ObanPowertools.Limits`;
-  prints effective rate-limit policy for a queue (or all queues), slot windows, and computed
-  throughput ceiling; no new business logic
-- `.simulate` — same modules; dry-run projection for a hypothetical job count; no writes
-- Rate-limit glossary embedded in task `@moduledoc` / help output
-- Both tasks: `--repo MyApp.Repo`, `--queue <name>`, `--format json` options
-- Graceful WARN (not crash) when no limiter config is found
-
-**Deliverable 4 — `Telemetry.metrics/0` + SLO guide — table stakes:**
-
-- `ObanPowertools.Telemetry.metrics/0` — new public function; returns metric descriptors
-  for all events in the frozen `@contract`; zero runtime side effects; no polling loop
-- `guides/telemetry_slo.md` — how to wire `metrics/0` into Parapet, SLO examples for operator
-  action latency and repair success rate, explicit "what is NOT included" section
-- Test: assert `metrics/0` descriptors cover exactly the events in `@contract` (no more, no less)
-- Explicitly states: no per-job/per-queue/per-worker cardinality; no `oban_met`; no live counts
-
-**Explicitly out of scope (deferred until signal):**
-
-- `oban_met` / live job/queue counts (v1.9)
-- `encrypt:` (collides with args-hash idempotency, blinds job filter)
-- Prioritizer/autoscaler (deferred until adoption proves demand)
-- Batches (v1.8), Worker lifecycle hooks (v1.7)
-- args/meta search qualifiers, cross-page select-all, nested batches
-- Native metrics dashboard (= rebuild Oban Web)
-
-### Architecture Approach
-
-v1.6 adds only Mix tasks and one new public function. No LiveView changes. No new schemas or
-migrations. No new GenServers. All four deliverables are additive to existing, well-understood
-modules.
-
-**Major components added in v1.6:**
-
-1. `Mix.Tasks.ObanPowertools.Doctor` — reads host Repo and `pg_catalog`; outputs health report;
-   uses `ObanPowertools.RuntimeConfig.repo!/1` for repo resolution (with fallback to `--repo`
-   option for Mix task context where the application may not be started)
-2. `Mix.Tasks.ObanPowertools.Limiter.Explain` — thin CLI wrapper over `ObanPowertools.Explain`
-   and `ObanPowertools.Limits`; formatting and option parsing only; no new logic
-3. `Mix.Tasks.ObanPowertools.Limiter.Simulate` — same modules as above; dry-run projection path
-4. `ObanPowertools.Telemetry.metrics/0` — new public function on the existing `Telemetry` module;
-   returns metric descriptors derived from `@contract`; no side effects
-
-**Files modified (surgical additions only):**
-
-| File | Change |
-|------|--------|
-| `mix.exs` | version, description, licenses, links, package, files whitelist, ex_doc dev dep |
-| `lib/oban_powertools/telemetry.ex` | Add `metrics/0` public function |
-| `README.md` | Installation + getting-started from hex |
-| New: `lib/mix/tasks/oban_powertools.doctor.ex` | Doctor Mix task |
-| New: `lib/mix/tasks/oban_powertools.limiter.explain.ex` | Explain CLI task |
-| New: `lib/mix/tasks/oban_powertools.limiter.simulate.ex` | Simulate CLI task |
-| New: `guides/telemetry_slo.md` | Parapet/SLO guide (hex extras) |
-
-No new migrations, LiveViews, schemas, or GenServers.
-
-### Critical Pitfalls
-
-1. **Hex `files:` whitelist omissions or over-inclusions** — If `files:` is not set, Hex
-   publishes everything including `.planning/`, secrets, internal tooling. If too narrow, the
-   published package breaks on install. Verify with `mix hex.publish --dry-run` and inspect the
-   tarball file list. Whitelist must be explicit: `["lib", "mix.exs", "README.md",
-   "CHANGELOG.md", "guides"]`.
-
-2. **Doctor task performing writes or Oban engine calls** — Any write in a "read-only health
-   check" tool destroys operator trust instantly. Query only `pg_catalog.*` and Powertools table
-   existence (read-only). No `Oban.*` calls. No `Repo.update` or `Repo.insert`. Enforce with a
-   test that mocks the Repo and asserts zero writes.
-
-3. **Premature `1.0` version** — Publishing at `1.0` signals a stable API contract. Zero real
-   adopter feedback exists. Ship at `0.5.0` and document the `1.0` graduation criteria explicitly
-   (three independent production adopters, no breaking API changes for two milestones). Putting
-   `1.0` in `mix.exs` on first publish is the single most consequential mistake of this milestone.
-
-4. **Low-cardinality contract drift in `Telemetry.metrics/0`** — `metrics/0` must return
-   descriptors that exactly match the frozen `@contract`. Adding a descriptor for a
-   high-cardinality dimension (`worker`, `queue`, `job_id`, `reason`) silently teaches adopters
-   to configure those as label dimensions. Treat `@contract` as the single source of truth;
-   generate `metrics/0` output from it, not independently.
-
-5. **Getting-started verified only from local dev, not from the published package** — The most
-   common hex publish failure: the local checkout has files on the load path that the tarball
-   omits, or the guide assumes `config/dev.exs` context a fresh adopter won't have. Verification
-   must run against `mix deps.get` from a blank Phoenix app listing the published hex package.
-
-6. **Clean working tree rule not enforced at release** — The post-v1.5 assessment graduated a
-   process rule: all changes must be committed before audit/verify. This is a hard gate before
-   `mix hex.publish` — not advisory. Add it as an explicit checklist step in the release phase.
-
-7. **Limiter CLI crashing when no limiter config is present** — Adopters who run the explain or
-   simulate tasks before configuring any limiters must see a helpful WARN, not a nil match error.
-   Default to "no limiter rules configured; nothing to explain" and exit 0.
+**Do NOT add:** `encrypt:` / Cloak Ecto (fingerprint collision, blinds job filter, stacktrace leakage), custom Task/GenServer for hooks (unnecessary supervision), `oban_met` (deferred to v1.9), large-payload storage (cap at 64 KB in Postgres JSONB).
 
 ---
 
-## Implications for Roadmap
+## Feature Table Stakes vs Differentiators
 
-Based on the four deliverables and their dependencies, the recommended phase structure is:
+### Worker Hooks
 
-### Phase 1: Hex Publication Prep
+**Must ship (table stakes):**
+- `on_start/1`, `on_success/2`, `on_failure/2`, `on_discard/2` — observe-only, crash-caught, `defoverridable` no-op defaults
+- Hook return values discarded; exceptions caught and logged at `:warning`; never affect job outcome
+- `on_discard` = terminal only (retry-exhausted or `{:discard, reason}` return), NOT every failed attempt
+- `on_failure` does NOT fire on `timeout/1` kill — BEAM EXIT signal bypasses `rescue`/`after`; observe via `[:oban, :job, :exception]` telemetry instead
 
-**Rationale:** Everything else in v1.6 is worthless if the package doesn't install cleanly. Hex
-metadata, `files:` whitelist, ExDoc, `@moduledoc`/`@doc` strings, and CHANGELOG must come before
-feature work so subsequent phases build on a publishable base.
+**Differentiators / defer:**
+- Hook telemetry (`[:oban_powertools, :worker_hook, :fired]`) — defer to follow-on; add after hooks are proven useful; removing telemetry later is a breaking change
+- Global `attach_hook/1` registry — defer until adoption signal
 
-**Delivers:**
-- `mix.exs`: `version: "0.5.0"`, `description`, `licenses`, `links`, `package`, `files`
-  whitelist, `ex_doc` dev dep, `extras:` for guides
-- All public modules with complete `@moduledoc` and `@doc` strings
-- `mix hex.publish --dry-run` passes; tarball file list confirmed correct
-- CHANGELOG.md `0.5.0` entry placeholder
-- README.md installation section updated to hex-based instructions
+### Deadline / Timeout
 
-**Avoids:** files whitelist pitfall (Pitfall 1); premature 1.0 pitfall (Pitfall 3).
+**Must ship (table stakes):**
+- `timeout: N` (milliseconds) → generates `def timeout(_job), do: N` override at compile time
+- `deadline: N` → stores `meta["__deadline_at__"]` at enqueue; check at top of `perform/1`; returns `{:cancel, :deadline_expired}` if elapsed; soft only (no mid-execution interrupt)
+- Both stripped from `oban_opts` before passing to `use Oban.Worker`
 
-**Research flag:** Standard hex packaging — well-documented, no deeper research needed.
+**Differentiators (include in Phase 2):**
+- Deadline visible in `/ops/jobs` detail view (meta is already rendered — zero extra code)
 
----
+**Out of scope:**
+- Hard deadline (interrupt running job) — requires Oban Pro-level supervision
+- Per-job dynamic `timeout:` override at enqueue time — defer
 
-### Phase 2: `mix oban_powertools.doctor`
+### Output Recording
 
-**Rationale:** The doctor task is the highest-leverage zero-dep operability feature. It
-establishes the Mix task file structure and repo-resolution pattern (`RuntimeConfig.repo!/1`)
-that the limiter CLI tasks will reuse. Build it first so Phase 3 can copy the pattern.
+**Must ship (table stakes):**
+- `record_output: true` opt-in per worker (never auto-record — unbounded growth risk)
+- `{:ok, result, record_opts}` return convention from `process/1` — additive, all existing returns unchanged
+- `ObanPowertools.JobRecord` schema / `oban_powertools_job_records` table (NOT a modified `Workflow.Result`)
+- `unique_constraint([:oban_job_id, :attempt])` — prevents double-recording on retry
+- No FK to `oban_jobs` in migration — Oban prunes its own table; hard FK blocks pruning
+- Fault-tolerant: recording failure logs warning but never fails the job
+- `max_payload_bytes` enforced before insert (default 64 KB, configurable)
+- `fetch_result/1` query helper
+- Output visible in `/ops/jobs` detail via new `:job_recorded` DisplayPolicy kind
 
-**Delivers:**
-- `lib/mix/tasks/oban_powertools.doctor.ex`
-- Checks: index presence, invalid indexes, uniqueness timeout risk, config sanity, migration drift
-- Exit codes: 0 (clean), 1 (warnings), 2 (errors)
-- Output: human-readable PASS/WARN/FAIL per check; optional `--format json`
-- Zero writes, zero Oban engine calls — pure `pg_catalog` reads via host Repo
-- Test coverage: mock Repo asserting zero writes; each check covered by a unit test
+**Differentiators (include in Phase 3):**
+- `output_retention:` policy (reuse existing `retention` field; wire Lifeline prune cycle)
+- Workflow step routing: detect `workflow_id`+`step_name` in meta → write to `Workflow.Result` path, not `JobRecord`
 
-**Avoids:** doctor-writes pitfall (Pitfall 2).
+**Out of scope:**
+- Streaming / large output — workers should record a reference (S3 key, row ID) for large outputs
 
-**Research flag:** `pg_catalog.pg_indexes` + `pg_stat_user_indexes` query patterns are
-well-documented in Postgres docs. Mix task repo resolution in non-started-app context may need a
-quick check (see Gaps section). No broader research needed.
+### At-rest Redaction (redact:)
 
----
+**Must ship (table stakes):**
+- `redact: [:field]` compile-time option
+- `Map.drop` on `oban_jobs.args` — key absent from JSONB (not null/placeholder) — applied after fingerprint, before `Oban.Job.new/2`
+- `meta["__redacted_fields__"]` written at enqueue; rendered in `/ops/jobs` detail view
+- `redacted: true` set on `JobRecord` when any fields dropped from payload
+- Compile-time validation: error if field in both `redact:` and `validate_required`
+- Compile-time validation: error if field in both `redact:` and `partition_by:` limiter key
+- Output recording layer applies same redact list to `record_opts.payload`
 
-### Phase 3: Limiter CLI Tasks
-
-**Rationale:** Wraps existing `Explain` + `Limits` modules — no new logic, just a CLI surface.
-Depends on the Mix task file structure established in Phase 2. Ships the rate-limit glossary
-footgun documented in the product context.
-
-**Delivers:**
-- `lib/mix/tasks/oban_powertools.limiter.explain.ex`
-- `lib/mix/tasks/oban_powertools.limiter.simulate.ex`
-- Rate-limit glossary in task `@moduledoc` / help output
-- `--repo`, `--queue`, `--format json` options on both tasks
-- Graceful WARN when no limiter config exists
-- Integration tests against `Explain`/`Limits` with a seeded config
-
-**Avoids:** limiter CLI crash pitfall (Pitfall 7).
-
-**Research flag:** No new research needed — `ObanPowertools.Explain` and `ObanPowertools.Limits`
-are existing, tested modules. The CLI is a formatting layer only.
-
----
-
-### Phase 4: Telemetry Guide + `Telemetry.metrics/0`
-
-**Rationale:** Single public function on an existing module — low implementation risk. The guide
-is the high-value deliverable; it teaches adopters how to wire the frozen contract into
-Parapet/Prometheus/Datadog without needing `oban_met`.
-
-**Delivers:**
-- `ObanPowertools.Telemetry.metrics/0` returning metric descriptors for all `@contract` events
-- `guides/telemetry_slo.md` — Parapet wire-up, SLO examples, explicit "not included" section
-- `mix.exs` `extras:` updated to include the guide in hexdocs
-- Test: assert `metrics/0` covers exactly the events in `@contract`, nothing more
-
-**Avoids:** low-cardinality contract drift pitfall (Pitfall 4).
-
-**Research flag:** If returning typed `Telemetry.Metrics` structs, verify the struct API and
-whether to add `telemetry_metrics` as optional or dev-only. If returning plain maps, no research
-needed. This is a Phase 4 requirements-time decision.
+**Out of scope:**
+- `encrypt:` — explicitly deferred (PROJECT.md decision)
+- Retroactive redaction (`scrub_past_jobs/2`) — out of scope for v1.7
+- Scrubbing `oban_jobs.errors` / stacktraces — document the boundary; args-at-persist only
 
 ---
 
-### Phase 5: Getting-Started Verification + Release
+## Architecture Highlights
 
-**Rationale:** Verification must be the last phase, not an afterthought. Working tree must be
-clean. Getting-started must be verified from the published tarball.
+All four features are extensions to the single `ObanPowertools.Worker.__using__/1` macro. No new supervision tree. No new GenServer. No changes to Oban internals.
 
-**Delivers:**
-- Getting-started verified from a fresh Phoenix app using `{:oban_powertools, "~> 0.5"}` in
-  `mix.exs` (not a path dep)
-- Clean working tree confirmed (zero uncommitted changes — graduation rule enforced)
-- CHANGELOG.md `0.5.0` entry finalized
-- `mix hex.publish` executed (or staged for the maintainer)
-- Git tag `v0.5.0` committed and pushed
+**Canonical `perform/1` wrapper order — all phases build on this:**
 
-**Avoids:** getting-started from dev pitfall (Pitfall 5); clean working tree pitfall (Pitfall 6).
 
-**Research flag:** Standard hex publish flow. No research needed.
+
+**New components:**
+
+| Component | Responsibility |
+|-----------|----------------|
+| `ObanPowertools.Worker.Hooks` (internal) | `safe_run_hook/3` dispatcher; crash-caught, logs at `:warning`, never re-raises |
+| `ObanPowertools.JobRecord` (Ecto schema) | `oban_powertools_job_records` table; mirrors `Workflow.Result` field set minus workflow FKs; `unique_constraint([:oban_job_id, :attempt])` |
+| Migration: `oban_powertools_job_records` | Added to Igniter installer and example host |
+
+**Modified components:**
+
+| Component | Change |
+|-----------|--------|
+| `ObanPowertools.Worker` | Strip `:deadline`, `:timeout`, `:redact`, hook keys from `oban_opts`; generate `timeout/1` override; inject deadline guard and hook dispatch into `perform/1` |
+| `ObanPowertools.DisplayPolicy` | Additive `:job_recorded` kind in `render_job_field/3`; existing kinds unchanged |
+| `ObanPowertools.Telemetry` | Additive `:worker_hook` family in `@contract`; existing families unchanged |
+| `mix oban_powertools.install` | Generates new migration via Igniter |
+
+**Key constraints carried forward:**
+- No FK from `oban_powertools_job_records` to `oban_jobs` — Oban prunes its own table
+- `{:ok, result, record_opts}` is additive; all existing return shapes unchanged
+- `Workflow.Result` and `oban_powertools_workflow_results` are untouched
+- Idempotency fingerprint computed over raw args before any redaction; `generate_fingerprint/2` untouched
+- v1.8 Batches milestone will reuse `JobRecord` and hook seams — do not gate v1.8 features into v1.7 schema
 
 ---
 
-### Phase Ordering Rationale
+## Watch Out For
 
-- Phase 1 (hex prep) before everything: the publishable base must exist before features are added
-  to the package; `files:` whitelist and ExDoc are Phase 1 outputs all subsequent phases depend on
-- Phase 2 (doctor) before Phase 3 (limiter CLI): doctor establishes Mix task file structure and
-  repo-resolution pattern that limiter CLI reuses
-- Phases 2 and 3 before Phase 4 (telemetry): operability features first; telemetry guide is
-  additive and can safely be the last feature phase
-- Phase 5 (verification + release) always last: clean working tree rule requires all commits to
-  precede the publish step; getting-started must reflect the final published package
-- No phase can be skipped: Phase 1 establishes the publishable base; Phase 5 is the release gate
+1. **Hook not crash-caught retries the job** — Wrap every hook call in `safe_run_hook/3` that `rescue`s all exceptions, logs at `:warning`, never re-raises. One missing `rescue` turns an observability feature into a job-failure amplifier. This is a hard contract, not opt-in.
 
-### Research Flags
+2. **Redact before fingerprint = false dedup collisions** — Fingerprint MUST be computed from full, unredacted args before `Map.drop`. Correct order: `fingerprint(original_args)` → `Map.drop(args, redact_fields)` → `Oban.Job.new(stripped_args)`. Inverting this causes two jobs with different values in a redacted field to deduplicate incorrectly.
 
-Phases with standard patterns (no deeper research needed):
-- **Phase 1** — hex packaging is well-documented in Hex docs and ExDoc guides
-- **Phase 2** — `pg_catalog` query patterns are standard Postgres; Mix.Task is stdlib
-- **Phase 3** — thin CLI over existing modules; no novel patterns
-- **Phase 5** — `mix hex.publish` flow is documented in Hex docs
+3. **`on_failure` does not fire after timeout kill** — Oban's `timeout/1` kills via `:timer.exit_after/3` (raw BEAM EXIT). All `rescue`/`after` in `perform/1` are bypassed. Do not rely on `on_failure` for timeout observability. Use `[:oban, :job, :exception]` with `kind: :exit` in a telemetry handler. Document this gap explicitly.
 
-Phases that may benefit from a targeted verification pass:
-- **Phase 4** — if returning typed `Telemetry.Metrics` structs rather than plain maps, verify
-  the `telemetry_metrics` struct API and optional-dep implications; this is a design decision at
-  requirements time, not a blocking research gap
-- **Phase 2** — confirm Mix task repo resolution works when the OTP application is not started
-  (see Gaps section); quick test or Hex forum check, not a research milestone
+4. **PII leaks into recorded output despite args redaction** — `redact:` only drops named keys from `oban_jobs.args` and `record_opts.payload`. If `process/1` constructs its return value using a redacted field loaded from an external source, that value appears in `JobRecord.payload`. Document the boundary: `redact:` prevents args storage; it does not sanitize output payloads. Workers must not include redacted data in return values.
+
+5. **`on_discard` / `on_failure` conflation causes alert storms** — `on_failure` fires on every retry-eligible failure. `on_discard` fires only on terminal exhaustion. A worker with `max_attempts: 20` using `on_failure` for PagerDuty generates 20 alerts. Hook dispatch routing must be precise: `{:ok,_}`/`:ok` → `on_success`; `{:error,_}`/exception → `on_failure` (retry-eligible); `{:discard,_}` or attempt >= max_attempts → `on_discard`; `{:cancel,_}` → `on_discard` (terminal).
+
+**Additional pitfalls:**
+- Do NOT modify `Workflow.Result` to support non-workflow jobs — use a separate `oban_powertools_job_records` table (FK constraints and unique constraint semantics differ)
+- Enforce `max_payload_bytes` before every `JobRecord.record/3` (Postgres JSONB TOAST triggers at ~2 KB, degrades reads 2-10x above that)
+- Never rely on Ecto's `redact: true` for persistence safety — it only affects `Inspect` output, not DB writes
+- Validate at compile time that no field is in both `redact:` and `partition_by: {:args, field}` limiter key
+
+---
+
+## Recommended Phase Order
+
+Research from ARCHITECTURE.md and PITFALLS.md converges on this order:
+
+### Phase 1: Worker Hooks
+
+**Rationale:** Fully self-contained within `ObanPowertools.Worker`. No schema migration. Establishes the `perform/1` wrapper shape that all subsequent phases extend. Highest-value observability feature ships first.
+
+**Delivers:** `on_start/1`, `on_success/2`, `on_failure/2`, `on_discard/2`; `safe_run_hook/3` dispatcher; `defoverridable` no-op defaults; additive `:worker_hook` telemetry contract entry (emit deferred).
+
+**Pitfalls addressed:** Hook-not-crash-caught (1), discard/failure conflation (5), timeout/`on_failure` gap documented (3).
+
+**Research phase:** Not needed — seams confirmed in source.
+
+---
+
+### Phase 2: deadline: / timeout: Pass-through
+
+**Rationale:** Compile-time-only macro changes. Depends on Phase 1 `perform/1` wrapper being in place (deadline check slot is at wrapper entry). No schema changes.
+
+**Delivers:** `timeout: N` → `def timeout(_job), do: N`; `deadline: N` → `meta["__deadline_at__"]` at enqueue + check at `perform/1` entry → `{:cancel, :deadline_expired}`; both keys stripped from `oban_opts`; deadline visible in `/ops/jobs` detail.
+
+**Pitfalls addressed:** Timeout unit validation at compile time; soft-only deadline documented (no mid-execution interrupt); timeout/`on_failure` gap documented.
+
+**Research phase:** Not needed — `timeout/1` callback contract verified directly in `deps/oban/lib/oban/worker.ex`.
+
+---
+
+### Phase 3: Output Recording (JobRecord)
+
+**Rationale:** New schema table required. Depends on Phase 1 `perform/1` wrapper to intercept `{:ok, result, record_opts}` three-tuple. Independent of Phase 2 (can be built concurrently after Phase 1 if bandwidth allows).
+
+**Delivers:** `oban_powertools_job_records` migration; `ObanPowertools.JobRecord` schema; `{:ok, result, record_opts}` return convention (additive); `JobRecord.record/3` fault-tolerant persist with byte cap; `unique_constraint([:oban_job_id, :attempt])`; `fetch_result/1`; `:job_recorded` DisplayPolicy kind; output in `/ops/jobs` detail; Igniter installer updated; retention policy wired to Lifeline prune.
+
+**Pitfalls addressed:** Schema not modified (6), byte cap enforced (7), double-recording prevented (unique constraint), recording failure does not fail the job.
+
+**Research phase:** Not needed — schema design confirmed against `Workflow.Result`; FK decision confirmed against Oban pruning behavior.
+
+---
+
+### Phase 4: redact: At-Rest
+
+**Rationale:** Strictly after Phase 3 — extends the `record_opts` pipeline with the same `@powertools_redact_fields` module attribute. Phase 1 `perform/1` wrapper must also be in place.
+
+**Delivers:** `redact: [:field]` compile-time option; `Map.drop` on `oban_jobs.args` (after fingerprint, before `Oban.Job.new/2`); `meta["__redacted_fields__"]` at enqueue; `__redacted_fields__` in `/ops/jobs` detail; same redact list applied to `record_opts.payload`; `redacted: true` on `JobRecord`; compile-time validation against `validate_required` and `partition_by:` overlaps.
+
+**Pitfalls addressed:** Redact-before-fingerprint collision (2), PII in recorded output (4, documented boundary), Ecto `redact: true` confusion (8), limiter partition overlap (compile-time guard).
+
+**Research phase:** Not needed — all seams confirmed; fingerprint ordering is a code-order constraint.
+
+---
+
+### Phase Ordering Summary
+
+
+
+Phases 2 and 3 can be built concurrently after Phase 1 completes. Phase 4 is strictly after Phase 3.
 
 ---
 
@@ -349,80 +218,51 @@ Phases that may benefit from a targeted verification pass:
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | No new runtime deps; verified against locked mix.lock; ExDoc is standard; all four deliverables use existing primitives |
-| Features | HIGH | Derived from post-v1.5 assessment grounded in repo source, tests, planning history, and 3 deep research agents |
-| Architecture | HIGH | All four deliverables are additive to existing, well-understood modules; no new runtime architecture |
-| Pitfalls | HIGH | Hex publish, read-only doctor, and cardinality pitfalls are well-known patterns in the Elixir/Hex ecosystem |
+| Stack | HIGH | Versions verified against mix.lock; Oban 2.23.0 source inspected for timeout/1 and telemetry events |
+| Features | HIGH | Verified against Oban OSS docs, Oban Pro docs, and direct codebase inspection; PROJECT.md defer decisions confirmed |
+| Architecture | HIGH | All named modules inspected; build order derived from actual dependency analysis; no speculative gaps |
+| Pitfalls | HIGH | Verified against Oban source (timeout EXIT behavior), Ecto docs (redact: display-only), Postgres TOAST threshold, and existing Idempotency seam |
 
-**Overall confidence: HIGH**
+**Overall confidence:** HIGH
 
 ### Gaps to Address
 
-1. **`Telemetry.metrics/0` return type decision** — Plain maps vs. `Telemetry.Metrics` structs.
-   Plain maps avoid any new dep; structs are more ergonomic for Parapet users. Decide at Phase 4
-   requirements time. If structs, confirm whether `telemetry_metrics` goes in as `optional: true`
-   or `only: :dev`.
+- **Hook telemetry emit timing:** ARCHITECTURE.md includes telemetry emit in Phase 1 deliverables; FEATURES.md recommends deferring the emit to avoid premature contract extension. Resolution: ship the `:worker_hook` contract extension (new `@contract` family) in Phase 1 so the contract is ready, but defer actual event emission until hooks are validated in production.
 
-2. **Doctor task repo resolution in Mix task context** — Confirm whether
-   `ObanPowertools.RuntimeConfig.repo!/1` works when the OTP application is not started (Mix task
-   default). May require `Mix.Task.run("app.start")` before querying, or a `--repo MyApp.Repo`
-   option that bypasses `RuntimeConfig`. Resolve at Phase 2 requirements time with a quick test.
+- **`{:cancel, reason}` hook routing:** Confirm at Phase 1 planning: `{:cancel, reason}` from `process/1` routes to `on_discard` (not `on_success` or `on_failure`), with `status: "cancelled"` on any `JobRecord` written.
 
-3. **`files:` whitelist exact paths** — Verify whether guides live in `guides/` in the existing
-   repo layout before writing the whitelist. Check for any Mix task files outside `lib/` (they
-   must be inside `lib/` or `priv/` to be included cleanly). Resolve at Phase 1 requirements time
-   by running `ls` on the repo root.
-
----
-
-## Explicitly Out of Scope (Defer-Until-Signal)
-
-The following items were considered and explicitly deferred. Do not re-introduce them in v1.6
-requirements or roadmap phases:
-
-| Item | Reason Deferred |
-|------|-----------------|
-| `oban_met` integration | v1.9; optional read source gated like `oban_web`; never a hard dep |
-| Live job/queue counts (QRY-06) | Requires `oban_met` path; out of scope for a health milestone |
-| `encrypt:` | Collides with args-hash idempotency; blinds v1.5 job filter; no proven demand |
-| Prioritizer / autoscaler | Deferred until adoption proves demand |
-| Batches | v1.8 |
-| Worker lifecycle hooks | v1.7 |
-| args/meta search qualifiers (QRY-05) | Post-v1.5 polish; not its own milestone |
-| Cross-page bulk select-all (QRY-08) | Post-v1.5 polish |
-| Nested batches / chunks / growable batches | Sidekiq's worst reliability area; defer indefinitely |
-| Native metrics dashboard | = rebuild Oban Web; contradicts bounded scope |
+- **Dual application points for `redact:`:** `redact:` applies at enqueue time (drop from `oban_jobs.args`) AND at record time (drop from `record_opts.payload`). Phase 2 owns the enqueue-time drop; Phase 4 owns the record-time drop. Confirm this split is explicit in phase plans so neither phase omits its half.
 
 ---
 
 ## Sources
 
-### Primary (HIGH confidence)
+### Primary (HIGH confidence — direct source inspection)
 
-- `.planning/threads/2026-05-28-post-v1.5-next-milestone.md` — post-v1.5 milestone ordering
-  assessment; grounded in repo source, tests, planning history, and 3 deep research agents;
-  primary scoping authority for v1.6
-- `.planning/research/STACK.md` (2026-05-27) — v1.5 stack research; confirms locked dep versions
-  and no new runtime deps needed for v1.6
-- `.planning/research/FEATURES.md` (2026-05-27) — v1.5 feature research; establishes anti-feature
-  list (oban_met, delete, unbounded queries) carried forward to v1.6 defer list
-- `.planning/research/ARCHITECTURE.md` (2026-05-27) — v1.5 architecture; component boundaries and
-  integration patterns for modules doctor and limiter CLI will call
-- `.planning/research/PITFALLS.md` (2026-05-27) — v1.5 pitfalls; telemetry cardinality contract
-  and Lifeline pipeline constraints remain relevant as v1.6 build context
-- `lib/oban_powertools/telemetry.ex` — frozen `@contract`; authoritative for `metrics/0` design
-- `lib/oban_powertools/runtime_config.ex` — `repo!/1` pattern for Mix task repo resolution
-- `prompts/oban_powertools_context.md` — product vision; names doctor and limiter CLI as
-  explicit deliverables
+- `deps/oban/lib/oban/worker.ex` — `timeout/1` callback (line 415), default impl (line 545)
+- `deps/oban/lib/oban/queue/executor.ex` — timeout kill via `:timer.exit_after` (lines 128-139), telemetry dispatch (lines 97, 285, 299)
+- `deps/oban/lib/oban/telemetry.ex` — full event table including `:state` values (lines 24-64)
+- `lib/oban_powertools/worker.ex` — `__using__` macro structure, `perform/1` shape
+- `lib/oban_powertools/workflow/result.ex` — FK constraints, field set
+- `lib/oban_powertools/telemetry.ex` — frozen `@contract`, `metrics/0` pattern
+- `lib/oban_powertools/idempotency.ex` — fingerprint-before-args dependency
+- `lib/oban_powertools/runtime_config.ex` — `DisplayPolicy` seam
+- `.planning/PROJECT.md` — v1.7 feature list, defer decisions, fingerprint constraint
+- `mix.lock` — locked versions verified 2026-05-30
+- `.planning/threads/2026-05-28-post-v1.5-next-milestone.md` — hooks-in-executor, no halt semantics, generalise Workflow.Result, defer encrypt
 
-### Secondary (MEDIUM confidence)
+### Secondary (HIGH confidence — official docs)
 
-- Hex packaging documentation (hexdocs.pm/hex) — `files:` whitelist, `mix hex.publish --dry-run`
-- ExDoc documentation (hexdocs.pm/ex_doc) — `extras:`, `@moduledoc`, guide configuration
-- `Telemetry.Metrics` documentation (hexdocs.pm/telemetry_metrics) — struct API, if used for
-  `metrics/0` return type
+- https://oban.hexdocs.pm/Oban.Worker.html — `timeout/1` callback contract
+- https://oban.hexdocs.pm/Oban.Telemetry.html — telemetry event table
+- https://oban.pro/docs/pro/Oban.Pro.Worker.html — `after_process/3`, `on_cancelled/2`, `on_discarded/2`, safety guarantees
+
+### Tertiary (MEDIUM confidence)
+
+- https://github.com/sidekiq/sidekiq/wiki/Middleware — middleware pattern (reference comparison)
+- https://pganalyze.com/blog/5mins-postgres-jsonb-toast — JSONB TOAST ~2 KB threshold (byte cap rationale)
 
 ---
 
-*Research completed: 2026-05-28*
+*Research completed: 2026-05-30*
 *Ready for roadmap: yes*
