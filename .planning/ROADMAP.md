@@ -147,6 +147,19 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 **Goal:** Prove the published package actually works for a fresh adopter — getting-started from hex, not from the repo.
 
 **Requirements:** REL-04
+**Plans:** 3 plans
+
+**Wave 1**
+
+- [ ] 51-01-PLAN.md — Scaffold `examples/hex_consumer/` (mix.exs hex dep, config, lib + host-owned seams, README, regenerate.sh, .gitignore)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 51-02-PLAN.md — First-session test + nightly_sync seed + support fixtures, proven green locally via a temporary path-dep swap
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 51-03-PLAN.md — `verify-published` job in release.yml (exact-version pin → install → first-session test) + drift check (D-06) + clean-tree assertion (D-05)
 
 **Success Criteria:**
 
