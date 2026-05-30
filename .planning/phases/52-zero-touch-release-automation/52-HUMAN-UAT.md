@@ -18,14 +18,14 @@ result: [pending — deferred to next release cycle per D-02]
 
 ### 2. CR-01: Pin `actions/github-script` action SHA in release-pr-automerge.yml
 expected: `release-pr-automerge.yml` line 67 uses the full SHA `actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8` instead of the mutable `@v8` tag. Every other action in both workflow files is SHA-pinned.
-result: [pending — CRITICAL code review finding unresolved at phase closure]
+result: resolved — SHA pinned to `ed597411d8f924073f98dfc5c65a23a2325f34cd # v8` in commit fb9cd62
 
 ## Summary
 
 total: 2
-passed: 0
+passed: 1
 issues: 0
-pending: 2
+pending: 1
 skipped: 0
 blocked: 0
 

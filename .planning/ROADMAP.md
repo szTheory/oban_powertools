@@ -201,4 +201,4 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 | 49    | v1.6      | 3/3            | Complete | 2026-05-30 |
 | 50    | v1.6      | 3/3            | Complete | 2026-05-30 |
 | 51    | v1.6      | 3/3            | Complete | 2026-05-30 |
-| 52    | v1.6      | 1/1 | Complete   | 2026-05-30 |
+| 52    | v1.6      | 1/1 | Complete    | 2026-05-30 |
