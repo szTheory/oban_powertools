@@ -173,10 +173,10 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 **Goal:** Add `release-pr-automerge.yml` so that after the release PR's CI passes, the PR is squash-merged automatically and the release pipeline fires — no human merge step required. Transplanted from lattice_stripe with oban_powertools branch-name adaptation.
 
 **Requirements:** (pipeline operability — no REQ-ID; this is process automation)
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 **Wave 1**
 
-- [ ] 52-01-PLAN.md — Add actionlint lane to ci.yml (wired into ci-gate) + six-item inspection checklist for the already-committed release-pr-automerge.yml (verify-only; D-01/D-02/D-03)
+- [x] 52-01-PLAN.md — Add actionlint lane to ci.yml (wired into ci-gate) + six-item inspection checklist for the already-committed release-pr-automerge.yml (verify-only; D-01/D-02/D-03)
 
 **Success Criteria:**
 
@@ -201,4 +201,4 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 | 49    | v1.6      | 3/3            | Complete | 2026-05-30 |
 | 50    | v1.6      | 3/3            | Complete | 2026-05-30 |
 | 51    | v1.6      | 3/3            | Complete | 2026-05-30 |
-| 52    | v1.6      | 0/1            | Not started | —       |
+| 52    | v1.6      | 1/1 | Complete   | 2026-05-30 |
