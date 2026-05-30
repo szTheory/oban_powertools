@@ -251,6 +251,11 @@ jobs:
             examples/hex_consumer/_build
           key: ${{ runner.os }}-hex-consumer-${{ needs.release-please.outputs.version }}
 
+      - name: Delete committed installer-generated files
+        run: |
+          rm -f examples/hex_consumer/lib/hex_consumer_web/oban_powertools_auth.ex
+          rm -f examples/hex_consumer/lib/hex_consumer_web/oban_powertools_display_policy.ex
+
       - name: Install Hex + Rebar
         run: |
           mix local.hex --force
@@ -259,7 +264,7 @@ jobs:
       - name: Pin consumer to exact published version
         run: |
           VERSION="${{ needs.release-please.outputs.version }}"
-          sed -i "s|{:oban_powertools, \"~> 0.5\"}|{:oban_powertools, \"== ${VERSION}\"}|" \
+          sed -i "s|{:oban_powertools, \"~> [0-9][0-9.]*\"}|{:oban_powertools, \"== ${VERSION}\"}|" \
             examples/hex_consumer/mix.exs
 
       - name: Fetch hex consumer deps (from hex.pm)
@@ -271,6 +276,8 @@ jobs:
         working-directory: examples/hex_consumer
 
       - name: Compile hex consumer
+        env:
+          MIX_ENV: test
         run: mix compile --warnings-as-errors
         working-directory: examples/hex_consumer
 
