@@ -1,9 +1,9 @@
 ---
 phase: 50
 slug: telemetry-metrics-slo-guide
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: compliant
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-05-29
 ---
 
@@ -36,26 +36,23 @@ created: 2026-05-29
 
 ## Per-Task Verification Map
 
-| Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
-|---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 50-XX-XX | TBD | 0 | TEL-01 | — | N/A | unit | `mix test test/oban_powertools/telemetry_test.exs` | ❌ W0 (extend existing) | ⬜ pending |
-| 50-XX-XX | TBD | 1 | TEL-01 | — | `metrics/0` returns non-empty list of `Telemetry.Metrics` structs | unit | `mix test test/oban_powertools/telemetry_test.exs` | ❌ W0 | ⬜ pending |
-| 50-XX-XX | TBD | 1 | TEL-01 | — | every metric `event_name` is within a frozen `@contract` family | unit | `mix test test/oban_powertools/telemetry_test.exs` | ❌ W0 | ⬜ pending |
-| 50-XX-XX | TBD | 1 | TEL-01 / SC-4 | — | every metric `:tags` ⊆ contract's per-family allowed metadata keys; no `job_id`/`args` | unit | `mix test test/oban_powertools/telemetry_test.exs` | ❌ W0 | ⬜ pending |
-| 50-XX-XX | TBD | 1 | TEL-02 | — | `metrics/0` raises clear actionable error when `Telemetry.Metrics` unloaded (not `[]`) | unit | `mix test test/oban_powertools/telemetry_test.exs` | ❌ W0 (may be manual-only) | ⬜ pending |
-| 50-XX-XX | TBD | 1 | TEL-02 | — | optional deps absent → library still compiles in prod tree | smoke | `MIX_ENV=prod mix compile` | ❌ W0 | ⬜ pending |
-| 50-XX-XX | TBD | 1 | TEL-03 | — | guide present at `guides/telemetry-and-slos.md`, grouped under Operations | smoke | `test -f guides/telemetry-and-slos.md` | ❌ W0 | ⬜ pending |
-| 50-XX-XX | TBD | 1 | TEL-03 | — | guide code samples compile; docs build clean | smoke | `mix docs` | ❌ W0 | ⬜ pending |
+| Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
+|---------|------|------|-------------|-----------|-------------------|-------------|--------|
+| 50-01-T1 | 50-01 | 0 | TEL-02 | smoke | `grep -v '^#' mix.exs \| grep -c 'telemetry_metrics.*optional: true'` | ✅ | ✅ green |
+| 50-01-T2 | 50-01 | 0 | TEL-01 | unit | `mix test test/oban_powertools/telemetry_test.exs` | ✅ | ✅ green |
+| 50-02-T1 | 50-02 | 1 | TEL-01 | unit | `mix test test/oban_powertools/telemetry_test.exs` | ✅ | ✅ green |
+| 50-02-T2 | 50-02 | 1 | TEL-02 | smoke | `MIX_ENV=prod mix compile` | ✅ | ✅ green |
+| 50-03-T1 | 50-03 | 1 | TEL-03 | smoke | `test -f guides/telemetry-and-slos.md && mix docs` | ✅ | ✅ green |
 
-*Task IDs are placeholders until plans are written; the planner/executor binds each row to a real task. Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `test/oban_powertools/telemetry_test.exs` — extend existing file with `metrics/0` structural tests (TEL-01, SC-4 tag containment)
-- [ ] `{:telemetry_metrics, "~> 1.0", optional: true}` (+ a test/dev availability path so `Telemetry.Metrics.*` is loaded under `mix test`) added to `mix.exs`; run `mix deps.get`
-- [ ] No new test framework — ExUnit already configured
+- [x] `test/oban_powertools/telemetry_test.exs` extended with `metrics/0` structural tests
+- [x] Optional deps added to `mix.exs`
+- [x] No new test framework needed
 
 *Guide (`guides/telemetry-and-slos.md`) needs no Wave 0 stub — it is a Wave 1 deliverable verified by `test -f` + `mix docs`.*
 
@@ -73,11 +70,27 @@ created: 2026-05-29
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 10s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 10s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** complete
+
+---
+
+## Validation Audit 2026-05-30
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 2 |
+| Resolved | 2 |
+| Escalated | 0 |
+
+WR-01 resolved: phantom repair_completed event replaced with repair_executed using production-matching metadata (3 keys: action, incident_class, target_type). Subset assertion replaces exact-match assertion since production emits only 3 of the 6 contract keys for this event.
+
+WR-02 resolved: tautological cron assertion replaced — now captures received_metadata from the telemetry emission instead of checking the test literal, so a future production key change would cause a real failure.
+
+TEL-02 absent-dep path: manual-only (hard to test in same suite that has the dep loaded).
