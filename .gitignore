@@ -26,6 +26,12 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 oban_powertools-*.tar
 
+# examples/hex_consumer generated and lock artifacts (not committed — hex dep, no lock).
+examples/hex_consumer/mix.lock
+examples/hex_consumer/priv/repo/migrations/
+examples/hex_consumer/_build/
+examples/hex_consumer/deps/
+
 # GSD / agent run scratch artifacts (root-level, never committed).
 /audit_uat.json
 /discuss_mode.txt
