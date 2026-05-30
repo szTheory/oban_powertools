@@ -19,7 +19,64 @@ See [Path to 1.0](#path-to-10) below for the explicit gate.
 
 ## [Unreleased]
 
-<!-- Phases 48-51 accumulate entries here -->
+### Added
+
+#### Health Check CLI
+
+- `mix oban_powertools.doctor` — read-only health check task that inspects the Oban
+  and Powertools database state without starting Oban or acquiring locks. Runs five
+  checks over `pg_catalog` and `information_schema`:
+  - **Index validity** — surfaces `INVALID` indexes left by a failed
+    `CREATE INDEX CONCURRENTLY`, with `REINDEX INDEX CONCURRENTLY` remediation.
+  - **Missing indexes** — detects absent v14 Oban indexes that degrade job throughput.
+  - **Migration drift** — compares the in-DB Oban migration version against the
+    installed library version and flags gaps.
+  - **Powertools tables** — verifies all 24 Powertools tables are present, grouped by
+    migration tranche with per-group remediation hints.
+  - **Uniqueness-timeout risk** — warns when the GIN index is absent and a large
+    backlog makes uniqueness checks expensive; escalates to error under `--strict`.
+- Exit codes suitable for CI pipelines: `0` (all clear), `1` (warnings), `2` (errors).
+- `--format json` output carries a `schema_version: 1` stability contract for
+  machine-readable consumption.
+- `--strict` flag elevates uniqueness-timeout risk from warning to error.
+- `--prefix` flag for custom Oban schema support.
+- End-to-end contract test in CI (`doctor` lane in `host-contract-proof.yml`) that
+  exercises the real CLI against a freshly migrated example host, including
+  `--format json` round-trip and absent-prefix error path.
+
+#### Limiter CLI
+
+- `mix oban_powertools.limiter.explain` — diagnoses a limiter's current blocking state
+  by resource name or worker module, reusing `ObanPowertools.Explain` without
+  duplicating limiter logic. Shows why a limiter is blocked, when it will clear, and
+  what tokens are in use.
+- `mix oban_powertools.limiter.simulate` — previews per-request reserved/blocked
+  verdicts for a worker's declared limits without touching any real limiter state.
+  Simulation is proven side-effect-free: no DB writes, no telemetry events, no
+  token-bucket mutations.
+- Both tasks embed the full rate-limit glossary (`token_bucket`, `bucket_capacity`,
+  `bucket_span_ms`, `weight`, `weight_by`, `partition`, `partition_by`, `scope`,
+  `cooldown`, `limit_reached`) in their `--help` output.
+- `ObanPowertools.Limits.compute_reservation/4` — new public pure function (extracted
+  from the internal reservation path) that determines reserve/block verdicts with zero
+  side effects. Useful for unit-testing limiter behavior without a database.
+- `ObanPowertools.Limits.Glossary` — single-source rate-limit glossary module; the
+  glossary text is test-locked across the guide, explain task, and simulate task so
+  term-level parity is enforced in CI.
+
+#### Telemetry & SLOs
+
+- `ObanPowertools.Telemetry.metrics/0` — returns 17 `Telemetry.Metrics.Counter`
+  definitions over the frozen low-cardinality contract, covering five control-plane
+  families: `operator_action` (2), `limiter` (3), `cron` (4), `workflow` (4), and
+  `lifeline` (4). All tags are strict subsets of the frozen `@contract` — no
+  `:job_id`, `:args`, or other high-cardinality fields.
+- `telemetry_metrics` and `telemetry_poller` added as optional dependencies, gated
+  like the existing `oban_web` integration. Zero runtime cost or failure when absent;
+  `metrics/0` raises an actionable `RuntimeError` if called without the dep installed.
+- **Operations guide:** `guides/telemetry-and-slos.md` — reporter-agnostic guide
+  covering telemetry wiring, the Oban-core vs Powertools signal seam, control-plane
+  SLIs, and burn-rate SLO framing with Parapet. No `oban_met` dependency required.
 
 ## [0.5.0] - 2026-05-29
 
