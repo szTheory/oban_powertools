@@ -205,10 +205,11 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 
 ### Phase 52.1: Close gap: REL-04 — fix verify-published CI (Igniter committed-modules conflict) (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Goal:** Make the `verify-published` CI job complete end-to-end by deleting the two committed scaffold files before the installer runs (so Igniter generates the 6 migrations fresh), plus the supporting housekeeping/CI-hygiene fixes (MIX_ENV consistency, version-agnostic sed, gitignore, regenerate.sh doc comment).
+**Requirements**: REL-04
 **Depends on:** Phase 52
-**Plans:** 0 plans
+**Plans:** 1 plan
+**Wave 1**
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 52.1 to break down)
+- [ ] 52.1-01-PLAN.md — rm-step + MIX_ENV: test + version-agnostic sed in verify-published (D-01/D-03/D-04), regenerate.sh scaffold-overwrite comment (D-01a), gitignore hex_consumer_local_proof (D-02), local sed smoke test
