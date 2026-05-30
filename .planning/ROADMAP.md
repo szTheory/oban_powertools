@@ -147,7 +147,7 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 **Goal:** Prove the published package actually works for a fresh adopter — getting-started from hex, not from the repo.
 
 **Requirements:** REL-04
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 **Wave 1**
 
@@ -159,7 +159,7 @@ Full phase details: [milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 51-03-PLAN.md — `verify-published` job in release.yml (exact-version pin → install → first-session test) + drift check (D-06) + clean-tree assertion (D-05)
+- [x] 51-03-PLAN.md — `verify-published` job in release.yml (exact-version pin → install → first-session test) + drift check (D-06) + clean-tree assertion (D-05)
 
 **Success Criteria:**
 
