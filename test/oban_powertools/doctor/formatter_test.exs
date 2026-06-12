@@ -18,6 +18,14 @@ defmodule ObanPowertools.Doctor.FormatterTest do
       "Run: CREATE INDEX CONCURRENTLY oban_jobs_args_index ON public.oban_jobs USING GIN (args)"
   }
 
+  @expired_deadline_finding %Finding{
+    check: :expired_deadline_jobs,
+    severity: :warning,
+    message: "Expired deadline: retryable job 123 (Example.Worker) has __deadline_at__ 2026-06-12T12:00:00Z in the past",
+    remediation:
+      "Inspect the job, then retry, cancel, discard, or re-enqueue it after confirming whether the work should still run."
+  }
+
   describe "format/2 with human format" do
     test "renders an all-clear/OK report when no findings" do
       output = Formatter.format([], format: :human)
@@ -50,6 +58,12 @@ defmodule ObanPowertools.Doctor.FormatterTest do
       output = Formatter.format([@error_finding, @warning_finding], format: :human)
       assert output =~ "INVALID index oban_jobs_args_index"
       assert output =~ "Uniqueness-timeout risk"
+    end
+
+    test "renders expired deadline warnings through the generic finding shape" do
+      output = Formatter.format([@expired_deadline_finding], format: :human)
+      assert output =~ "Expired deadline"
+      assert output =~ ~r/warning/i
     end
   end
 
@@ -114,6 +128,18 @@ defmodule ObanPowertools.Doctor.FormatterTest do
       assert decoded["oban_version_installed"] == 14
       assert decoded["oban_version_db"] == 14
       assert length(decoded["findings"]) == 1
+    end
+
+    test "expired deadline findings keep schema version 1 and render check name" do
+      output = Formatter.format([@expired_deadline_finding], format: :json)
+      {:ok, decoded} = Jason.decode(output)
+
+      assert decoded["schema_version"] == 1
+
+      [finding] = decoded["findings"]
+      assert finding["check"] == "expired_deadline_jobs"
+      assert finding["severity"] == "warning"
+      assert finding["message"] =~ "Expired deadline"
     end
   end
 

@@ -155,4 +155,78 @@ defmodule ObanPowertools.Doctor.ChecksTest do
       assert Enum.any?(result, fn f -> f.severity == :warning end)
     end
   end
+
+  describe "expired_deadline_jobs/2" do
+    test "returns warning findings for expired retryable jobs" do
+      past_iso =
+        DateTime.utc_now()
+        |> DateTime.add(-60, :second)
+        |> DateTime.to_iso8601()
+
+      job = insert_oban_job!(%{"__deadline_at__" => past_iso}, state: "retryable")
+
+      assert [
+               %{
+                 check: :expired_deadline_jobs,
+                 severity: :warning,
+                 message: message,
+                 remediation: remediation
+               }
+             ] = Checks.expired_deadline_jobs(TestRepo, "public")
+
+      assert message =~ "Expired deadline"
+      assert message =~ "retryable job #{job.id}"
+      assert message =~ "Example.Worker"
+      assert remediation =~ "retry"
+    end
+
+    test "ignores future retryable deadlines" do
+      future_iso =
+        DateTime.utc_now()
+        |> DateTime.add(60, :second)
+        |> DateTime.to_iso8601()
+
+      insert_oban_job!(%{"__deadline_at__" => future_iso}, state: "retryable")
+
+      assert [] = Checks.expired_deadline_jobs(TestRepo, "public")
+    end
+
+    test "ignores expired deadlines in non-retryable states" do
+      past_iso =
+        DateTime.utc_now()
+        |> DateTime.add(-60, :second)
+        |> DateTime.to_iso8601()
+
+      insert_oban_job!(%{"__deadline_at__" => past_iso}, state: "available")
+
+      assert [] = Checks.expired_deadline_jobs(TestRepo, "public")
+    end
+
+    test "ignores malformed deadline metadata without crashing" do
+      insert_oban_job!(%{"__deadline_at__" => "not-a-date"}, state: "retryable")
+
+      assert [] = Checks.expired_deadline_jobs(TestRepo, "public")
+    end
+
+    test "invalid prefix returns a bounded error finding before interpolation" do
+      assert [
+               %{
+                 check: :expired_deadline_jobs,
+                 severity: :error,
+                 message: message
+               }
+             ] = Checks.expired_deadline_jobs(TestRepo, "bad-prefix;drop")
+
+      assert message =~ "not a valid identifier"
+    end
+  end
+
+  defp insert_oban_job!(meta, opts) do
+    state = Keyword.fetch!(opts, :state)
+
+    %{}
+    |> Oban.Job.new(worker: "Example.Worker", queue: :default, meta: meta)
+    |> Ecto.Changeset.change(state: state)
+    |> TestRepo.insert!()
+  end
 end
