@@ -111,7 +111,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 plan 54-01 completion)*
 
-- [ ] 54-02-PLAN.md - Enqueue-time deadline metadata with idempotency-safe merge behavior
+- [x] 54-02-PLAN.md - Enqueue-time deadline metadata with idempotency-safe merge behavior
 
 ### Phase 55: Output Recording (JobRecord)
 
@@ -156,6 +156,6 @@ Plans:
 | 43-46 | v1.5      | 9/9            | Complete    | 2026-05-28 |
 | 47-52.1 | v1.6    | 16/16          | Complete    | 2026-05-30 |
 | 53    | v1.7      | 2/2            | Complete    | 2026-06-12 |
-| 54    | v1.7      | 3/4 | In Progress|  |
+| 54    | v1.7      | 4/4 | In Progress|  |
 | 55    | v1.7      | 0/TBD          | Not started | -          |
 | 56    | v1.7      | 0/TBD          | Not started | -          |
