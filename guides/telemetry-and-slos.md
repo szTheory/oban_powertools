@@ -1,9 +1,9 @@
 # Telemetry and SLOs
 
 `ObanPowertools.Telemetry.metrics/0` is opt-in and reporter-agnostic. It returns a list of
-`Telemetry.Metrics` definitions covering the five frozen Powertools control-plane event
-families. Powertools does not start a Telemetry supervisor or bundle a reporter — the host owns
-both. Swap in any reporter your stack already uses.
+`Telemetry.Metrics` definitions covering the frozen Powertools control-plane event families.
+Powertools does not start a Telemetry supervisor or bundle a reporter — the host owns both.
+Swap in any reporter your stack already uses.
 
 ## Wire it up
 
@@ -95,11 +95,12 @@ part of this phase.
 ## Powertools control-plane SLIs
 
 `ObanPowertools.Telemetry.metrics/0` contributes the **control-plane SLIs** that Oban-core
-cannot see: what your limiters, lifeline repair pipeline, workflows, and cron scheduler are
-doing. These are the events Oban itself is unaware of.
+cannot see: what your limiters, lifeline repair pipeline, workflows, cron scheduler, and worker
+lifecycle hooks are doing. These are the events Oban itself is unaware of.
 
 All tags are low-cardinality string values (e.g. `scope: "partitioned"`, `outcome: "ok"`). The
-frozen contract explicitly excludes `job_id`, `args`, preview tokens, and free-form reasons.
+frozen contract explicitly excludes `job_id`, `args`, worker module names, queue names, preview
+tokens, free-form reasons, and stacktraces.
 
 ### Limiter saturation
 
@@ -146,6 +147,21 @@ gives you visibility into why workflows ended — not just that they did.
 | `oban_powertools.cron.paused.count` | `source`, `overlap_policy` | Cron entries paused by operator |
 | `oban_powertools.cron.resumed.count` | `source`, `overlap_policy` | Cron entries resumed by operator |
 | `oban_powertools.cron.run_now.count` | `source`, `overlap_policy` | Cron entries triggered run-now by operator |
+
+### Worker lifecycle hooks
+
+| Metric | Tags | What it tracks |
+|--------|------|---------------|
+| `oban_powertools.worker_hook.invoked.count` | `hook`, `outcome` | Worker hook dispatch attempts after the hook returned or was crash-caught |
+
+Event name: `[:oban_powertools, :worker_hook, :invoked]`.
+Measurement: `%{count: 1}`.
+
+Allowed `hook` values are `"on_start"`, `"on_success"`, `"on_failure"`, and `"on_discard"`.
+Allowed `outcome` values are `"ok"` and `"crash_caught"`.
+
+Worker hook telemetry labels exclude job ids, args, worker module names, queue names, reasons,
+stacktraces, hook durations, and span-style metadata.
 
 ### Operator actions
 
