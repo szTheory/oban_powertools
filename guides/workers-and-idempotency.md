@@ -10,6 +10,7 @@ enqueue typed jobs without pushing validation and duplicate suppression into eve
 - `enqueue/2` for idempotent inserts through the Powertools receipt table
 - optional `limits:` declarations when the worker also needs durable rate control
 - optional lifecycle hooks for observing start, success, retryable failure, and discard outcomes
+- optional `timeout:` and `deadline:` safety declarations for runtime attempt limits and stale-work prevention
 
 The runtime still executes an `Oban.Worker`. Powertools just makes the builder contract stricter.
 
@@ -112,6 +113,36 @@ operator-initiated Lifeline discards do not fire worker execution hooks; they ar
 through the Lifeline repair pipeline. Oban timeout kills may bypass worker hooks because the
 BEAM can terminate the job process outside the wrapper; use Oban `[:oban, :job, :exception]`
 telemetry for timeout observability.
+
+## Timeout and deadline safety
+
+Workers may declare `timeout:` and `deadline:` when they need bounded attempts and stale-work
+protection:
+
+```elixir
+defmodule MyApp.Billing.ProcessInvoiceWorker do
+  use ObanPowertools.Worker,
+    queue: :billing,
+    args: [invoice_id: :integer],
+    timeout: 30_000,
+    deadline: :timer.hours(24)
+
+  @impl true
+  def process(%Oban.Job{args: %__MODULE__.Args{invoice_id: invoice_id}}) do
+    MyApp.Billing.process_invoice(invoice_id)
+  end
+end
+```
+
+Support truth:
+
+- `timeout:` is a positive integer milliseconds value.
+- `timeout:` delegates to Oban's per-attempt `timeout/1` kill timer.
+- Oban timeout kills may bypass Powertools worker hooks.
+- `deadline:` is a soft pre-run wall-clock expiry stored as `meta["__deadline_at__"]`.
+- When expired, `deadline:` returns `{:cancel, :deadline_expired}` before `on_start/1` and `process/1`.
+- `deadline:` does not interrupt already-running work.
+- No Powertools-specific telemetry is emitted for deadlines in this phase.
 
 ## Validation without enqueue
 
