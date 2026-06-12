@@ -67,4 +67,18 @@ defmodule Mix.Tasks.ObanPowertools.DoctorTest do
     source = File.read!(@task_path)
     assert source =~ "@shortdoc"
   end
+
+  test "documents expired deadline warning severity without broadening strict scope" do
+    source = File.read!(@task_path)
+
+    assert source =~ "Expired deadline jobs"
+    assert source =~ "expired_deadline_jobs"
+    assert source =~ "Scope: uniqueness_timeout_risk check only"
+
+    assert source =~
+             ~r/Expired deadline jobs.*\|\s+warning \(1\)\s+\|\s+warning \(1\)\s+\|/
+
+    refute source =~ "expired deadline jobs) to errors"
+    refute source =~ "expired_deadline_jobs check only"
+  end
 end
