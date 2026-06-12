@@ -393,17 +393,17 @@ Phase 53 is not a rename, refactor of persisted identifiers, or data migration p
 | A2 | Workers with no hook definitions can emit noisy telemetry if default override detection is not implemented. | Common Pitfalls | Planner must decide and document override detection behavior. |
 | A3 | `_build/` recompilation through normal `mix test` is enough after macro changes. | Runtime State Inventory | If stale compile artifacts persist, planner may need a `mix clean` verification step. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **How should override detection be implemented for D-27?**
    - What we know: D-27 prefers not emitting telemetry for omitted no-op defaults if the planner can cheaply detect no override. [VERIFIED: .planning/phases/53-worker-lifecycle-hooks/53-CONTEXT.md]
-   - What's unclear: The exact implementation strategy is not locked. [VERIFIED: .planning/phases/53-worker-lifecycle-hooks/53-CONTEXT.md]
-   - Recommendation: Prefer compile-time module attributes such as `@powertools_hook_defaults` plus generated `__powertools_hook_overridden?/1`, because runtime function presence alone cannot distinguish defaults from overrides. [ASSUMED]
+   - RESOLVED: Use compile-time override tracking with generated `__powertools_hook_overridden?/1`; omitted defaults emit no `worker_hook` telemetry. [VERIFIED: .planning/phases/53-worker-lifecycle-hooks/53-01-PLAN.md]
+   - Recommendation retained: Prefer compile-time module attributes such as `@powertools_hook_defaults` plus generated `__powertools_hook_overridden?/1`, because runtime function presence alone cannot distinguish defaults from overrides. [ASSUMED]
 
 2. **Should rescued `process/1` failures be returned as `{:error, exception}` or reraised after hook dispatch?**
    - What we know: D-04 requires rescued/caught process failures to route to `on_failure/2`, D-05 terminal failures to `on_discard/2`, and D-20 says return the original Oban-compatible result. [VERIFIED: .planning/phases/53-worker-lifecycle-hooks/53-CONTEXT.md]
-   - What's unclear: For raised/caught failures, the "original" behavior is an exception escaping to Oban, not a tuple. [VERIFIED: deps/oban/lib/oban/queue/executor.ex]
-   - Recommendation: Preserve Oban semantics by dispatching the hook and then reraising/throwing/exiting with original stacktrace where possible, rather than converting exceptions to tuples. [ASSUMED]
+   - RESOLVED: Dispatch the matching hook and preserve original raised/thrown/exited process semantics by reraising, rethrowing, or exiting after dispatch. [VERIFIED: .planning/phases/53-worker-lifecycle-hooks/53-01-PLAN.md]
+   - Recommendation retained: Preserve Oban semantics by dispatching the hook and then reraising/throwing/exiting with original stacktrace where possible, rather than converting exceptions to tuples. [ASSUMED]
 
 ## Environment Availability
 
