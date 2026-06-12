@@ -1,5 +1,6 @@
 defmodule ObanPowertools.WorkerTest do
   use ExUnit.Case, async: true
+  import ExUnit.CaptureLog
 
   defmodule BasicWorker do
     use ObanPowertools.Worker,
@@ -14,6 +15,91 @@ defmodule ObanPowertools.WorkerTest do
       send(self(), {:processed, user_id})
       :ok
     end
+  end
+
+  defmodule NoHookGeneratedWorker do
+    use ObanPowertools.Worker,
+      queue: :default,
+      args: [
+        user_id: :integer
+      ]
+
+    @impl true
+    def process(%Oban.Job{args: %__MODULE__.Args{user_id: user_id}}) do
+      send(self(), {:no_hook_processed, user_id})
+      :ok
+    end
+  end
+
+  defmodule HookedGeneratedWorker do
+    use ObanPowertools.Worker,
+      queue: :default,
+      args: [
+        user_id: :integer,
+        mode: :string
+      ]
+
+    @impl true
+    def on_start(%Oban.Job{args: %__MODULE__.Args{user_id: user_id}}) do
+      send(self(), {:generated_hook, :on_start, user_id})
+      :ignored
+    end
+
+    @impl true
+    def process(%Oban.Job{args: %__MODULE__.Args{user_id: user_id, mode: mode}}) do
+      send(self(), {:generated_hook, :process, user_id})
+
+      case mode do
+        "ok" -> :ok
+        "ok_value" -> {:ok, %{user_id: user_id}}
+        "error" -> {:error, :temporary}
+        "discard" -> {:discard, :manual}
+        "cancel" -> {:cancel, :stop}
+        "snooze" -> {:snooze, 60}
+        "raise" -> raise "process failed"
+        "throw" -> throw(:process_thrown)
+        "exit" -> exit(:process_exited)
+      end
+    end
+
+    @impl true
+    def on_success(_job, event), do: send(self(), {:generated_hook, :on_success, event})
+
+    @impl true
+    def on_failure(_job, event), do: send(self(), {:generated_hook, :on_failure, event})
+
+    @impl true
+    def on_discard(_job, event), do: send(self(), {:generated_hook, :on_discard, event})
+  end
+
+  defmodule CrashingGeneratedHookWorker do
+    use ObanPowertools.Worker,
+      queue: :default,
+      args: [
+        mode: :string
+      ]
+
+    @impl true
+    def on_start(_job), do: raise("start hook failed")
+
+    @impl true
+    def process(%Oban.Job{args: %__MODULE__.Args{mode: mode}}) do
+      case mode do
+        "ok" -> :ok
+        "error" -> {:error, :temporary}
+        "discard" -> {:discard, :manual}
+        "raise" -> raise "process failed"
+      end
+    end
+
+    @impl true
+    def on_success(_job, _event), do: raise("success hook failed")
+
+    @impl true
+    def on_failure(_job, _event), do: raise("failure hook failed")
+
+    @impl true
+    def on_discard(_job, _event), do: raise("discard hook failed")
   end
 
   defmodule DispatcherWorker do
@@ -72,6 +158,179 @@ defmodule ObanPowertools.WorkerTest do
 
     assert :ok = BasicWorker.process(job)
     assert_receive {:processed, 123}
+  end
+
+  test "generated workers expose no-op hook defaults and override tracking" do
+    attach_worker_hook_handler("generated-no-hook-handler")
+    job = worker_job(%{user_id: 123})
+
+    assert :ok = NoHookGeneratedWorker.perform(job)
+    assert_receive {:no_hook_processed, 123}
+
+    refute NoHookGeneratedWorker.__powertools_hook_overridden?(:on_start)
+    refute NoHookGeneratedWorker.__powertools_hook_overridden?(:on_success)
+    refute NoHookGeneratedWorker.__powertools_hook_overridden?(:on_failure)
+    refute NoHookGeneratedWorker.__powertools_hook_overridden?(:on_discard)
+    refute_receive {:worker_hook_event, _, _, _}
+  after
+    :telemetry.detach("generated-no-hook-handler")
+  end
+
+  test "generated perform validates args before on_start and process" do
+    job = worker_job(%{user_id: "not-an-int", mode: "ok"})
+
+    assert {:error, %Ecto.Changeset{}} = HookedGeneratedWorker.perform(job)
+    refute_receive {:generated_hook, _, _}
+    refute_receive {:generated_hook, _, _, _}
+  end
+
+  test "generated perform dispatches on_start before process and on_success after process" do
+    job = worker_job(%{user_id: 123, mode: "ok"})
+
+    assert :ok = HookedGeneratedWorker.perform(job)
+
+    assert_receive_in_order([
+      {:generated_hook, :on_start, 123},
+      {:generated_hook, :process, 123},
+      {:generated_hook, :on_success, %{state: :success, result: :ok, value: nil}}
+    ])
+
+    assert HookedGeneratedWorker.__powertools_hook_overridden?(:on_start)
+    assert HookedGeneratedWorker.__powertools_hook_overridden?(:on_success)
+  end
+
+  test "generated perform routes success values, retry failures, final failures, and explicit discards" do
+    assert {:ok, %{user_id: 123}} =
+             HookedGeneratedWorker.perform(worker_job(%{user_id: 123, mode: "ok_value"}))
+
+    assert_receive {:generated_hook, :on_success,
+                    %{state: :success, result: {:ok, %{user_id: 123}}, value: %{user_id: 123}}}
+
+    assert {:error, :temporary} =
+             HookedGeneratedWorker.perform(
+               worker_job(%{user_id: 123, mode: "error"}, attempt: 1, max_attempts: 3)
+             )
+
+    assert_receive {:generated_hook, :on_failure,
+                    %{
+                      state: :failure,
+                      reason: :temporary,
+                      result: {:error, :temporary},
+                      kind: nil,
+                      stacktrace: nil,
+                      terminal?: false
+                    }}
+
+    assert {:error, :temporary} =
+             HookedGeneratedWorker.perform(
+               worker_job(%{user_id: 123, mode: "error"}, attempt: 3, max_attempts: 3)
+             )
+
+    assert_receive {:generated_hook, :on_discard,
+                    %{
+                      state: :discard,
+                      reason: :temporary,
+                      result: {:error, :temporary},
+                      kind: nil,
+                      stacktrace: nil,
+                      terminal?: true
+                    }}
+
+    refute_receive {:generated_hook, :on_failure, %{terminal?: true}}
+
+    assert {:discard, :manual} =
+             HookedGeneratedWorker.perform(worker_job(%{user_id: 123, mode: "discard"}))
+
+    assert_receive {:generated_hook, :on_discard,
+                    %{
+                      state: :discard,
+                      reason: :manual,
+                      result: {:discard, :manual},
+                      kind: nil,
+                      stacktrace: nil,
+                      terminal?: true
+                    }}
+  end
+
+  test "generated perform leaves cancel and snooze unchanged without post-hook dispatch" do
+    assert {:cancel, :stop} =
+             HookedGeneratedWorker.perform(worker_job(%{user_id: 123, mode: "cancel"}))
+
+    assert_receive {:generated_hook, :on_start, 123}
+    assert_receive {:generated_hook, :process, 123}
+    refute_receive {:generated_hook, :on_failure, _}
+    refute_receive {:generated_hook, :on_discard, _}
+    refute_receive {:generated_hook, :on_success, _}
+
+    assert {:snooze, 60} =
+             HookedGeneratedWorker.perform(worker_job(%{user_id: 456, mode: "snooze"}))
+
+    assert_receive {:generated_hook, :on_start, 456}
+    assert_receive {:generated_hook, :process, 456}
+    refute_receive {:generated_hook, :on_failure, _}
+    refute_receive {:generated_hook, :on_discard, _}
+    refute_receive {:generated_hook, :on_success, _}
+  end
+
+  test "generated perform dispatches hooks then preserves process raises, throws, and exits" do
+    assert_raise RuntimeError, "process failed", fn ->
+      HookedGeneratedWorker.perform(
+        worker_job(%{user_id: 123, mode: "raise"}, attempt: 1, max_attempts: 3)
+      )
+    end
+
+    assert_receive {:generated_hook, :on_failure,
+                    %{
+                      state: :failure,
+                      reason: %RuntimeError{message: "process failed"},
+                      result: nil,
+                      kind: :error,
+                      terminal?: false
+                    }}
+
+    assert catch_throw(HookedGeneratedWorker.perform(worker_job(%{user_id: 123, mode: "throw"}))) ==
+             :process_thrown
+
+    assert_receive {:generated_hook, :on_failure,
+                    %{
+                      state: :failure,
+                      reason: :process_thrown,
+                      result: nil,
+                      kind: :throw,
+                      terminal?: false
+                    }}
+
+    assert catch_exit(HookedGeneratedWorker.perform(worker_job(%{user_id: 123, mode: "exit"}))) ==
+             :process_exited
+
+    assert_receive {:generated_hook, :on_failure,
+                    %{
+                      state: :failure,
+                      reason: :process_exited,
+                      result: nil,
+                      kind: :exit,
+                      terminal?: false
+                    }}
+  end
+
+  test "generated hook crashes do not change process returns or preserved exceptions" do
+    capture_log(fn ->
+      assert :ok = CrashingGeneratedHookWorker.perform(worker_job(%{mode: "ok"}))
+
+      assert {:error, :temporary} =
+               CrashingGeneratedHookWorker.perform(
+                 worker_job(%{mode: "error"}, attempt: 1, max_attempts: 3)
+               )
+
+      assert {:discard, :manual} =
+               CrashingGeneratedHookWorker.perform(worker_job(%{mode: "discard"}))
+
+      assert_raise RuntimeError, "process failed", fn ->
+        CrashingGeneratedHookWorker.perform(
+          worker_job(%{mode: "raise"}, attempt: 1, max_attempts: 3)
+        )
+      end
+    end)
   end
 
   test "valid limits declarations are normalized onto the worker" do
@@ -295,5 +554,26 @@ defmodule ObanPowertools.WorkerTest do
       end,
       nil
     )
+  end
+
+  defp worker_job(args, opts \\ []) do
+    %Oban.Job{
+      args: args,
+      attempt: Keyword.get(opts, :attempt, 1),
+      max_attempts: Keyword.get(opts, :max_attempts, 3)
+    }
+  end
+
+  defp assert_receive_in_order(expected_messages) do
+    received_messages =
+      for _message <- expected_messages do
+        receive do
+          message -> message
+        after
+          100 -> flunk("expected #{length(expected_messages)} messages, received fewer")
+        end
+      end
+
+    assert received_messages == expected_messages
   end
 end
