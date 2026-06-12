@@ -72,6 +72,70 @@ defmodule ObanPowertools.WorkerTest do
     def on_discard(_job, event), do: send(self(), {:generated_hook, :on_discard, event})
   end
 
+  defmodule StaticTimeoutWorker do
+    use ObanPowertools.Worker,
+      queue: :default,
+      args: [user_id: :integer],
+      timeout: 5_000
+
+    @impl true
+    def process(%Oban.Job{args: %__MODULE__.Args{user_id: user_id}}) do
+      send(self(), {:static_timeout_processed, user_id})
+      :ok
+    end
+  end
+
+  defmodule TimeoutOverrideWorker do
+    use ObanPowertools.Worker,
+      queue: :default,
+      args: [user_id: :integer],
+      timeout: 5_000
+
+    @impl Oban.Worker
+    def timeout(_job), do: 321
+
+    @impl true
+    def process(%Oban.Job{args: %__MODULE__.Args{user_id: user_id}}) do
+      send(self(), {:timeout_override_processed, user_id})
+      :ok
+    end
+  end
+
+  defmodule DeadlineGeneratedWorker do
+    use ObanPowertools.Worker,
+      queue: :default,
+      args: [
+        user_id: :integer,
+        mode: :string
+      ],
+      deadline: :timer.seconds(60)
+
+    @impl true
+    def on_start(%Oban.Job{args: %__MODULE__.Args{user_id: user_id}}) do
+      send(self(), {:generated_deadline_hook, :on_start, user_id})
+      :ok
+    end
+
+    @impl true
+    def process(%Oban.Job{args: %__MODULE__.Args{user_id: user_id, mode: mode}}) do
+      send(self(), {:generated_deadline_hook, :process, user_id})
+
+      case mode do
+        "ok" -> :ok
+        "error" -> {:error, :temporary}
+      end
+    end
+
+    @impl true
+    def on_success(_job, event), do: send(self(), {:generated_deadline_hook, :on_success, event})
+
+    @impl true
+    def on_failure(_job, event), do: send(self(), {:generated_deadline_hook, :on_failure, event})
+
+    @impl true
+    def on_discard(_job, event), do: send(self(), {:generated_deadline_hook, :on_discard, event})
+  end
+
   defmodule CrashingGeneratedHookWorker do
     use ObanPowertools.Worker,
       queue: :default,
@@ -270,6 +334,84 @@ defmodule ObanPowertools.WorkerTest do
     refute_receive {:generated_hook, :on_failure, _}
     refute_receive {:generated_hook, :on_discard, _}
     refute_receive {:generated_hook, :on_success, _}
+  end
+
+  test "static timeout option generates overridable Oban timeout callback" do
+    assert 5_000 = StaticTimeoutWorker.timeout(%Oban.Job{})
+    assert 321 = TimeoutOverrideWorker.timeout(%Oban.Job{})
+  end
+
+  test "invalid timeout and deadline declarations fail at compile time" do
+    for {option, value} <- [timeout: 0, timeout: -1, timeout: :infinity, deadline: 0] do
+      option_source = Atom.to_string(option)
+
+      assert_raise ArgumentError, ~r/#{inspect(option)}/, fn ->
+        Code.compile_string("""
+        defmodule InvalidSafetyWorker#{System.unique_integer([:positive])} do
+          use ObanPowertools.Worker,
+            queue: :default,
+            args: [id: :integer],
+            #{option_source}: #{inspect(value)}
+
+          @impl true
+          def process(_job), do: :ok
+        end
+        """)
+      end
+    end
+  end
+
+  test "expired deadline metadata cancels before hooks and process" do
+    expired_at =
+      DateTime.utc_now()
+      |> DateTime.add(-60, :second)
+      |> DateTime.to_iso8601()
+
+    job =
+      worker_job(%{user_id: 123, mode: "ok"},
+        meta: %{"__deadline_at__" => expired_at}
+      )
+
+    assert 60_000 = DeadlineGeneratedWorker.__powertools_deadline_ms__()
+    assert {:cancel, :deadline_expired} = DeadlineGeneratedWorker.perform(job)
+
+    refute_receive {:generated_deadline_hook, _, _}
+    refute_receive {:generated_deadline_hook, _, _, _}
+  end
+
+  test "missing malformed and future deadline metadata run normally" do
+    assert :ok = DeadlineGeneratedWorker.perform(worker_job(%{user_id: 123, mode: "ok"}))
+
+    assert_receive {:generated_deadline_hook, :on_start, 123}
+    assert_receive {:generated_deadline_hook, :process, 123}
+    assert_receive {:generated_deadline_hook, :on_success, %{state: :success, result: :ok}}
+
+    malformed_job =
+      worker_job(%{user_id: 456, mode: "ok"},
+        meta: %{"__deadline_at__" => "not-a-date"}
+      )
+
+    assert :ok = DeadlineGeneratedWorker.perform(malformed_job)
+
+    assert_receive {:generated_deadline_hook, :on_start, 456}
+    assert_receive {:generated_deadline_hook, :process, 456}
+    assert_receive {:generated_deadline_hook, :on_success, %{state: :success, result: :ok}}
+
+    future_at =
+      DateTime.utc_now()
+      |> DateTime.add(60, :second)
+      |> DateTime.to_iso8601()
+
+    future_job =
+      worker_job(%{user_id: 789, mode: "ok"},
+        meta: %{"__deadline_at__" => future_at}
+      )
+
+    assert :ok = DeadlineGeneratedWorker.perform(future_job)
+
+    assert_receive {:generated_deadline_hook, :on_start, 789}
+    assert_receive {:generated_deadline_hook, :process, 789}
+    assert_receive {:generated_deadline_hook, :on_success, %{state: :success, result: :ok}}
   end
 
   test "generated perform dispatches hooks then preserves process raises, throws, and exits" do
@@ -560,7 +702,8 @@ defmodule ObanPowertools.WorkerTest do
     %Oban.Job{
       args: args,
       attempt: Keyword.get(opts, :attempt, 1),
-      max_attempts: Keyword.get(opts, :max_attempts, 3)
+      max_attempts: Keyword.get(opts, :max_attempts, 3),
+      meta: Keyword.get(opts, :meta, %{})
     }
   end
 
