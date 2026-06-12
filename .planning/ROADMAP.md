@@ -101,7 +101,17 @@ Plans:
   3. When `perform/1` runs and wall-clock time has passed `__deadline_at__`, the job returns `{:cancel, :deadline_expired}` without calling `process/1`
   4. `mix oban_powertools.doctor` reports `retryable` jobs with an expired `__deadline_at__` as a warning
 
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+**Wave 1**
+
+- [ ] 54-01-PLAN.md - Worker timeout callback generation and pre-run deadline cancellation
+- [ ] 54-03-PLAN.md - Doctor expired-deadline warning diagnostics
+- [ ] 54-04-PLAN.md - Timeout, deadline, and Doctor strict-mode support-truth docs
+
+**Wave 2** *(blocked on Wave 1 plan 54-01 completion)*
+
+- [ ] 54-02-PLAN.md - Enqueue-time deadline metadata with idempotency-safe merge behavior
 
 ### Phase 55: Output Recording (JobRecord)
 
