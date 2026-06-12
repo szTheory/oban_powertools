@@ -78,7 +78,7 @@ defmodule ObanPowertools.Idempotency do
         args_map = if is_struct(args), do: Map.from_struct(args), else: args
 
         job_changeset =
-          worker_mod.new(args_map, merge_limits_meta(opts, worker_mod, args, fingerprint))
+          worker_mod.new(args_map, merge_powertools_meta(opts, worker_mod, args, fingerprint))
 
         repo.insert(job_changeset)
       else
@@ -144,8 +144,10 @@ defmodule ObanPowertools.Idempotency do
   defp canonicalize(list) when is_list(list), do: Enum.map(list, &canonicalize/1)
   defp canonicalize(value), do: value
 
-  defp merge_limits_meta(opts, worker_mod, args, fingerprint) do
+  defp merge_powertools_meta(opts, worker_mod, args, fingerprint) do
     meta = Keyword.get(opts, :meta, %{})
+    now = Keyword.get(opts, :now, DateTime.utc_now())
+    opts_for_job = Keyword.delete(opts, :now)
 
     limits_meta =
       case ObanPowertools.Worker.limit_snapshot(worker_mod, args) do
@@ -161,7 +163,16 @@ defmodule ObanPowertools.Idempotency do
           }
       end
 
-    Keyword.put(opts, :meta, deep_merge(meta, limits_meta))
+    deadline_ms =
+      if function_exported?(worker_mod, :__powertools_deadline_ms__, 0) do
+        worker_mod.__powertools_deadline_ms__()
+      end
+
+    deadline_meta = ObanPowertools.Worker.Deadlines.build_meta(deadline_ms, now)
+    powertools_meta = deep_merge(limits_meta, deadline_meta)
+    merged_meta = deep_merge(meta, powertools_meta)
+
+    Keyword.put(opts_for_job, :meta, merged_meta)
   end
 
   defp deep_merge(left, right) when is_map(left) and is_map(right) do
