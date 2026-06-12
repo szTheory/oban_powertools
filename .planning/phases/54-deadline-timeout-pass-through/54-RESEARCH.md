@@ -424,17 +424,17 @@ end
 | A1 | `DateTime.to_iso8601/1`, `DateTime.from_iso8601/1`, and `DateTime.compare/2` are the right standard library helpers for deadline formatting and parsing. | Don't Hand-Roll | Low; implementation can verify against Elixir docs while coding. |
 | A2 | SQL casting invalid ISO8601 strings directly may raise, so malformed Doctor metadata should be filtered defensively. | Common Pitfalls | Medium; planner should include a test with malformed deadline meta before finalizing query shape. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should malformed deadline metadata be ignored or warning-surfaced in Doctor?**
    - What we know: Phase context allows ignored or bounded warnings, but requires no crash. [VERIFIED: .planning/phases/54-deadline-timeout-pass-through/54-CONTEXT.md]
-   - What's unclear: The exact operator UX for malformed host-corrupted meta is not locked. [VERIFIED: .planning/phases/54-deadline-timeout-pass-through/54-CONTEXT.md]
-   - Recommendation: Ignore malformed values in the expired-deadline count for Phase 54 unless tests show a cheap bounded warning can be added without noisy false positives. [ASSUMED]
+   - Resolved answer: Malformed host-corrupted `meta["__deadline_at__"]` is ignored for expired-deadline checks in Phase 54. It must not crash Doctor and must not produce an expired-deadline warning; query errors still become bounded findings. [RESOLVED: 54-03-PLAN.md]
+   - Recommendation: Ignore malformed values in the expired-deadline check for Phase 54 unless a later phase explicitly adds a separate malformed-metadata diagnostic. [RESOLVED]
 
 2. **Should the Doctor warning list individual job ids or aggregate count?**
    - What we know: Current Doctor findings are human-readable single findings and JSON entries with stable schema version 1. [VERIFIED: lib/oban_powertools/doctor/formatter.ex]
-   - What's unclear: Phase context requires a warning, not exact message granularity. [VERIFIED: .planning/phases/54-deadline-timeout-pass-through/54-CONTEXT.md]
-   - Recommendation: Emit one aggregate warning including count and prefix to avoid excessive output for large queues. [ASSUMED]
+   - Resolved answer: Plan 54-03 emits one warning finding per expired retryable job, including the job id, worker, and deadline string. [RESOLVED: 54-03-PLAN.md]
+   - Recommendation: Emit per-job warning findings for Phase 54 so operators can act on specific retryable jobs without adding a new formatter schema. [RESOLVED]
 
 ## Environment Availability
 
