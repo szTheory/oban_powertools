@@ -17,6 +17,7 @@ defmodule ObanPowertools.Worker.Deadlines do
     deadline_at =
       now
       |> DateTime.add(duration_ms, :millisecond)
+      |> trim_zero_fraction()
       |> DateTime.to_iso8601()
 
     %{meta_key() => deadline_at}
@@ -34,4 +35,10 @@ defmodule ObanPowertools.Worker.Deadlines do
   end
 
   def expired?(_meta, _now), do: false
+
+  defp trim_zero_fraction(%DateTime{microsecond: {0, _precision}} = datetime) do
+    %{datetime | microsecond: {0, 0}}
+  end
+
+  defp trim_zero_fraction(%DateTime{} = datetime), do: datetime
 end
