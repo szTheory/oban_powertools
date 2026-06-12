@@ -9,6 +9,7 @@ enqueue typed jobs without pushing validation and duplicate suppression into eve
 - `validate/1` for synchronous argument validation
 - `enqueue/2` for idempotent inserts through the Powertools receipt table
 - optional `limits:` declarations when the worker also needs durable rate control
+- optional lifecycle hooks for observing start, success, retryable failure, and discard outcomes
 
 The runtime still executes an `Oban.Worker`. Powertools just makes the builder contract stricter.
 
@@ -59,6 +60,58 @@ Important behavior:
 
 That gives callers one stable API instead of ad hoc validation and “did we already queue this?”
 checks spread across controllers, LiveViews, and services.
+
+## Lifecycle hooks
+
+Workers may override `on_start/1`, `on_success/2`, `on_failure/2`, and `on_discard/2`
+when they need worker-local observation around `process/1`.
+
+- `on_start/1` runs after Powertools validates and casts args, and before `process/1`.
+- `on_success/2` runs when `process/1` returns `:ok` or `{:ok, value}`.
+- `on_failure/2` runs for retry-eligible `{:error, reason}` returns and for process
+  raises, throws, or exits when the wrapper can catch them.
+- `on_discard/2` runs for explicit `:discard` / `{:discard, reason}` returns and final
+  retry exhaustion.
+
+The hook support boundary is intentionally narrow:
+
+- hooks run in the job process
+- hooks run outside any Powertools transaction
+- hook failure does not fail the job
+- hook failure does not crash the queue
+- hook execution is not retried independently
+
+Hook return values are ignored. Use hooks for best-effort local observation, cleanup, or
+host-owned notifications, not for durable audit or execution control. The original Oban job
+outcome still comes from `process/1`.
+
+```elixir
+defmodule MyApp.Billing.ProcessInvoiceWorker do
+  use ObanPowertools.Worker,
+    queue: :billing,
+    args: [
+      invoice_id: :integer
+    ]
+
+  @impl true
+  def process(%Oban.Job{args: %__MODULE__.Args{invoice_id: invoice_id}}) do
+    MyApp.Billing.process_invoice(invoice_id)
+    :ok
+  end
+
+  @impl true
+  def on_success(%Oban.Job{args: %__MODULE__.Args{invoice_id: invoice_id}}, event) do
+    MyApp.WorkerEvents.invoice_processed(invoice_id, event.result)
+    :ok
+  end
+end
+```
+
+`{:cancel, reason}` and `{:snooze, _}` do not dispatch Phase 53 post hooks.
+operator-initiated Lifeline discards do not fire worker execution hooks; they are audited
+through the Lifeline repair pipeline. Oban timeout kills may bypass worker hooks because the
+BEAM can terminate the job process outside the wrapper; use Oban `[:oban, :job, :exception]`
+telemetry for timeout observability.
 
 ## Validation without enqueue
 
