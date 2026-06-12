@@ -83,7 +83,7 @@ Full phase details: [milestones/v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md)
 Plans:
 **Wave 1**
 
-- [ ] 53-01-PLAN.md - Core worker lifecycle hook runtime, crash safety, routing, and telemetry contract
+- [x] 53-01-PLAN.md - Core worker lifecycle hook runtime, crash safety, routing, and telemetry contract
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -145,7 +145,7 @@ Plans:
 | 32-42 | v1.4      | 27/27          | Complete    | 2026-05-27 |
 | 43-46 | v1.5      | 9/9            | Complete    | 2026-05-28 |
 | 47-52.1 | v1.6    | 16/16          | Complete    | 2026-05-30 |
-| 53    | v1.7      | 0/TBD          | Not started | -          |
+| 53    | v1.7      | 1/2            | In Progress | -          |
 | 54    | v1.7      | 0/TBD          | Not started | -          |
 | 55    | v1.7      | 0/TBD          | Not started | -          |
 | 56    | v1.7      | 0/TBD          | Not started | -          |
