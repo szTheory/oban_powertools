@@ -13,7 +13,8 @@ defmodule ObanPowertools.TelemetryTest do
         cascade_cancelled: [:scope, :outcome, :terminal_cause, :semantics_version],
         workflow_terminal: [:state, :outcome, :terminal_cause, :semantics_version]
       },
-      lifeline: [:action, :incident_class, :target_type, :outcome, :archived_count, :pruned_count]
+      lifeline: [:action, :incident_class, :target_type, :outcome, :archived_count, :pruned_count],
+      worker_hook: [:hook, :outcome]
     }
   }
 
@@ -49,6 +50,18 @@ defmodule ObanPowertools.TelemetryTest do
                  "(allowed: #{inspect(allowed_tags)})"
       end
     end
+  end
+
+  test "metrics/0 includes worker hook invocation counter" do
+    metrics = ObanPowertools.Telemetry.metrics()
+
+    assert metric =
+             Enum.find(metrics, fn metric ->
+               metric.event_name == [:oban_powertools, :worker_hook, :invoked]
+             end)
+
+    assert metric.name == [:oban_powertools, :worker_hook, :invoked, :count]
+    assert metric.tags == [:hook, :outcome]
   end
 
   test "emits operator action complete event" do
@@ -197,5 +210,27 @@ defmodule ObanPowertools.TelemetryTest do
     assert Enum.all?(Map.keys(received_metadata), fn k -> k in @expected_contract.families.lifeline end)
   after
     :telemetry.detach("lifeline-handler")
+  end
+
+  test "emits worker hook invoked event with bounded metadata" do
+    :telemetry.attach(
+      "worker-hook-handler",
+      [:oban_powertools, :worker_hook, :invoked],
+      fn name, measurements, metadata, _config ->
+        send(self(), {:worker_hook_event, name, measurements, metadata})
+      end,
+      nil
+    )
+
+    metadata = %{hook: "on_start", outcome: "ok"}
+
+    ObanPowertools.Telemetry.execute_worker_hook_event(:invoked, %{count: 1}, metadata)
+
+    assert_receive {:worker_hook_event, [:oban_powertools, :worker_hook, :invoked],
+                    %{count: 1}, ^metadata}
+
+    assert Map.keys(metadata) |> Enum.sort() == [:hook, :outcome]
+  after
+    :telemetry.detach("worker-hook-handler")
   end
 end
