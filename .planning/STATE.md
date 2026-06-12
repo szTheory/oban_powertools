@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Worker Lifecycle & Safety
 status: executing
-last_updated: "2026-06-12T16:11:47.154Z"
-last_activity: 2026-06-12 -- Phase 54 planning complete
+last_updated: "2026-06-12T16:56:15.133Z"
+last_activity: 2026-06-12
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 6
-  completed_plans: 2
-  percent: 25
+  completed_plans: 3
+  percent: 50
 ---
 
 # Project State
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-30)
 
 **Core value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-**Current focus:** Phase 54 — deadline: / timeout: pass through
+**Current focus:** Phase 54 — deadline-timeout-pass-through
 
 ## Current Position
 
-Phase: 54
-Plan: Not started
+Phase: 54 (deadline-timeout-pass-through) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-06-12 -- Phase 54 planning complete
+Last activity: 2026-06-12
 
-Progress: [███░░░░░░░] 25%
+Progress: [█████░░░░░] 50%
 
 ## Accumulated Context
 
@@ -72,3 +72,4 @@ Resume file: .planning/phases/54-deadline-timeout-pass-through/54-CONTEXT.md
 |-------|------|----------|-------|
 | Phase 53 P01 | 14 min | 3 tasks | 5 files |
 | Phase 53 P02 | 12 min | 2 tasks | 3 files |
+| Phase 54 P01 | 3 min | 2 tasks | 3 files |

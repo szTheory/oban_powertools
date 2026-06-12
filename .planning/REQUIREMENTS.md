@@ -22,9 +22,9 @@ Equip every `ObanPowertools.Worker` with observable, durable lifecycle hooks, a 
 
 ### Deadline & Timeout
 
-- [ ] **SAFE-01**: Worker can declare `timeout: milliseconds` in `use ObanPowertools.Worker` opts to generate a compile-time `timeout/1` callback default
+- [x] **SAFE-01**: Worker can declare `timeout: milliseconds` in `use ObanPowertools.Worker` opts to generate a compile-time `timeout/1` callback default
 - [ ] **SAFE-02**: Worker can declare `deadline: duration` in `use ObanPowertools.Worker` opts; job stores `__deadline_at__` ISO8601 timestamp in meta at enqueue time
-- [ ] **SAFE-03**: `perform/1` checks `__deadline_at__` before calling `process/1`; returns `{:cancel, :deadline_expired}` if wall-clock deadline has passed
+- [x] **SAFE-03**: `perform/1` checks `__deadline_at__` before calling `process/1`; returns `{:cancel, :deadline_expired}` if wall-clock deadline has passed
 - [ ] **SAFE-04**: `mix oban_powertools.doctor` surfaces `retryable` jobs whose `__deadline_at__` has passed as a warning
 
 ### Output Recording
@@ -76,9 +76,9 @@ Equip every `ObanPowertools.Worker` with observable, durable lifecycle hooks, a 
 | HOOK-03     | 53    | Complete |
 | HOOK-04     | 53    | Complete |
 | HOOK-05     | 53    | Complete |
-| SAFE-01     | 54    | Pending |
+| SAFE-01     | 54    | Complete |
 | SAFE-02     | 54    | Pending |
-| SAFE-03     | 54    | Pending |
+| SAFE-03     | 54    | Complete |
 | SAFE-04     | 54    | Pending |
 | REC-01      | 55    | Pending |
 | REC-02      | 55    | Pending |
