@@ -59,7 +59,7 @@ Full phase details: [milestones/v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md)
 
 ### v1.7 Worker Lifecycle & Safety
 
-- [ ] **Phase 53: Worker Lifecycle Hooks** — per-job observe-only callbacks with crash-caught dispatch and telemetry contract extension
+- [x] **Phase 53: Worker Lifecycle Hooks** — per-job observe-only callbacks with crash-caught dispatch and telemetry contract extension (completed 2026-06-12)
 - [ ] **Phase 54: deadline: / timeout: Pass-through** — compile-time soft deadline and timeout opts with Doctor integration
 - [ ] **Phase 55: Output Recording (JobRecord)** — new schema for fault-tolerant job output persistence with detail-view visibility
 - [ ] **Phase 56: redact: At-Rest** — compile-time field redaction from args at enqueue with UI annotation and recording integration
@@ -87,7 +87,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 53-02-PLAN.md - Worker hook support-truth docs, telemetry guide, and docs-contract tests
+- [x] 53-02-PLAN.md - Worker hook support-truth docs, telemetry guide, and docs-contract tests
 
 ### Phase 54: deadline: / timeout: Pass-through
 
@@ -145,7 +145,7 @@ Plans:
 | 32-42 | v1.4      | 27/27          | Complete    | 2026-05-27 |
 | 43-46 | v1.5      | 9/9            | Complete    | 2026-05-28 |
 | 47-52.1 | v1.6    | 16/16          | Complete    | 2026-05-30 |
-| 53    | v1.7      | 1/2            | In Progress | -          |
+| 53    | v1.7      | 2/2            | Complete    | 2026-06-12 |
 | 54    | v1.7      | 0/TBD          | Not started | -          |
 | 55    | v1.7      | 0/TBD          | Not started | -          |
 | 56    | v1.7      | 0/TBD          | Not started | -          |
