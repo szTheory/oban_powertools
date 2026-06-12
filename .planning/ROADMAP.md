@@ -126,7 +126,16 @@ Plans:
   4. A worker declaring `output_limit: 65_536` has payloads exceeding that byte count rejected at record time with a warning rather than stored or truncated silently
   5. A worker declaring `output_retention: :ephemeral` has its job records pruned on the shorter retention schedule via the existing Lifeline prune cycle
 
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+**Wave 1**
+- [ ] 55-01-PLAN.md — JobRecord schema, storage, limits, and JSON payload normalization
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 55-02-PLAN.md — Worker wrapper recording injection for success cases
+- [ ] 55-03-PLAN.md — JobsLive and DisplayPolicy recorded output visualization
+- [ ] 55-04-PLAN.md — Lifeline retention pruning extension and operator docs
+
 **UI hint**: yes
 
 ### Phase 56: redact: At-Rest
@@ -157,5 +166,5 @@ Plans:
 | 47-52.1 | v1.6    | 16/16          | Complete    | 2026-05-30 |
 | 53    | v1.7      | 2/2            | Complete    | 2026-06-12 |
 | 54    | v1.7      | 4/4 | Complete    | 2026-06-12 |
-| 55    | v1.7      | 0/TBD          | Not started | -          |
+| 55    | v1.7      | 0/4            | Planned     | -          |
 | 56    | v1.7      | 0/TBD          | Not started | -          |
