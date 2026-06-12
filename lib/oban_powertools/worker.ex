@@ -3,6 +3,8 @@ defmodule ObanPowertools.Worker do
   A wrapper around `Oban.Worker` that provides typed arguments and synchronous validation.
   """
 
+  @hook_arities %{on_start: 1, on_success: 2, on_failure: 2, on_discard: 2}
+
   defmacro __using__(opts) do
     args_config = Keyword.get(opts, :args, [])
     limits_config = Keyword.get(opts, :limits, [])
@@ -22,6 +24,10 @@ defmodule ObanPowertools.Worker do
       @behaviour __MODULE__
       import Ecto.Changeset
       @powertools_limits unquote(Macro.escape(normalized_limits))
+      Module.register_attribute(__MODULE__, :powertools_overridden_hooks, accumulate: true)
+      Module.register_attribute(__MODULE__, :powertools_defining_default_hook, accumulate: false)
+      @on_definition {ObanPowertools.Worker, :__on_definition__}
+      @before_compile ObanPowertools.Worker
 
       @callback process(Oban.Job.t()) ::
                   :ok
@@ -30,6 +36,11 @@ defmodule ObanPowertools.Worker do
                   | {:cancel, term()}
                   | {:snooze, integer()}
                   | term()
+
+      @callback on_start(Oban.Job.t()) :: term()
+      @callback on_success(Oban.Job.t(), map()) :: term()
+      @callback on_failure(Oban.Job.t(), map()) :: term()
+      @callback on_discard(Oban.Job.t(), map()) :: term()
 
       def __powertools_limits__, do: @powertools_limits
 
@@ -62,11 +73,20 @@ defmodule ObanPowertools.Worker do
         end
       end
 
+      @powertools_defining_default_hook true
+      def on_start(_job), do: :ok
+      def on_success(_job, _event), do: :ok
+      def on_failure(_job, _event), do: :ok
+      def on_discard(_job, _event), do: :ok
+      @powertools_defining_default_hook false
+
+      defoverridable on_start: 1, on_success: 2, on_failure: 2, on_discard: 2
+
       @impl Oban.Worker
       def perform(%Oban.Job{args: args} = job) when is_map(args) do
         case validate(args) do
           {:ok, casted_args} ->
-            process(%{job | args: casted_args})
+            __powertools_perform__(%{job | args: casted_args})
 
           {:error, changeset} ->
             {:error, changeset}
@@ -74,7 +94,35 @@ defmodule ObanPowertools.Worker do
       end
 
       def perform(%Oban.Job{args: %Args{}} = job) do
-        process(job)
+        __powertools_perform__(job)
+      end
+
+      defp __powertools_perform__(%Oban.Job{} = job) do
+        ObanPowertools.Worker.Hooks.on_start(__MODULE__, job)
+
+        try do
+          result = process(job)
+          ObanPowertools.Worker.Hooks.after_result(__MODULE__, job, result)
+          result
+        rescue
+          error ->
+            stacktrace = __STACKTRACE__
+
+            ObanPowertools.Worker.Hooks.after_exception(
+              __MODULE__,
+              job,
+              :error,
+              error,
+              stacktrace
+            )
+
+            reraise error, stacktrace
+        catch
+          kind, reason ->
+            stacktrace = __STACKTRACE__
+            ObanPowertools.Worker.Hooks.after_exception(__MODULE__, job, kind, reason, stacktrace)
+            :erlang.raise(kind, reason, stacktrace)
+        end
       end
 
       @doc """
@@ -83,6 +131,31 @@ defmodule ObanPowertools.Worker do
       def enqueue(args, opts \\ []) do
         ObanPowertools.Idempotency.transaction(__MODULE__, args, opts)
       end
+    end
+  end
+
+  def __on_definition__(env, :def, name, args, _guards, _body) do
+    arity = length(args)
+
+    if Map.get(@hook_arities, name) == arity and
+         Module.get_attribute(env.module, :powertools_defining_default_hook) != true do
+      Module.put_attribute(env.module, :powertools_overridden_hooks, name)
+    end
+
+    :ok
+  end
+
+  def __on_definition__(_env, _kind, _name, _args, _guards, _body), do: :ok
+
+  defmacro __before_compile__(env) do
+    hooks =
+      env.module
+      |> Module.get_attribute(:powertools_overridden_hooks)
+      |> List.wrap()
+      |> Enum.uniq()
+
+    quote do
+      def __powertools_hook_overridden?(hook), do: hook in unquote(hooks)
     end
   end
 
