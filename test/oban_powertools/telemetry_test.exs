@@ -183,7 +183,8 @@ defmodule ObanPowertools.TelemetryTest do
     assert_receive {:cron_event, [:oban_powertools, :cron, :previewed], %{count: 1},
                     received_metadata}
 
-    assert Map.keys(received_metadata) |> Enum.sort() == Enum.sort(@expected_contract.families.cron)
+    assert Map.keys(received_metadata) |> Enum.sort() ==
+             Enum.sort(@expected_contract.families.cron)
   after
     :telemetry.detach("cron-handler")
   end
@@ -204,10 +205,12 @@ defmodule ObanPowertools.TelemetryTest do
       target_type: "workflow"
     })
 
-    assert_receive {:lifeline_event, [:oban_powertools, :lifeline, :repair_executed],
-                    %{count: 1}, received_metadata}
+    assert_receive {:lifeline_event, [:oban_powertools, :lifeline, :repair_executed], %{count: 1},
+                    received_metadata}
 
-    assert Enum.all?(Map.keys(received_metadata), fn k -> k in @expected_contract.families.lifeline end)
+    assert Enum.all?(Map.keys(received_metadata), fn k ->
+             k in @expected_contract.families.lifeline
+           end)
   after
     :telemetry.detach("lifeline-handler")
   end
@@ -226,8 +229,8 @@ defmodule ObanPowertools.TelemetryTest do
 
     ObanPowertools.Telemetry.execute_worker_hook_event(:invoked, %{count: 1}, metadata)
 
-    assert_receive {:worker_hook_event, [:oban_powertools, :worker_hook, :invoked],
-                    %{count: 1}, ^metadata}
+    assert_receive {:worker_hook_event, [:oban_powertools, :worker_hook, :invoked], %{count: 1},
+                    ^metadata}
 
     assert Map.keys(metadata) |> Enum.sort() == [:hook, :outcome]
   after
