@@ -231,6 +231,7 @@ defmodule ObanPowertools.DocsContractTest do
   @simulate_task_path "lib/mix/tasks/oban_powertools.limiter.simulate.ex"
   @explain_task_path "lib/mix/tasks/oban_powertools.limiter.explain.ex"
   @limits_guide_path "guides/limits-and-explain.md"
+  @worker_guide_path "guides/workers-and-idempotency.md"
 
   test "limits-and-explain guide contains all D-08 rate-limit glossary terms (OPS-08)" do
     source = File.read!(@limits_guide_path)
@@ -270,6 +271,27 @@ defmodule ObanPowertools.DocsContractTest do
           "OPS-08 explain term check will run post-wave-merge."
       )
     end
+  end
+
+  test "worker lifecycle hook support truth stays locked in builder docs" do
+    source = File.read!(@worker_guide_path)
+
+    for callback <- ["on_start/1", "on_success/2", "on_failure/2", "on_discard/2"] do
+      assert source =~ callback
+    end
+
+    assert source =~ "hooks run in the job process"
+    assert source =~ "outside any Powertools transaction"
+    assert source =~ "hook failure does not fail the job"
+    assert source =~ "hook failure does not crash the queue"
+    assert source =~ "hook execution is not retried independently"
+    assert source =~ "operator-initiated Lifeline discards do not fire worker execution hooks"
+    assert source =~ "Oban timeout kills may bypass worker hooks"
+
+    refute source =~ "hooks can short-circuit"
+    refute source =~ "hooks halt execution"
+    refute source =~ "hooks provide durable audit"
+    refute source =~ "hooks are retried independently"
   end
 
   defp joined_docs do
