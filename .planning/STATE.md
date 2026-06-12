@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Worker Lifecycle & Safety
 status: planning
-last_updated: "2026-06-12T01:56:58.476Z"
+last_updated: "2026-06-12T01:57:44.543Z"
 last_activity: 2026-05-30 — v1.7 roadmap created; Phase 53 is next
 progress:
   total_phases: 4
@@ -52,7 +52,7 @@ See PROJECT.md Key Decisions section.
 - Separate `oban_powertools_job_records` table (not modifying `Workflow.Result`) — FK/unique semantics differ.
 - No FK from `job_records` to `oban_jobs` — Oban prunes its own table; hard FK blocks pruning.
 - Redact after fingerprint — fingerprint computed from full unredacted args; `Map.drop` applied before `Oban.Job.new/2`.
-- Hook dispatch: `{:cancel, reason}` routes to `on_discard`; `on_failure` does NOT fire after timeout kill (BEAM EXIT bypasses rescue/after).
+- Hook dispatch: retry-eligible failures route to `on_failure`; final exhaustion and explicit discard route to `on_discard`; `{:cancel, reason}` remains cancelled and does not fire `on_discard`; `on_failure` does NOT fire after timeout kill (BEAM EXIT bypasses rescue/after). Phase 53 CONTEXT is authoritative.
 - Zero new runtime dependencies for v1.7.
 - Build order: Phase 53 (hooks) → Phase 54 (deadline/timeout, depends on wrapper) → Phase 55 (recording, depends on wrapper) → Phase 56 (redact, depends on recording pipeline).
 
