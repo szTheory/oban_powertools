@@ -14,11 +14,11 @@ Equip every `ObanPowertools.Worker` with observable, durable lifecycle hooks, a 
 
 ### Worker Lifecycle Hooks
 
-- [ ] **HOOK-01**: Worker can declare `on_start/1` callback that fires before `process/1` — observe-only, crash-caught, no-op default
-- [ ] **HOOK-02**: Worker can declare `on_success/2` callback that fires when `process/1` returns `:ok` or `{:ok, _}` — observe-only, crash-caught, no-op default
-- [ ] **HOOK-03**: Worker can declare `on_failure/2` callback that fires when `process/1` returns `{:error, _}` or raises — observe-only, crash-caught, no-op default
-- [ ] **HOOK-04**: Worker can declare `on_discard/2` callback that fires when job is discarded after exhausting all retries — observe-only, crash-caught, no-op default
-- [ ] **HOOK-05**: Worker hook invocations emit telemetry under a new `worker_hook` family in the frozen low-cardinality contract (`hook`, `outcome` keys)
+- [x] **HOOK-01**: Worker can declare `on_start/1` callback that fires before `process/1` — observe-only, crash-caught, no-op default
+- [x] **HOOK-02**: Worker can declare `on_success/2` callback that fires when `process/1` returns `:ok` or `{:ok, _}` — observe-only, crash-caught, no-op default
+- [x] **HOOK-03**: Worker can declare `on_failure/2` callback that fires when `process/1` returns `{:error, _}` or raises — observe-only, crash-caught, no-op default
+- [x] **HOOK-04**: Worker can declare `on_discard/2` callback that fires when job is discarded after exhausting all retries — observe-only, crash-caught, no-op default
+- [x] **HOOK-05**: Worker hook invocations emit telemetry under a new `worker_hook` family in the frozen low-cardinality contract (`hook`, `outcome` keys)
 
 ### Deadline & Timeout
 
@@ -71,11 +71,11 @@ Equip every `ObanPowertools.Worker` with observable, durable lifecycle hooks, a 
 
 | Requirement | Phase | Status  |
 |-------------|-------|---------|
-| HOOK-01     | 53    | Pending |
-| HOOK-02     | 53    | Pending |
-| HOOK-03     | 53    | Pending |
-| HOOK-04     | 53    | Pending |
-| HOOK-05     | 53    | Pending |
+| HOOK-01     | 53    | Complete |
+| HOOK-02     | 53    | Complete |
+| HOOK-03     | 53    | Complete |
+| HOOK-04     | 53    | Complete |
+| HOOK-05     | 53    | Complete |
 | SAFE-01     | 54    | Pending |
 | SAFE-02     | 54    | Pending |
 | SAFE-03     | 54    | Pending |
