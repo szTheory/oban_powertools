@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Worker Lifecycle & Safety
-status: ready_to_plan
-last_updated: "2026-05-30"
-last_activity: 2026-05-30
+status: planning
+last_updated: "2026-06-12T01:56:58.476Z"
+last_activity: 2026-05-30 — v1.7 roadmap created; Phase 53 is next
 progress:
   total_phases: 4
   completed_phases: 0
@@ -38,6 +38,7 @@ Progress: [░░░░░░░░░░] 0%
 All 7 phases complete (47-52.1), 16/16 plans, 428 tests, 0 failures. Published to hex.pm at `0.5.0`. Doctor CLI, Limiter CLI, Telemetry metrics, SLO guide, hex_consumer adoption proof, and zero-touch release pipeline all shipped.
 
 **Deferred carry-ins for v1.7+:**
+
 - Live CI E2E gate for REL-04 `verify-published` — fix in place (Phase 52.1), resolves on next release cycle.
 - Doctor/limiter CLI/telemetry in-repo verified but not in published 0.5.0 — awaiting 0.5.1 release-please PR.
 - Phase 47 missing VERIFICATION.md — process gap, not a deliverable gap.
@@ -47,6 +48,7 @@ All 7 phases complete (47-52.1), 16/16 plans, 428 tests, 0 failures. Published t
 See PROJECT.md Key Decisions section.
 
 **v1.7 key decisions (from research):**
+
 - Separate `oban_powertools_job_records` table (not modifying `Workflow.Result`) — FK/unique semantics differ.
 - No FK from `job_records` to `oban_jobs` — Oban prunes its own table; hard FK blocks pruning.
 - Redact after fingerprint — fingerprint computed from full unredacted args; `Map.drop` applied before `Oban.Job.new/2`.
@@ -60,6 +62,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-30
-Stopped at: Roadmap created for v1.7 (Phases 53-56)
-Resume file: None
+Last session: 2026-06-12T01:56:58.471Z
+Stopped at: Phase 53 context gathered
+Resume file: .planning/phases/53-worker-lifecycle-hooks/53-CONTEXT.md
