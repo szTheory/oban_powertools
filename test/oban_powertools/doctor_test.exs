@@ -69,5 +69,29 @@ defmodule ObanPowertools.DoctorTest do
       results = Doctor.run(TestRepo, prefix: "public")
       assert Doctor.exit_code_for(results) == 0
     end
+
+    test "includes expired deadline warnings without strict promotion" do
+      past_iso =
+        DateTime.utc_now()
+        |> DateTime.add(-60, :second)
+        |> DateTime.to_iso8601()
+
+      insert_oban_job!(%{"__deadline_at__" => past_iso}, state: "retryable")
+
+      results = Doctor.run(TestRepo, prefix: "public", strict: true)
+
+      assert Enum.any?(results, fn finding ->
+               finding.check == :expired_deadline_jobs and finding.severity == :warning
+             end)
+    end
+  end
+
+  defp insert_oban_job!(meta, opts) do
+    state = Keyword.fetch!(opts, :state)
+
+    %{}
+    |> Oban.Job.new(worker: "Example.Worker", queue: :default, meta: meta)
+    |> Ecto.Changeset.change(state: state)
+    |> TestRepo.insert!()
   end
 end
