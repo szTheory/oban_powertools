@@ -67,53 +67,70 @@ Full phase details: [milestones/v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md)
 ## Phase Details
 
 ### Phase 53: Worker Lifecycle Hooks
+
 **Goal**: Every ObanPowertools.Worker can observe its own execution lifecycle with crash-safe callbacks that never affect job outcome
 **Depends on**: Phase 52.1 (v1.6 complete)
 **Requirements**: HOOK-01, HOOK-02, HOOK-03, HOOK-04, HOOK-05
 **Success Criteria** (what must be TRUE):
+
   1. A worker declaring `on_start/1` has that callback invoked before `process/1` runs; a crash in the callback does not retry the job
   2. A worker declaring `on_success/2` receives the `:ok`/`{:ok, _}` result after `process/1` succeeds; `on_failure/2` receives the error when `process/1` returns `{:error, _}` or raises
   3. A worker's `on_discard/2` fires exactly once when a job is discarded after retry exhaustion, not on each failed attempt
   4. Workers that omit any hook callback compile and run without error via no-op `defoverridable` defaults
   5. Hook invocations produce telemetry events under the `:worker_hook` family in the frozen low-cardinality contract (`hook` and `outcome` keys present)
+
 **Plans**: 2 plans
 Plans:
+**Wave 1**
+
 - [ ] 53-01-PLAN.md - Core worker lifecycle hook runtime, crash safety, routing, and telemetry contract
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 53-02-PLAN.md - Worker hook support-truth docs, telemetry guide, and docs-contract tests
 
 ### Phase 54: deadline: / timeout: Pass-through
+
 **Goal**: Workers can declare per-job execution time limits and wall-clock expiry constraints as compile-time opts that Oban and the perform wrapper enforce automatically
 **Depends on**: Phase 53
 **Requirements**: SAFE-01, SAFE-02, SAFE-03, SAFE-04
 **Success Criteria** (what must be TRUE):
+
   1. A worker declaring `timeout: 5_000` has Oban use that value as the per-attempt kill timeout without any additional host configuration
   2. A worker declaring `deadline: :timer.hours(24)` causes enqueued jobs to store `__deadline_at__` as an ISO8601 timestamp in meta
   3. When `perform/1` runs and wall-clock time has passed `__deadline_at__`, the job returns `{:cancel, :deadline_expired}` without calling `process/1`
   4. `mix oban_powertools.doctor` reports `retryable` jobs with an expired `__deadline_at__` as a warning
+
 **Plans**: TBD
 
 ### Phase 55: Output Recording (JobRecord)
+
 **Goal**: Workers can opt in to persisting their successful output in a dedicated schema that operators can query and inspect in the job detail view
 **Depends on**: Phase 53
 **Requirements**: REC-01, REC-02, REC-03, REC-04, REC-05
 **Success Criteria** (what must be TRUE):
+
   1. A worker declaring `record_output: true` has its `{:ok, payload}` return value persisted to `oban_powertools_job_records` after `process/1` succeeds; a recording failure logs a warning but does not fail or retry the job
   2. `ObanPowertools.JobRecord.fetch_result/1` returns `{:ok, result}` for a job that recorded output and `{:error, :not_found}` for one that did not
   3. The `/ops/jobs` job detail view shows the recorded output for jobs where output was persisted
   4. A worker declaring `output_limit: 65_536` has payloads exceeding that byte count rejected at record time with a warning rather than stored or truncated silently
   5. A worker declaring `output_retention: :ephemeral` has its job records pruned on the shorter retention schedule via the existing Lifeline prune cycle
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 56: redact: At-Rest
+
 **Goal**: Workers can declare which arg fields must be dropped from persistence at enqueue time, with transparent operator visibility into what was redacted and why
 **Depends on**: Phase 55
 **Requirements**: REDACT-01, REDACT-02, REDACT-03, REDACT-04
 **Success Criteria** (what must be TRUE):
+
   1. A worker declaring `redact: [:ssn, :token]` causes those keys to be absent from `oban_jobs.args` in the database after enqueue, while the idempotency fingerprint is computed from the original unredacted args
   2. Enqueued jobs store `__redacted_fields__` in meta listing which fields were dropped, so the record is self-describing
   3. The `/ops/jobs` job detail view renders "Fields redacted at enqueue: [:ssn, :token]" when `__redacted_fields__` is present in meta
   4. `DisplayPolicy.render_job_field/3` shows "Redacted at enqueue" for any arg field listed in `__redacted_fields__` rather than displaying a missing value
+
 **Plans**: TBD
 **UI hint**: yes
 
