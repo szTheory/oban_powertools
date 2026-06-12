@@ -295,6 +295,26 @@ defmodule ObanPowertools.DocsContractTest do
     refute source =~ "hooks are retried independently"
   end
 
+  test "worker timeout and deadline support truth stays locked in builder docs" do
+    source = File.read!(@worker_guide_path)
+
+    assert source =~ "timeout:"
+    assert source =~ "deadline:"
+    assert source =~ "positive integer milliseconds"
+    assert source =~ "Oban's per-attempt `timeout/1` kill timer"
+    assert source =~ "Oban timeout kills may bypass Powertools worker hooks"
+    assert source =~ "soft pre-run wall-clock expiry"
+    assert source =~ ~s(meta["__deadline_at__"])
+    assert source =~ "{:cancel, :deadline_expired}"
+    assert source =~ "before `on_start/1` and `process/1`"
+    assert source =~ "does not interrupt already-running work"
+    assert source =~ "No Powertools-specific telemetry is emitted for deadlines in this phase"
+
+    refute source =~ "hard deadline"
+    refute source =~ "interrupt running work"
+    refute source =~ "deadline telemetry"
+  end
+
   test "telemetry guide locks worker_hook metric and label boundaries" do
     source = File.read!(@telemetry_guide_path)
 
