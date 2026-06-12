@@ -2,14 +2,15 @@ defmodule ObanPowertools.Telemetry do
   @moduledoc """
   Public telemetry contract for Oban Powertools.
 
-  Phase 8 freezes five event families under the `[:oban_powertools, family, event_suffix]`
-  prefix:
+  Powertools publishes low-cardinality event families under the
+  `[:oban_powertools, family, event_suffix]` prefix:
 
   - `:operator_action`
   - `:limiter`
   - `:cron`
   - `:workflow`
   - `:lifeline`
+  - `:worker_hook`
 
   The public measurement key is `:count`.
 
@@ -24,9 +25,10 @@ defmodule ObanPowertools.Telemetry do
     - `:cascade_cancelled` -> `[:scope, :outcome, :terminal_cause, :semantics_version]`
     - `:workflow_terminal` -> `[:state, :outcome, :terminal_cause, :semantics_version]`
   - `:lifeline` -> `[:action, :incident_class, :target_type, :outcome, :archived_count, :pruned_count]`
+  - `:worker_hook` -> `[:hook, :outcome]`
 
-  IDs, job args, preview tokens, and free-form reasons are intentionally excluded from this
-  public API.
+  IDs, job args, worker names, queues, preview tokens, stacktraces, and free-form reasons
+  are intentionally excluded from this public API.
   """
 
   @contract %{
@@ -41,7 +43,8 @@ defmodule ObanPowertools.Telemetry do
         cascade_cancelled: [:scope, :outcome, :terminal_cause, :semantics_version],
         workflow_terminal: [:state, :outcome, :terminal_cause, :semantics_version]
       },
-      lifeline: [:action, :incident_class, :target_type, :outcome, :archived_count, :pruned_count]
+      lifeline: [:action, :incident_class, :target_type, :outcome, :archived_count, :pruned_count],
+      worker_hook: [:hook, :outcome]
     }
   }
 
@@ -51,8 +54,9 @@ defmodule ObanPowertools.Telemetry do
   def contract, do: @contract
 
   @doc """
-  Returns a list of `Telemetry.Metrics` counter definitions for the 5 frozen Oban Powertools
-  event families: `:operator_action`, `:limiter`, `:cron`, `:workflow`, and `:lifeline`.
+  Returns a list of `Telemetry.Metrics` counter definitions for the Oban Powertools event
+  families: `:operator_action`, `:limiter`, `:cron`, `:workflow`, `:lifeline`, and
+  `:worker_hook`.
 
   Each metric's `:tags` is a strict subset of the frozen `@contract` for that family and suffix,
   ensuring low-cardinality safety (SC-4). No Oban-core `[:oban, :job, *]` metrics are emitted —
@@ -174,6 +178,12 @@ defmodule ObanPowertools.Telemetry do
       counter.("oban_powertools.lifeline.archive_prune_completed.count",
         tags: [:outcome],
         description: "Lifeline archive prune cycle completed"
+      ),
+
+      # worker_hook — dispatch attempts only; rich job data never becomes metric labels
+      counter.("oban_powertools.worker_hook.invoked.count",
+        tags: [:hook, :outcome],
+        description: "Worker hook dispatch attempt completed"
       )
     ]
   end
@@ -216,6 +226,14 @@ defmodule ObanPowertools.Telemetry do
   def execute_lifeline_event(event_suffix, measurements \\ %{}, metadata \\ %{}) do
     :telemetry.execute(
       [:oban_powertools, :lifeline, event_suffix],
+      measurements,
+      metadata
+    )
+  end
+
+  def execute_worker_hook_event(event_suffix, measurements \\ %{}, metadata \\ %{}) do
+    :telemetry.execute(
+      [:oban_powertools, :worker_hook, event_suffix],
       measurements,
       metadata
     )
