@@ -76,7 +76,10 @@ Full phase details: [milestones/v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md)
   3. A worker's `on_discard/2` fires exactly once when a job is discarded after retry exhaustion, not on each failed attempt
   4. Workers that omit any hook callback compile and run without error via no-op `defoverridable` defaults
   5. Hook invocations produce telemetry events under the `:worker_hook` family in the frozen low-cardinality contract (`hook` and `outcome` keys present)
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 53-01-PLAN.md - Core worker lifecycle hook runtime, crash safety, routing, and telemetry contract
+- [ ] 53-02-PLAN.md - Worker hook support-truth docs, telemetry guide, and docs-contract tests
 
 ### Phase 54: deadline: / timeout: Pass-through
 **Goal**: Workers can declare per-job execution time limits and wall-clock expiry constraints as compile-time opts that Oban and the perform wrapper enforce automatically
