@@ -17,6 +17,7 @@ defmodule ObanPowertools.Doctor do
     |> Kernel.++(Checks.oban_migration_version(repo, prefix))
     |> Kernel.++(Checks.powertools_tables(repo))
     |> Kernel.++(Checks.uniqueness_timeout_risk(repo, prefix, strict: strict))
+    |> Kernel.++(Checks.expired_deadline_jobs(repo, prefix))
   end
 
   @spec exit_code_for([ObanPowertools.Doctor.Finding.t()]) :: 0 | 1 | 2

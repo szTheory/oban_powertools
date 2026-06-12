@@ -309,6 +309,52 @@ defmodule ObanPowertools.Doctor.Checks do
     gin_findings ++ count_findings
   end
 
+  @doc """
+  Check for retryable Oban jobs whose Powertools deadline metadata is already expired.
+  Returns warning findings for parseable expired deadlines and ignores malformed metadata.
+  """
+  def expired_deadline_jobs(repo, prefix) do
+    if valid_identifier?(prefix) do
+      deadline_key = ObanPowertools.Worker.Deadlines.meta_key()
+
+      sql = """
+      SELECT id, worker, meta->>$1
+      FROM #{prefix}.oban_jobs
+      WHERE state = $2
+        AND meta ? $1
+      ORDER BY id
+      """
+
+      case repo.query(sql, [deadline_key, "retryable"], log: false) do
+        {:ok, %{rows: rows}} ->
+          expired_deadline_findings(rows, deadline_key, DateTime.utc_now())
+
+        {:error, reason} ->
+          [
+            %Finding{
+              check: :expired_deadline_jobs,
+              severity: :error,
+              message:
+                "Cannot query expired deadline jobs for #{prefix}.oban_jobs: #{inspect(reason)}",
+              remediation: "Check that #{prefix}.oban_jobs exists and the DB is reachable."
+            }
+          ]
+      end
+    else
+      [
+        %Finding{
+          check: :expired_deadline_jobs,
+          severity: :error,
+          message:
+            "Cannot check expired deadline jobs: prefix '#{prefix}' is not a valid identifier " <>
+              "(must match /^[a-z_][a-z0-9_]*$/)",
+          remediation:
+            "Use a valid Postgres schema name for --prefix (lowercase letters, digits, underscores)."
+        }
+      ]
+    end
+  end
+
   # ---
   # Public test helper: separately testable finding construction from catalog rows
   # ---
@@ -331,6 +377,31 @@ defmodule ObanPowertools.Doctor.Checks do
   # ---
   # Private helpers
   # ---
+
+  defp expired_deadline_findings(rows, deadline_key, now) do
+    Enum.flat_map(rows, fn [id, worker, deadline_iso] ->
+      case DateTime.from_iso8601(deadline_iso) do
+        {:ok, deadline_at, _offset} ->
+          if DateTime.compare(deadline_at, now) == :lt do
+            [
+              %Finding{
+                check: :expired_deadline_jobs,
+                severity: :warning,
+                message:
+                  "Expired deadline: retryable job #{id} (#{worker}) has #{deadline_key} #{deadline_iso} in the past",
+                remediation:
+                  "Inspect the job, then retry, cancel, discard, or re-enqueue it after confirming whether the work should still run."
+              }
+            ]
+          else
+            []
+          end
+
+        _malformed ->
+          []
+      end
+    end)
+  end
 
   defp check_gin_indexes(repo, prefix, severity) do
     sql = """
