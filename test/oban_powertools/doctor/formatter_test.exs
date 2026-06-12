@@ -21,7 +21,8 @@ defmodule ObanPowertools.Doctor.FormatterTest do
   @expired_deadline_finding %Finding{
     check: :expired_deadline_jobs,
     severity: :warning,
-    message: "Expired deadline: retryable job 123 (Example.Worker) has __deadline_at__ 2026-06-12T12:00:00Z in the past",
+    message:
+      "Expired deadline: retryable job 123 (Example.Worker) has __deadline_at__ 2026-06-12T12:00:00Z in the past",
     remediation:
       "Inspect the job, then retry, cancel, discard, or re-enqueue it after confirming whether the work should still run."
   }

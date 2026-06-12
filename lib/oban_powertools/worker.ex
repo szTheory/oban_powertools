@@ -148,7 +148,15 @@ defmodule ObanPowertools.Worker do
           catch
             kind, reason ->
               stacktrace = __STACKTRACE__
-              ObanPowertools.Worker.Hooks.after_exception(__MODULE__, job, kind, reason, stacktrace)
+
+              ObanPowertools.Worker.Hooks.after_exception(
+                __MODULE__,
+                job,
+                kind,
+                reason,
+                stacktrace
+              )
+
               :erlang.raise(kind, reason, stacktrace)
           end
         end
