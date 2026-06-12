@@ -8,9 +8,30 @@ defmodule ObanPowertools.Worker do
   defmacro __using__(opts) do
     args_config = Keyword.get(opts, :args, [])
     limits_config = Keyword.get(opts, :limits, [])
-    oban_opts = opts |> Keyword.delete(:args) |> Keyword.delete(:limits)
+    timeout_config = Keyword.get(opts, :timeout)
+    deadline_config = Keyword.get(opts, :deadline)
+
+    oban_opts =
+      opts
+      |> Keyword.delete(:args)
+      |> Keyword.delete(:limits)
+      |> Keyword.delete(:timeout)
+      |> Keyword.delete(:deadline)
+
     validate_args_config!(args_config)
     normalized_limits = normalize_limits_config!(limits_config, __CALLER__.module)
+    normalized_timeout = normalize_timeout_config!(timeout_config, __CALLER__)
+    normalized_deadline = normalize_deadline_config!(deadline_config, __CALLER__)
+
+    timeout_callback =
+      if is_integer(normalized_timeout) do
+        quote do
+          @impl Oban.Worker
+          def timeout(_job), do: unquote(normalized_timeout)
+
+          defoverridable timeout: 1
+        end
+      end
 
     fields =
       for {name, type} <- args_config do
@@ -24,6 +45,7 @@ defmodule ObanPowertools.Worker do
       @behaviour __MODULE__
       import Ecto.Changeset
       @powertools_limits unquote(Macro.escape(normalized_limits))
+      @powertools_deadline_ms unquote(normalized_deadline)
       Module.register_attribute(__MODULE__, :powertools_overridden_hooks, accumulate: true)
       Module.register_attribute(__MODULE__, :powertools_defining_default_hook, accumulate: false)
       @on_definition {ObanPowertools.Worker, :__on_definition__}
@@ -43,6 +65,9 @@ defmodule ObanPowertools.Worker do
       @callback on_discard(Oban.Job.t(), map()) :: term()
 
       def __powertools_limits__, do: @powertools_limits
+      def __powertools_deadline_ms__, do: @powertools_deadline_ms
+
+      unquote(timeout_callback)
 
       defmodule Args do
         use Ecto.Schema
@@ -98,30 +123,34 @@ defmodule ObanPowertools.Worker do
       end
 
       defp __powertools_perform__(%Oban.Job{} = job) do
-        ObanPowertools.Worker.Hooks.on_start(__MODULE__, job)
+        if ObanPowertools.Worker.Deadlines.expired?(job.meta) do
+          {:cancel, :deadline_expired}
+        else
+          ObanPowertools.Worker.Hooks.on_start(__MODULE__, job)
 
-        try do
-          result = process(job)
-          ObanPowertools.Worker.Hooks.after_result(__MODULE__, job, result)
-          result
-        rescue
-          error ->
-            stacktrace = __STACKTRACE__
+          try do
+            result = process(job)
+            ObanPowertools.Worker.Hooks.after_result(__MODULE__, job, result)
+            result
+          rescue
+            error ->
+              stacktrace = __STACKTRACE__
 
-            ObanPowertools.Worker.Hooks.after_exception(
-              __MODULE__,
-              job,
-              :error,
-              error,
-              stacktrace
-            )
+              ObanPowertools.Worker.Hooks.after_exception(
+                __MODULE__,
+                job,
+                :error,
+                error,
+                stacktrace
+              )
 
-            reraise error, stacktrace
-        catch
-          kind, reason ->
-            stacktrace = __STACKTRACE__
-            ObanPowertools.Worker.Hooks.after_exception(__MODULE__, job, kind, reason, stacktrace)
-            :erlang.raise(kind, reason, stacktrace)
+              reraise error, stacktrace
+          catch
+            kind, reason ->
+              stacktrace = __STACKTRACE__
+              ObanPowertools.Worker.Hooks.after_exception(__MODULE__, job, kind, reason, stacktrace)
+              :erlang.raise(kind, reason, stacktrace)
+          end
         end
       end
 
@@ -289,6 +318,27 @@ defmodule ObanPowertools.Worker do
   defp normalize_limits_config!(limits_config, _module) do
     raise ArgumentError,
           "expected :limits to be a keyword list, got: #{inspect(limits_config)}"
+  end
+
+  defp normalize_timeout_config!(nil, _env), do: nil
+
+  defp normalize_timeout_config!(timeout_config, env) do
+    timeout_config
+    |> eval_compile_time_option!(env)
+    |> tap(&validate_positive_integer!(&1, ":timeout"))
+  end
+
+  defp normalize_deadline_config!(nil, _env), do: nil
+
+  defp normalize_deadline_config!(deadline_config, env) do
+    deadline_config
+    |> eval_compile_time_option!(env)
+    |> ObanPowertools.Worker.Deadlines.normalize_duration!(":deadline")
+  end
+
+  defp eval_compile_time_option!(option, env) do
+    {value, _binding} = Code.eval_quoted(option, [], env)
+    value
   end
 
   defp fetch_limit!(limits_config, key) do
