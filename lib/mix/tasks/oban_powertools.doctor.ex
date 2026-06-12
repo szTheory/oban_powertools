@@ -12,7 +12,7 @@ defmodule Mix.Tasks.ObanPowertools.Doctor do
   | Code | Meaning |
   |------|---------|
   | 0    | All checks passed — DB and configuration are healthy |
-  | 1    | Warnings only (e.g. uniqueness-timeout risk without `--strict`) |
+  | 1    | Warnings only (e.g. uniqueness-timeout risk without `--strict`, expired deadline jobs) |
   | 2    | One or more errors (INVALID index, missing index, migration drift, cannot-run) |
 
   ## Flags
@@ -38,6 +38,7 @@ defmodule Mix.Tasks.ObanPowertools.Doctor do
   | Missing expected Oban index          | error (2) | error (2)      |
   | Migration drift (Oban/Powertools)    | error (2) | error (2)      |
   | Uniqueness-timeout risk              | warning(1)| error (2)      |
+  | Expired deadline jobs (`expired_deadline_jobs`) | warning (1) | warning (1) |
   | Cannot-run (no repo / DB unreachable)| error (2) | error (2)      |
 
   ## Prefix Resolution
