@@ -232,6 +232,7 @@ defmodule ObanPowertools.DocsContractTest do
   @explain_task_path "lib/mix/tasks/oban_powertools.limiter.explain.ex"
   @limits_guide_path "guides/limits-and-explain.md"
   @worker_guide_path "guides/workers-and-idempotency.md"
+  @telemetry_guide_path "guides/telemetry-and-slos.md"
 
   test "limits-and-explain guide contains all D-08 rate-limit glossary terms (OPS-08)" do
     source = File.read!(@limits_guide_path)
@@ -292,6 +293,25 @@ defmodule ObanPowertools.DocsContractTest do
     refute source =~ "hooks halt execution"
     refute source =~ "hooks provide durable audit"
     refute source =~ "hooks are retried independently"
+  end
+
+  test "telemetry guide locks worker_hook metric and label boundaries" do
+    source = File.read!(@telemetry_guide_path)
+
+    assert source =~ "oban_powertools.worker_hook.invoked.count"
+    assert source =~ "[:oban_powertools, :worker_hook, :invoked]"
+    assert source =~ "`hook`, `outcome`"
+    assert source =~ ~s("on_start")
+    assert source =~ ~s("on_success")
+    assert source =~ ~s("on_failure")
+    assert source =~ ~s("on_discard")
+    assert source =~ ~s("ok")
+    assert source =~ ~s("crash_caught")
+
+    assert source =~
+             "Worker hook telemetry labels exclude job ids, args, worker module names, queue names, reasons,\nstacktraces"
+
+    refute source =~ "five frozen Powertools control-plane event families"
   end
 
   defp joined_docs do
