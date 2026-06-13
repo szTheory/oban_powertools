@@ -13,6 +13,7 @@ defmodule ObanPowertools.Worker do
     record_output_config = Keyword.get(opts, :record_output, false)
     output_limit_config = Keyword.get(opts, :output_limit, 65_536)
     output_retention_config = Keyword.get(opts, :output_retention, :standard)
+    redact_config = Keyword.get(opts, :redact, [])
 
     oban_opts =
       opts
@@ -23,11 +24,13 @@ defmodule ObanPowertools.Worker do
       |> Keyword.delete(:record_output)
       |> Keyword.delete(:output_limit)
       |> Keyword.delete(:output_retention)
+      |> Keyword.delete(:redact)
 
     validate_args_config!(args_config)
     normalized_limits = normalize_limits_config!(limits_config, __CALLER__.module)
     normalized_timeout = normalize_timeout_config!(timeout_config, __CALLER__)
     normalized_deadline = normalize_deadline_config!(deadline_config, __CALLER__)
+    validate_redact_config!(redact_config, args_config, normalized_limits)
 
     normalized_output_recording =
       normalize_output_recording_config!(
@@ -36,6 +39,9 @@ defmodule ObanPowertools.Worker do
         output_retention_config,
         __CALLER__
       )
+
+    # D-06: required fields exclude the redacted ones — computed at macro time
+    required_fields = Keyword.keys(args_config) -- redact_config
 
     timeout_callback =
       if is_integer(normalized_timeout) do
@@ -61,6 +67,7 @@ defmodule ObanPowertools.Worker do
       @powertools_limits unquote(Macro.escape(normalized_limits))
       @powertools_deadline_ms unquote(normalized_deadline)
       @powertools_output_recording unquote(Macro.escape(normalized_output_recording))
+      @powertools_redact unquote(redact_config)
       Module.register_attribute(__MODULE__, :powertools_overridden_hooks, accumulate: true)
       Module.register_attribute(__MODULE__, :powertools_defining_default_hook, accumulate: false)
       @on_definition {ObanPowertools.Worker, :__on_definition__}
@@ -82,6 +89,7 @@ defmodule ObanPowertools.Worker do
       def __powertools_limits__, do: @powertools_limits
       def __powertools_deadline_ms__, do: @powertools_deadline_ms
       def __powertools_output_recording__, do: @powertools_output_recording
+      def __powertools_redact__, do: @powertools_redact
 
       unquote(timeout_callback)
 
@@ -94,11 +102,12 @@ defmodule ObanPowertools.Worker do
         end
 
         def changeset(struct, params) do
-          fields = unquote(Keyword.keys(args_config))
+          all_fields = unquote(Keyword.keys(args_config))
+          required = unquote(required_fields)
 
           struct
-          |> cast(params, fields)
-          |> validate_required(fields)
+          |> cast(params, all_fields)
+          |> validate_required(required)
         end
       end
 
@@ -122,6 +131,20 @@ defmodule ObanPowertools.Worker do
       @powertools_defining_default_hook false
 
       defoverridable on_start: 1, on_success: 2, on_failure: 2, on_discard: 2
+
+      # new/2 override: apply redaction (drop fields, inject meta) then delegate to Oban.Job.new
+      # Explicit delegation pattern (OQ1-resolved) — no super, mirrors Oban's generated new/2 body
+      @impl Oban.Worker
+      def new(args, opts \\ []) when is_map(args) and is_list(opts) do
+        ObanPowertools.Worker.Redaction.apply(__MODULE__, args, opts, @powertools_redact)
+      end
+
+      # Explicit delegate: mirrors body of Oban's generated new/2 — Oban.Job.new + merge_opts (OQ1)
+      def __powertools_new_delegate__(args, opts) do
+        Oban.Job.new(args, Oban.Worker.merge_opts(__opts__(), opts))
+      end
+
+      defoverridable new: 1, new: 2
 
       @impl Oban.Worker
       def perform(%Oban.Job{args: args} = job) when is_map(args) do
@@ -381,6 +404,34 @@ defmodule ObanPowertools.Worker do
     deadline_config
     |> eval_compile_time_option!(env)
     |> ObanPowertools.Worker.Deadlines.normalize_duration!(":deadline")
+  end
+
+  defp validate_redact_config!(redact_config, args_config, normalized_limits) do
+    declared_arg_keys = Keyword.keys(args_config)
+
+    # D-07: raise if any redact key is not declared in :args schema (typo guard)
+    Enum.each(redact_config, fn key ->
+      unless key in declared_arg_keys do
+        raise ArgumentError,
+              "redact: key #{inspect(key)} is not declared in :args schema. " <>
+                "Declared fields: #{inspect(declared_arg_keys)}"
+      end
+    end)
+
+    # D-09: raise if a redact key overlaps with the partition_by {:args, field} key
+    partition_key =
+      case Keyword.get(normalized_limits, :partition_by) do
+        {:args, field} -> field
+        _ -> nil
+      end
+
+    if partition_key && partition_key in redact_config do
+      raise ArgumentError,
+            "redact: field #{inspect(partition_key)} is also used as " <>
+              "partition_by: {:args, #{inspect(partition_key)}}. " <>
+              "A redacted field cannot be a partition key because the partition " <>
+              "key value would be written to job meta."
+    end
   end
 
   defp normalize_output_recording_config!(record_output, output_limit, output_retention, env) do

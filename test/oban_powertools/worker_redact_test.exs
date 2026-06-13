@@ -29,8 +29,6 @@ defmodule ObanPowertools.WorkerRedactTest do
   end
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(TestRepo)
-
     original_repo = Application.get_env(:oban_powertools, :repo)
     Application.put_env(:oban_powertools, :repo, TestRepo)
 
