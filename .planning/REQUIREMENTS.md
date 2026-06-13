@@ -30,8 +30,8 @@ Equip every `ObanPowertools.Worker` with observable, durable lifecycle hooks, a 
 ### Output Recording
 
 - [ ] **REC-01**: Worker can declare `record_output: true` in `use ObanPowertools.Worker` opts to opt in to persisting `{:ok, payload}` return values from `process/1`
-- [ ] **REC-02**: `ObanPowertools.JobRecord` Ecto schema with `oban_powertools_job_records` table — standalone-job output storage independent of `Workflow.Result`
-- [ ] **REC-03**: Host can retrieve latest recorded output for a job via `fetch_result/1` returning `{:ok, result}` or `{:error, :not_found}`
+- [x] **REC-02**: `ObanPowertools.JobRecord` Ecto schema with `oban_powertools_job_records` table — standalone-job output storage independent of `Workflow.Result`
+- [x] **REC-03**: Host can retrieve latest recorded output for a job via `fetch_result/1` returning `{:ok, result}` or `{:error, :not_found}`
 - [ ] **REC-04**: Recorded output is visible in the `/ops/jobs` job detail view via a new `:job_recorded` DisplayPolicy kind
 - [ ] **REC-05**: Worker can declare `output_limit: bytes` (byte cap) and `output_retention: policy` (`:standard`/`:extended`/`:ephemeral`) as compile-time opts
 
@@ -81,8 +81,8 @@ Equip every `ObanPowertools.Worker` with observable, durable lifecycle hooks, a 
 | SAFE-03     | 54    | Complete |
 | SAFE-04     | 54    | Complete |
 | REC-01      | 55    | Pending |
-| REC-02      | 55    | Pending |
-| REC-03      | 55    | Pending |
+| REC-02      | 55    | Complete |
+| REC-03      | 55    | Complete |
 | REC-04      | 55    | Pending |
 | REC-05      | 55    | Pending |
 | REDACT-01   | 56    | Pending |
