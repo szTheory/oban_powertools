@@ -69,6 +69,7 @@ defmodule Mix.Tasks.ObanPowertools.InstallTest do
     assert source =~ "add :recorded_at, :utc_datetime_usec, null: false"
     assert source =~ "add :expires_at, :utc_datetime_usec, null: false"
     assert source =~ "timestamps(updated_at: false)"
+
     assert source =~
              "create unique_index(:oban_powertools_job_records, [:oban_job_id, :attempt])"
 
@@ -91,6 +92,7 @@ defmodule Mix.Tasks.ObanPowertools.InstallTest do
     assert source =~ "create table(:oban_powertools_job_records, primary_key: false)"
     assert source =~ "add(:oban_job_id, :bigint)"
     assert source =~ "add(:worker, :string, null: false)"
+
     assert source =~
              "create(unique_index(:oban_powertools_job_records, [:oban_job_id, :attempt]))"
 

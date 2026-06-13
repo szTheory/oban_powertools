@@ -34,6 +34,7 @@ defmodule Mix.Tasks.ObanPowertools.Install do
     |> setup_smart_engine_migrations()
     |> setup_workflow_migrations()
     |> setup_phase_4_migrations()
+    |> setup_job_record_migrations()
   end
 
   defp setup_auth_module(igniter) do
@@ -833,6 +834,40 @@ defmodule Mix.Tasks.ObanPowertools.Install do
           create index(:oban_powertools_repair_archives, [:resource_type, :resource_id])
           create index(:oban_powertools_repair_archives, [:incident_class])
           create index(:oban_powertools_repair_archives, [:archived_at])
+        end
+      """
+    )
+  end
+
+  defp setup_job_record_migrations(igniter) do
+    igniter
+    |> Igniter.Libs.Ecto.gen_migration(
+      repo_module(igniter),
+      "oban_powertools_job_records",
+      timestamp: migration_timestamp(40),
+      body: """
+        def change do
+          create table(:oban_powertools_job_records, primary_key: false) do
+            add :id, :uuid, primary_key: true
+            add :oban_job_id, :bigint
+            add :worker, :string, null: false
+            add :attempt, :integer, null: false, default: 1
+            add :status, :string, null: false, default: "ok"
+            add :payload, :map, null: false, default: %{}
+            add :payload_bytes, :integer, null: false, default: 0
+            add :retention, :string, null: false, default: "standard"
+            add :redacted, :boolean, null: false, default: false
+            add :summary, :string
+            add :recorded_at, :utc_datetime_usec, null: false
+            add :expires_at, :utc_datetime_usec, null: false
+
+            timestamps(updated_at: false)
+          end
+
+          create unique_index(:oban_powertools_job_records, [:oban_job_id, :attempt])
+          create index(:oban_powertools_job_records, [:worker])
+          create index(:oban_powertools_job_records, [:status])
+          create index(:oban_powertools_job_records, [:expires_at])
         end
       """
     )
