@@ -84,6 +84,22 @@ ObanPowertools.Lifeline.retention_status(MyApp.Repo)
 ObanPowertools.Lifeline.run_archive_prune(MyApp.Repo, actor, reason: "scheduled retention")
 ```
 
+`run_archive_prune/3` uses one bounded transaction for the current retention sweep:
+
+- old manual repair audit events are archived before deletion
+- consumed repair previews are pruned after their preview retention window
+- stale heartbeat samples are pruned after their heartbeat retention window
+- expired `ObanPowertools.JobRecord` rows are pruned when `expires_at <= now`
+
+JobRecords are operational context for recent output inspection. They are not archived before
+deletion, not immutable audit evidence, and not a substitute for durable domain data. Hosts
+that need long-lived reports, files, exports, or business facts should store those artifacts in
+host-owned tables or object storage and record only a small JSON reference in the job output.
+
+Deleted JobRecords are counted in the archive run's `pruned_count` and in the
+`:archive_prune_completed` telemetry metadata. They are not counted as `archived_count`, and
+their pruning does not join `oban_jobs` or wait for Oban's own job pruning.
+
 ## Good fit
 
 Use Lifeline when the app needs an operator-visible incident and repair model. If you only need

@@ -11,6 +11,7 @@ enqueue typed jobs without pushing validation and duplicate suppression into eve
 - optional `limits:` declarations when the worker also needs durable rate control
 - optional lifecycle hooks for observing start, success, retryable failure, and discard outcomes
 - optional `timeout:` and `deadline:` safety declarations for runtime attempt limits and stale-work prevention
+- optional output recording for successful `{:ok, payload}` results
 
 The runtime still executes an `Oban.Worker`. Powertools just makes the builder contract stricter.
 
@@ -143,6 +144,52 @@ Support truth:
 - When expired, `deadline:` returns `{:cancel, :deadline_expired}` before `on_start/1` and `process/1`.
 - `deadline:` does not interrupt already-running work.
 - No Powertools-specific telemetry is emitted for deadlines in this phase.
+
+## Output recording
+
+Workers may opt in to recording successful output with `record_output: true`:
+
+```elixir
+defmodule MyApp.Reports.GenerateExportWorker do
+  use ObanPowertools.Worker,
+    queue: :reports,
+    args: [account_id: :integer],
+    record_output: true,
+    output_limit: 65_536,
+    output_retention: :standard
+
+  @impl true
+  def process(%Oban.Job{args: %__MODULE__.Args{account_id: account_id}}) do
+    export = MyApp.Reports.generate_export(account_id)
+
+    {:ok, %{export_id: export.id, status: "ready"}}
+  end
+end
+```
+
+Support truth:
+
+- `record_output: true` records only `{:ok, payload}` results.
+- Plain `:ok` remains a successful no-output result and does not create a record.
+- Failed, cancelled, snoozed, discarded, raised, thrown, or exited attempts do not record output.
+- Recording is best-effort operational evidence; recording failure logs a warning and does not fail or retry the job.
+- Output recording runs before `on_success/2`, so success hooks can look up accepted records.
+- `output_limit` is a positive integer byte cap; the default is `65_536` bytes (64 KiB).
+- Payloads over `output_limit` are rejected with a warning rather than stored or truncated.
+- `output_retention` accepts `:ephemeral`, `:standard`, or `:extended`.
+- Retention is library-owned: `:ephemeral` is 6 hours, `:standard` is 7 days, and `:extended` is 30 days.
+- Recorded output is operational context for recent job inspection, not business storage, not a transaction guarantee, and not immutable audit evidence.
+
+Store large artifacts, rich domain data, or anything that must be durable in host-owned
+storage. Return a small JSON-compatible reference instead:
+
+```elixir
+{:ok, %{file_id: export.id, storage_key: export.storage_key}}
+```
+
+That pattern keeps `JobRecord` useful for operators without turning the job table into a data
+warehouse. Host domain tables, object storage, and audit logs remain the source of truth for
+business data.
 
 ## Validation without enqueue
 
