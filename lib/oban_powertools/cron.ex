@@ -92,7 +92,7 @@ defmodule ObanPowertools.Cron do
     |> case do
       {:ok, %{decision: decision, job: job, updated_slot: slot}} ->
         maybe_record_coverage(repo, entry, slot_at, manual?)
-        emit_claim_telemetry(entry, slot, decision)
+        emit_claim_telemetry(repo, entry, slot, decision)
         {:ok, %{slot: slot, job: job, decision: decision}}
 
       {:error, :decision, reason, _} ->
@@ -489,7 +489,7 @@ defmodule ObanPowertools.Cron do
     end
   end
 
-  defp emit_claim_telemetry(entry, slot, %{decision: decision}) do
+  defp emit_claim_telemetry(repo, entry, slot, %{decision: decision}) do
     Telemetry.execute_cron_event(:slot_claimed, %{count: 1}, %{
       action: decision,
       source: entry.source,
@@ -501,7 +501,7 @@ defmodule ObanPowertools.Cron do
       "cron.slot_claimed",
       %{type: :cron_entry, id: entry.name},
       %{"slot_at" => slot.slot_at, "decision" => decision, "source" => entry.source},
-      repo: Application.get_env(:oban_powertools, :repo)
+      repo: repo
     )
   end
 
