@@ -203,6 +203,42 @@ defmodule ObanPowertools.DisplayPolicy do
     job_recorded(value, context)
   end
 
+  def render_job_field(:job_args, value, context) do
+    redacted_fields = get_redacted_fields(context)
+
+    case {redacted_fields, apply_policy(:job_args, value, context)} do
+      {[], nil} ->
+        {:raw_json, Jason.encode!(value || %{}, pretty: true)}
+
+      {[], text} when is_binary(text) ->
+        {:string, text}
+
+      {[], %{} = custom_map} ->
+        {:raw_json, Jason.encode!(custom_map, pretty: true)}
+
+      {[], other} ->
+        raise ArgumentError, invalid_return_message(:job_args, other)
+
+      {_fields, nil} ->
+        # Default path: overlay "Redacted at enqueue" for each redacted field
+        annotated = build_redacted_args_map(value || %{}, redacted_fields)
+        {:raw_json, Jason.encode!(annotated, pretty: true)}
+
+      {_fields, text} when is_binary(text) ->
+        # Host policy returned custom string — do NOT overlay (OQ3 RESOLVED)
+        {:string, text}
+
+      {_fields, %{} = custom_map} ->
+        # Host policy returned custom map — do NOT overlay (OQ3 RESOLVED)
+        {:raw_json, Jason.encode!(custom_map, pretty: true)}
+
+      {_fields, other} ->
+        raise ArgumentError, invalid_return_message(:job_args, other)
+    end
+  rescue
+    _ -> {:fallback, "[redacted]"}
+  end
+
   def render_job_field(kind, value, context) do
     case apply_policy(kind, value, context) do
       nil -> {:raw_json, Jason.encode!(value || %{}, pretty: true)}
@@ -241,6 +277,21 @@ defmodule ObanPowertools.DisplayPolicy do
       raise ArgumentError,
             "Oban Powertools display_policy #{inspect(module)} must implement display/3."
     end
+  end
+
+  # Extracts __redacted_fields__ from job meta in context for the :job_args overlay.
+  # Returns a list of field name strings, or [] when absent/unknown context shape.
+  defp get_redacted_fields(%{job: %Oban.Job{meta: meta}}) do
+    Map.get(meta || %{}, "__redacted_fields__", [])
+  end
+
+  defp get_redacted_fields(_), do: []
+
+  # Merges "Redacted at enqueue" overlay for each redacted field (string key, D-17/D-14).
+  # Does NOT remove the user_id or other non-redacted fields.
+  defp build_redacted_args_map(args, redacted_fields) do
+    overlay = Map.new(redacted_fields, fn field -> {field, "Redacted at enqueue"} end)
+    Map.merge(args, overlay)
   end
 
   defp normalize_principal(nil), do: %{id: "system", type: :system, label: nil}
