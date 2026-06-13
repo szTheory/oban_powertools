@@ -101,7 +101,7 @@ defmodule ObanPowertools.Doctor.ChecksTest do
   end
 
   describe "powertools_tables/1" do
-    test "returns [] on the migrated test DB (all 4 groups present)" do
+    test "returns [] on the migrated test DB (all 5 groups present)" do
       result = Checks.powertools_tables(TestRepo)
       assert result == []
     end

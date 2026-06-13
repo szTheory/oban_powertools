@@ -55,6 +55,9 @@ defmodule ObanPowertools.Doctor.Checks do
       "oban_powertools_repair_previews",
       "oban_powertools_archive_runs",
       "oban_powertools_repair_archives"
+    ],
+    "output-recording" => [
+      "oban_powertools_job_records"
     ]
   }
 
