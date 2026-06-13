@@ -123,9 +123,12 @@ defmodule ObanPowertools.DisplayPolicy do
     default = default_workflow_result(result_input)
 
     case apply_policy(:workflow_result, result_input, context) do
+      nil ->
+        default
+
       %{} = rendered ->
         %{
-          available?: read_key_or_default(rendered, :available?, true),
+          available?: read_key_or_default(rendered, :available?, default.available?),
           summary: read_key_or_default(rendered, :summary, default.summary),
           payload: read_key_or_default(rendered, :payload, default.payload),
           redacted?:
@@ -267,6 +270,8 @@ defmodule ObanPowertools.DisplayPolicy do
   end
 
   defp default_workflow_result(result_input) do
+    payload_value = read_key_or_default(result_input, :payload, %{})
+
     summary =
       read_key(result_input, :summary) ||
         if(read_key(result_input, :redacted),
@@ -278,10 +283,11 @@ defmodule ObanPowertools.DisplayPolicy do
       if read_key(result_input, :redacted) do
         "Hidden by display policy"
       else
-        inspect(read_key(result_input, :payload) || %{})
+        inspect(payload_value)
       end
 
     %{
+      available?: true,
       summary: summary,
       payload: payload,
       redacted?: !!read_key(result_input, :redacted),
@@ -350,6 +356,8 @@ defmodule ObanPowertools.DisplayPolicy do
         default
     end
   end
+
+  defp read_key_or_default(_value, _key, default), do: default
 
   defp invalid_return_message(kind, other) do
     "Oban Powertools display_policy returned an invalid #{kind} display: #{inspect(other)}"

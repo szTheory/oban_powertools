@@ -190,5 +190,31 @@ defmodule ObanPowertoolsTest do
                  field: :result
                })
     end
+
+    test "workflow_result/2 uses defaults and preserves false payload when policy returns nil" do
+      Application.put_env(
+        :oban_powertools,
+        :display_policy,
+        ObanPowertoolsTestJobRecordedNilPolicy
+      )
+
+      result_input = %{
+        payload: false,
+        redacted: false,
+        status: "completed"
+      }
+
+      assert %{
+               available?: true,
+               payload: "false",
+               redacted?: false,
+               summary: "Result available",
+               status: "completed"
+             } =
+               ObanPowertools.DisplayPolicy.workflow_result(result_input, %{
+                 surface: :workflows,
+                 field: :result
+               })
+    end
   end
 end
