@@ -160,13 +160,20 @@ Version `v1.5` shipped on 2026-05-28. The native `/ops/jobs` shell now owns the 
 
 (Earlier: `v1.4` delivered operator forensics and SRE runbooks; `v1.3` unified the native control plane and explainability story.)
 
+## Current Milestone: v1.8 Integration Fixes
+
+**Goal:** Close the two non-blocking integration gaps deferred from the v1.7 audit before expanding capability.
+
+**Target features:**
+- INT-01: Add `oban_powertools_job_records` to `@powertools_manifest` in Doctor/checks.ex so Doctor reports on the Phase 55 migration table
+- INT-02: Inject `__deadline_at__` meta on cron path in `cron.ex maybe_insert_job` for `deadline:`-configured workers
+
 ## Next Milestone
 
-**v1.8 Batches & Composition** is the recommended next milestone (from the 2026-05-28 post-v1.5 assessment, confirmed by v1.7 shipping the prerequisite hook + recording infra):
+**v1.9 Batches & Composition** is the recommended next milestone (from the 2026-05-28 post-v1.5 assessment, confirmed by v1.7 shipping the prerequisite hook + recording infra):
 
-1. **v1.8 Batches & Composition** *(the pick)* — dedicated `batches` / `batch_jobs` tables (not a DAG), `completed` + `exhausted` callbacks via the generalized callback outbox, chains as linear-DAG sugar, native Batches page with Lifeline-routed bulk-retry. Defer chunks / nested / growable batches.
-   - **v1.7 deferred items to close first:** INT-01 (Doctor manifest missing `oban_powertools_job_records`) and INT-02 (cron path missing `__deadline_at__` injection for `deadline:`-configured workers).
-2. **v1.9 Observability / live counts (QRY-06)** — `oban_met` as an optional read source, never a hard dep.
+1. **v1.9 Batches & Composition** *(the pick)* — dedicated `batches` / `batch_jobs` tables (not a DAG), `completed` + `exhausted` callbacks via the generalized callback outbox, chains as linear-DAG sugar, native Batches page with Lifeline-routed bulk-retry. Defer chunks / nested / growable batches.
+2. **v1.10 Observability / live counts (QRY-06)** — `oban_met` as an optional read source, never a hard dep.
 3. **Native job-surface polish** — QRY-05 (args/meta filter), QRY-07 (Lifeline→job deep-link), QRY-08 (cross-page select), API-03 (`Operator.list/2`). Opportunistic.
 
 ## Recently Shipped
@@ -231,4 +238,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-06-13 after v1.7 Worker Lifecycle & Safety milestone*
+*Last updated: 2026-06-13 — v1.8 Integration Fixes milestone started*

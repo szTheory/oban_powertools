@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.7
-milestone_name: Worker Lifecycle & Safety
-status: archived
-last_updated: 2026-06-13T00:00:00.000Z
-last_activity: 2026-06-13 -- v1.7 milestone archived
+milestone: v1.8
+milestone_name: Integration Fixes
+status: planning
+last_updated: "2026-06-13T15:43:01.379Z"
+last_activity: 2026-06-13
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 14
-  completed_plans: 14
-  percent: 100
-stopped_at: Milestone archived — v1.7 complete
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,12 +24,10 @@ See: .planning/PROJECT.md (updated 2026-06-13)
 
 ## Current Position
 
-Phase: 56
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-06-13
-
-Progress: [██████████] 100%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-06-13 — Milestone v1.8 started
 
 ## Accumulated Context
 
