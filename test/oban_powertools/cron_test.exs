@@ -5,6 +5,25 @@ defmodule ObanPowertools.CronTest do
   alias ObanPowertools.Cron.{Entry, Slot}
   alias ObanPowertools.Lifeline.RepairPreview
 
+  # Cron-path redaction worker — REDACT-01, REDACT-02 on the scheduled path
+  defmodule CronRedactWorker do
+    use ObanPowertools.Worker,
+      queue: :default,
+      args: [user_id: :integer, ssn: :string],
+      redact: [:ssn]
+
+    @impl true
+    def process(_job), do: :ok
+  end
+
+  # Plain Oban.Worker control — must be unaffected by cron-path routing change
+  defmodule PlainCronWorker do
+    use Oban.Worker, queue: :default
+
+    @impl true
+    def perform(_job), do: :ok
+  end
+
   test "sync_entry persists code and runtime entries through one path" do
     assert {:ok, %Entry{} = entry} =
              Cron.sync_entry(repo(), %{
@@ -188,6 +207,71 @@ defmodule ObanPowertools.CronTest do
     assert latest.resource_type == "cron_entry"
     assert latest.resource_id == entry.name
     assert latest.command_key in ["run_cron_entry", "resume_cron_entry", "pause_cron_entry"]
+  end
+
+  describe "cron-path redaction (REDACT-01, REDACT-02)" do
+    # REDACT-01: cron-scheduled redact worker must not persist ssn in oban_jobs.args
+    # REDACT-02: cron-scheduled redact worker must have __redacted_fields__ in meta
+    # RED: before fix, bare Oban.Job.new bypasses worker_mod.new/2 so ssn leaks
+    test "ssn is absent from stored args and __redacted_fields__ present in meta for cron-enqueued redact worker" do
+      worker_name = inspect(CronRedactWorker)
+
+      {:ok, entry} =
+        Cron.sync_entry(repo(), %{
+          name: "cron-redact-#{System.unique_integer([:positive])}",
+          source: "runtime",
+          worker: worker_name,
+          queue: "default",
+          expression: "* * * * *",
+          timezone: "Etc/UTC",
+          overlap_policy: "allow",
+          catch_up_policy: "latest",
+          max_catch_up: 1,
+          args: %{"user_id" => 42, "ssn" => "999-00-1234"}
+        })
+
+      slot_at = DateTime.utc_now() |> truncate_minute()
+
+      assert {:ok, %{job: %Oban.Job{} = job}} = Cron.claim_slot(repo(), entry, slot_at)
+
+      stored_job = repo().get!(Oban.Job, job.id)
+
+      # REDACT-01: ssn must be absent (key-absent, not nil) from stored args
+      refute Map.has_key?(stored_job.args, "ssn"),
+             "expected ssn to be absent from stored args (cron bypass not fixed)"
+
+      # REDACT-02: __redacted_fields__ must be present in meta
+      assert stored_job.meta["__redacted_fields__"] == ["ssn"],
+             "expected __redacted_fields__ in meta (cron bypass not fixed)"
+    end
+
+    # Plain Oban.Worker regression guard: cron still inserts successfully, args intact
+    test "plain Oban.Worker cron entry inserts job with args unchanged" do
+      worker_name = inspect(PlainCronWorker)
+
+      {:ok, entry} =
+        Cron.sync_entry(repo(), %{
+          name: "cron-plain-#{System.unique_integer([:positive])}",
+          source: "runtime",
+          worker: worker_name,
+          queue: "default",
+          expression: "* * * * *",
+          timezone: "Etc/UTC",
+          overlap_policy: "allow",
+          catch_up_policy: "latest",
+          max_catch_up: 1,
+          args: %{"payload" => "hello"}
+        })
+
+      slot_at = DateTime.utc_now() |> truncate_minute()
+
+      # Must not crash; plain worker uses bare Oban.Job.new
+      assert {:ok, %{job: %Oban.Job{} = job}} = Cron.claim_slot(repo(), entry, slot_at)
+
+      stored_job = repo().get!(Oban.Job, job.id)
+      assert stored_job.args["payload"] == "hello"
+      refute Map.has_key?(stored_job.meta, "__redacted_fields__")
+    end
   end
 
   defp runtime_entry(overrides) do
