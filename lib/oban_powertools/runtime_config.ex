@@ -139,6 +139,55 @@ defmodule ObanPowertools.DisplayPolicy do
     end
   end
 
+  def job_recorded(record_input, context \\ %{}) do
+    default = default_job_recorded(record_input)
+
+    case apply_policy(:job_recorded, record_input, context) do
+      nil ->
+        default
+
+      text when is_binary(text) ->
+        %{default | payload: text}
+
+      %{} = rendered ->
+        %{
+          available?: read_key(rendered, :available?) || default.available?,
+          summary: read_key(rendered, :summary) || default.summary,
+          status: read_key(rendered, :status) || default.status,
+          attempt: read_key(rendered, :attempt) || default.attempt,
+          payload_bytes: read_key(rendered, :payload_bytes) || default.payload_bytes,
+          recorded_at: read_key(rendered, :recorded_at) || default.recorded_at,
+          retention: read_key(rendered, :retention) || default.retention,
+          expires_at: read_key(rendered, :expires_at) || default.expires_at,
+          payload: read_key(rendered, :payload) || default.payload,
+          redacted?:
+            read_key(rendered, :redacted?) || read_key(rendered, :redacted) || default.redacted?
+        }
+
+      other ->
+        raise ArgumentError,
+              "Oban Powertools display_policy returned an invalid job_recorded display: #{inspect(other)}"
+    end
+  rescue
+    _ ->
+      %{
+        available?: true,
+        summary: "Recorded output hidden by display policy fallback.",
+        status: read_key(record_input, :status),
+        attempt: read_key(record_input, :attempt),
+        payload_bytes: read_key(record_input, :payload_bytes),
+        recorded_at: read_key(record_input, :recorded_at),
+        retention: read_key(record_input, :retention),
+        expires_at: read_key(record_input, :expires_at),
+        payload: "Recorded output hidden by display policy fallback.",
+        redacted?: !!(read_key(record_input, :redacted?) || read_key(record_input, :redacted))
+      }
+  end
+
+  def render_job_field(:job_recorded, value, context) do
+    job_recorded(value, context)
+  end
+
   def render_job_field(kind, value, context) do
     case apply_policy(kind, value, context) do
       nil -> {:raw_json, Jason.encode!(value || %{}, pretty: true)}
@@ -228,6 +277,45 @@ defmodule ObanPowertools.DisplayPolicy do
     }
   end
 
+  defp default_job_recorded(nil) do
+    %{
+      available?: false,
+      summary: "No recorded output found for this job.",
+      status: nil,
+      attempt: nil,
+      payload_bytes: nil,
+      recorded_at: nil,
+      retention: nil,
+      expires_at: nil,
+      payload: "No recorded output found for this job.",
+      redacted?: false
+    }
+  end
+
+  defp default_job_recorded(record_input) do
+    payload = read_key(record_input, :payload) || %{}
+
+    summary =
+      read_key(record_input, :summary) ||
+        if(read_key(record_input, :redacted),
+          do: "Recorded output stored with redaction metadata",
+          else: "Recorded output available"
+        )
+
+    %{
+      available?: true,
+      summary: summary,
+      status: read_key(record_input, :status),
+      attempt: read_key(record_input, :attempt),
+      payload_bytes: read_key(record_input, :payload_bytes),
+      recorded_at: read_key(record_input, :recorded_at),
+      retention: read_key(record_input, :retention),
+      expires_at: read_key(record_input, :expires_at),
+      payload: payload,
+      redacted?: !!read_key(record_input, :redacted)
+    }
+  end
+
   defp read_key(map, key) when is_map(map) do
     if Map.has_key?(map, key) do
       Map.get(map, key)
@@ -235,6 +323,8 @@ defmodule ObanPowertools.DisplayPolicy do
       Map.get(map, Atom.to_string(key))
     end
   end
+
+  defp read_key(_value, _key), do: nil
 
   defp invalid_return_message(kind, other) do
     "Oban Powertools display_policy returned an invalid #{kind} display: #{inspect(other)}"
