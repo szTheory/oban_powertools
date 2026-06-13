@@ -144,6 +144,10 @@ defmodule ObanPowertools.Worker do
         Oban.Job.new(args, Oban.Worker.merge_opts(__opts__(), opts))
       end
 
+      # WARNING: Do NOT override new/2 in a worker that declares `redact:` fields.
+      # Overriding new/2 silently bypasses ObanPowertools.Worker.Redaction.apply/4,
+      # causing all declared redact fields to be stored in plain text with no error.
+      # The defoverridable is retained for Oban.Worker protocol compatibility only.
       defoverridable new: 1, new: 2
 
       @impl Oban.Worker
