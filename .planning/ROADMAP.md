@@ -150,7 +150,16 @@ Plans:
   3. The `/ops/jobs` job detail view renders "Fields redacted at enqueue: [:ssn, :token]" when `__redacted_fields__` is present in meta
   4. `DisplayPolicy.render_job_field/3` shows "Redacted at enqueue" for any arg field listed in `__redacted_fields__` rather than displaying a missing value
 
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+**Wave 1**
+- [ ] 56-01-PLAN.md — Redaction engine: redact: opt, compile-time guards, new/1,2 override, required-field exemption, Redaction helper (REDACT-01, REDACT-02)
+
+**Wave 2** *(blocked on Wave 1 plan 56-01 completion; all parallel — no file overlap)*
+- [ ] 56-02-PLAN.md — Cron-path bypass fix: route scheduled enqueue through entry.worker.new/2 (REDACT-01, REDACT-02)
+- [ ] 56-03-PLAN.md — Operator disclosure: render_job_field overlay + job detail "Fields redacted at enqueue" card (REDACT-03, REDACT-04)
+- [ ] 56-04-PLAN.md — redact: support-truth guide section + docs-contract lock test (REDACT-01)
+
 **UI hint**: yes
 
 ## Progress
@@ -167,4 +176,4 @@ Plans:
 | 53    | v1.7      | 2/2            | Complete    | 2026-06-12 |
 | 54    | v1.7      | 4/4 | Complete    | 2026-06-12 |
 | 55    | v1.7      | 4/4 | Complete    | 2026-06-13 |
-| 56    | v1.7      | 0/TBD          | Not started | -          |
+| 56    | v1.7      | 0/4            | Not started | -          |
