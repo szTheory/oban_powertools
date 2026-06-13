@@ -18,6 +18,7 @@ defmodule ObanPowertools.Web.JobsLiveDetailStringPolicy do
   # String → {:string, text}
   def display(:job_args, _value, _context), do: "args text from policy"
   def display(:job_meta, _value, _context), do: "meta text from policy"
+  def display(:job_recorded, _value, _context), do: "recorded output from policy"
   def display(_kind, _value, _context), do: nil
 end
 
@@ -25,6 +26,15 @@ defmodule ObanPowertools.Web.JobsLiveDetailMapPolicy do
   # Map → {:raw_json, encoded redacted map}
   def display(:job_args, args, _context), do: Map.put(args, "secret", "REDACTED")
   def display(:job_meta, _meta, _context), do: %{"trace_id" => "abc-redacted"}
+
+  def display(:job_recorded, _record, _context) do
+    %{
+      summary: "policy summary",
+      payload: %{"policy" => "payload"},
+      redacted?: true
+    }
+  end
+
   def display(_kind, _value, _context), do: nil
 end
 
@@ -32,12 +42,14 @@ defmodule ObanPowertools.Web.JobsLiveDetailRaisingPolicy do
   # raise → {:fallback, "[redacted]"}
   def display(:job_args, _value, _context), do: raise("intentional test failure")
   def display(:job_meta, _value, _context), do: "meta ok"
+  def display(:job_recorded, _value, _context), do: raise("recorded output failure")
   def display(_kind, _value, _context), do: nil
 end
 
 defmodule ObanPowertools.Web.JobsLiveTest do
   use ObanPowertools.LiveCase, async: false
 
+  alias ObanPowertools.JobRecord
   alias ObanPowertools.TestRepo
 
   setup do
@@ -461,6 +473,128 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
 
       assert html =~ "No errors recorded for this job."
+    end
+
+    test "renders recorded output payload and retention metadata", %{conn: conn} do
+      job = insert_job!(worker: "MyApp.RecordedWorker", queue: :default, state: "completed")
+
+      assert :ok =
+               JobRecord.record(
+                 TestRepo,
+                 "MyApp.RecordedWorker",
+                 %{job | attempt: 2},
+                 %{"message_id" => "msg_123", "delivered" => true},
+                 summary: "notification delivered",
+                 output_retention: :ephemeral
+               )
+
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{id: "ops-1", permissions: [:view_job_detail]}
+        )
+
+      {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
+
+      assert html =~ "Recorded Output"
+      assert html =~ "Available"
+      assert html =~ "notification delivered"
+      assert html =~ "ok"
+      assert html =~ "Attempt"
+      assert html =~ "2"
+      assert html =~ "Payload Bytes"
+      assert html =~ "Recorded At"
+      assert html =~ "Retention"
+      assert html =~ "ephemeral"
+      assert html =~ "Expires At"
+      assert html =~ "message_id"
+      assert html =~ "msg_123"
+    end
+
+    test "renders neutral recorded output empty state when no record exists", %{conn: conn} do
+      job = insert_job!(worker: "MyApp.Worker", queue: :default)
+
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{id: "ops-1", permissions: [:view_job_detail]}
+        )
+
+      {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
+
+      assert html =~ "Recorded Output"
+      assert html =~ "No recorded output found for this job."
+      refute html =~ "recording was disabled"
+    end
+
+    test "renders recorded output string policy with default metadata", %{conn: conn} do
+      original = Application.get_env(:oban_powertools, :display_policy)
+
+      Application.put_env(
+        :oban_powertools,
+        :display_policy,
+        ObanPowertools.Web.JobsLiveDetailStringPolicy
+      )
+
+      on_exit(fn -> Application.put_env(:oban_powertools, :display_policy, original) end)
+
+      job = insert_job!(worker: "MyApp.RecordedWorker", queue: :default, state: "completed")
+
+      assert :ok =
+               JobRecord.record(TestRepo, "MyApp.RecordedWorker", job, %{"raw" => "payload"},
+                 summary: "default summary",
+                 output_retention: :standard
+               )
+
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{id: "ops-1", permissions: [:view_job_detail]}
+        )
+
+      {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
+
+      assert html =~ "Recorded Output"
+      assert html =~ "default summary"
+      assert html =~ "recorded output from policy"
+      assert html =~ "standard"
+    end
+
+    test "renders recorded output map policy and fallback without crashing", %{conn: conn} do
+      original = Application.get_env(:oban_powertools, :display_policy)
+      job = insert_job!(worker: "MyApp.RecordedWorker", queue: :default, state: "completed")
+
+      assert :ok =
+               JobRecord.record(TestRepo, "MyApp.RecordedWorker", job, %{"raw" => "payload"},
+                 summary: "default summary"
+               )
+
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{id: "ops-1", permissions: [:view_job_detail]}
+        )
+
+      Application.put_env(
+        :oban_powertools,
+        :display_policy,
+        ObanPowertools.Web.JobsLiveDetailMapPolicy
+      )
+
+      {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
+
+      assert html =~ "policy summary"
+      assert html =~ "policy"
+      assert html =~ "payload"
+      assert html =~ "Redacted Metadata"
+
+      Application.put_env(
+        :oban_powertools,
+        :display_policy,
+        ObanPowertools.Web.JobsLiveDetailRaisingPolicy
+      )
+
+      {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
+
+      assert html =~ "Recorded output hidden by display policy fallback."
+
+      on_exit(fn -> Application.put_env(:oban_powertools, :display_policy, original) end)
     end
 
     test "detail page read-only banner appears for actor without retry permission", %{conn: conn} do
