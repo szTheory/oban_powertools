@@ -113,5 +113,5 @@ Full phase details: [milestones/v1.7-ROADMAP.md](milestones/v1.7-ROADMAP.md)
 | 43-46 | v1.5      | 9/9            | Complete    | 2026-05-28 |
 | 47-52.1 | v1.6    | 16/16          | Complete    | 2026-05-30 |
 | 53-56 | v1.7      | 14/14          | Complete    | 2026-06-13 |
-| 57    | v1.8      | 1/1 | Complete   | 2026-06-13 |
+| 57    | v1.8      | 1/1 | Complete    | 2026-06-13 |
 | 58    | v1.8      | 0/TBD          | Not started | -          |

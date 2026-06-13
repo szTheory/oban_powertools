@@ -8,7 +8,7 @@ Close the two non-blocking integration gaps deferred from the v1.7 audit. Both f
 
 ### Integration Fixes
 
-- [ ] **INT-01**: Doctor detects missing `oban_powertools_job_records` table — add to `@powertools_manifest` under `"output-recording"` group in `lib/oban_powertools/doctor/checks.ex`; update test description to "5 groups present"
+- [x] **INT-01**: Doctor detects missing `oban_powertools_job_records` table — add to `@powertools_manifest` under `"output-recording"` group in `lib/oban_powertools/doctor/checks.ex`; update test description to "5 groups present"
 - [ ] **INT-02**: Cron-scheduled `deadline:`-configured workers inject `__deadline_at__` meta at enqueue — thread `now` through all 4 `maybe_insert_job` clause heads in `lib/oban_powertools/cron.ex`; inject `Deadlines.build_meta` inside existing `function_exported?` branch; verify `redact:` + `deadline:` compose (both meta keys present on cron path)
 
 ## Future Requirements (deferred)
