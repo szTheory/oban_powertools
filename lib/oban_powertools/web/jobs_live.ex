@@ -388,6 +388,16 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             </div>
           </div>
 
+          <%!-- Redaction disclosure — shown near Meta card when __redacted_fields__ present (REDACT-03, D-13) --%>
+          <%= if @redacted_fields != [] do %>
+            <div class="rounded-lg border bg-white p-4">
+              <p class="text-xs font-semibold text-zinc-500">
+                Fields redacted at enqueue:
+                <%= Enum.map(@redacted_fields, &":#{&1}") |> Enum.join(", ") %>
+              </p>
+            </div>
+          <% end %>
+
           <%!-- Recorded output panel --%>
           <div class="rounded-lg border bg-white p-4">
             <h2 class="text-base font-semibold">Recorded Output</h2>
@@ -718,12 +728,14 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           |> assign(:args_display, nil)
           |> assign(:meta_display, nil)
           |> assign(:recorded_output, DisplayPolicy.render_job_field(:job_recorded, nil, %{}))
+          |> assign(:redacted_fields, [])
           |> assign(:back_path, Selectors.jobs_path([]))
 
         %Oban.Job{} = job ->
           args_display = DisplayPolicy.render_job_field(:job_args, job.args, %{job: job})
           meta_display = DisplayPolicy.render_job_field(:job_meta, job.meta, %{job: job})
           recorded_output = recorded_output_display(job)
+          redacted_fields = get_in(job.meta || %{}, ["__redacted_fields__"]) || []
 
           socket
           |> assign(:job, job)
@@ -731,6 +743,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           |> assign(:args_display, args_display)
           |> assign(:meta_display, meta_display)
           |> assign(:recorded_output, recorded_output)
+          |> assign(:redacted_fields, redacted_fields)
           |> assign(:preview, nil)
           |> assign(:reason, "")
           |> assign(:error_message, nil)
@@ -786,6 +799,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> assign(:job_not_found?, false)
       |> assign(:args_display, nil)
       |> assign(:meta_display, nil)
+      |> assign(:redacted_fields, [])
       |> assign(:preview, nil)
       |> assign(:bulk_preview_action, nil)
       |> assign(:selected_jobs, MapSet.new())
