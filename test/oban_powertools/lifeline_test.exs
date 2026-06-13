@@ -17,8 +17,8 @@ defmodule ObanPowertools.LifelineTest do
 
   alias Ecto.Changeset
   alias ObanPowertools.Audit
-  alias ObanPowertools.Lifeline
-  alias ObanPowertools.Lifeline.{Heartbeat, Incident}
+  alias ObanPowertools.{JobRecord, Lifeline}
+  alias ObanPowertools.Lifeline.{ArchiveRun, Heartbeat, Incident}
   alias ObanPowertools.Workflow
   alias ObanPowertools.Workflow.{CommandAttempt, Step}
   alias ObanPowertools.WorkflowFixtures
@@ -698,6 +698,83 @@ defmodule ObanPowertools.LifelineTest do
     assert archived_repairs_count() == 0
   end
 
+  test "run_archive_prune prunes expired job records with the existing batch size" do
+    now = DateTime.utc_now() |> DateTime.truncate(:microsecond)
+
+    expired_1 = insert_job_record!(expires_at: DateTime.add(now, -60, :second))
+    expired_2 = insert_job_record!(expires_at: now)
+    active = insert_job_record!(expires_at: DateTime.add(now, 60, :second))
+
+    assert {:ok, run} =
+             Lifeline.run_archive_prune(repo(), %{id: "operator-1"},
+               now: now,
+               batch_size: 1,
+               reason: "prune expired outputs"
+             )
+
+    assert run.pruned_count == 1
+    assert repo().aggregate(JobRecord, :count, :id) == 2
+    assert repo().get(JobRecord, active.id)
+
+    remaining_expired_ids =
+      repo().all(
+        from(record in JobRecord,
+          where: record.id in ^[expired_1.id, expired_2.id],
+          select: record.id
+        )
+      )
+
+    assert length(remaining_expired_ids) == 1
+  end
+
+  test "run_archive_prune adds deleted job records to archive run pruned_count" do
+    now = DateTime.utc_now() |> DateTime.truncate(:microsecond)
+    insert_job_record!(expires_at: DateTime.add(now, -120, :second))
+    insert_job_record!(expires_at: DateTime.add(now, -60, :second))
+    insert_job_record!(expires_at: DateTime.add(now, 60, :second))
+
+    assert {:ok, run} =
+             Lifeline.run_archive_prune(repo(), %{id: "operator-1"},
+               now: now,
+               reason: "account for output pruning"
+             )
+
+    assert run.pruned_count == 2
+    assert repo().aggregate(JobRecord, :count, :id) == 1
+
+    persisted_run = repo().get!(ArchiveRun, run.id)
+    assert persisted_run.pruned_count == 2
+    assert persisted_run.archived_count == 0
+  end
+
+  test "run_archive_prune telemetry includes pruned job records in pruned_count" do
+    now = DateTime.utc_now() |> DateTime.truncate(:microsecond)
+    insert_job_record!(expires_at: DateTime.add(now, -60, :second))
+
+    parent = self()
+    handler_id = "test-archive-prune-job-records-#{System.unique_integer([:positive])}"
+
+    :telemetry.attach(
+      handler_id,
+      [:oban_powertools, :lifeline, :archive_prune_completed],
+      fn _event, _measurements, metadata, _config ->
+        send(parent, {:archive_prune_completed, metadata})
+      end,
+      nil
+    )
+
+    assert {:ok, run} =
+             Lifeline.run_archive_prune(repo(), %{id: "operator-1"},
+               now: now,
+               reason: "emit output prune telemetry"
+             )
+
+    assert run.pruned_count == 1
+    assert_receive {:archive_prune_completed, %{outcome: "ok", pruned_count: 1}}
+
+    :telemetry.detach(handler_id)
+  end
+
   test "run_archive_prune blocks deletion when archive persistence fails" do
     old_inserted_at =
       DateTime.utc_now() |> DateTime.add(-(91 * 24 * 60 * 60), :second) |> DateTime.to_naive()
@@ -780,6 +857,27 @@ defmodule ObanPowertools.LifelineTest do
         inserted_at: inserted_at
       }
     ])
+  end
+
+  defp insert_job_record!(attrs) do
+    now = DateTime.utc_now() |> DateTime.truncate(:microsecond)
+    expires_at = Keyword.fetch!(attrs, :expires_at)
+    unique_id = System.unique_integer([:positive])
+
+    %JobRecord{}
+    |> JobRecord.changeset(%{
+      oban_job_id: unique_id,
+      worker: "Example.Worker",
+      attempt: 1,
+      status: "ok",
+      payload: %{"job_record" => unique_id},
+      payload_bytes: 24,
+      retention: "ephemeral",
+      redacted: false,
+      recorded_at: Keyword.get(attrs, :recorded_at, DateTime.add(now, -120, :second)),
+      expires_at: expires_at
+    })
+    |> repo().insert!()
   end
 
   defp archived_repairs_count do
