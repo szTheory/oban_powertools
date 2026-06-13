@@ -295,6 +295,16 @@ defmodule ObanPowertools.DocsContractTest do
     refute source =~ "hooks are retried independently"
   end
 
+  test "redact: support truth stays locked in builder docs" do
+    source = File.read!(@worker_guide_path)
+
+    assert source =~ "At-rest argument redaction"
+    assert source =~ "redact:"
+    assert source =~ "does NOT scrub recorded outputs"
+    assert source =~ "Workers must not return redacted/sensitive data from"
+    assert source =~ "removes fields from args at enqueue"
+  end
+
   test "worker timeout and deadline support truth stays locked in builder docs" do
     source = File.read!(@worker_guide_path)
 
