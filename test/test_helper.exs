@@ -9,6 +9,7 @@ unless skip_db_boot? do
   Code.require_file("test/support/migrations/3_phase_4_tables.exs")
   Code.require_file("test/support/migrations/4_phase_5_tables.exs")
   Code.require_file("test/support/migrations/5_phase_6_tables.exs")
+  Code.require_file("test/support/migrations/6_phase_55_tables.exs")
 
   {:ok, _} = ObanPowertools.TestRepo.start_link()
 
@@ -118,6 +119,17 @@ unless skip_db_boot? do
 
       if is_nil(phase_6_tables?) do
         Ecto.Migrator.up(repo, 5, ObanPowertools.TestRepo.Migrations.Phase6Tables, log: false)
+      end
+
+      phase_55_tables? =
+        repo
+        |> Ecto.Adapters.SQL.query!("SELECT to_regclass('public.oban_powertools_job_records')")
+        |> Map.fetch!(:rows)
+        |> List.first()
+        |> List.first()
+
+      if is_nil(phase_55_tables?) do
+        Ecto.Migrator.up(repo, 6, ObanPowertools.TestRepo.Migrations.Phase55Tables, log: false)
       end
 
       limiter_history_tables? =
