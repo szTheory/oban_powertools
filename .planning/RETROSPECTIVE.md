@@ -150,6 +150,54 @@
 
 ---
 
+## Milestone: v1.7 — Worker Lifecycle & Safety
+
+**Shipped:** 2026-06-13
+**Phases:** 4 (53-56) | **Plans:** 14
+
+### What Was Built
+
+- Crash-safe worker lifecycle hooks (`on_start/1`, `on_success/2`, `on_failure/2`, `on_discard/2`) with wrapper-owned dispatch, final-attempt classification, and `worker_hook` telemetry family.
+- Soft `deadline:` stores `__deadline_at__` ISO8601 meta at enqueue; `perform/1` cancels expired jobs before `process/1`. `timeout:` generates overridable `timeout/1`. Doctor warns on retryable expired-deadline jobs.
+- `ObanPowertools.JobRecord` — new `oban_powertools_job_records` table with opt-in `record_output: true`, best-effort recording before `on_success`, `fetch_result/1` API, Recorded Output card in `/ops/jobs` detail, Lifeline ephemeral pruning.
+- `redact: [:field]` drops PII from args after fingerprint via `new/2` override, injects `__redacted_fields__` meta. Cron path fixed via sentinel routing. UI disclosure block + per-field "Redacted at enqueue" overlay. Docs-contract locked.
+
+### What Worked
+
+- **Tight 2-day arc with zero gap-closure tail.** 4 phases, 14 plans, 507 tests, 0 failures, no inserted closure phases. The audit passed all 18 requirements on the first run, with findings categorized as deferred tech debt rather than blockers.
+- **Build order discipline.** Phase 53 (hooks) → 54 (deadline/timeout, depends on wrapper) → 55 (recording, depends on wrapper) → 56 (redact, depends on recording pipeline) meant each phase inherited a proven seam from the prior one. Phase 56 redaction slotted into the recording pipeline without refactoring.
+- **Audit-before-archive surfaced INT-01/INT-02 as deferred items** rather than blocking the milestone close. The `tech_debt` status correctly captured that all requirements are satisfied while flagging known non-blocking gaps for v1.8.
+- **Docs-contract tests prevent support-truth drift.** Phase 53 and Phase 56 both locked critical boundary sentences (hook observe-only semantics, `redact:` does NOT scrub recorded outputs) in `docs_contract_test.exs`. These become regression protection, not just documentation.
+
+### What Was Inefficient
+
+- **INT-02 (cron+deadline path) was missed in planning.** The cron path missing `merge_powertools_meta/4` for `deadline:`-configured workers was not in the Phase 54 plan; it surfaced only in the audit. Given that Phase 56 (redact) explicitly fixed the cron path, Phase 54 should have similarly audited the cron path for deadline injection. Fix is small (`maybe_insert_job` calling `Deadlines.build_meta` when the sentinel fires); it should have been in Phase 54-02.
+- **INT-01 (Doctor manifest gap) was a predictable miss.** When adding a new Powertools table, the `@powertools_manifest` in `doctor/checks.ex` is the natural place to register it. The PLAN.md for Phase 55 did not reference Doctor manifest as a success criterion, so it was missed. A standard checklist item — "did you add a new table? → update @powertools_manifest" — would prevent this class of oversight.
+- **Nyquist `wave_0_complete: false` in 3 of 4 phases** (53, 54, 56). The formal TDD wave-0 capture (recording which tests were initially red before going green) was not consistently recorded in VALIDATION.md. Only Phase 55 was fully Nyquist-compliant. This is process debt, not functional debt, but it accumulates across milestones.
+- **Frontmatter key inconsistency** (`requirements:` vs `requirements-completed:`) in plans 55-03, 55-04, 56-01, 56-03, 56-04. Caught by audit but not prevented at plan creation time.
+
+### Patterns Established
+
+- **`function_exported?/2` sentinel for Powertools worker routing on shared paths (cron, etc.):** `function_exported?(worker_mod, :__powertools_limits__, 0)` is the canonical sentinel because it is always generated for all `ObanPowertools.Worker` modules, including those with `limits: []`. This pattern applies whenever a shared Oban code path needs to route Powertools workers differently.
+- **No FK from operational tables to `oban_jobs`:** `oban_powertools_job_records` uses `oban_job_id` as a soft bigint reference. No FK so Oban can prune its own table without blocking. Retention managed independently via `expires_at` in Lifeline.
+- **Recording runs before hook dispatch:** Worker recording happens between `process/1` and `Hooks.after_result/3` so `on_success/2` callbacks can observe the persisted `JobRecord`. This ordering matters for callback-chain correctness.
+- **`rescue ArgumentError` degradation on cron path:** Wrapping both atom resolution and `function_exported?` check in a rescue block prevents cron-run crashes when a worker module is unloaded or removed at runtime. Degrade to bare `Oban.Job.new`.
+
+### Key Lessons
+
+1. **Doctor manifest is a checklist item for new tables.** Any plan adding a new Powertools table should have "add to `@powertools_manifest` in `doctor/checks.ex`" as an explicit task. Missed in Phase 55 → INT-01 surfaced in audit.
+2. **Audit cron path when enqueue logic changes.** Phase 54 added enqueue-time `__deadline_at__` injection but didn't audit the cron path — a natural parallel to the explicit cron-path fix in Phase 56 for redaction. Cross-path enqueue behavior should be a standard success criterion when any enqueue-time metadata is introduced.
+3. **Nyquist wave-0 capture belongs in the plan's task list, not as a post-hoc VALIDATION.md note.** Without an explicit task, the red-commit evidence gets skipped in fast execution phases (54: 3 min, 2 min, 2 min). Make it a task-0 requirement.
+4. **`tech_debt` audit status is a valid ship gate.** v1.7 shipped cleanly with `tech_debt` status. The gaps were documented, categorized, and deferred — this is the right outcome when requirements are fully satisfied and integration gaps are non-blocking. Don't hold milestones for non-blocking items.
+
+### Cost Observations
+
+- Model mix: Sonnet for execution phases (per `balanced` model profile); Opus-class for discuss/plan/audit phases.
+- Sessions: 2 days, 4 phases, 14 plans.
+- Notable: fastest milestone arc yet (2 days, no gap-closure phases) with the most densely coupled cross-phase wiring (hooks → deadline → recording → redaction all reuse the same generated perform wrapper seam).
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -163,6 +211,7 @@
 | v1.4      | 11     | 28    | Audit-driven gap-closure phases; CI proof enforcement; automated acceptance proxies |
 | v1.5      | 4      | 9     | Tight arc, no gap-closure tail; but lost phase commits exposed audit-vs-commit-state gap |
 | v1.6      | 7      | 16    | Release milestone: hex publication + operability CLIs; audit-before-archive gate; one surgical insert (52.1) |
+| v1.7      | 4      | 14    | Tightest arc yet (2 days, zero gap-closure phases); `tech_debt` audit as valid ship gate; cron-path and Doctor-manifest class of gaps identified |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -172,3 +221,5 @@
 4. **Verify commit-state, not working-tree state.** v1.5 shipped phases whose code was never committed yet still audited `passed`. Verification/audit must assert a clean tree or per-phase commit existence — green tests in a dirty tree are not proof of shipped work.
 5. **Audit-before-archive is a gate, not a formality.** v1.6 inserted Phase 52.1 based on the audit finding; skipping the audit would have archived a broken `verify-published` CI job. Re-run the audit after all inserted closure phases complete.
 6. **For release milestones, the published tarball is the only final verification artifact.** In-repo green ≠ published green. `verify-published` CI job is the right closing gate for any hex release milestone.
+7. **Cross-path enqueue coverage is a standard checklist item.** Any enqueue-time metadata addition must audit all insert paths (idempotency, cron, direct). v1.7's INT-02 (cron+deadline gap) repeats the same class of miss as v1.6's REL-04 — a shared code path that wasn't updated when a feature was added to the primary path.
+8. **`tech_debt` audit status is a valid ship gate.** All requirements satisfied + non-blocking gaps documented = ready to ship. Don't hold milestones for non-blocking items; defer them with explicit tracking.

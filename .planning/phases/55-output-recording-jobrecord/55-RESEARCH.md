@@ -510,14 +510,14 @@ end
 | A1 | `fetch_result/1` should choose the latest row by `recorded_at DESC, id DESC` if more than one row exists for a job. [ASSUMED] | Phase Requirements / Architecture Patterns | If product expects a specific attempt or only unique latest by job, planner may choose wrong query semantics; unique `(oban_job_id, attempt)` still allows multiple attempts. |
 | A2 | `summary` can default to `"Result available"` or equivalent when not supplied. [ASSUMED] | Architecture Patterns / UI | If exact copy is product-sensitive, UI tests may need a different default string. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should `fetch_result/1` accept only job id or also `%Oban.Job{}`?**
+1. **Should `fetch_result/1` accept only job id or also `%Oban.Job{}`?** [RESOLVED]
    - What we know: Requirement says `fetch_result/1`; job detail has `%Oban.Job{}` and host callers likely have job ids. [CITED: .planning/REQUIREMENTS.md] [VERIFIED: codebase grep]
    - What's unclear: Exact public input type is not specified in Context. [ASSUMED]
    - Recommendation: Support both integer job id and `%Oban.Job{id: id}` in one arity if small; document both. [ASSUMED]
 
-2. **Should `JobRecord.record/5` be public or internal?**
+2. **Should `JobRecord.record/5` be public or internal?** [RESOLVED]
    - What we know: Context D-09 forbids public manual `record_output/2`, not necessarily an internal schema function. [CITED: .planning/phases/55-output-recording-jobrecord/55-CONTEXT.md]
    - What's unclear: Whether HexDocs should expose low-level `record/…` or keep it `@doc false`. [ASSUMED]
    - Recommendation: Expose `fetch_result/1`; keep record insertion helper internal/undocumented for Phase 55. [ASSUMED]
