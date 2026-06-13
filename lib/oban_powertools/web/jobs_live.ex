@@ -4,7 +4,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     use Phoenix.LiveView
 
-    alias ObanPowertools.{DisplayPolicy, Jobs, Lifeline}
+    alias ObanPowertools.{DisplayPolicy, JobRecord, Jobs, Lifeline}
     alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth, Selectors}
 
     @valid_states ~w(available scheduled executing retryable cancelled discarded completed)
@@ -383,6 +383,57 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             </div>
           </div>
 
+          <%!-- Recorded output panel --%>
+          <div class="rounded-lg border bg-white p-4">
+            <h2 class="text-base font-semibold">Recorded Output</h2>
+            <%= if @recorded_output.available? do %>
+              <dl class="mt-3 grid gap-3 text-sm md:grid-cols-2">
+                <div class="flex gap-4">
+                  <dt class="w-36 text-zinc-500">Availability</dt>
+                  <dd>Available</dd>
+                </div>
+                <div class="flex gap-4">
+                  <dt class="w-36 text-zinc-500">Summary</dt>
+                  <dd><%= @recorded_output.summary %></dd>
+                </div>
+                <div class="flex gap-4">
+                  <dt class="w-36 text-zinc-500">Status</dt>
+                  <dd><%= @recorded_output.status || "Unknown" %></dd>
+                </div>
+                <div class="flex gap-4">
+                  <dt class="w-36 text-zinc-500">Attempt</dt>
+                  <dd><%= @recorded_output.attempt || "Unknown" %></dd>
+                </div>
+                <div class="flex gap-4">
+                  <dt class="w-36 text-zinc-500">Payload Bytes</dt>
+                  <dd><%= @recorded_output.payload_bytes || "Unknown" %></dd>
+                </div>
+                <div class="flex gap-4">
+                  <dt class="w-36 text-zinc-500">Recorded At</dt>
+                  <dd><%= timestamp_copy(@recorded_output.recorded_at) %></dd>
+                </div>
+                <div class="flex gap-4">
+                  <dt class="w-36 text-zinc-500">Retention</dt>
+                  <dd><%= @recorded_output.retention || "Unknown" %></dd>
+                </div>
+                <div class="flex gap-4">
+                  <dt class="w-36 text-zinc-500">Expires At</dt>
+                  <dd><%= timestamp_copy(@recorded_output.expires_at) %></dd>
+                </div>
+                <div class="flex gap-4 md:col-span-2">
+                  <dt class="w-36 text-zinc-500">Redacted Metadata</dt>
+                  <dd><%= if @recorded_output.redacted?, do: "Stored redaction metadata present", else: "None" %></dd>
+                </div>
+              </dl>
+              <div class="mt-4">
+                <h3 class="text-sm font-semibold text-zinc-700">Payload</h3>
+                <pre class="mt-2 text-sm bg-slate-50 p-3 rounded overflow-x-auto"><%= payload_copy(@recorded_output.payload) %></pre>
+              </div>
+            <% else %>
+              <p class="mt-3 text-sm text-zinc-600">No recorded output found for this job.</p>
+            <% end %>
+          </div>
+
           <%!-- Errors panel --%>
           <div class="rounded-lg border bg-white p-4">
             <h2 class="text-base font-semibold">Errors</h2>
@@ -661,17 +712,20 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           |> assign(:job_not_found?, true)
           |> assign(:args_display, nil)
           |> assign(:meta_display, nil)
+          |> assign(:recorded_output, DisplayPolicy.render_job_field(:job_recorded, nil, %{}))
           |> assign(:back_path, Selectors.jobs_path([]))
 
         %Oban.Job{} = job ->
           args_display = DisplayPolicy.render_job_field(:job_args, job.args, %{job: job})
           meta_display = DisplayPolicy.render_job_field(:job_meta, job.meta, %{job: job})
+          recorded_output = recorded_output_display(job)
 
           socket
           |> assign(:job, job)
           |> assign(:job_not_found?, false)
           |> assign(:args_display, args_display)
           |> assign(:meta_display, meta_display)
+          |> assign(:recorded_output, recorded_output)
           |> assign(:preview, nil)
           |> assign(:reason, "")
           |> assign(:error_message, nil)
@@ -685,6 +739,21 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               %{type: :job, id: to_string(job.id)}
             )
           )
+      end
+    end
+
+    defp recorded_output_display(%Oban.Job{} = job) do
+      context = %{surface: :jobs, field: :recorded, job: job}
+
+      case JobRecord.fetch_result(repo(), job.id) do
+        {:ok, _payload} ->
+          case JobRecord.fetch_record(repo(), job.id) do
+            {:ok, record} -> DisplayPolicy.render_job_field(:job_recorded, record, context)
+            {:error, :not_found} -> DisplayPolicy.render_job_field(:job_recorded, nil, context)
+          end
+
+        {:error, :not_found} ->
+          DisplayPolicy.render_job_field(:job_recorded, nil, context)
       end
     end
 
@@ -853,6 +922,14 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp timestamp_copy(timestamp) when is_binary(timestamp), do: timestamp
     defp timestamp_copy(_timestamp), do: "Unknown"
+
+    defp payload_copy(payload) when is_binary(payload), do: payload
+
+    defp payload_copy(payload) do
+      Jason.encode!(payload || %{}, pretty: true)
+    rescue
+      _ -> inspect(payload)
+    end
 
     defp repo, do: Application.fetch_env!(:oban_powertools, :repo)
   end
