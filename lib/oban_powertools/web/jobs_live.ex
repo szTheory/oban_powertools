@@ -91,17 +91,22 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     def handle_event("toggle_job", %{"id" => id_str}, socket) do
-      id = String.to_integer(id_str)
-      selected_jobs = socket.assigns.selected_jobs
+      case Integer.parse(id_str) do
+        {id, ""} ->
+          selected_jobs = socket.assigns.selected_jobs
 
-      selected_jobs =
-        if MapSet.member?(selected_jobs, id) do
-          MapSet.delete(selected_jobs, id)
-        else
-          MapSet.put(selected_jobs, id)
-        end
+          selected_jobs =
+            if MapSet.member?(selected_jobs, id) do
+              MapSet.delete(selected_jobs, id)
+            else
+              MapSet.put(selected_jobs, id)
+            end
 
-      {:noreply, assign(socket, :selected_jobs, selected_jobs)}
+          {:noreply, assign(socket, :selected_jobs, selected_jobs)}
+
+        _invalid ->
+          {:noreply, socket}
+      end
     end
 
     def handle_event("toggle_all", _, socket) do

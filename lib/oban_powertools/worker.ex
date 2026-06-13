@@ -193,7 +193,7 @@ defmodule ObanPowertools.Worker do
 
             if settings.record_output do
               ObanPowertools.JobRecord.record(
-                Application.fetch_env!(:oban_powertools, :repo),
+                nil,
                 __MODULE__,
                 job,
                 payload,

@@ -392,12 +392,17 @@ defmodule ObanPowertools.WorkerTest do
     assert {:error, :not_found} = JobRecord.fetch_result(TestRepo, job.id)
   end
 
-  test "recording fetches the repo from application config at runtime" do
+  test "recording preserves successful result when repo config is missing" do
     Application.delete_env(:oban_powertools, :repo)
+    job = worker_job(%{user_id: 123}, id: 55_022)
 
-    assert_raise ArgumentError, ~r/could not fetch application environment/, fn ->
-      RecordingConfiguredWorker.perform(worker_job(%{user_id: 123}, id: 55_022))
-    end
+    log =
+      capture_log(fn ->
+        assert {:ok, %{"recorded" => true}} = RecordingConfiguredWorker.perform(job)
+      end)
+
+    assert log =~ "could not record output payload for oban_job_id=#{job.id}"
+    assert_receive {:recording_seen_by_success_hook, {:error, :not_found}}
   end
 
   test "generated perform leaves cancel and snooze unchanged without post-hook dispatch" do

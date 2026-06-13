@@ -84,5 +84,23 @@ defmodule ObanPowertoolsTest do
                  field: :recorded
                })
     end
+
+    test "render_job_field/3 preserves missing-output state when :job_recorded policy raises" do
+      Application.put_env(
+        :oban_powertools,
+        :display_policy,
+        ObanPowertoolsTestJobRecordedRaisingPolicy
+      )
+
+      assert %{
+               available?: false,
+               payload: "No recorded output found for this job.",
+               summary: "No recorded output found for this job."
+             } =
+               ObanPowertools.DisplayPolicy.render_job_field(:job_recorded, nil, %{
+                 surface: :jobs,
+                 field: :recorded
+               })
+    end
   end
 end
