@@ -146,6 +146,7 @@ defmodule ObanPowertools.Worker do
 
           try do
             result = process(job)
+            __powertools_record_output__(job, result)
             ObanPowertools.Worker.Hooks.after_result(__MODULE__, job, result)
             result
           rescue
@@ -183,6 +184,28 @@ defmodule ObanPowertools.Worker do
       """
       def enqueue(args, opts \\ []) do
         ObanPowertools.Idempotency.transaction(__MODULE__, args, opts)
+      end
+
+      defp __powertools_record_output__(%Oban.Job{} = job, result) do
+        case result do
+          {:ok, payload} ->
+            settings = __powertools_output_recording__()
+
+            if settings.record_output do
+              ObanPowertools.JobRecord.record(
+                Application.fetch_env!(:oban_powertools, :repo),
+                __MODULE__,
+                job,
+                payload,
+                Map.to_list(settings)
+              )
+            end
+
+            :ok
+
+          _other ->
+            :ok
+        end
       end
     end
   end
