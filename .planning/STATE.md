@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Worker Lifecycle & Safety
 status: executing
-last_updated: "2026-06-13T01:18:19.362Z"
+last_updated: "2026-06-13T01:32:12.034Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 10
-  completed_plans: 7
-  percent: 70
+  completed_plans: 8
+  percent: 80
 ---
 
 # Project State
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-05-30)
 ## Current Position
 
 Phase: 55 (output-recording-jobrecord) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-13
 
-Progress: [███████░░░] 70%
+Progress: [████████░░] 80%
 
 ## Accumulated Context
 
@@ -58,6 +58,9 @@ See PROJECT.md Key Decisions section.
 - [Phase 55]: JobRecord uses a dedicated table with `oban_job_id` as a soft reference and no FK to `oban_jobs`.
 - [Phase 55]: Recording failures, oversized payloads, encoding failures, and uniqueness conflicts warn and return `:ok`.
 - [Phase 55]: `fetch_result/1` uses the configured `:oban_powertools` repo while `fetch_result/2` remains available for explicit repo callers.
+- [Phase 55]: Output recording remains opt-in through `record_output: true` and only records `{:ok, payload}`; plain `:ok` remains success without output.
+- [Phase 55]: Worker recording runs before `Hooks.after_result/3` so `on_success/2` callbacks can observe persisted `JobRecord` output.
+- [Phase 55]: Worker recording settings are generated as a map while preserving the existing `JobRecord.record/5` keyword option contract at the call site.
 
 ### Blockers
 
@@ -65,8 +68,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-13T01:18:19.353Z
-Stopped at: Completed 55-01-PLAN.md
+Last session: 2026-06-13T01:32:12.028Z
+Stopped at: Completed 55-02-PLAN.md
 Resume file: None
 
 ## Performance Metrics
@@ -80,3 +83,4 @@ Resume file: None
 | Phase 54 P04 | 2 min | 2 tasks | 4 files |
 | Phase 54 P02 | 3 min | 2 tasks | 3 files |
 | Phase 55 P01 | 8 min | 2 tasks | 7 files |
+| Phase 55 P02 | 5min | 2 tasks | 2 files |
