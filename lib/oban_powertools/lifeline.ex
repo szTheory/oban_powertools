@@ -268,17 +268,35 @@ defmodule ObanPowertools.Lifeline do
             from(heartbeat in Heartbeat, where: heartbeat.last_heartbeat_at < ^heartbeat_cutoff)
           )
 
-        {archive_count, deleted_audits, pruned_previews, pruned_heartbeats}
+        due_job_record_ids =
+          from(record in ObanPowertools.JobRecord,
+            where: record.expires_at <= ^now,
+            order_by: [asc: record.expires_at, asc: record.id],
+            limit: ^batch_size,
+            select: record.id
+          )
+
+        {pruned_job_records, _} =
+          repo.delete_all(
+            from(record in ObanPowertools.JobRecord,
+              where: record.id in subquery(due_job_record_ids)
+            )
+          )
+
+        {archive_count, deleted_audits, pruned_previews, pruned_heartbeats, pruned_job_records}
       end)
 
     case result do
-      {:ok, {archive_count, _deleted_audits, pruned_previews, pruned_heartbeats}} ->
+      {:ok,
+       {archive_count, _deleted_audits, pruned_previews, pruned_heartbeats, pruned_job_records}} ->
+        pruned_count = pruned_previews + pruned_heartbeats + pruned_job_records
+
         {:ok, updated_run} =
           run
           |> ArchiveRun.changeset(%{
             status: "completed",
             archived_count: archive_count,
-            pruned_count: pruned_previews + pruned_heartbeats,
+            pruned_count: pruned_count,
             blocked_count: 0,
             finished_at: now
           })
@@ -288,7 +306,7 @@ defmodule ObanPowertools.Lifeline do
           action: "archive_prune",
           outcome: "ok",
           archived_count: archive_count,
-          pruned_count: pruned_previews + pruned_heartbeats
+          pruned_count: pruned_count
         })
 
         {:ok, updated_run}
