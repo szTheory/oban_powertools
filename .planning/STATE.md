@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Worker Lifecycle & Safety
-status: executing
-last_updated: "2026-06-13T01:42:22.333Z"
+status: verifying
+last_updated: "2026-06-13T01:51:01.700Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 10
-  completed_plans: 9
-  percent: 90
+  completed_plans: 10
+  percent: 75
 ---
 
 # Project State
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-05-30)
 
 Phase: 55 (output-recording-jobrecord) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-13
 
-Progress: [█████████░] 90%
+Progress: [██████████] 100%
 
 ## Accumulated Context
 
@@ -62,6 +62,9 @@ See PROJECT.md Key Decisions section.
 - [Phase 55]: Worker recording runs before `Hooks.after_result/3` so `on_success/2` callbacks can observe persisted `JobRecord` output.
 - [Phase 55]: Worker recording settings are generated as a map while preserving the existing `JobRecord.record/5` keyword option contract at the call site.
 - [Phase 55]: Kept JobRecord.fetch_result/1 and /2 returning payloads for compatibility; added fetch_record/1 and /2 for JobsLive metadata. — Plan 55-03 needed row metadata for the Recorded Output card, while plans 55-01 and 55-02 established fetch_result as a payload lookup.
+- [Phase 55]: Expired JobRecords are pruned directly by expires_at inside Lifeline without joining oban_jobs.
+- [Phase 55]: Deleted JobRecords contribute to pruned_count, not archived_count.
+- [Phase 55]: Output recording docs frame JobRecord as best-effort operational context, not business storage or transaction truth.
 
 ### Blockers
 
@@ -69,8 +72,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-13T01:41:47.211Z
-Stopped at: Completed 55-03-PLAN.md
+Last session: 2026-06-13T01:51:01.695Z
+Stopped at: Completed 55-04-PLAN.md
 Resume file: None
 
 ## Performance Metrics
@@ -86,3 +89,4 @@ Resume file: None
 | Phase 55 P01 | 8 min | 2 tasks | 7 files |
 | Phase 55 P02 | 5min | 2 tasks | 2 files |
 | Phase 55 P03 | 6min | 2 tasks | 5 files |
+| Phase 55 P04 | 4min | 2 tasks | 4 files |

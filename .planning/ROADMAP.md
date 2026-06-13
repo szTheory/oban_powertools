@@ -61,7 +61,7 @@ Full phase details: [milestones/v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md)
 
 - [x] **Phase 53: Worker Lifecycle Hooks** — per-job observe-only callbacks with crash-caught dispatch and telemetry contract extension (completed 2026-06-12)
 - [x] **Phase 54: deadline: / timeout: Pass-through** — compile-time soft deadline and timeout opts with Doctor integration (completed 2026-06-12)
-- [ ] **Phase 55: Output Recording (JobRecord)** — new schema for fault-tolerant job output persistence with detail-view visibility
+- [x] **Phase 55: Output Recording (JobRecord)** — new schema for fault-tolerant job output persistence with detail-view visibility (completed 2026-06-13)
 - [ ] **Phase 56: redact: At-Rest** — compile-time field redaction from args at enqueue with UI annotation and recording integration
 
 ## Phase Details
@@ -134,7 +134,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 - [x] 55-02-PLAN.md — Worker wrapper recording injection for success cases
 - [x] 55-03-PLAN.md — JobsLive and DisplayPolicy recorded output visualization
-- [ ] 55-04-PLAN.md — Lifeline retention pruning extension and operator docs
+- [x] 55-04-PLAN.md — Lifeline retention pruning extension and operator docs
 
 **UI hint**: yes
 
@@ -166,5 +166,5 @@ Plans:
 | 47-52.1 | v1.6    | 16/16          | Complete    | 2026-05-30 |
 | 53    | v1.7      | 2/2            | Complete    | 2026-06-12 |
 | 54    | v1.7      | 4/4 | Complete    | 2026-06-12 |
-| 55    | v1.7      | 3/4 | In Progress|  |
+| 55    | v1.7      | 4/4 | Complete   | 2026-06-13 |
 | 56    | v1.7      | 0/TBD          | Not started | -          |
