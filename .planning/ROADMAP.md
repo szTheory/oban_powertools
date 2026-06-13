@@ -62,7 +62,7 @@ Full phase details: [milestones/v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md)
 - [x] **Phase 53: Worker Lifecycle Hooks** — per-job observe-only callbacks with crash-caught dispatch and telemetry contract extension (completed 2026-06-12)
 - [x] **Phase 54: deadline: / timeout: Pass-through** — compile-time soft deadline and timeout opts with Doctor integration (completed 2026-06-12)
 - [x] **Phase 55: Output Recording (JobRecord)** — new schema for fault-tolerant job output persistence with detail-view visibility (completed 2026-06-13)
-- [ ] **Phase 56: redact: At-Rest** — compile-time field redaction from args at enqueue with UI annotation and recording integration
+- [x] **Phase 56: redact: At-Rest** — compile-time field redaction from args at enqueue with UI annotation and recording integration (completed 2026-06-13)
 
 ## Phase Details
 
@@ -156,9 +156,9 @@ Plans:
 - [x] 56-01-PLAN.md — Redaction engine: redact: opt, compile-time guards, new/1,2 override, required-field exemption, Redaction helper (REDACT-01, REDACT-02)
 
 **Wave 2** *(blocked on Wave 1 plan 56-01 completion; all parallel — no file overlap)*
-- [ ] 56-02-PLAN.md — Cron-path bypass fix: route scheduled enqueue through entry.worker.new/2 (REDACT-01, REDACT-02)
-- [ ] 56-03-PLAN.md — Operator disclosure: render_job_field overlay + job detail "Fields redacted at enqueue" card (REDACT-03, REDACT-04)
-- [ ] 56-04-PLAN.md — redact: support-truth guide section + docs-contract lock test (REDACT-01)
+- [x] 56-02-PLAN.md — Cron-path bypass fix: route scheduled enqueue through entry.worker.new/2 (REDACT-01, REDACT-02)
+- [x] 56-03-PLAN.md — Operator disclosure: render_job_field overlay + job detail "Fields redacted at enqueue" card (REDACT-03, REDACT-04)
+- [x] 56-04-PLAN.md — redact: support-truth guide section + docs-contract lock test (REDACT-01)
 
 **UI hint**: yes
 
@@ -176,4 +176,4 @@ Plans:
 | 53    | v1.7      | 2/2            | Complete    | 2026-06-12 |
 | 54    | v1.7      | 4/4 | Complete    | 2026-06-12 |
 | 55    | v1.7      | 4/4 | Complete    | 2026-06-13 |
-| 56    | v1.7      | 1/4 | In Progress|  |
+| 56    | v1.7      | 4/4 | Complete   | 2026-06-13 |
