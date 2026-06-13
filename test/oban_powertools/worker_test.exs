@@ -101,6 +101,27 @@ defmodule ObanPowertools.WorkerTest do
     end
   end
 
+  defmodule RecordingConfiguredWorker do
+    use ObanPowertools.Worker,
+      queue: :default,
+      args: [user_id: :integer],
+      record_output: true,
+      output_limit: 12_345,
+      output_retention: :ephemeral
+
+    @impl true
+    def process(_job), do: {:ok, %{"recorded" => true}}
+  end
+
+  defmodule RecordingDefaultWorker do
+    use ObanPowertools.Worker,
+      queue: :default,
+      args: [user_id: :integer]
+
+    @impl true
+    def process(_job), do: :ok
+  end
+
   defmodule DeadlineGeneratedWorker do
     use ObanPowertools.Worker,
       queue: :default,
@@ -339,6 +360,29 @@ defmodule ObanPowertools.WorkerTest do
   test "static timeout option generates overridable Oban timeout callback" do
     assert 5_000 = StaticTimeoutWorker.timeout(%Oban.Job{})
     assert 321 = TimeoutOverrideWorker.timeout(%Oban.Job{})
+  end
+
+  test "recording options are stripped before configuring Oban worker" do
+    assert RecordingConfiguredWorker.__opts__()[:queue] == :default
+    refute Keyword.has_key?(RecordingConfiguredWorker.__opts__(), :record_output)
+    refute Keyword.has_key?(RecordingConfiguredWorker.__opts__(), :output_limit)
+    refute Keyword.has_key?(RecordingConfiguredWorker.__opts__(), :output_retention)
+  end
+
+  test "recording settings are exposed on the worker" do
+    assert RecordingConfiguredWorker.__powertools_output_recording__() == %{
+             record_output: true,
+             output_limit: 12_345,
+             output_retention: :ephemeral
+           }
+  end
+
+  test "recording settings default to disabled standard retention" do
+    assert RecordingDefaultWorker.__powertools_output_recording__() == %{
+             record_output: false,
+             output_limit: 65_536,
+             output_retention: :standard
+           }
   end
 
   test "invalid timeout and deadline declarations fail at compile time" do
