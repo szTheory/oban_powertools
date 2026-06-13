@@ -68,7 +68,7 @@ The implementation has five concrete code seams: (1) `worker.ex __using__` for o
 
 The atom-vs-string key boundary is the primary ordering risk: args reach `new/2` as atom-keyed maps from the `transaction/3` path (via `Map.from_struct`), but a direct `MyWorker.new(%{"ssn" => "123"})` call may pass string keys. The override must normalize to atom keys before dropping, using the declared `args_config` keys as the canonical atom set.
 
-**Primary recommendation:** Override `new/1,2` in `__using__` following the existing `defoverridable` pattern; put redaction/normalize/meta-inject logic in a small internal helper `ObanPowertools.Worker.Redaction` to keep quoted macro code small.
+**Primary recommendation:** Override `new/1,2` in `__using__` following the existing `defoverridable` pattern; put redaction/normalize/meta-inject logic in a small internal helper `ObanPowertools.Worker.Redaction` to keep quoted macro code small. The override delegates to Oban's changeset build via the explicit `Oban.Job.new(args, Oban.Worker.merge_opts(__opts__(), opts))` form (see Open Questions OQ1 RESOLVED) rather than `super`.
 
 ---
 
@@ -127,11 +127,11 @@ ObanPowertools.Worker.__using__ generated new/2 override
         |-- redacted_fields_str = Enum.map(redacted_keys, &to_string/1) |> Enum.sort()
         |-- clean_args = Map.drop(normalized_args, redacted_keys)
         |-- base_opts_with_meta = inject __redacted_fields__ into opts[:meta] via deep_merge
-        |-- super(clean_args, base_opts_with_meta)   <-- calls Oban.Worker's generated new/2
-              |
+        |-- Oban.Job.new(clean_args, Oban.Worker.merge_opts(__opts__(), base_opts_with_meta))
+              |                       ^-- explicit delegation, mirrors Oban's generated new/2 (OQ1)
               v
-        Oban.Job.new(clean_args, merged_opts)  <-- JSONB stored without redacted fields
-        
+        JSONB stored without redacted fields
+
 Idempotency.transaction/3 path:
   fingerprint = generate_fingerprint(worker_mod, full_casted_args)  [line 46]
   ...
@@ -172,9 +172,9 @@ lib/oban_powertools/worker/
 ├── redaction.ex      # NEW — normalize_args/2, drop_redacted/3, inject_meta/3
 ```
 
-### Pattern 1: `new/2` Override with `super`
+### Pattern 1: `new/2` Override with Explicit Delegation (OQ1-resolved)
 
-**What:** Override `new/2` in the `__using__`-generated code, call `super(clean_args, opts_with_meta)` to delegate to `Oban.Worker`'s generated `new/2`.
+**What:** Override `new/2` in the `__using__`-generated code, delegate to Oban's changeset build via the explicit `Oban.Job.new(args, Oban.Worker.merge_opts(__opts__(), opts))` form rather than `super`. This mirrors the body of Oban's own generated `new/2` and sidesteps any `super`-in-`quote` scoping subtlety (see Open Questions OQ1 RESOLVED).
 
 **When to use:** The only correct pattern for the override. `defoverridable Worker` already marks all callbacks overridable in `deps/oban/lib/oban/worker.ex:496`.
 
@@ -185,7 +185,7 @@ lib/oban_powertools/worker/
 
 @impl Oban.Worker
 def new(args, opts \\ []) when is_map(args) and is_list(opts) do
-  ObanPowertools.Worker.Redaction.apply_redaction(
+  ObanPowertools.Worker.Redaction.apply(
     __MODULE__,
     args,
     opts,
@@ -199,29 +199,29 @@ defoverridable new: 1, new: 2
 ```elixir
 # In ObanPowertools.Worker.Redaction:
 
-def apply_redaction(worker_mod, args, opts, []) do
-  # No redact config — call super path directly
-  worker_mod.__powertools_new_super__(args, opts)
+def apply(worker_mod, args, opts, []) do
+  # No redact config — delegate via explicit merge_opts path
+  worker_mod.__powertools_new_delegate__(args, opts)
 end
 
-def apply_redaction(worker_mod, args, opts, redact_keys) do
+def apply(worker_mod, args, opts, redact_keys) do
   redact_strings = redact_keys |> Enum.map(&Atom.to_string/1) |> Enum.sort()
   normalized = normalize_keys(args, redact_keys)
   clean_args = Map.drop(normalized, redact_keys)
   opts_with_meta = inject_redacted_fields_meta(opts, redact_strings)
-  worker_mod.__powertools_new_super__(clean_args, opts_with_meta)
+  worker_mod.__powertools_new_delegate__(clean_args, opts_with_meta)
 end
 ```
 
-**Key insight:** `super` inside `__using__`-generated code calls the `Oban.Worker`-generated `new/2`, which itself calls `Oban.Job.new(args, Worker.merge_opts(__opts__(), opts))`. The override receives clean args + meta-enriched opts and delegates correctly.
+**Key insight:** The delegate generated in the worker calls `Oban.Job.new(args, Oban.Worker.merge_opts(__opts__(), opts))`, which is exactly what Oban's generated `new/2` does. The override receives clean args + meta-enriched opts and delegates correctly without relying on `super`.
 
-**Implementation note:** Using `super` requires the override to be inside a `quote do ... end` block. The cleanest pattern is a helper module that the override calls, keeping macro-quoted code minimal.
+**Implementation note:** Keep all drop/normalize/merge logic in the `Redaction` helper module so the macro-quoted code stays minimal.
 
 ### Pattern 2: `defoverridable` Layering — How It Works in This Codebase
 
-`use Oban.Worker` generates `new/2` and immediately calls `defoverridable Worker`. When `ObanPowertools.Worker.__using__` then generates its own `new/2` after that, the Powertools `new/2` becomes the new implementation, and calling `super` dispatches to the Oban-generated `new/2`.
+`use Oban.Worker` generates `new/2` and immediately calls `defoverridable Worker`. When `ObanPowertools.Worker.__using__` then generates its own `new/2` after that, the Powertools `new/2` becomes the new implementation. Rather than calling `super`, the override delegates explicitly via `Oban.Job.new(args, Oban.Worker.merge_opts(__opts__(), opts))` (OQ1-resolved) — this is the same body the Oban-generated `new/2` would have run.
 
-The existing codebase already uses this pattern successfully for `perform/1` (the Powertools `perform/1` overrides Oban's, calls `process/1`). The `new/2` override follows the identical mechanic.
+The existing codebase already uses `defoverridable` + wrap successfully for `perform/1` (the Powertools `perform/1` overrides Oban's, calls `process/1` via a private helper). The `new/2` override follows the identical mechanic but uses explicit delegation instead of `super`.
 
 **Critical ordering in `__using__`:**
 ```
@@ -508,10 +508,15 @@ def changeset(struct, params) do
   |> validate_required(required)
 end
 
-# new/2 override (NEW):
+# new/2 override (NEW) — explicit delegation per OQ1, no super:
 @impl Oban.Worker
 def new(args, opts \\ []) when is_map(args) and is_list(opts) do
-  ObanPowertools.Worker.Redaction.apply(args, opts, @powertools_redact, &super/2)
+  ObanPowertools.Worker.Redaction.apply(__MODULE__, args, opts, @powertools_redact)
+end
+
+# Private delegate that mirrors Oban's generated new/2 body (OQ1-resolved):
+def __powertools_new_delegate__(args, opts) do
+  Oban.Job.new(args, Oban.Worker.merge_opts(__opts__(), opts))
 end
 
 defoverridable new: 1, new: 2
@@ -525,11 +530,11 @@ defoverridable new: 1, new: 2
 defmodule ObanPowertools.Worker.Redaction do
   @moduledoc false
 
-  def apply(args, opts, [], super_fn) do
-    super_fn.(args, opts)
+  def apply(worker_mod, args, opts, []) do
+    worker_mod.__powertools_new_delegate__(args, opts)
   end
 
-  def apply(args, opts, redact_keys, super_fn) do
+  def apply(worker_mod, args, opts, redact_keys) do
     redact_strings = redact_keys |> Enum.map(&Atom.to_string/1) |> Enum.sort()
 
     # Normalize mixed key shapes: ensure redact_keys can be dropped
@@ -539,7 +544,7 @@ defmodule ObanPowertools.Worker.Redaction do
     # Inject __redacted_fields__ into meta (merge, don't clobber)
     opts_with_meta = inject_meta(opts, redact_strings)
 
-    super_fn.(clean_args, opts_with_meta)
+    worker_mod.__powertools_new_delegate__(clean_args, opts_with_meta)
   end
 
   defp normalize_to_atom_keys(args, atom_keys) do
@@ -672,23 +677,21 @@ Not applicable. This is a greenfield feature addition, not a rename/refactor/mig
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **`super` vs delegating to a named helper**
-   - What we know: The existing `perform/1` override uses `__powertools_perform__` as a private dispatch helper rather than `super`. This avoids `super` scoping complexities inside quote blocks.
-   - What's unclear: Whether using `super` inside a `quote do` block in `__using__` is idiomatic or requires a workaround (e.g., capturing the Oban-generated `new/2` into a module-attribute function reference before overriding).
-   - Recommendation: Use the helper-module pattern (`ObanPowertools.Worker.Redaction.apply/4` takes a `super_fn` lambda) which avoids `super` complications entirely. The lambda captures `&super/2` at the macro expansion site where it is valid.
-   - **Note for planner:** The safest implementation is `Oban.Worker.new(args, opts)` directly (calling the original generator's logic) but that bypasses `__opts__` merge. The correct approach is to call `Oban.Job.new(args, Oban.Worker.merge_opts(__opts__(), opts))` explicitly, mirroring what Oban's generated `new/2` does. This sidesteps `super` entirely and is explicit.
+1. **`super` vs explicit delegation inside `quote do` — RESOLVED**
+   - What we know: The existing `perform/1` override uses `__powertools_perform__` as a private dispatch helper rather than `super`, avoiding `super` scoping subtleties inside quote blocks.
+   - **Resolution:** COMMIT to **explicit delegation**, not `super`. The override calls a generated private delegate `__powertools_new_delegate__/2` whose body is `Oban.Job.new(args, Oban.Worker.merge_opts(__opts__(), opts))` — exactly mirroring the body of Oban's own generated `new/2`. This sidesteps any `super`-in-`quote` scoping subtlety entirely and is fully explicit about the `__opts__` merge. The `Redaction.apply/4` helper calls `worker_mod.__powertools_new_delegate__/2` after dropping fields and injecting meta. (Patterns 1 & 2, Code Examples 1 & 2 updated to this form.) This is the path the planner and 56-01 Task 1 implement.
 
-2. **Cron path: `String.to_existing_atom` safety**
+2. **Cron path: `String.to_existing_atom` safety — RESOLVED**
    - What we know: `entry.worker` is a string like `"MyApp.MyWorker"` — the module atom must exist since the cron entry was registered.
-   - What's unclear: Edge case where a cron entry references a recently removed worker module that is no longer loaded.
-   - Recommendation: Wrap in `rescue ArgumentError -> Oban.Job.new(args, ...)` fallback so a missing/unloaded worker gracefully degrades rather than crashing the cron run. Log a warning.
+   - Edge case: a cron entry references a recently removed worker module that is no longer loaded.
+   - **Resolution:** The rescue fallback is the committed approach. Wrap the `String.to_existing_atom` + `worker_module.new/2` routing in `rescue ArgumentError -> Oban.Job.new(args, ...)` so a missing/unloaded worker gracefully degrades to bare `Oban.Job.new` rather than crashing the cron run, and log a warning. (See Pattern 5 — this is already the documented cron-fix shape.)
 
-3. **`apply_policy` for `:job_args` kind in existing `DisplayPolicy`**
+3. **`apply_policy` for `:job_args` kind / host custom-map return — RESOLVED**
    - What we know: `render_job_field/3` dispatches `apply_policy(:job_args, job.args, context)` to the host display policy. Some hosts may override `:job_args` rendering entirely.
-   - What's unclear: If a host's policy returns a custom `%{}` for `:job_args`, should the Powertools default still inject "Redacted at enqueue" rows into their custom map?
-   - Recommendation: Only inject redacted rows when policy returns `nil` (default path). If the host policy returns a custom map, pass it through as-is — the host is responsible for handling `__redacted_fields__` in their policy. Document this in DX guide (D-11).
+   - Question: if a host's policy returns a custom `%{}` for `:job_args`, should the Powertools default still inject "Redacted at enqueue" rows into their custom map?
+   - **Resolution:** Powertools overlays the "Redacted at enqueue" rows ONLY on the `nil`/absent (default) path. When the host policy returns a custom binary or custom map, that return passes through **untouched** — the host owns custom rendering and is responsible for handling `__redacted_fields__` in their own policy. Documented in the DX guide (D-11). (See Pattern in Code Example 3 — the `nil` clause overlays; non-nil clauses pass through.)
 
 ---
 
@@ -806,8 +809,8 @@ Step 2.6: SKIPPED. No external tool or service dependencies introduced. Pure Eli
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
 | A1 | `function_exported?(mod, :__powertools_limits__, 0)` is a reliable sentinel for "is this an ObanPowertools.Worker" because it is always generated regardless of limits config | Cron fix (Pattern 5) | If a plain Oban.Worker somehow defines `__powertools_limits__/0`, it would be routed through `worker_module.new/2` which would fail. Probability: negligible — this is a Powertools-specific generated function. |
-| A2 | `String.to_existing_atom("Elixir." <> entry.worker)` succeeds at cron execution time because the worker module is loaded | Cron fix (Pattern 5) | If an unloaded module is referenced, raises `ArgumentError`. Mitigated by the rescue/fallback recommendation. |
-| A3 | The `super` / lambda capture approach for delegating `new/2` to Oban's implementation works cleanly in the `__using__` quote context | Pattern 1 | If `super` is syntactically unavailable inside `quote do`, the explicit `Oban.Job.new(args, Oban.Worker.merge_opts(__opts__(), opts))` fallback is the definitive safe path. |
+| A2 | `String.to_existing_atom("Elixir." <> entry.worker)` succeeds at cron execution time because the worker module is loaded | Cron fix (Pattern 5) | If an unloaded module is referenced, raises `ArgumentError`. Mitigated by the rescue/fallback (OQ2 RESOLVED). |
+| A3 | Explicit `Oban.Job.new(args, Oban.Worker.merge_opts(__opts__(), opts))` delegation reproduces Oban's generated `new/2` body and is the definitive safe path (no `super`) | Pattern 1 / OQ1 RESOLVED | Negligible — this is the exact body Oban's macro generates; verified against deps/oban/lib/oban/worker.ex. |
 
 ---
 
