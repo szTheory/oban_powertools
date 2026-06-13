@@ -46,6 +46,13 @@ defmodule ObanPowertools.Web.JobsLiveDetailRaisingPolicy do
   def display(_kind, _value, _context), do: nil
 end
 
+# REDACT-04: host policy that returns a custom map for :job_args — overlay must NOT be applied
+defmodule ObanPowertools.Web.JobsLiveDetailCustomArgsPolicy do
+  # Returns a custom map → host owns this, Powertools overlay must NOT be applied
+  def display(:job_args, _value, _context), do: %{"custom" => "host_redacted"}
+  def display(_kind, _value, _context), do: nil
+end
+
 defmodule ObanPowertools.Web.JobsLiveTest do
   use ObanPowertools.LiveCase, async: false
 
@@ -715,6 +722,160 @@ defmodule ObanPowertools.Web.JobsLiveTest do
 
       assert html =~
                "Could not execute action. The job&#39;s state was changed by another process or operator."
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # REDACT-03 / REDACT-04: Redaction disclosure + render_job_field overlay
+  # ---------------------------------------------------------------------------
+
+  describe "Redaction disclosure (REDACT-03)" do
+    test "renders 'Fields redacted at enqueue' disclosure with comma-joined atom form when __redacted_fields__ present",
+         %{conn: conn} do
+      original = Application.get_env(:oban_powertools, :display_policy)
+
+      Application.put_env(
+        :oban_powertools,
+        :display_policy,
+        ObanPowertools.Web.JobsLiveDetailNilPolicy
+      )
+
+      on_exit(fn -> Application.put_env(:oban_powertools, :display_policy, original) end)
+
+      job =
+        insert_job!(
+          worker: "MyApp.RedactWorker",
+          queue: :default,
+          args: %{"user_id" => 42},
+          meta: %{"__redacted_fields__" => ["ssn", "token"]}
+        )
+
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{id: "ops-1", permissions: [:view_job_detail]}
+        )
+
+      {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
+
+      # Disclosure header must appear
+      assert html =~ "Fields redacted at enqueue"
+      # Comma-joined atom-presentation form (D-13/D-17/UI-SPEC) — locked joined form, not separate assertions
+      assert html =~ ":ssn, :token"
+    end
+
+    test "renders no disclosure block when __redacted_fields__ is absent (honest empty state)",
+         %{conn: conn} do
+      job =
+        insert_job!(
+          worker: "MyApp.NoRedactWorker",
+          queue: :default,
+          args: %{"user_id" => 99}
+        )
+
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{id: "ops-1", permissions: [:view_job_detail]}
+        )
+
+      {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
+
+      refute html =~ "Fields redacted at enqueue"
+    end
+  end
+
+  describe "render_job_field :job_args overlay (REDACT-04)" do
+    test "render_job_field(:job_args) overlays 'Redacted at enqueue' for each redacted field when host policy returns nil",
+         %{conn: conn} do
+      original = Application.get_env(:oban_powertools, :display_policy)
+
+      Application.put_env(
+        :oban_powertools,
+        :display_policy,
+        ObanPowertools.Web.JobsLiveDetailNilPolicy
+      )
+
+      on_exit(fn -> Application.put_env(:oban_powertools, :display_policy, original) end)
+
+      job =
+        insert_job!(
+          worker: "MyApp.RedactArgsWorker",
+          queue: :default,
+          args: %{"user_id" => 42},
+          meta: %{"__redacted_fields__" => ["ssn", "token"]}
+        )
+
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{id: "ops-1", permissions: [:view_job_detail]}
+        )
+
+      {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
+
+      # The args panel must show "Redacted at enqueue" for the listed fields
+      assert html =~ "Redacted at enqueue"
+    end
+
+    test "render_job_field(:job_args) does NOT apply overlay when host policy returns a custom map (OQ3 passthrough)",
+         %{conn: conn} do
+      original = Application.get_env(:oban_powertools, :display_policy)
+
+      Application.put_env(
+        :oban_powertools,
+        :display_policy,
+        ObanPowertools.Web.JobsLiveDetailCustomArgsPolicy
+      )
+
+      on_exit(fn -> Application.put_env(:oban_powertools, :display_policy, original) end)
+
+      job =
+        insert_job!(
+          worker: "MyApp.CustomPolicyWorker",
+          queue: :default,
+          args: %{"user_id" => 42},
+          meta: %{"__redacted_fields__" => ["ssn"]}
+        )
+
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{id: "ops-1", permissions: [:view_job_detail]}
+        )
+
+      {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
+
+      # Host policy custom map returned → "custom" key present, NOT Powertools overlay
+      assert html =~ "host_redacted"
+      refute html =~ "Redacted at enqueue"
+    end
+
+    test "render_job_field(:job_args) returns [redacted] fallback when host policy raises",
+         %{conn: conn} do
+      original = Application.get_env(:oban_powertools, :display_policy)
+
+      Application.put_env(
+        :oban_powertools,
+        :display_policy,
+        ObanPowertools.Web.JobsLiveDetailRaisingPolicy
+      )
+
+      on_exit(fn -> Application.put_env(:oban_powertools, :display_policy, original) end)
+
+      job =
+        insert_job!(
+          worker: "MyApp.FallbackWorker",
+          queue: :default,
+          args: %{"user_id" => 42},
+          meta: %{"__redacted_fields__" => ["ssn"]}
+        )
+
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{id: "ops-1", permissions: [:view_job_detail]}
+        )
+
+      {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
+
+      # Raising policy → bounded [redacted] fallback, never raw args exposed
+      assert html =~ "[redacted]"
     end
   end
 
