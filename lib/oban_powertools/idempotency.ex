@@ -147,7 +147,12 @@ defmodule ObanPowertools.Idempotency do
   defp merge_powertools_meta(opts, worker_mod, args, fingerprint) do
     meta = Keyword.get(opts, :meta, %{})
     now = Keyword.get(opts, :now, DateTime.utc_now())
-    opts_for_job = Keyword.delete(opts, :now)
+    # Strip ALL Powertools-internal opts before passing remainder to Oban.Job.new/2;
+    # :repo and :now are consumed internally and rejected by Oban.Job.new/2 as unknown keys.
+    opts_for_job =
+      opts
+      |> Keyword.delete(:now)
+      |> Keyword.delete(:repo)
 
     limits_meta =
       case ObanPowertools.Worker.limit_snapshot(worker_mod, args) do
