@@ -122,7 +122,7 @@ auto-scrubbing recorded output payloads; a Doctor bypass-detection advisory.
   reveal/edit action.
 
 ### Doctor advisory
-- **D-15:** **Defer** the "worker declares `redact:` but meta lacks
+- **D-15 [informational]:** **Defer** the "worker declares `redact:` but meta lacks
   `__redacted_fields__`" bypass-detection advisory. It would require
   worker-module introspection at doctor time, crossing the doctor's deliberate
   DB-only/`pg_catalog` boundary (cf. the Phase 54 expired-deadline check, which
