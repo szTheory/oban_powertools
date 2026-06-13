@@ -74,7 +74,7 @@ Full phase details: [milestones/v1.7-ROADMAP.md](milestones/v1.7-ROADMAP.md)
 
 **Milestone Goal:** Close the two non-blocking integration gaps deferred from the v1.7 audit — Doctor manifest coverage for the Phase 55 table and cron-path deadline injection — before expanding capability.
 
-- [ ] **Phase 57: Doctor Manifest Fix** - Add `oban_powertools_job_records` to `@powertools_manifest` so Doctor warns when the output-recording table is absent
+- [x] **Phase 57: Doctor Manifest Fix** - Add `oban_powertools_job_records` to `@powertools_manifest` so Doctor warns when the output-recording table is absent (completed 2026-06-13)
 - [ ] **Phase 58: Cron Deadline Injection** - Inject `__deadline_at__` meta on the cron scheduling path for `deadline:`-configured Powertools workers
 
 ## Phase Details
@@ -88,7 +88,7 @@ Full phase details: [milestones/v1.7-ROADMAP.md](milestones/v1.7-ROADMAP.md)
   2. Running `mix oban_powertools.doctor` on a fully-migrated DB returns no error for `oban_powertools_job_records` — no regression on the happy path
   3. The Doctor test suite references "all 5 groups present" (not "4 groups") after the manifest update
 **Plans**: 1 plan
-  - [ ] 57-01-PLAN.md — Add output-recording group to @powertools_manifest and update Doctor test description to "5 groups present"
+  - [x] 57-01-PLAN.md — Add output-recording group to @powertools_manifest and update Doctor test description to "5 groups present"
 
 ### Phase 58: Cron Deadline Injection
 **Goal**: Cron-scheduled Powertools workers with `deadline:` configured produce `__deadline_at__` in stored job meta, matching the behavior of the non-cron enqueue path through `Idempotency.transaction/3`
@@ -113,5 +113,5 @@ Full phase details: [milestones/v1.7-ROADMAP.md](milestones/v1.7-ROADMAP.md)
 | 43-46 | v1.5      | 9/9            | Complete    | 2026-05-28 |
 | 47-52.1 | v1.6    | 16/16          | Complete    | 2026-05-30 |
 | 53-56 | v1.7      | 14/14          | Complete    | 2026-06-13 |
-| 57    | v1.8      | 0/1            | Not started | -          |
+| 57    | v1.8      | 1/1 | Complete   | 2026-06-13 |
 | 58    | v1.8      | 0/TBD          | Not started | -          |
