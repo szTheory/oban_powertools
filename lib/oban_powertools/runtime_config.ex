@@ -170,18 +170,22 @@ defmodule ObanPowertools.DisplayPolicy do
     end
   rescue
     _ ->
-      %{
-        available?: true,
-        summary: "Recorded output hidden by display policy fallback.",
-        status: read_key(record_input, :status),
-        attempt: read_key(record_input, :attempt),
-        payload_bytes: read_key(record_input, :payload_bytes),
-        recorded_at: read_key(record_input, :recorded_at),
-        retention: read_key(record_input, :retention),
-        expires_at: read_key(record_input, :expires_at),
-        payload: "Recorded output hidden by display policy fallback.",
-        redacted?: !!(read_key(record_input, :redacted?) || read_key(record_input, :redacted))
-      }
+      if is_nil(record_input) do
+        default_job_recorded(nil)
+      else
+        %{
+          available?: true,
+          summary: "Recorded output hidden by display policy fallback.",
+          status: read_key(record_input, :status),
+          attempt: read_key(record_input, :attempt),
+          payload_bytes: read_key(record_input, :payload_bytes),
+          recorded_at: read_key(record_input, :recorded_at),
+          retention: read_key(record_input, :retention),
+          expires_at: read_key(record_input, :expires_at),
+          payload: "Recorded output hidden by display policy fallback.",
+          redacted?: !!(read_key(record_input, :redacted?) || read_key(record_input, :redacted))
+        }
+      end
   end
 
   def render_job_field(:job_recorded, value, context) do

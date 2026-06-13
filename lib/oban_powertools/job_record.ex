@@ -68,6 +68,7 @@ defmodule ObanPowertools.JobRecord do
   end
 
   def record(repo, worker_name, %Oban.Job{} = job, payload, opts) do
+    repo = repo || configured_repo()
     retention = retention_policy(opts)
     limit = output_limit(opts)
 

@@ -570,7 +570,9 @@ defmodule ObanPowertools.Web.JobsLiveTest do
                  TestRepo,
                  "MyApp.RecordedWorker",
                  %{job | attempt: 1},
-                 %{"raw" => "payload"}, summary: "default summary")
+                 %{"raw" => "payload"},
+                 summary: "default summary"
+               )
 
       conn =
         Plug.Test.init_test_session(conn,
@@ -764,6 +766,9 @@ defmodule ObanPowertools.Web.JobsLiveTest do
         |> element("input[phx-click=\"toggle_job\"][phx-value-id=\"#{job1.id}\"]")
         |> render_click()
 
+      assert html =~ "1 jobs selected"
+
+      html = render_hook(view, "toggle_job", %{"id" => "not-an-integer"})
       assert html =~ "1 jobs selected"
 
       # Toggle all jobs
