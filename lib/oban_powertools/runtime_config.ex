@@ -151,17 +151,21 @@ defmodule ObanPowertools.DisplayPolicy do
 
       %{} = rendered ->
         %{
-          available?: read_key(rendered, :available?) || default.available?,
-          summary: read_key(rendered, :summary) || default.summary,
-          status: read_key(rendered, :status) || default.status,
-          attempt: read_key(rendered, :attempt) || default.attempt,
-          payload_bytes: read_key(rendered, :payload_bytes) || default.payload_bytes,
-          recorded_at: read_key(rendered, :recorded_at) || default.recorded_at,
-          retention: read_key(rendered, :retention) || default.retention,
-          expires_at: read_key(rendered, :expires_at) || default.expires_at,
-          payload: read_key(rendered, :payload) || default.payload,
+          available?: read_key_or_default(rendered, :available?, default.available?),
+          summary: read_key_or_default(rendered, :summary, default.summary),
+          status: read_key_or_default(rendered, :status, default.status),
+          attempt: read_key_or_default(rendered, :attempt, default.attempt),
+          payload_bytes: read_key_or_default(rendered, :payload_bytes, default.payload_bytes),
+          recorded_at: read_key_or_default(rendered, :recorded_at, default.recorded_at),
+          retention: read_key_or_default(rendered, :retention, default.retention),
+          expires_at: read_key_or_default(rendered, :expires_at, default.expires_at),
+          payload: read_key_or_default(rendered, :payload, default.payload),
           redacted?:
-            read_key(rendered, :redacted?) || read_key(rendered, :redacted) || default.redacted?
+            read_key_or_default(
+              rendered,
+              :redacted?,
+              read_key_or_default(rendered, :redacted, default.redacted?)
+            )
         }
 
       other ->
@@ -329,6 +333,19 @@ defmodule ObanPowertools.DisplayPolicy do
   end
 
   defp read_key(_value, _key), do: nil
+
+  defp read_key_or_default(map, key, default) when is_map(map) do
+    cond do
+      Map.has_key?(map, key) ->
+        Map.get(map, key)
+
+      Map.has_key?(map, Atom.to_string(key)) ->
+        Map.get(map, Atom.to_string(key))
+
+      true ->
+        default
+    end
+  end
 
   defp invalid_return_message(kind, other) do
     "Oban Powertools display_policy returned an invalid #{kind} display: #{inspect(other)}"
