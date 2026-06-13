@@ -98,5 +98,67 @@ defmodule ObanPowertools.IdempotencyTest do
     assert job1.id == job2.id
   end
 
+  # --- Redaction meta + fingerprint ordering invariant tests (REDACT-01, REDACT-02, D-03, D-04) ---
+
+  defmodule RedactIdempotencyWorker do
+    use ObanPowertools.Worker,
+      args: [user_id: :integer, ssn: :string],
+      redact: [:ssn],
+      limits: [
+        name: "redact-idempotency",
+        scope: :global,
+        bucket_capacity: 100,
+        bucket_span_ms: 60_000
+      ]
+
+    @impl true
+    def process(_), do: :ok
+  end
+
+  describe "redaction meta + fingerprint ordering" do
+    # D-03: fingerprint computed from full unredacted args (before drop)
+    # Two jobs with same user_id but DIFFERENT ssn must produce DIFFERENT fingerprints
+    test "D-03 fingerprint-before-drop: different ssn values produce different idempotency fingerprints" do
+      assert {:ok, job_aaa} = RedactIdempotencyWorker.enqueue(%{user_id: 1, ssn: "aaa"})
+      assert {:ok, job_bbb} = RedactIdempotencyWorker.enqueue(%{user_id: 1, ssn: "bbb"})
+
+      fp_aaa = get_in(job_aaa.meta, ["oban_powertools", "idempotency_fingerprint"])
+      fp_bbb = get_in(job_bbb.meta, ["oban_powertools", "idempotency_fingerprint"])
+
+      # Fingerprints differ because ssn was part of the full args at fingerprint time (D-03)
+      assert is_binary(fp_aaa)
+      assert is_binary(fp_bbb)
+      assert fp_aaa != fp_bbb
+
+      # Both jobs have ssn absent from stored args (D-02)
+      stored_aaa = repo().get!(Oban.Job, job_aaa.id)
+      stored_bbb = repo().get!(Oban.Job, job_bbb.id)
+      refute Map.has_key?(stored_aaa.args, "ssn")
+      refute Map.has_key?(stored_bbb.args, "ssn")
+    end
+
+    # D-04: __redacted_fields__ injected once, coexists with fingerprint and caller meta
+    test "D-04 non-clobber + single injection: __redacted_fields__ coexists with fingerprint and caller meta" do
+      assert {:ok, job} =
+               RedactIdempotencyWorker.enqueue(
+                 %{user_id: 2, ssn: "secret"},
+                 meta: %{"source" => "host"}
+               )
+
+      stored_job = repo().get!(Oban.Job, job.id)
+      meta = stored_job.meta
+
+      # Caller meta preserved (deep_merge does not clobber)
+      assert meta["source"] == "host"
+
+      # Powertools fingerprint is present
+      assert is_binary(get_in(meta, ["oban_powertools", "idempotency_fingerprint"]))
+
+      # __redacted_fields__ is a flat list of strings (not nested, not list-of-lists)
+      assert meta["__redacted_fields__"] == ["ssn"]
+      assert Enum.all?(meta["__redacted_fields__"], &is_binary/1)
+    end
+  end
+
   defp repo, do: ObanPowertools.TestRepo
 end
