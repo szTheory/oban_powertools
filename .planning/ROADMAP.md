@@ -153,7 +153,7 @@ Plans:
 **Plans**: 4 plans
 Plans:
 **Wave 1**
-- [ ] 56-01-PLAN.md — Redaction engine: redact: opt, compile-time guards, new/1,2 override, required-field exemption, Redaction helper (REDACT-01, REDACT-02)
+- [x] 56-01-PLAN.md — Redaction engine: redact: opt, compile-time guards, new/1,2 override, required-field exemption, Redaction helper (REDACT-01, REDACT-02)
 
 **Wave 2** *(blocked on Wave 1 plan 56-01 completion; all parallel — no file overlap)*
 - [ ] 56-02-PLAN.md — Cron-path bypass fix: route scheduled enqueue through entry.worker.new/2 (REDACT-01, REDACT-02)
@@ -176,4 +176,4 @@ Plans:
 | 53    | v1.7      | 2/2            | Complete    | 2026-06-12 |
 | 54    | v1.7      | 4/4 | Complete    | 2026-06-12 |
 | 55    | v1.7      | 4/4 | Complete    | 2026-06-13 |
-| 56    | v1.7      | 0/4            | Not started | -          |
+| 56    | v1.7      | 1/4 | In Progress|  |
