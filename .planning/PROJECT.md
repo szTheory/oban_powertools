@@ -8,15 +8,16 @@ Oban Powertools is a host-owned operations layer for Oban-backed Phoenix applica
 
 Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
 
-## Current Milestone: v1.7 Worker Lifecycle & Safety
+<details>
+<summary>✅ v1.7 Worker Lifecycle & Safety — SHIPPED 2026-06-13</summary>
 
 **Goal:** Equip every worker with observable, durable lifecycle hooks, a generalised output recording contract, and at-rest redaction before adding Batches.
 
-**Target features:**
-- Worker hooks: `on_start`, `on_success`, `on_failure`, `on_discard` — observe-only callbacks, crash-caught
-- Soft `deadline:` + `timeout:` pass-through to Oban
-- Output recording: generalise `Workflow.Result` across all workers
-- `redact:` at-rest (drop at persist, not encrypt)
+**Shipped:** Worker lifecycle hooks (`on_start/1`, `on_success/2`, `on_failure/2`, `on_discard/2` — observe-only, crash-caught, wrapper-owned dispatch), soft `deadline:` + `timeout:` pass-through to Oban with Doctor expired-deadline warnings, opt-in `record_output: true` via new `oban_powertools_job_records` table with Recorded Output card in `/ops/jobs` detail, and `redact: [:field]` at-rest PII removal after fingerprint with UI disclosure and cron-path fix.
+
+**Test suite at close:** 507 tests, 0 failures. Zero new runtime dependencies.
+
+</details>
 
 <details>
 <summary>✅ v1.6 Release & Operability — SHIPPED 2026-05-30</summary>
@@ -78,7 +79,16 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 - ✓ Opt-in `ObanPowertools.Telemetry.metrics/0` — 17 counters over frozen low-cardinality contract, `telemetry_metrics`/`telemetry_poller` optional deps, no new runtime dependency (`TEL-01`, `TEL-02`) — v1.6 Phase 50
 - ✓ `guides/telemetry-and-slos.md` — reporter-agnostic Parapet/SLO Operations guide, no `oban_met` dependency (`TEL-03`) — v1.6 Phase 50
 
+- ✓ Worker lifecycle hooks (`on_start/1`, `on_success/2`, `on_failure/2`, `on_discard/2`) — observe-only, crash-caught, wrapper-owned, `worker_hook` telemetry family (`HOOK-01..05`) — v1.7 Phase 53
+- ✓ Soft `deadline:` — `__deadline_at__` meta at enqueue, pre-run cancellation, Doctor warning (`SAFE-01..04`) — v1.7 Phase 54
+- ✓ `timeout:` pass-through — compile-time overridable Oban `timeout/1` callback (`SAFE-01`) — v1.7 Phase 54
+- ✓ Output recording (`record_output: true`) — `ObanPowertools.JobRecord`, `oban_powertools_job_records` table, `fetch_result/1`, Recorded Output card in `/ops/jobs`, Lifeline ephemeral prune (`REC-01..05`) — v1.7 Phase 55
+- ✓ At-rest redaction (`redact: [:field]`) — `Map.drop` after fingerprint, `__redacted_fields__` meta, cron-path fix, UI disclosure + per-field overlay, docs-contract locked (`REDACT-01..04`) — v1.7 Phase 56
+
 ### Active
+
+- [ ] INT-01 fix: Add `oban_powertools_job_records` to `@powertools_manifest` in Doctor/checks.ex — deferred from v1.7 audit
+- [ ] INT-02 fix: Inject `__deadline_at__` meta on cron path in `cron.ex maybe_insert_job` — deferred from v1.7 audit
 
 Carried backlog (not in v1.6): QRY-05 args/meta filter, QRY-06 real-time counts (→ v1.9), QRY-07 Lifeline→job deep-link, QRY-08 cross-page select-all, API-03 programmatic job query.
 
@@ -114,6 +124,11 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 - ✓ Worker Lifecycle precedes Batches — batch callbacks reuse the worker hook contract; building Batches first forces a refactor. — 2026-05-28 assessment (carried to v1.7 planning)
 - ✓ `include-component-in-tag: false` — future release tags are `v*` only (no `oban_powertools-v*` duplication). — v1.6 Phase 47
 - ✓ RELEASE_PLEASE_TOKEN = PAT (not GitHub App token) — required for workflow triggers; provenance attestation skipped (not available for third-party registries). — v1.6 Phase 47
+- ✓ Worker hooks are wrapper-owned (not Oban telemetry-handler-owned); omitted no-op hooks do not emit telemetry; crashes are warning-logged and never change job outcome. — v1.7 Phase 53
+- ✓ Separate `oban_powertools_job_records` table (not modifying `Workflow.Result`) — FK/unique semantics differ; no FK to `oban_jobs` so Oban can prune its own table freely. — v1.7 Phase 55
+- ✓ Redact after fingerprint — fingerprint computed from full unredacted args; `Map.drop` applied before `Oban.Job.new/2` in `new/2` override. — v1.7 Phase 56
+- ✓ Cron-path redaction via `function_exported?(:__powertools_limits__, 0)` sentinel — applies to all Powertools workers; `rescue ArgumentError` degrades to bare `Oban.Job.new` for unloaded modules. — v1.7 Phase 56
+- ✓ `encrypt:` deferred indefinitely — collides with args-hashing fingerprint, blinds v1.5 job filter (encrypted args not searchable), leaks via meta/errors/stacktraces. Ship `redact:` (at-persist drop) instead. — v1.7 research
 
 ## Decision Posture
 
@@ -141,19 +156,18 @@ Version `v1.5` shipped on 2026-05-28. The native `/ops/jobs` shell now owns the 
 
 **v1.6 Release & Operability — SHIPPED 2026-05-30.** All 7 phases complete (47-52.1), 16/16 plans, 428 tests, 0 failures, 121 files changed (+16,574/−222 LOC). Published to hex.pm at `0.5.0` with zero-touch release-please CI/CD. Shipped `mix oban_powertools.doctor` (five read-only `pg_catalog` checks, 0/1/2 exit codes, human + JSON output), `mix oban_powertools.limiter.explain` + `.simulate` (CLI over existing `Explain` API + pure `compute_reservation/4`, rate-limit glossary), opt-in `ObanPowertools.Telemetry.metrics/0` (17 counters over frozen contract, optional deps), `guides/telemetry-and-slos.md`, `examples/hex_consumer/` Phoenix adoption proof, and `verify-published` CI job. Phase 52.1 (inserted) fixed the Igniter committed-modules conflict in `verify-published`. Deferred: live CI E2E gate for REL-04 (resolves on next release cycle).
 
-**v1.7 Worker Lifecycle & Safety — Phase 56 complete 2026-06-13.** At-rest argument redaction (`redact:` worker opt) delivered: compile-time guards, `new/2` override that drops PII fields and injects `__redacted_fields__` meta, cron-path fix routing ObanPowertools workers through `new/2`, UI disclosure in job detail view ("Fields redacted at enqueue"), and docs-contract-locked guide section. 507 tests, 0 failures. Validated in Phase 56 (REDACT-01, REDACT-02, REDACT-03, REDACT-04).
+**v1.7 Worker Lifecycle & Safety — SHIPPED 2026-06-13.** All 4 phases complete (53-56), 14/14 plans, 507 tests, 0 failures. Zero new runtime dependencies. Shipped: crash-safe worker lifecycle hooks with wrapper-owned dispatch and `worker_hook` telemetry; soft `deadline:` storing `__deadline_at__` meta at enqueue with pre-run cancellation and Doctor warning; opt-in `record_output: true` via new `ObanPowertools.JobRecord` schema (dedicated `oban_powertools_job_records` table, `fetch_result/1`, Recorded Output card in `/ops/jobs` detail, Lifeline ephemeral prune); `redact: [:field]` at-rest PII removal after fingerprint via `new/2` override with UI disclosure and cron-path fix. Milestone audit `tech_debt` — 18/18 requirements satisfied; INT-01 (Doctor manifest) and INT-02 (cron+deadline path) deferred as non-blocking to v1.8.
 
 (Earlier: `v1.4` delivered operator forensics and SRE runbooks; `v1.3` unified the native control plane and explainability story.)
 
 ## Next Milestone
 
-Recommended ordering from the 2026-05-28 post-v1.5 assessment (see `threads/2026-05-28-post-v1.5-next-milestone.md`). Done-% ~87%; the foundational gap is that the lib is unpublished, not a missing feature.
+**v1.8 Batches & Composition** is the recommended next milestone (from the 2026-05-28 post-v1.5 assessment, confirmed by v1.7 shipping the prerequisite hook + recording infra):
 
-1. **v1.6 Release & Operability** *(the pick)* — first public hex release at `0.x` (recommend `0.5.0`; document a path to `1.0` after real adopter feedback) + `mix oban_powertools.doctor` (index / uniqueness-timeout / config / migration-drift health) + `mix oban_powertools.limiter.explain` / `.simulate` CLI + Parapet/SLO telemetry guide & opt-in `Telemetry.metrics/0` over the frozen contract (no `oban_met` dep) + getting-started verified from hex.
-2. **v1.7 Worker Lifecycle & Safety** — hooks (on_start/success/failure/discard, observe-only, crash-caught), soft `deadline:` + `timeout:` pass-through to Oban, output recording (generalize `Workflow.Result`), `redact:` at-rest. Defer `encrypt:`. (Must precede Batches — shared hook + recordings infra.)
-3. **v1.8 Batches & Composition** — dedicated `batches` / `batch_jobs` tables (not a DAG), `completed` + `exhausted` callbacks via the generalized callback outbox, chains as linear-DAG sugar, native Batches page with Lifeline-routed bulk-retry. Defer chunks / nested / growable batches.
-4. **v1.9 Observability / live counts (QRY-06)** — `oban_met` as an optional read source, never a hard dep.
-5. **Native job-surface polish** — QRY-05 (args/meta filter), QRY-07 (Lifeline→job deep-link), QRY-08 (cross-page select), API-03 (`Operator.list/2`). Opportunistic.
+1. **v1.8 Batches & Composition** *(the pick)* — dedicated `batches` / `batch_jobs` tables (not a DAG), `completed` + `exhausted` callbacks via the generalized callback outbox, chains as linear-DAG sugar, native Batches page with Lifeline-routed bulk-retry. Defer chunks / nested / growable batches.
+   - **v1.7 deferred items to close first:** INT-01 (Doctor manifest missing `oban_powertools_job_records`) and INT-02 (cron path missing `__deadline_at__` injection for `deadline:`-configured workers).
+2. **v1.9 Observability / live counts (QRY-06)** — `oban_met` as an optional read source, never a hard dep.
+3. **Native job-surface polish** — QRY-05 (args/meta filter), QRY-07 (Lifeline→job deep-link), QRY-08 (cross-page select), API-03 (`Operator.list/2`). Opportunistic.
 
 ## Recently Shipped
 
@@ -217,4 +231,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-05-30 after v1.6 Release & Operability milestone*
+*Last updated: 2026-06-13 after v1.7 Worker Lifecycle & Safety milestone*

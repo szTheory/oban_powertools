@@ -2,26 +2,26 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Worker Lifecycle & Safety
-status: milestone_complete
-last_updated: 2026-06-13T07:46:07.707Z
-last_activity: 2026-06-13 -- Phase 56 execution started
+status: archived
+last_updated: 2026-06-13T00:00:00.000Z
+last_activity: 2026-06-13 -- v1.7 milestone archived
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 14
   completed_plans: 14
-  percent: 75
-stopped_at: Milestone complete (Phase 56 was final phase)
+  percent: 100
+stopped_at: Milestone archived — v1.7 complete
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-30)
+See: .planning/PROJECT.md (updated 2026-06-13)
 
 **Core value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-**Current focus:** Milestone complete
+**Current focus:** Planning next milestone (v1.8 Batches & Composition)
 
 ## Current Position
 

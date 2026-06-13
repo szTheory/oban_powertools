@@ -9,7 +9,7 @@
 - ✅ **v1.4 Operator Forensics & SRE Runbooks** — Phases 32-42 (shipped 2026-05-27) — [archive](milestones/v1.4-ROADMAP.md)
 - ✅ **v1.5 Native Job Surface & Automation API** — Phases 43-46 (shipped 2026-05-28) — [archive](milestones/v1.5-ROADMAP.md)
 - ✅ **v1.6 Release & Operability** — Phases 47-52.1 (shipped 2026-05-30) — [archive](milestones/v1.6-ROADMAP.md)
-- ⏳ **v1.7 Worker Lifecycle & Safety** — Phases 53-56 (started 2026-05-30)
+- ✅ **v1.7 Worker Lifecycle & Safety** — Phases 53-56 (shipped 2026-06-13) — [archive](milestones/v1.7-ROADMAP.md)
 
 ## Phases
 
@@ -57,110 +57,17 @@ Full phase details: [milestones/v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md)
 
 </details>
 
-### v1.7 Worker Lifecycle & Safety
+<details>
+<summary>✅ v1.7 Worker Lifecycle & Safety (Phases 53-56) — SHIPPED 2026-06-13</summary>
 
-- [x] **Phase 53: Worker Lifecycle Hooks** — per-job observe-only callbacks with crash-caught dispatch and telemetry contract extension (completed 2026-06-12)
-- [x] **Phase 54: deadline: / timeout: Pass-through** — compile-time soft deadline and timeout opts with Doctor integration (completed 2026-06-12)
-- [x] **Phase 55: Output Recording (JobRecord)** — new schema for fault-tolerant job output persistence with detail-view visibility (completed 2026-06-13)
-- [x] **Phase 56: redact: At-Rest** — compile-time field redaction from args at enqueue with UI annotation and recording integration (completed 2026-06-13)
+Full phase details: [milestones/v1.7-ROADMAP.md](milestones/v1.7-ROADMAP.md)
 
-## Phase Details
+- [x] Phase 53: Worker Lifecycle Hooks (2/2 plans) — completed 2026-06-12
+- [x] Phase 54: deadline: / timeout: Pass-through (4/4 plans) — completed 2026-06-12
+- [x] Phase 55: Output Recording (JobRecord) (4/4 plans) — completed 2026-06-13
+- [x] Phase 56: redact: At-Rest (4/4 plans) — completed 2026-06-13
 
-### Phase 53: Worker Lifecycle Hooks
-
-**Goal**: Every ObanPowertools.Worker can observe its own execution lifecycle with crash-safe callbacks that never affect job outcome
-**Depends on**: Phase 52.1 (v1.6 complete)
-**Requirements**: HOOK-01, HOOK-02, HOOK-03, HOOK-04, HOOK-05
-**Success Criteria** (what must be TRUE):
-
-  1. A worker declaring `on_start/1` has that callback invoked before `process/1` runs; a crash in the callback does not retry the job
-  2. A worker declaring `on_success/2` receives the `:ok`/`{:ok, _}` result after `process/1` succeeds; `on_failure/2` receives the error when `process/1` returns `{:error, _}` or raises
-  3. A worker's `on_discard/2` fires exactly once when a job is discarded after retry exhaustion, not on each failed attempt
-  4. Workers that omit any hook callback compile and run without error via no-op `defoverridable` defaults
-  5. Hook invocations produce telemetry events under the `:worker_hook` family in the frozen low-cardinality contract (`hook` and `outcome` keys present)
-
-**Plans**: 2 plans
-Plans:
-**Wave 1**
-
-- [x] 53-01-PLAN.md - Core worker lifecycle hook runtime, crash safety, routing, and telemetry contract
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 53-02-PLAN.md - Worker hook support-truth docs, telemetry guide, and docs-contract tests
-
-### Phase 54: deadline: / timeout: Pass-through
-
-**Goal**: Workers can declare per-job execution time limits and wall-clock expiry constraints as compile-time opts that Oban and the perform wrapper enforce automatically
-**Depends on**: Phase 53
-**Requirements**: SAFE-01, SAFE-02, SAFE-03, SAFE-04
-**Success Criteria** (what must be TRUE):
-
-  1. A worker declaring `timeout: 5_000` has Oban use that value as the per-attempt kill timeout without any additional host configuration
-  2. A worker declaring `deadline: :timer.hours(24)` causes enqueued jobs to store `__deadline_at__` as an ISO8601 timestamp in meta
-  3. When `perform/1` runs and wall-clock time has passed `__deadline_at__`, the job returns `{:cancel, :deadline_expired}` without calling `process/1`
-  4. `mix oban_powertools.doctor` reports `retryable` jobs with an expired `__deadline_at__` as a warning
-
-**Plans**: 4 plans
-Plans:
-**Wave 1**
-
-- [x] 54-01-PLAN.md - Worker timeout callback generation and pre-run deadline cancellation
-- [x] 54-03-PLAN.md - Doctor expired-deadline warning diagnostics
-- [x] 54-04-PLAN.md - Timeout, deadline, and Doctor strict-mode support-truth docs
-
-**Wave 2** *(blocked on Wave 1 plan 54-01 completion)*
-
-- [x] 54-02-PLAN.md - Enqueue-time deadline metadata with idempotency-safe merge behavior
-
-### Phase 55: Output Recording (JobRecord)
-
-**Goal**: Workers can opt in to persisting their successful output in a dedicated schema that operators can query and inspect in the job detail view
-**Depends on**: Phase 53
-**Requirements**: REC-01, REC-02, REC-03, REC-04, REC-05
-**Success Criteria** (what must be TRUE):
-
-  1. A worker declaring `record_output: true` has its `{:ok, payload}` return value persisted to `oban_powertools_job_records` after `process/1` succeeds; a recording failure logs a warning but does not fail or retry the job
-  2. `ObanPowertools.JobRecord.fetch_result/1` returns `{:ok, result}` for a job that recorded output and `{:error, :not_found}` for one that did not
-  3. The `/ops/jobs` job detail view shows the recorded output for jobs where output was persisted
-  4. A worker declaring `output_limit: 65_536` has payloads exceeding that byte count rejected at record time with a warning rather than stored or truncated silently
-  5. A worker declaring `output_retention: :ephemeral` has its job records pruned on the shorter retention schedule via the existing Lifeline prune cycle
-
-**Plans**: 4 plans
-Plans:
-**Wave 1**
-- [x] 55-01-PLAN.md — JobRecord schema, storage, limits, and JSON payload normalization
-
-**Wave 2** *(blocked on Wave 1 completion)*
-- [x] 55-02-PLAN.md — Worker wrapper recording injection for success cases
-- [x] 55-03-PLAN.md — JobsLive and DisplayPolicy recorded output visualization
-- [x] 55-04-PLAN.md — Lifeline retention pruning extension and operator docs
-
-**UI hint**: yes
-
-### Phase 56: redact: At-Rest
-
-**Goal**: Workers can declare which arg fields must be dropped from persistence at enqueue time, with transparent operator visibility into what was redacted and why
-**Depends on**: Phase 55
-**Requirements**: REDACT-01, REDACT-02, REDACT-03, REDACT-04
-**Success Criteria** (what must be TRUE):
-
-  1. A worker declaring `redact: [:ssn, :token]` causes those keys to be absent from `oban_jobs.args` in the database after enqueue, while the idempotency fingerprint is computed from the original unredacted args
-  2. Enqueued jobs store `__redacted_fields__` in meta listing which fields were dropped, so the record is self-describing
-  3. The `/ops/jobs` job detail view renders "Fields redacted at enqueue: [:ssn, :token]" when `__redacted_fields__` is present in meta
-  4. `DisplayPolicy.render_job_field/3` shows "Redacted at enqueue" for any arg field listed in `__redacted_fields__` rather than displaying a missing value
-
-**Plans**: 4 plans
-Plans:
-**Wave 1**
-- [x] 56-01-PLAN.md — Redaction engine: redact: opt, compile-time guards, new/1,2 override, required-field exemption, Redaction helper (REDACT-01, REDACT-02)
-
-**Wave 2** *(blocked on Wave 1 plan 56-01 completion; all parallel — no file overlap)*
-- [x] 56-02-PLAN.md — Cron-path bypass fix: route scheduled enqueue through entry.worker.new/2 (REDACT-01, REDACT-02)
-- [x] 56-03-PLAN.md — Operator disclosure: render_job_field overlay + job detail "Fields redacted at enqueue" card (REDACT-03, REDACT-04)
-- [x] 56-04-PLAN.md — redact: support-truth guide section + docs-contract lock test (REDACT-01)
-
-**UI hint**: yes
+</details>
 
 ## Progress
 
@@ -173,7 +80,4 @@ Plans:
 | 32-42 | v1.4      | 27/27          | Complete    | 2026-05-27 |
 | 43-46 | v1.5      | 9/9            | Complete    | 2026-05-28 |
 | 47-52.1 | v1.6    | 16/16          | Complete    | 2026-05-30 |
-| 53    | v1.7      | 2/2            | Complete    | 2026-06-12 |
-| 54    | v1.7      | 4/4 | Complete    | 2026-06-12 |
-| 55    | v1.7      | 4/4 | Complete    | 2026-06-13 |
-| 56    | v1.7      | 4/4 | Complete    | 2026-06-13 |
+| 53-56 | v1.7      | 14/14          | Complete    | 2026-06-13 |

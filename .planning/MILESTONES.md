@@ -1,5 +1,32 @@
 # Milestones
 
+## v1.7 Worker Lifecycle & Safety
+
+- **Status:** Shipped 2026-06-13
+- **Phases:** 53-56 (4 phases)
+- **Plans:** 14
+- **Timeline:** 2026-06-12 → 2026-06-13 (2 days)
+- **Requirements:** 18/18 satisfied (HOOK-01..05, SAFE-01..04, REC-01..05, REDACT-01..04)
+- **Test suite:** 507 tests, 0 failures
+- **Audit:** `tech_debt` — all requirements satisfied; 2 non-blocking integration gaps deferred to v1.8
+
+### Delivered
+
+Equipped every `ObanPowertools.Worker` with observable lifecycle hooks, soft deadline/timeout pass-through, opt-in output recording, and at-rest field redaction. Zero new runtime dependencies.
+
+- **Worker lifecycle hooks (HOOK-01..05):** `on_start/1`, `on_success/2`, `on_failure/2`, `on_discard/2` — observe-only, crash-caught, wrapper-owned dispatch with final-attempt classification and `worker_hook` telemetry family. Hooks never change job outcome.
+- **Soft deadline + timeout (SAFE-01..04):** `deadline: :timer.hours(24)` stores `__deadline_at__` ISO8601 meta at enqueue; `perform/1` cancels expired jobs before `process/1`. `timeout: ms` generates overridable `timeout/1`. Doctor warns on retryable expired-deadline jobs. Docs-contract locked.
+- **Output recording (REC-01..05):** New `oban_powertools_job_records` table with `ObanPowertools.JobRecord` schema. `record_output: true` persists `{:ok, payload}` before `on_success` hooks. `fetch_result/1` API. Recorded Output card in `/ops/jobs` detail via `:job_recorded` DisplayPolicy. Lifeline prunes ephemeral records. Best-effort — recording failures log and return `:ok`.
+- **At-rest redaction (REDACT-01..04):** `redact: [:ssn]` drops PII from `args` after fingerprint via `new/2` override. `__redacted_fields__` meta injected. Cron path fixed (sentinel routing). "Fields redacted at enqueue" disclosure block in job detail. Per-field "Redacted at enqueue" overlay in args panel. Docs-contract locked.
+
+### Known Deferred Items at Close
+
+- INT-01 (non-blocking): `oban_powertools_job_records` absent from `@powertools_manifest` in Doctor — Doctor silent if Phase 55 migration not run. Fix in v1.8.
+- INT-02 (non-blocking): Cron path does not inject `__deadline_at__` meta for `deadline:`-configured workers. Fix in v1.8.
+- Nyquist `wave_0_complete: false` in phases 53, 54, 56 — formal TDD wave capture not recorded in VALIDATION.md.
+
+---
+
 ## v1.6 Release & Operability
 
 - **Status:** Shipped 2026-05-30
