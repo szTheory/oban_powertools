@@ -1,268 +1,157 @@
-# Research Summary: Oban Powertools v1.7 Worker Lifecycle & Safety
+# Research Summary: v1.8 Integration Fixes
 
-**Project:** Oban Powertools v1.7
-**Domain:** Elixir job processing library extension (Oban wrapper)
-**Researched:** 2026-05-30
+**Project:** Oban Powertools
+**Domain:** Elixir library — surgical bug fixes to close integration gaps deferred from v1.7
+**Researched:** 2026-06-13
 **Confidence:** HIGH
-
----
 
 ## Executive Summary
 
-v1.7 adds four features to every `ObanPowertools.Worker`: lifecycle hooks (`on_start`, `on_success`, `on_failure`, `on_discard`), soft deadline and timeout pass-through, output recording, and at-rest field redaction. All four are buildable entirely on the existing locked stack — Oban 2.23.0, Ecto 3.14.0, Telemetry 1.4.2, Jason 1.4.5, Postgrex 0.22.2 — with zero new runtime dependencies. The milestone follows the established pattern of v1.6: extend the existing `Worker.__using__` macro and shared seams rather than introducing new supervision trees, GenServers, or external processes.
+This milestone addresses two integration gaps deferred from v1.7. Both are narrowly scoped: a one-line data change to a compile-time manifest and a three-line addition to a private function. No new modules, no new tables, no new migrations, no public API changes. The combined touch surface is four files (two production, two test).
 
-The recommended approach is to build all four features as compile-time macro extensions to `ObanPowertools.Worker`, with one new Ecto schema (`ObanPowertools.JobRecord` / `oban_powertools_job_records`) for output recording. Hooks run synchronously inside `perform/1`, crash-caught, observe-only. Deadline is a soft pre-run cancellation check (not a mid-execution interrupt). Redaction drops fields from `oban_jobs.args` at persist time after the idempotency fingerprint is computed. The natural build order is hooks first (establishes the `perform/1` wrapper), then deadline/timeout (compile-time only, depends on wrapper shape), then output recording (new schema), then redaction (depends on recording pipeline).
+INT-01 adds `oban_powertools_job_records` to `@powertools_manifest` in `doctor/checks.ex`, closing a gap where Doctor never warned when the Phase 55 output-recording table was missing from an adopter's database. The manifest's generic iteration logic (`Enum.flat_map`) picks up the new group automatically — the fix is purely a data addition. INT-02 injects `__deadline_at__` meta on the cron scheduling path in `cron.ex`, closing a gap where cron-enqueued jobs from `deadline:`-configured Powertools workers never had their deadline written into job meta, even though the non-cron path (`Idempotency.transaction/3`) handled this correctly.
 
-The primary risks are correctness traps that look like working code: redacting before fingerprinting (causes false dedup collisions), hooks that are not crash-caught (retries the job on hook failure), and outputting PII into recorded payloads despite redacting it from args. A second class of risk is semantic confusion: `timeout:` is per-attempt execution duration in milliseconds; `deadline:` is wall-clock expiry (do not conflate them); `on_failure` fires on retry-eligible failures but NOT after a timeout kill (BEAM EXIT signal bypasses all `rescue`/`after` wrappers); and `on_discard` is terminal-only (retry exhaustion), not every failed attempt.
+The primary risk in both fixes is meta key collision in INT-02: deadline meta must be injected into opts before `worker_module.new/2` is called so that `Redaction.apply/4` merges `__redacted_fields__` on top rather than clobbering the deadline key. The existing `deep_merge` pattern from `Idempotency` and `Redaction` is the established safe pattern and must be followed. INT-01 carries no meaningful risk beyond a table name typo, which the existing happy-path test catches immediately.
 
----
+## Key Findings
 
-## Stack Additions
+### Recommended Stack (from STACK.md)
 
-**Zero new dependencies.** Every v1.7 capability builds on the existing locked stack. No constraint changes to mix.exs.
+Two targeted edits to existing production files. All logic reuses established in-library APIs with no new imports or dependencies.
 
-| Library | Locked | v1.7 usage |
-|---------|--------|------------|
-| oban | 2.23.0 | `timeout/1` callback override; `[:oban, :job, :start/:stop/:exception]` telemetry events |
-| ecto_sql | 3.14.0 | New `oban_powertools_job_records` migration and schema |
-| postgrex | 0.22.2 | JSONB storage for recording payload (no change) |
-| telemetry | 1.4.2 | Additive `:worker_hook` family in frozen `@contract` |
-| jason | 1.4.5 | `byte_size(Jason.encode!(payload))` for recording byte cap |
-| telemetry_metrics | 1.1.0 (optional) | `metrics/0` addendum for new `:worker_hook` counter |
+**Files modified:**
+- `lib/oban_powertools/doctor/checks.ex` — INT-01: add one map key to `@powertools_manifest` after line 58
+- `lib/oban_powertools/cron.ex` — INT-02: add deadline injection inside the `function_exported?` Powertools branch of `maybe_insert_job/4`; thread `now` as a fifth parameter through all four clause heads and the Multi.run call site
 
-**Do NOT add:** `encrypt:` / Cloak Ecto (fingerprint collision, blinds job filter, stacktrace leakage), custom Task/GenServer for hooks (unnecessary supervision), `oban_met` (deferred to v1.9), large-payload storage (cap at 64 KB in Postgres JSONB).
+**Reused APIs (no changes to these):**
+- `ObanPowertools.Worker.Deadlines.build_meta/2` — takes `(nil | integer, DateTime)`, returns `%{}` or `%{"__deadline_at__" => iso_string}`
+- `ObanPowertools.Worker.Deadlines.meta_key/0` — returns `"__deadline_at__"`
+- `ObanPowertools.Worker.Redaction.apply/4` — already handles `__redacted_fields__` via `deep_merge`; composes safely with deadline meta placed in opts before the call
 
----
+**Key implementation note:** `now` in `claim_slot/4` is already bound at line 52 and injectable via the Multi.run closure — no new clock parameter is needed at the public API level.
 
-## Feature Table Stakes vs Differentiators
+### Expected Features (from FEATURES.md)
 
-### Worker Hooks
+Both fixes are internal correctness gaps, not user-visible features.
 
-**Must ship (table stakes):**
-- `on_start/1`, `on_success/2`, `on_failure/2`, `on_discard/2` — observe-only, crash-caught, `defoverridable` no-op defaults
-- Hook return values discarded; exceptions caught and logged at `:warning`; never affect job outcome
-- `on_discard` = terminal only (retry-exhausted or `{:discard, reason}` return), NOT every failed attempt
-- `on_failure` does NOT fire on `timeout/1` kill — BEAM EXIT signal bypasses `rescue`/`after`; observe via `[:oban, :job, :exception]` telemetry instead
+**Must have (table stakes):**
+- INT-01: When `oban_powertools_job_records` is absent from the DB, `powertools_tables/1` returns an error finding naming the table and its migration set — operators need actionable Doctor output
+- INT-01: When all tables are present, `powertools_tables/1` returns `[]` — no regression on the happy path
+- INT-02: Powertools cron workers with `deadline:` produce `meta["__deadline_at__"]` in the stored job — parity with the non-cron enqueue path
+- INT-02: Powertools cron workers without `deadline:` produce no `__deadline_at__` key — nil build_meta returns `%{}`, safe no-op
+- INT-02: Workers with both `redact:` and `deadline:` produce both `__redacted_fields__` and `__deadline_at__` in meta — composition must work
 
-**Differentiators / defer:**
-- Hook telemetry (`[:oban_powertools, :worker_hook, :fired]`) — defer to follow-on; add after hooks are proven useful; removing telemetry later is a breaking change
-- Global `attach_hook/1` registry — defer until adoption signal
+**Defer (not in scope):**
+- Any Doctor check on column structure (not schema-aware by design)
+- Deadline injection into the `rescue ArgumentError` fallback path for unloaded worker modules (intentional graceful degrade)
+- Idempotency path changes (already correct; reference only)
 
-### Deadline / Timeout
+### Architecture Approach (from ARCHITECTURE.md)
 
-**Must ship (table stakes):**
-- `timeout: N` (milliseconds) → generates `def timeout(_job), do: N` override at compile time
-- `deadline: N` → stores `meta["__deadline_at__"]` at enqueue; check at top of `perform/1`; returns `{:cancel, :deadline_expired}` if elapsed; soft only (no mid-execution interrupt)
-- Both stripped from `oban_opts` before passing to `use Oban.Worker`
+INT-01 is a pure data change to a compile-time module attribute. The manifest's `Enum.flat_map` consumer requires zero logic changes — a new key is sufficient.
 
-**Differentiators (include in Phase 2):**
-- Deadline visible in `/ops/jobs` detail view (meta is already rendered — zero extra code)
+INT-02 requires understanding the call chain in `maybe_insert_job/4`:
 
-**Out of scope:**
-- Hard deadline (interrupt running job) — requires Oban Pro-level supervision
-- Per-job dynamic `timeout:` override at enqueue time — defer
+```
+claim_slot/4
+  -> Multi.run(:job, fn repo, %{decision: decision} ->
+       maybe_insert_job(repo, entry, args, decision, now)
+     end)
+     -> maybe_insert_job (3 skip clauses ignore `_now`)
+     -> maybe_insert_job active clause:
+          worker_module = String.to_existing_atom(...)
+          if function_exported?(worker_module, :__powertools_limits__, 0) do
+            deadline_ms = worker_module.__powertools_deadline_ms__()
+            deadline_meta = ObanPowertools.Worker.Deadlines.build_meta(deadline_ms, now)
+            worker_module.new(args, queue: queue, meta: deadline_meta)
+              -> Redaction.apply merges __redacted_fields__ into deadline_meta
+              -> __powertools_new_delegate__ -> Oban.Job.new with both keys in meta
+          else
+            Oban.Job.new(args, worker: entry.worker, queue: queue)  # plain worker, no injection
+          end
+     rescue ArgumentError -> Oban.Job.new(...)  # unloaded module, no injection
+```
 
-### Output Recording
+**Major components (modified):**
+1. `Doctor.Checks.@powertools_manifest` — compile-time data registry; add `"output-recording"` group
+2. `Cron.maybe_insert_job/4` — job insertion path; add `now` parameter and deadline injection
+3. `Worker.Deadlines.build_meta/2` — reused unchanged; handles nil safely
+4. `Worker.Redaction.apply/4` — reused unchanged; deep_merge composes with deadline meta
 
-**Must ship (table stakes):**
-- `record_output: true` opt-in per worker (never auto-record — unbounded growth risk)
-- `{:ok, result, record_opts}` return convention from `process/1` — additive, all existing returns unchanged
-- `ObanPowertools.JobRecord` schema / `oban_powertools_job_records` table (NOT a modified `Workflow.Result`)
-- `unique_constraint([:oban_job_id, :attempt])` — prevents double-recording on retry
-- No FK to `oban_jobs` in migration — Oban prunes its own table; hard FK blocks pruning
-- Fault-tolerant: recording failure logs warning but never fails the job
-- `max_payload_bytes` enforced before insert (default 64 KB, configurable)
-- `fetch_result/1` query helper
-- Output visible in `/ops/jobs` detail via new `:job_recorded` DisplayPolicy kind
+### Critical Pitfalls (from PITFALLS.md)
 
-**Differentiators (include in Phase 3):**
-- `output_retention:` policy (reuse existing `retention` field; wire Lifeline prune cycle)
-- Workflow step routing: detect `workflow_id`+`step_name` in meta → write to `Workflow.Result` path, not `JobRecord`
+1. **Meta clobber via wrong merge order (INT-02)** — Do not post-process the changeset after `worker_module.new/2`. Build deadline meta first, pass it in opts before the call. `Redaction.apply/4` then merges `__redacted_fields__` on top. The failure mode is using `Keyword.put(:meta, ...)` instead of passing `meta: deadline_meta` in opts, which would cause redaction to overwrite the deadline key.
 
-**Out of scope:**
-- Streaming / large output — workers should record a reference (S3 key, row ID) for large outputs
+2. **Deadline meta leaking into plain-worker fallback path (INT-02)** — Deadline injection must be inside the `function_exported?(:__powertools_limits__, 0)` true branch only. Computing deadline meta before the branch and accidentally threading it into the `else` or `rescue` paths puts `__deadline_at__` on plain Oban worker jobs, which could trigger false Doctor expiry findings. Add `refute Map.has_key?(stored_job.meta, "__deadline_at__")` to the existing plain-worker cron test.
 
-### At-rest Redaction (redact:)
+3. **`now` not injectable without signature change (INT-02)** — Using `DateTime.utc_now()` directly inside `maybe_insert_job` makes deadline values non-deterministic in tests. Thread `now` as a fifth parameter from `claim_slot/4` (already bound at line 52) through the Multi.run lambda. All four `maybe_insert_job` clause heads need the `_now` parameter including the three no-op skip clauses.
 
-**Must ship (table stakes):**
-- `redact: [:field]` compile-time option
-- `Map.drop` on `oban_jobs.args` — key absent from JSONB (not null/placeholder) — applied after fingerprint, before `Oban.Job.new/2`
-- `meta["__redacted_fields__"]` written at enqueue; rendered in `/ops/jobs` detail view
-- `redacted: true` set on `JobRecord` when any fields dropped from payload
-- Compile-time validation: error if field in both `redact:` and `validate_required`
-- Compile-time validation: error if field in both `redact:` and `partition_by:` limiter key
-- Output recording layer applies same redact list to `record_opts.payload`
+4. **Table name typo in manifest produces false-positive errors on healthy installs (INT-01)** — The string `"oban_powertools_job_records"` is matched against `information_schema.tables.table_name`. Any typo produces a constant error finding on every adopter who ran Phase 55 migrations. The existing `"returns [] on migrated test DB"` test is the immediate canary.
 
-**Out of scope:**
-- `encrypt:` — explicitly deferred (PROJECT.md decision)
-- Retroactive redaction (`scrub_past_jobs/2`) — out of scope for v1.7
-- Scrubbing `oban_jobs.errors` / stacktraces — document the boundary; args-at-persist only
+5. **Test description drift on INT-01** — The test at `checks_test.exs:104` says "all 4 groups present". After adding the fifth group, update the description to "all 5 groups present" to prevent future confusion.
 
----
+## Implications for Roadmap
 
-## Architecture Highlights
+These fixes are fully independent and can be built in either order or as a single phase. Given their minimal scope, a single implementation phase covering both is appropriate.
 
-All four features are extensions to the single `ObanPowertools.Worker.__using__/1` macro. No new supervision tree. No new GenServer. No changes to Oban internals.
+### Phase 1: Doctor Manifest Fix (INT-01)
 
-**Canonical `perform/1` wrapper order — all phases build on this:**
+**Rationale:** Trivial, highest confidence, zero risk. Establishes a clean test baseline before touching cron.
+**Delivers:** Doctor correctly warns when `oban_powertools_job_records` is absent from the DB.
+**Addresses:** Add `"output-recording" => ["oban_powertools_job_records"]` to `@powertools_manifest`; update test description; add one missing-table test using the DROP/restore pattern from the `missing_indexes` test.
+**Avoids:** Table name typo (caught immediately by happy-path test); stale "4 groups" test description.
 
+### Phase 2: Cron Deadline Injection (INT-02)
 
+**Rationale:** More code changes than INT-01 (parameter threading, new inject logic, 3-4 new tests) but still surgical. Building after INT-01 gives a green test suite baseline to diff against.
+**Delivers:** Cron-scheduled Powertools workers with `deadline:` produce `__deadline_at__` in job meta, matching the non-cron path behavior.
+**Implements:** Thread `now` through `maybe_insert_job`; inject `Deadlines.build_meta` result into opts before `worker_module.new/2`; add `CronDeadlineWorker` test fixture and 3-4 tests covering: deadline present, deadline absent, redact+deadline composition, plain-worker unchanged.
+**Avoids:** Meta clobber (use `meta: deadline_meta` in opts, not post-changeset mutation); deadline leaking to plain workers (inject inside the `function_exported?` true branch only); non-deterministic test timestamps (thread `now` from `claim_slot`).
 
-**New components:**
+### Phase Ordering Rationale
 
-| Component | Responsibility |
-|-----------|----------------|
-| `ObanPowertools.Worker.Hooks` (internal) | `safe_run_hook/3` dispatcher; crash-caught, logs at `:warning`, never re-raises |
-| `ObanPowertools.JobRecord` (Ecto schema) | `oban_powertools_job_records` table; mirrors `Workflow.Result` field set minus workflow FKs; `unique_constraint([:oban_job_id, :attempt])` |
-| Migration: `oban_powertools_job_records` | Added to Igniter installer and example host |
+- INT-01 and INT-02 are fully independent with no shared code paths.
+- INT-01 is lower risk (data change only) and produces immediate test feedback via existing happy-path assertions.
+- INT-02 requires parameter-signature changes across four function clauses and careful merge ordering — doing it second on a green baseline reduces debugging surface.
+- Either order is safe; the above order is recommended for confidence.
 
-**Modified components:**
+### Research Flags
 
-| Component | Change |
-|-----------|--------|
-| `ObanPowertools.Worker` | Strip `:deadline`, `:timeout`, `:redact`, hook keys from `oban_opts`; generate `timeout/1` override; inject deadline guard and hook dispatch into `perform/1` |
-| `ObanPowertools.DisplayPolicy` | Additive `:job_recorded` kind in `render_job_field/3`; existing kinds unchanged |
-| `ObanPowertools.Telemetry` | Additive `:worker_hook` family in `@contract`; existing families unchanged |
-| `mix oban_powertools.install` | Generates new migration via Igniter |
+No further research needed. Both fixes have HIGH-confidence implementation plans based on direct code inspection of all affected files. The implementation details in STACK.md and ARCHITECTURE.md are prescriptive and ready to execute.
 
-**Key constraints carried forward:**
-- No FK from `oban_powertools_job_records` to `oban_jobs` — Oban prunes its own table
-- `{:ok, result, record_opts}` is additive; all existing return shapes unchanged
-- `Workflow.Result` and `oban_powertools_workflow_results` are untouched
-- Idempotency fingerprint computed over raw args before any redaction; `generate_fingerprint/2` untouched
-- v1.8 Batches milestone will reuse `JobRecord` and hook seams — do not gate v1.8 features into v1.7 schema
-
----
-
-## Watch Out For
-
-1. **Hook not crash-caught retries the job** — Wrap every hook call in `safe_run_hook/3` that `rescue`s all exceptions, logs at `:warning`, never re-raises. One missing `rescue` turns an observability feature into a job-failure amplifier. This is a hard contract, not opt-in.
-
-2. **Redact before fingerprint = false dedup collisions** — Fingerprint MUST be computed from full, unredacted args before `Map.drop`. Correct order: `fingerprint(original_args)` → `Map.drop(args, redact_fields)` → `Oban.Job.new(stripped_args)`. Inverting this causes two jobs with different values in a redacted field to deduplicate incorrectly.
-
-3. **`on_failure` does not fire after timeout kill** — Oban's `timeout/1` kills via `:timer.exit_after/3` (raw BEAM EXIT). All `rescue`/`after` in `perform/1` are bypassed. Do not rely on `on_failure` for timeout observability. Use `[:oban, :job, :exception]` with `kind: :exit` in a telemetry handler. Document this gap explicitly.
-
-4. **PII leaks into recorded output despite args redaction** — `redact:` only drops named keys from `oban_jobs.args` and `record_opts.payload`. If `process/1` constructs its return value using a redacted field loaded from an external source, that value appears in `JobRecord.payload`. Document the boundary: `redact:` prevents args storage; it does not sanitize output payloads. Workers must not include redacted data in return values.
-
-5. **`on_discard` / `on_failure` conflation causes alert storms** — `on_failure` fires on every retry-eligible failure. `on_discard` fires only on terminal exhaustion. A worker with `max_attempts: 20` using `on_failure` for PagerDuty generates 20 alerts. Hook dispatch routing must be precise: `{:ok,_}`/`:ok` → `on_success`; `{:error,_}`/exception → `on_failure` (retry-eligible); `{:discard,_}` or attempt >= max_attempts → `on_discard`; `{:cancel,_}` → `on_discard` (terminal).
-
-**Additional pitfalls:**
-- Do NOT modify `Workflow.Result` to support non-workflow jobs — use a separate `oban_powertools_job_records` table (FK constraints and unique constraint semantics differ)
-- Enforce `max_payload_bytes` before every `JobRecord.record/3` (Postgres JSONB TOAST triggers at ~2 KB, degrades reads 2-10x above that)
-- Never rely on Ecto's `redact: true` for persistence safety — it only affects `Inspect` output, not DB writes
-- Validate at compile time that no field is in both `redact:` and `partition_by: {:args, field}` limiter key
-
----
-
-## Recommended Phase Order
-
-Research from ARCHITECTURE.md and PITFALLS.md converges on this order:
-
-### Phase 1: Worker Hooks
-
-**Rationale:** Fully self-contained within `ObanPowertools.Worker`. No schema migration. Establishes the `perform/1` wrapper shape that all subsequent phases extend. Highest-value observability feature ships first.
-
-**Delivers:** `on_start/1`, `on_success/2`, `on_failure/2`, `on_discard/2`; `safe_run_hook/3` dispatcher; `defoverridable` no-op defaults; additive `:worker_hook` telemetry contract entry (emit deferred).
-
-**Pitfalls addressed:** Hook-not-crash-caught (1), discard/failure conflation (5), timeout/`on_failure` gap documented (3).
-
-**Research phase:** Not needed — seams confirmed in source.
-
----
-
-### Phase 2: deadline: / timeout: Pass-through
-
-**Rationale:** Compile-time-only macro changes. Depends on Phase 1 `perform/1` wrapper being in place (deadline check slot is at wrapper entry). No schema changes.
-
-**Delivers:** `timeout: N` → `def timeout(_job), do: N`; `deadline: N` → `meta["__deadline_at__"]` at enqueue + check at `perform/1` entry → `{:cancel, :deadline_expired}`; both keys stripped from `oban_opts`; deadline visible in `/ops/jobs` detail.
-
-**Pitfalls addressed:** Timeout unit validation at compile time; soft-only deadline documented (no mid-execution interrupt); timeout/`on_failure` gap documented.
-
-**Research phase:** Not needed — `timeout/1` callback contract verified directly in `deps/oban/lib/oban/worker.ex`.
-
----
-
-### Phase 3: Output Recording (JobRecord)
-
-**Rationale:** New schema table required. Depends on Phase 1 `perform/1` wrapper to intercept `{:ok, result, record_opts}` three-tuple. Independent of Phase 2 (can be built concurrently after Phase 1 if bandwidth allows).
-
-**Delivers:** `oban_powertools_job_records` migration; `ObanPowertools.JobRecord` schema; `{:ok, result, record_opts}` return convention (additive); `JobRecord.record/3` fault-tolerant persist with byte cap; `unique_constraint([:oban_job_id, :attempt])`; `fetch_result/1`; `:job_recorded` DisplayPolicy kind; output in `/ops/jobs` detail; Igniter installer updated; retention policy wired to Lifeline prune.
-
-**Pitfalls addressed:** Schema not modified (6), byte cap enforced (7), double-recording prevented (unique constraint), recording failure does not fail the job.
-
-**Research phase:** Not needed — schema design confirmed against `Workflow.Result`; FK decision confirmed against Oban pruning behavior.
-
----
-
-### Phase 4: redact: At-Rest
-
-**Rationale:** Strictly after Phase 3 — extends the `record_opts` pipeline with the same `@powertools_redact_fields` module attribute. Phase 1 `perform/1` wrapper must also be in place.
-
-**Delivers:** `redact: [:field]` compile-time option; `Map.drop` on `oban_jobs.args` (after fingerprint, before `Oban.Job.new/2`); `meta["__redacted_fields__"]` at enqueue; `__redacted_fields__` in `/ops/jobs` detail; same redact list applied to `record_opts.payload`; `redacted: true` on `JobRecord`; compile-time validation against `validate_required` and `partition_by:` overlaps.
-
-**Pitfalls addressed:** Redact-before-fingerprint collision (2), PII in recorded output (4, documented boundary), Ecto `redact: true` confusion (8), limiter partition overlap (compile-time guard).
-
-**Research phase:** Not needed — all seams confirmed; fingerprint ordering is a code-order constraint.
-
----
-
-### Phase Ordering Summary
-
-
-
-Phases 2 and 3 can be built concurrently after Phase 1 completes. Phase 4 is strictly after Phase 3.
-
----
+**Skip research-phase for both phases** — patterns are well-established in the existing codebase (`idempotency.ex` as reference implementation for INT-02; existing manifest structure for INT-01).
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Versions verified against mix.lock; Oban 2.23.0 source inspected for timeout/1 and telemetry events |
-| Features | HIGH | Verified against Oban OSS docs, Oban Pro docs, and direct codebase inspection; PROJECT.md defer decisions confirmed |
-| Architecture | HIGH | All named modules inspected; build order derived from actual dependency analysis; no speculative gaps |
-| Pitfalls | HIGH | Verified against Oban source (timeout EXIT behavior), Ecto docs (redact: display-only), Postgres TOAST threshold, and existing Idempotency seam |
+| Stack | HIGH | Direct code reading of all affected files; exact line numbers confirmed |
+| Features | HIGH | Both fixes are correctness gaps with clear done criteria and test assertions specified |
+| Architecture | HIGH | Full call chain traced; data flow confirmed in ARCHITECTURE.md |
+| Pitfalls | HIGH | All pitfalls identified from direct reading of production code and test files |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Hook telemetry emit timing:** ARCHITECTURE.md includes telemetry emit in Phase 1 deliverables; FEATURES.md recommends deferring the emit to avoid premature contract extension. Resolution: ship the `:worker_hook` contract extension (new `@contract` family) in Phase 1 so the contract is ready, but defer actual event emission until hooks are validated in production.
-
-- **`{:cancel, reason}` hook routing:** Confirm at Phase 1 planning: `{:cancel, reason}` from `process/1` routes to `on_discard` (not `on_success` or `on_failure`), with `status: "cancelled"` on any `JobRecord` written.
-
-- **Dual application points for `redact:`:** `redact:` applies at enqueue time (drop from `oban_jobs.args`) AND at record time (drop from `record_opts.payload`). Phase 2 owns the enqueue-time drop; Phase 4 owns the record-time drop. Confirm this split is explicit in phase plans so neither phase omits its half.
-
----
+- **Group name `"output-recording"` for INT-01** — MEDIUM confidence. Logical choice matching the `record_output:` option and `ObanPowertools.JobRecord` schema, consistent with existing naming convention (feature-domain labels). No pre-existing authoritative string to copy from the installer. Acceptable; document with a comment in the manifest citing `setup_job_record_migrations/1`.
+- **Test time-window for INT-02 deadline assertion** — use a `±30s` window around `now + deadline_ms` to eliminate flake without being meaninglessly wide. Test implementation detail, not a code correctness concern.
 
 ## Sources
 
-### Primary (HIGH confidence — direct source inspection)
+### Primary (HIGH confidence — direct code inspection)
 
-- `deps/oban/lib/oban/worker.ex` — `timeout/1` callback (line 415), default impl (line 545)
-- `deps/oban/lib/oban/queue/executor.ex` — timeout kill via `:timer.exit_after` (lines 128-139), telemetry dispatch (lines 97, 285, 299)
-- `deps/oban/lib/oban/telemetry.ex` — full event table including `:state` values (lines 24-64)
-- `lib/oban_powertools/worker.ex` — `__using__` macro structure, `perform/1` shape
-- `lib/oban_powertools/workflow/result.ex` — FK constraints, field set
-- `lib/oban_powertools/telemetry.ex` — frozen `@contract`, `metrics/0` pattern
-- `lib/oban_powertools/idempotency.ex` — fingerprint-before-args dependency
-- `lib/oban_powertools/runtime_config.ex` — `DisplayPolicy` seam
-- `.planning/PROJECT.md` — v1.7 feature list, defer decisions, fingerprint constraint
-- `mix.lock` — locked versions verified 2026-05-30
-- `.planning/threads/2026-05-28-post-v1.5-next-milestone.md` — hooks-in-executor, no halt semantics, generalise Workflow.Result, defer encrypt
-
-### Secondary (HIGH confidence — official docs)
-
-- https://oban.hexdocs.pm/Oban.Worker.html — `timeout/1` callback contract
-- https://oban.hexdocs.pm/Oban.Telemetry.html — telemetry event table
-- https://oban.pro/docs/pro/Oban.Pro.Worker.html — `after_process/3`, `on_cancelled/2`, `on_discarded/2`, safety guarantees
-
-### Tertiary (MEDIUM confidence)
-
-- https://github.com/sidekiq/sidekiq/wiki/Middleware — middleware pattern (reference comparison)
-- https://pganalyze.com/blog/5mins-postgres-jsonb-toast — JSONB TOAST ~2 KB threshold (byte cap rationale)
+- `lib/oban_powertools/doctor/checks.ex` lines 24-59, 244-288 — `@powertools_manifest`, `powertools_tables/1`
+- `lib/mix/tasks/oban_powertools.install.ex` lines 842-874 — `setup_job_record_migrations/1`
+- `lib/oban_powertools/cron.ex` lines 50-104, 432-459 — `claim_slot/4`, `maybe_insert_job/4`
+- `lib/oban_powertools/idempotency.ex` lines 147-181 — `merge_powertools_meta/4` (reference implementation for INT-02)
+- `lib/oban_powertools/worker/deadlines.ex` lines 4-23 — `build_meta/2`, `meta_key/0`
+- `lib/oban_powertools/worker/redaction.ex` lines 1-56 — `apply/4`, `inject_meta/2`
+- `lib/oban_powertools/worker.ex` lines 138-151 — `new/2` override, `__powertools_new_delegate__/2`
+- `test/oban_powertools/doctor/checks_test.exs` line 104 — existing happy-path test
+- `test/oban_powertools/cron_test.exs` lines 212-274 — existing Phase 56 redaction tests
+- `.planning/PROJECT.md` — INT-01/INT-02 deferred-gap descriptions
 
 ---
-
-*Research completed: 2026-05-30*
+*Research completed: 2026-06-13*
 *Ready for roadmap: yes*
