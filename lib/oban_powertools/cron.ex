@@ -419,7 +419,26 @@ defmodule ObanPowertools.Cron do
   defp maybe_insert_job(_repo, _entry, _args, %{decision: "duplicate"}), do: {:ok, nil}
 
   defp maybe_insert_job(repo, entry, args, _decision) do
-    repo.insert(Oban.Job.new(args, worker: entry.worker, queue: String.to_atom(entry.queue)))
+    queue = String.to_atom(entry.queue)
+
+    changeset =
+      try do
+        worker_module = String.to_existing_atom("Elixir." <> entry.worker)
+
+        if function_exported?(worker_module, :__powertools_limits__, 0) do
+          # ObanPowertools.Worker — route through new/2 to inherit redaction and meta injection
+          worker_module.new(args, queue: queue)
+        else
+          # Plain Oban.Worker — keep existing bare insert behavior
+          Oban.Job.new(args, worker: entry.worker, queue: queue)
+        end
+      rescue
+        ArgumentError ->
+          # Unloaded or removed worker module — degrade gracefully rather than crash the cron run
+          Oban.Job.new(args, worker: entry.worker, queue: queue)
+      end
+
+    repo.insert(changeset)
   end
 
   defp update_slot(repo, slot, %{decision: decision} = decision_data, job, now) do
