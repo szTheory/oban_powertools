@@ -2,6 +2,25 @@ defmodule ObanPowertools.WorkerTest do
   use ExUnit.Case, async: true
   import ExUnit.CaptureLog
 
+  alias ObanPowertools.{JobRecord, TestRepo}
+
+  setup do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(TestRepo)
+
+    original_repo = Application.get_env(:oban_powertools, :repo)
+    Application.put_env(:oban_powertools, :repo, TestRepo)
+
+    on_exit(fn ->
+      if is_nil(original_repo) do
+        Application.delete_env(:oban_powertools, :repo)
+      else
+        Application.put_env(:oban_powertools, :repo, original_repo)
+      end
+    end)
+
+    :ok
+  end
+
   defmodule BasicWorker do
     use ObanPowertools.Worker,
       queue: :default,
@@ -111,6 +130,21 @@ defmodule ObanPowertools.WorkerTest do
 
     @impl true
     def process(_job), do: {:ok, %{"recorded" => true}}
+
+    @impl true
+    def on_success(job, _event) do
+      send(self(), {:recording_seen_by_success_hook, JobRecord.fetch_result(TestRepo, job.id)})
+    end
+  end
+
+  defmodule RecordingPlainOkWorker do
+    use ObanPowertools.Worker,
+      queue: :default,
+      args: [user_id: :integer],
+      record_output: true
+
+    @impl true
+    def process(_job), do: :ok
   end
 
   defmodule RecordingDefaultWorker do
@@ -335,6 +369,35 @@ defmodule ObanPowertools.WorkerTest do
                       stacktrace: nil,
                       terminal?: true
                     }}
+  end
+
+  test "recording workers persist success payloads before on_success hooks run" do
+    job = worker_job(%{user_id: 123}, id: 55_020)
+
+    assert {:ok, %{"recorded" => true}} = RecordingConfiguredWorker.perform(job)
+
+    assert_receive {:recording_seen_by_success_hook, {:ok, %{"recorded" => true}}}
+    assert {:ok, %{"recorded" => true}} = JobRecord.fetch_result(TestRepo, job.id)
+
+    record = TestRepo.get_by!(JobRecord, oban_job_id: job.id)
+    assert record.worker == inspect(RecordingConfiguredWorker)
+    assert record.attempt == 1
+    assert record.retention == "ephemeral"
+  end
+
+  test "recording workers do not persist plain ok results" do
+    job = worker_job(%{user_id: 123}, id: 55_021)
+
+    assert :ok = RecordingPlainOkWorker.perform(job)
+    assert {:error, :not_found} = JobRecord.fetch_result(TestRepo, job.id)
+  end
+
+  test "recording fetches the repo from application config at runtime" do
+    Application.delete_env(:oban_powertools, :repo)
+
+    assert_raise ArgumentError, ~r/could not fetch application environment/, fn ->
+      RecordingConfiguredWorker.perform(worker_job(%{user_id: 123}, id: 55_022))
+    end
   end
 
   test "generated perform leaves cancel and snooze unchanged without post-hook dispatch" do
@@ -745,6 +808,7 @@ defmodule ObanPowertools.WorkerTest do
   defp worker_job(args, opts \\ []) do
     %Oban.Job{
       args: args,
+      id: Keyword.get(opts, :id, System.unique_integer([:positive])),
       attempt: Keyword.get(opts, :attempt, 1),
       max_attempts: Keyword.get(opts, :max_attempts, 3),
       meta: Keyword.get(opts, :meta, %{})
