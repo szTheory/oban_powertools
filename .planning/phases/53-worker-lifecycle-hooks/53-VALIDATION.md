@@ -1,10 +1,11 @@
 ---
 phase: 53
 slug: worker-lifecycle-hooks
-status: draft
+status: complete
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-06-12
+audited: 2026-06-13
 ---
 
 # Phase 53 - Validation Strategy
@@ -41,11 +42,11 @@ created: 2026-06-12
 
 | Req ID | Behavior | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |--------|----------|------------|-----------------|-----------|-------------------|-------------|--------|
-| HOOK-01 | `on_start/1` fires after validation/casting and before `process/1`; hook crashes are swallowed and do not alter the job result | T-53-01 / T-53-02 | Hook failure cannot retry, discard, or otherwise change the Oban job outcome | Unit | `mix test test/oban_powertools/worker_test.exs --trace` | yes, extend | pending |
-| HOOK-02 | `on_success/2` receives success envelopes for `:ok` and `{:ok, value}` | T-53-01 | Successful process results remain the original values returned to Oban | Unit | `mix test test/oban_powertools/worker_test.exs --trace` | yes, extend | pending |
-| HOOK-03 | `on_failure/2` receives retry-eligible `{:error, reason}` and rescued/caught process failure envelopes | T-53-01 / T-53-02 | Retry-eligible failures remain failures after observe-only hook dispatch | Unit | `mix test test/oban_powertools/worker_test.exs --trace` | yes, extend | pending |
-| HOOK-04 | `on_discard/2` fires exactly once for final-attempt error and explicit discard; it does not fire for retry-eligible failures or explicit cancel | T-53-01 | Final-attempt routing does not double-fire `on_failure/2` and `on_discard/2` | Unit | `mix test test/oban_powertools/worker_test.exs --trace` | yes, extend | pending |
-| HOOK-05 | Hook dispatch emits `[:oban_powertools, :worker_hook, :invoked]` with exact metadata keys `hook` and `outcome`; metric tags stay inside the frozen contract | T-53-03 | Telemetry labels exclude job ids, args, queues, worker names, reasons, and stacktraces | Unit | `mix test test/oban_powertools/telemetry_test.exs --trace` | yes, extend | pending |
+| HOOK-01 | `on_start/1` fires after validation/casting and before `process/1`; hook crashes are swallowed and do not alter the job result | T-53-01 / T-53-02 | Hook failure cannot retry, discard, or otherwise change the Oban job outcome | Unit | `mix test test/oban_powertools/worker_test.exs --trace` | yes | green |
+| HOOK-02 | `on_success/2` receives success envelopes for `:ok` and `{:ok, value}` | T-53-01 | Successful process results remain the original values returned to Oban | Unit | `mix test test/oban_powertools/worker_test.exs --trace` | yes | green |
+| HOOK-03 | `on_failure/2` receives retry-eligible `{:error, reason}` and rescued/caught process failure envelopes | T-53-01 / T-53-02 | Retry-eligible failures remain failures after observe-only hook dispatch | Unit | `mix test test/oban_powertools/worker_test.exs --trace` | yes | green |
+| HOOK-04 | `on_discard/2` fires exactly once for final-attempt error and explicit discard; it does not fire for retry-eligible failures or explicit cancel | T-53-01 | Final-attempt routing does not double-fire `on_failure/2` and `on_discard/2` | Unit | `mix test test/oban_powertools/worker_test.exs --trace` | yes | green |
+| HOOK-05 | Hook dispatch emits `[:oban_powertools, :worker_hook, :invoked]` with exact metadata keys `hook` and `outcome`; metric tags stay inside the frozen contract | T-53-03 | Telemetry labels exclude job ids, args, queues, worker names, reasons, and stacktraces | Unit | `mix test test/oban_powertools/telemetry_test.exs --trace` | yes | green |
 
 *Status values: pending, green, red, flaky*
 
@@ -63,10 +64,10 @@ created: 2026-06-12
 
 ## Wave 0 Requirements
 
-- [ ] `test/oban_powertools/worker_test.exs` - add hook routing, no-op defaults, crash-safety, final-attempt non-double-fire, and cancel non-dispatch coverage.
-- [ ] `test/oban_powertools/telemetry_test.exs` - add `worker_hook` contract, helper event, metric counter, and exact metadata-key tests.
-- [ ] `lib/oban_powertools/worker/hooks.ex` - create the internal dispatch module before worker macro integration so it can be tested directly or through small worker fixtures.
-- [ ] Framework install: none - existing ExUnit setup covers all Phase 53 behaviors.
+- [x] `test/oban_powertools/worker_test.exs` - add hook routing, no-op defaults, crash-safety, final-attempt non-double-fire, and cancel non-dispatch coverage.
+- [x] `test/oban_powertools/telemetry_test.exs` - add `worker_hook` contract, helper event, metric counter, and exact metadata-key tests.
+- [x] `lib/oban_powertools/worker/hooks.ex` - create the internal dispatch module before worker macro integration so it can be tested directly or through small worker fixtures.
+- [x] Framework install: none - existing ExUnit setup covers all Phase 53 behaviors.
 
 ---
 
@@ -81,11 +82,23 @@ created: 2026-06-12
 
 ## Validation Sign-Off
 
-- [ ] All PLAN.md tasks have automated verify commands or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all missing references above
-- [ ] No watch-mode flags
-- [ ] Feedback latency target documented
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All PLAN.md tasks have automated verify commands or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all missing references above
+- [x] No watch-mode flags
+- [x] Feedback latency target documented
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-06-13
+
+---
+
+## Validation Audit 2026-06-13
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+**Audit result:** All 5 requirements (HOOK-01 through HOOK-05) are COVERED by green automated tests. Source gates confirmed: `worker_hook: [:hook, :outcome]` in telemetry.ex, `__powertools_hook_overridden?` in worker.ex, `defmodule ObanPowertools.Worker.Hooks` in worker/hooks.ex. Targeted suite: 59 tests, 0 failures.
