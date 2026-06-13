@@ -18,7 +18,10 @@ defmodule ObanPowertools.JobRecordTest do
                  result: [%{"state" => :ok, id: 1}],
                  count: 2,
                  nil_value: nil
-               }, output_limit: 65_536, output_retention: :standard)
+               },
+               output_limit: 65_536,
+               output_retention: :standard
+             )
 
     record = TestRepo.get_by!(JobRecord, oban_job_id: job.id, attempt: 2)
 
@@ -83,21 +86,27 @@ defmodule ObanPowertools.JobRecordTest do
                TestRepo,
                "MyApp.Worker",
                %{job | attempt: 1},
-               %{"policy" => "ephemeral"}, output_retention: :ephemeral)
+               %{"policy" => "ephemeral"},
+               output_retention: :ephemeral
+             )
 
     assert :ok =
              JobRecord.record(
                TestRepo,
                "MyApp.Worker",
                %{job | attempt: 2},
-               %{"policy" => "standard"}, output_retention: :standard)
+               %{"policy" => "standard"},
+               output_retention: :standard
+             )
 
     assert :ok =
              JobRecord.record(
                TestRepo,
                "MyApp.Worker",
                %{job | attempt: 3},
-               %{"policy" => "extended"}, output_retention: :extended)
+               %{"policy" => "extended"},
+               output_retention: :extended
+             )
 
     records =
       JobRecord
@@ -150,6 +159,15 @@ defmodule ObanPowertools.JobRecordTest do
              )
 
     assert {:ok, %{"attempt" => 2}} = JobRecord.fetch_result(TestRepo, job)
+  end
+
+  test "fetch_result/1 uses the configured repo" do
+    job = insert_job!()
+
+    assert :ok = JobRecord.record(TestRepo, "MyApp.Worker", job, %{"configured" => true}, [])
+
+    assert {:ok, %{"configured" => true}} = JobRecord.fetch_result(job.id)
+    assert {:ok, %{"configured" => true}} = JobRecord.fetch_result(job)
   end
 
   defp assert_ttl(record, expected_seconds) do

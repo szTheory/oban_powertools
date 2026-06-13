@@ -88,6 +88,11 @@ defmodule ObanPowertools.JobRecord do
       :ok
   end
 
+  def fetch_result(%Oban.Job{} = job), do: configured_repo() |> fetch_result(job)
+
+  def fetch_result(oban_job_id) when is_integer(oban_job_id),
+    do: configured_repo() |> fetch_result(oban_job_id)
+
   def fetch_result(repo, %Oban.Job{id: oban_job_id}), do: fetch_result(repo, oban_job_id)
 
   def fetch_result(repo, oban_job_id) when is_integer(oban_job_id) do
@@ -220,5 +225,9 @@ defmodule ObanPowertools.JobRecord do
       limit when is_integer(limit) and limit > 0 -> limit
       _invalid -> @default_output_limit
     end
+  end
+
+  defp configured_repo do
+    Application.fetch_env!(:oban_powertools, :repo)
   end
 end
