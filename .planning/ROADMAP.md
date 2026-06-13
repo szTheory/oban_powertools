@@ -10,6 +10,7 @@
 - ✅ **v1.5 Native Job Surface & Automation API** — Phases 43-46 (shipped 2026-05-28) — [archive](milestones/v1.5-ROADMAP.md)
 - ✅ **v1.6 Release & Operability** — Phases 47-52.1 (shipped 2026-05-30) — [archive](milestones/v1.6-ROADMAP.md)
 - ✅ **v1.7 Worker Lifecycle & Safety** — Phases 53-56 (shipped 2026-06-13) — [archive](milestones/v1.7-ROADMAP.md)
+- 🚧 **v1.8 Integration Fixes** — Phases 57-58 (in progress)
 
 ## Phases
 
@@ -69,6 +70,36 @@ Full phase details: [milestones/v1.7-ROADMAP.md](milestones/v1.7-ROADMAP.md)
 
 </details>
 
+### 🚧 v1.8 Integration Fixes (In Progress)
+
+**Milestone Goal:** Close the two non-blocking integration gaps deferred from the v1.7 audit — Doctor manifest coverage for the Phase 55 table and cron-path deadline injection — before expanding capability.
+
+- [ ] **Phase 57: Doctor Manifest Fix** - Add `oban_powertools_job_records` to `@powertools_manifest` so Doctor warns when the output-recording table is absent
+- [ ] **Phase 58: Cron Deadline Injection** - Inject `__deadline_at__` meta on the cron scheduling path for `deadline:`-configured Powertools workers
+
+## Phase Details
+
+### Phase 57: Doctor Manifest Fix
+**Goal**: Doctor correctly detects a missing `oban_powertools_job_records` table and warns operators, closing the silent gap introduced when Phase 55 shipped the output-recording table without updating the manifest
+**Depends on**: Phase 56 (v1.7 complete)
+**Requirements**: INT-01
+**Success Criteria** (what must be TRUE):
+  1. Running `mix oban_powertools.doctor` on a DB missing `oban_powertools_job_records` produces an error finding that names the table and its migration set
+  2. Running `mix oban_powertools.doctor` on a fully-migrated DB returns no error for `oban_powertools_job_records` — no regression on the happy path
+  3. The Doctor test suite references "all 5 groups present" (not "4 groups") after the manifest update
+**Plans**: TBD
+
+### Phase 58: Cron Deadline Injection
+**Goal**: Cron-scheduled Powertools workers with `deadline:` configured produce `__deadline_at__` in stored job meta, matching the behavior of the non-cron enqueue path through `Idempotency.transaction/3`
+**Depends on**: Phase 57
+**Requirements**: INT-02
+**Success Criteria** (what must be TRUE):
+  1. A cron-enqueued job from a `deadline:`-configured Powertools worker has `meta["__deadline_at__"]` present in the database record
+  2. A cron-enqueued job from a Powertools worker without `deadline:` has no `__deadline_at__` key in meta — no contamination of plain workers
+  3. A cron-enqueued job from a worker with both `redact:` and `deadline:` has both `__redacted_fields__` and `__deadline_at__` present in meta — composition works correctly
+  4. Plain (non-Powertools) Oban workers scheduled via cron are unaffected — no `__deadline_at__` injection on the non-Powertools path
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status      | Completed  |
@@ -81,3 +112,5 @@ Full phase details: [milestones/v1.7-ROADMAP.md](milestones/v1.7-ROADMAP.md)
 | 43-46 | v1.5      | 9/9            | Complete    | 2026-05-28 |
 | 47-52.1 | v1.6    | 16/16          | Complete    | 2026-05-30 |
 | 53-56 | v1.7      | 14/14          | Complete    | 2026-06-13 |
+| 57    | v1.8      | 0/TBD          | Not started | -          |
+| 58    | v1.8      | 0/TBD          | Not started | -          |

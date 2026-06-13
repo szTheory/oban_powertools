@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Integration Fixes
-status: planning
-last_updated: "2026-06-13T15:43:01.379Z"
+status: ready_to_plan
+last_updated: "2026-06-13"
 last_activity: 2026-06-13
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,49 +20,44 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-13)
 
 **Core value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-**Current focus:** Planning next milestone (v1.8 Batches & Composition)
+**Current focus:** v1.8 Phase 57 — Doctor Manifest Fix (INT-01)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 57 of 58 (Doctor Manifest Fix)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-13 — Milestone v1.8 started
+Status: Ready to plan
+Last activity: 2026-06-13 — Roadmap created for v1.8 Integration Fixes (2 phases, 2 requirements)
+
+Progress: [░░░░░░░░░░] 0%
+
+## Performance Metrics
+
+**Velocity (v1.7 baseline):**
+- Total plans completed: 14
+- Average duration: ~5 min
+- Total execution time: ~70 min
+
+**Recent Trend:**
+- Last 5 plans: 4, 4, 6, 5, 8 min
+- Trend: Stable
+
+*Updated after each plan completion*
 
 ## Accumulated Context
-
-### v1.6 Summary
-
-All 7 phases complete (47-52.1), 16/16 plans, 428 tests, 0 failures. Published to hex.pm at `0.5.0`. Doctor CLI, Limiter CLI, Telemetry metrics, SLO guide, hex_consumer adoption proof, and zero-touch release pipeline all shipped.
-
-**Deferred carry-ins for v1.7+:**
-
-- Live CI E2E gate for REL-04 `verify-published` — fix in place (Phase 52.1), resolves on next release cycle.
-- Doctor/limiter CLI/telemetry in-repo verified but not in published 0.5.0 — awaiting 0.5.1 release-please PR.
-- Phase 47 missing VERIFICATION.md — process gap, not a deliverable gap.
 
 ### Decisions
 
 See PROJECT.md Key Decisions section.
 
-**v1.7 key decisions (from research):**
+**v1.8 implementation notes (from research):**
 
-- Separate `oban_powertools_job_records` table (not modifying `Workflow.Result`) — FK/unique semantics differ.
-- No FK from `job_records` to `oban_jobs` — Oban prunes its own table; hard FK blocks pruning.
-- Redact after fingerprint — fingerprint computed from full unredacted args; `Map.drop` applied before `Oban.Job.new/2`.
-- Hook dispatch: retry-eligible failures route to `on_failure`; final exhaustion and explicit discard route to `on_discard`; `{:cancel, reason}` remains cancelled and does not fire `on_discard`; `on_failure` does NOT fire after timeout kill (BEAM EXIT bypasses rescue/after). Phase 53 CONTEXT is authoritative.
-- Zero new runtime dependencies for v1.7.
-- Build order: Phase 53 (hooks) → Phase 54 (deadline/timeout, depends on wrapper) → Phase 55 (recording, depends on wrapper) → Phase 56 (redact, depends on recording pipeline).
-- [Phase 55]: JobRecord uses a dedicated table with `oban_job_id` as a soft reference and no FK to `oban_jobs`.
-- [Phase 55]: Recording failures, oversized payloads, encoding failures, and uniqueness conflicts warn and return `:ok`.
-- [Phase 55]: `fetch_result/1` uses the configured `:oban_powertools` repo while `fetch_result/2` remains available for explicit repo callers.
-- [Phase 55]: Output recording remains opt-in through `record_output: true` and only records `{:ok, payload}`; plain `:ok` remains success without output.
-- [Phase 55]: Worker recording runs before `Hooks.after_result/3` so `on_success/2` callbacks can observe persisted `JobRecord` output.
-- [Phase 55]: Worker recording settings are generated as a map while preserving the existing `JobRecord.record/5` keyword option contract at the call site.
-- [Phase 55]: Kept JobRecord.fetch_result/1 and /2 returning payloads for compatibility; added fetch_record/1 and /2 for JobsLive metadata. — Plan 55-03 needed row metadata for the Recorded Output card, while plans 55-01 and 55-02 established fetch_result as a payload lookup.
-- [Phase 55]: Expired JobRecords are pruned directly by expires_at inside Lifeline without joining oban_jobs.
-- [Phase 55]: Deleted JobRecords contribute to pruned_count, not archived_count.
-- [Phase 55]: Output recording docs frame JobRecord as best-effort operational context, not business storage or transaction truth.
+- INT-01: Pure data addition to `@powertools_manifest` — add `"output-recording" => ["oban_powertools_job_records"]`; use group name matching `record_output:` option and `ObanPowertools.JobRecord` schema naming convention.
+- INT-01: Update `checks_test.exs` line 104 description from "all 4 groups present" to "all 5 groups present".
+- INT-02: Thread `now` as fifth parameter through all four `maybe_insert_job` clause heads — `now` is already bound in `claim_slot/4` at line 52, pass via `Multi.run` lambda.
+- INT-02: Inject `Deadlines.build_meta(deadline_ms, now)` inside `function_exported?(:__powertools_limits__, 0)` true branch only — never in `else` or `rescue` paths.
+- INT-02: Pass deadline meta as `meta: deadline_meta` in opts before `worker_module.new/2` call so `Redaction.apply/4` merges `__redacted_fields__` on top; do not post-process the changeset.
+- INT-02: Reference implementation is `idempotency.ex` `merge_powertools_meta/4` for correct merge ordering.
 
 ### Blockers
 
@@ -70,21 +65,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-13T05:59:26.742Z
-Stopped at: Phase 56 context gathered
-Resume file: .planning/phases/56-redact-at-rest/56-CONTEXT.md
-
-## Performance Metrics
-
-| Phase | Plan | Duration | Notes |
-|-------|------|----------|-------|
-| Phase 53 P01 | 14 min | 3 tasks | 5 files |
-| Phase 53 P02 | 12 min | 2 tasks | 3 files |
-| Phase 54 P01 | 3 min | 2 tasks | 3 files |
-| Phase 54 P03 | 2 min | 2 tasks | 5 files |
-| Phase 54 P04 | 2 min | 2 tasks | 4 files |
-| Phase 54 P02 | 3 min | 2 tasks | 3 files |
-| Phase 55 P01 | 8 min | 2 tasks | 7 files |
-| Phase 55 P02 | 5min | 2 tasks | 2 files |
-| Phase 55 P03 | 6min | 2 tasks | 5 files |
-| Phase 55 P04 | 4min | 2 tasks | 4 files |
+Last session: 2026-06-13
+Stopped at: Roadmap written, ready to plan Phase 57
+Resume file: None

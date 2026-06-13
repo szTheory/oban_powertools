@@ -28,5 +28,5 @@ v1.9: Batches & Composition — dedicated `batches` / `batch_jobs` tables, `comp
 
 | REQ-ID | Phase | Plan |
 |--------|-------|------|
-| INT-01 | TBD   | TBD  |
-| INT-02 | TBD   | TBD  |
+| INT-01 | Phase 57 | TBD  |
+| INT-02 | Phase 58 | TBD  |
