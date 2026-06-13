@@ -380,7 +380,7 @@ defmodule ObanPowertools.WorkerTest do
     assert {:ok, %{"recorded" => true}} = JobRecord.fetch_result(TestRepo, job.id)
 
     record = TestRepo.get_by!(JobRecord, oban_job_id: job.id)
-    assert record.worker == inspect(RecordingConfiguredWorker)
+    assert record.worker == to_string(RecordingConfiguredWorker)
     assert record.attempt == 1
     assert record.retention == "ephemeral"
   end
