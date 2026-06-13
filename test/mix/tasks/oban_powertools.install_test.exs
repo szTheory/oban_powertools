@@ -50,4 +50,54 @@ defmodule Mix.Tasks.ObanPowertools.InstallTest do
     assert source =~ "create table(:oban_powertools_workflows, primary_key: false)"
     assert source =~ "create table(:oban_powertools_heartbeats, primary_key: false)"
   end
+
+  test "installer emits job record storage without an oban_jobs foreign key" do
+    source = File.read!(@installer_path)
+
+    assert source =~ "oban_powertools_job_records"
+    assert source =~ "create table(:oban_powertools_job_records, primary_key: false)"
+    assert source =~ "add :id, :uuid, primary_key: true"
+    assert source =~ "add :oban_job_id, :bigint"
+    assert source =~ "add :worker, :string, null: false"
+    assert source =~ "add :attempt, :integer, null: false, default: 1"
+    assert source =~ "add :status, :string, null: false, default: \"ok\""
+    assert source =~ "add :payload, :map, null: false, default: %{}"
+    assert source =~ "add :payload_bytes, :integer, null: false, default: 0"
+    assert source =~ "add :retention, :string, null: false, default: \"standard\""
+    assert source =~ "add :redacted, :boolean, null: false, default: false"
+    assert source =~ "add :summary, :string"
+    assert source =~ "add :recorded_at, :utc_datetime_usec, null: false"
+    assert source =~ "add :expires_at, :utc_datetime_usec, null: false"
+    assert source =~ "timestamps(updated_at: false)"
+    assert source =~
+             "create unique_index(:oban_powertools_job_records, [:oban_job_id, :attempt])"
+
+    assert source =~ "create index(:oban_powertools_job_records, [:worker])"
+    assert source =~ "create index(:oban_powertools_job_records, [:status])"
+    assert source =~ "create index(:oban_powertools_job_records, [:expires_at])"
+
+    refute source =~ "references(:oban_jobs"
+  end
+
+  test "test support migration creates job record storage" do
+    migration_path = "test/support/migrations/6_phase_55_tables.exs"
+
+    assert File.exists?(migration_path)
+
+    source = File.read!(migration_path)
+
+    assert source =~ "defmodule ObanPowertools.TestRepo.Migrations.Phase55Tables"
+    assert source =~ "def up do"
+    assert source =~ "create table(:oban_powertools_job_records, primary_key: false)"
+    assert source =~ "add(:oban_job_id, :bigint)"
+    assert source =~ "add(:worker, :string, null: false)"
+    assert source =~
+             "create(unique_index(:oban_powertools_job_records, [:oban_job_id, :attempt]))"
+
+    assert source =~ "create(index(:oban_powertools_job_records, [:worker]))"
+    assert source =~ "create(index(:oban_powertools_job_records, [:status]))"
+    assert source =~ "create(index(:oban_powertools_job_records, [:expires_at]))"
+
+    refute source =~ "references(:oban_jobs"
+  end
 end
