@@ -419,7 +419,9 @@ defmodule ObanPowertools.Cron do
   defp maybe_insert_job(_repo, _entry, _args, %{decision: "duplicate"}), do: {:ok, nil}
 
   defp maybe_insert_job(repo, entry, args, _decision) do
-    queue = String.to_atom(entry.queue)
+    # Pass queue as a string — Oban.Job.new/2 accepts queue: binary() per its typespec,
+    # and String.to_atom/1 on DB-sourced input risks exhausting the BEAM atom table (T-48-05).
+    queue = entry.queue
 
     changeset =
       try do
