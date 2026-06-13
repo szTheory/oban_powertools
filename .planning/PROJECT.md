@@ -141,6 +141,8 @@ Version `v1.5` shipped on 2026-05-28. The native `/ops/jobs` shell now owns the 
 
 **v1.6 Release & Operability — SHIPPED 2026-05-30.** All 7 phases complete (47-52.1), 16/16 plans, 428 tests, 0 failures, 121 files changed (+16,574/−222 LOC). Published to hex.pm at `0.5.0` with zero-touch release-please CI/CD. Shipped `mix oban_powertools.doctor` (five read-only `pg_catalog` checks, 0/1/2 exit codes, human + JSON output), `mix oban_powertools.limiter.explain` + `.simulate` (CLI over existing `Explain` API + pure `compute_reservation/4`, rate-limit glossary), opt-in `ObanPowertools.Telemetry.metrics/0` (17 counters over frozen contract, optional deps), `guides/telemetry-and-slos.md`, `examples/hex_consumer/` Phoenix adoption proof, and `verify-published` CI job. Phase 52.1 (inserted) fixed the Igniter committed-modules conflict in `verify-published`. Deferred: live CI E2E gate for REL-04 (resolves on next release cycle).
 
+**v1.7 Worker Lifecycle & Safety — Phase 56 complete 2026-06-13.** At-rest argument redaction (`redact:` worker opt) delivered: compile-time guards, `new/2` override that drops PII fields and injects `__redacted_fields__` meta, cron-path fix routing ObanPowertools workers through `new/2`, UI disclosure in job detail view ("Fields redacted at enqueue"), and docs-contract-locked guide section. 507 tests, 0 failures. Validated in Phase 56 (REDACT-01, REDACT-02, REDACT-03, REDACT-04).
+
 (Earlier: `v1.4` delivered operator forensics and SRE runbooks; `v1.3` unified the native control plane and explainability story.)
 
 ## Next Milestone
