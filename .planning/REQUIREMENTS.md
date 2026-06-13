@@ -37,10 +37,10 @@ Equip every `ObanPowertools.Worker` with observable, durable lifecycle hooks, a 
 
 ### At-rest Redaction
 
-- [ ] **REDACT-01**: Worker can declare `redact: [:field]` in `use ObanPowertools.Worker` opts; listed fields are dropped from `args` via `Map.drop` at enqueue time, strictly after idempotency fingerprint calculation
-- [ ] **REDACT-02**: Redacted field names stored in job meta as `__redacted_fields__` at enqueue time
-- [ ] **REDACT-03**: `/ops/jobs` job detail view renders "Fields redacted at enqueue: [:field]" from `meta["__redacted_fields__"]`
-- [ ] **REDACT-04**: `DisplayPolicy.render_job_field/3` default rendering shows "Redacted at enqueue" for fields listed in `__redacted_fields__` meta
+- [x] **REDACT-01**: Worker can declare `redact: [:field]` in `use ObanPowertools.Worker` opts; listed fields are dropped from `args` via `Map.drop` at enqueue time, strictly after idempotency fingerprint calculation
+- [x] **REDACT-02**: Redacted field names stored in job meta as `__redacted_fields__` at enqueue time
+- [x] **REDACT-03**: `/ops/jobs` job detail view renders "Fields redacted at enqueue: [:field]" from `meta["__redacted_fields__"]`
+- [x] **REDACT-04**: `DisplayPolicy.render_job_field/3` default rendering shows "Redacted at enqueue" for fields listed in `__redacted_fields__` meta
 
 ---
 
@@ -85,7 +85,7 @@ Equip every `ObanPowertools.Worker` with observable, durable lifecycle hooks, a 
 | REC-03      | 55    | Complete |
 | REC-04      | 55    | Complete |
 | REC-05      | 55    | Complete |
-| REDACT-01   | 56    | Pending |
-| REDACT-02   | 56    | Pending |
-| REDACT-03   | 56    | Pending |
-| REDACT-04   | 56    | Pending |
+| REDACT-01   | 56    | Complete |
+| REDACT-02   | 56    | Complete |
+| REDACT-03   | 56    | Complete |
+| REDACT-04   | 56    | Complete |
