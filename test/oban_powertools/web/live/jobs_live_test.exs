@@ -539,7 +539,11 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       job = insert_job!(worker: "MyApp.RecordedWorker", queue: :default, state: "completed")
 
       assert :ok =
-               JobRecord.record(TestRepo, "MyApp.RecordedWorker", job, %{"raw" => "payload"},
+               JobRecord.record(
+                 TestRepo,
+                 "MyApp.RecordedWorker",
+                 %{job | attempt: 1},
+                 %{"raw" => "payload"},
                  summary: "default summary",
                  output_retention: :standard
                )
@@ -562,9 +566,11 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       job = insert_job!(worker: "MyApp.RecordedWorker", queue: :default, state: "completed")
 
       assert :ok =
-               JobRecord.record(TestRepo, "MyApp.RecordedWorker", job, %{"raw" => "payload"},
-                 summary: "default summary"
-               )
+               JobRecord.record(
+                 TestRepo,
+                 "MyApp.RecordedWorker",
+                 %{job | attempt: 1},
+                 %{"raw" => "payload"}, summary: "default summary")
 
       conn =
         Plug.Test.init_test_session(conn,

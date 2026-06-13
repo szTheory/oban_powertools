@@ -96,6 +96,20 @@ defmodule ObanPowertools.JobRecord do
   def fetch_result(repo, %Oban.Job{id: oban_job_id}), do: fetch_result(repo, oban_job_id)
 
   def fetch_result(repo, oban_job_id) when is_integer(oban_job_id) do
+    case fetch_record(repo, oban_job_id) do
+      {:ok, %__MODULE__{payload: payload}} -> {:ok, payload}
+      {:error, :not_found} -> {:error, :not_found}
+    end
+  end
+
+  def fetch_record(%Oban.Job{} = job), do: configured_repo() |> fetch_record(job)
+
+  def fetch_record(oban_job_id) when is_integer(oban_job_id),
+    do: configured_repo() |> fetch_record(oban_job_id)
+
+  def fetch_record(repo, %Oban.Job{id: oban_job_id}), do: fetch_record(repo, oban_job_id)
+
+  def fetch_record(repo, oban_job_id) when is_integer(oban_job_id) do
     __MODULE__
     |> where([record], record.oban_job_id == ^oban_job_id)
     |> order_by([record], desc: record.recorded_at, desc: record.id)
@@ -103,7 +117,7 @@ defmodule ObanPowertools.JobRecord do
     |> repo.one()
     |> case do
       nil -> {:error, :not_found}
-      %__MODULE__{payload: payload} -> {:ok, payload}
+      %__MODULE__{} = record -> {:ok, record}
     end
   end
 
