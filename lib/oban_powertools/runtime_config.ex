@@ -125,12 +125,16 @@ defmodule ObanPowertools.DisplayPolicy do
     case apply_policy(:workflow_result, result_input, context) do
       %{} = rendered ->
         %{
-          available?: true,
-          summary: read_key(rendered, :summary) || default.summary,
-          payload: read_key(rendered, :payload) || default.payload,
+          available?: read_key_or_default(rendered, :available?, true),
+          summary: read_key_or_default(rendered, :summary, default.summary),
+          payload: read_key_or_default(rendered, :payload, default.payload),
           redacted?:
-            read_key(rendered, :redacted?) || read_key(rendered, :redacted) || default.redacted?,
-          status: read_key(rendered, :status) || default.status
+            read_key_or_default(
+              rendered,
+              :redacted?,
+              read_key_or_default(rendered, :redacted, default.redacted?)
+            ),
+          status: read_key_or_default(rendered, :status, default.status)
         }
 
       other ->

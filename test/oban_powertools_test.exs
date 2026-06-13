@@ -21,6 +21,17 @@ defmodule ObanPowertoolsTestJobRecordedUnavailablePolicy do
   def display(_kind, _value, _context), do: nil
 end
 
+defmodule ObanPowertoolsTestWorkflowResultUnredactedPolicy do
+  def display(:workflow_result, _value, _context) do
+    %{
+      payload: nil,
+      redacted?: false
+    }
+  end
+
+  def display(_kind, _value, _context), do: nil
+end
+
 defmodule ObanPowertoolsTest do
   use ExUnit.Case
   doctest ObanPowertools
@@ -138,6 +149,45 @@ defmodule ObanPowertoolsTest do
                ObanPowertools.DisplayPolicy.render_job_field(:job_recorded, nil, %{
                  surface: :jobs,
                  field: :recorded
+               })
+    end
+  end
+
+  describe "DisplayPolicy workflow result output" do
+    setup do
+      original_display_policy = Application.get_env(:oban_powertools, :display_policy)
+
+      on_exit(fn ->
+        Application.put_env(:oban_powertools, :display_policy, original_display_policy)
+      end)
+
+      :ok
+    end
+
+    test "workflow_result/2 preserves explicit false and nil policy values" do
+      Application.put_env(
+        :oban_powertools,
+        :display_policy,
+        ObanPowertoolsTestWorkflowResultUnredactedPolicy
+      )
+
+      result_input = %{
+        payload: %{"secret" => true},
+        summary: "stored summary",
+        redacted: true,
+        status: "completed"
+      }
+
+      assert %{
+               available?: true,
+               payload: nil,
+               redacted?: false,
+               summary: "stored summary",
+               status: "completed"
+             } =
+               ObanPowertools.DisplayPolicy.workflow_result(result_input, %{
+                 surface: :workflows,
+                 field: :result
                })
     end
   end
