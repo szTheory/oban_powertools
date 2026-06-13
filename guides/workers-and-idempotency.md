@@ -191,6 +191,40 @@ That pattern keeps `JobRecord` useful for operators without turning the job tabl
 warehouse. Host domain tables, object storage, and audit logs remain the source of truth for
 business data.
 
+## At-rest argument redaction
+
+Workers may declare `redact:` to drop sensitive fields from `oban_jobs.args` at enqueue time.
+Declaring `redact: [:ssn, :token]` removes those keys from the stored JSONB column before the
+job is written — the field is absent from the row, not nulled or replaced with a placeholder.
+
+```elixir
+defmodule MyApp.Accounts.CreateUserWorker do
+  use ObanPowertools.Worker,
+    queue: :accounts,
+    args: [user_id: :integer, ssn: :string],
+    redact: [:ssn]
+
+  @impl true
+  def process(%Oban.Job{args: %__MODULE__.Args{user_id: user_id}}) do
+    MyApp.Accounts.provision(user_id)
+    :ok
+  end
+end
+```
+
+Support truth:
+
+- `redact:` removes fields from args at enqueue; it does NOT scrub recorded outputs. Workers must not return redacted/sensitive data from `process/1`.
+- Redacted keys are dropped (key-absent in the JSONB, never nil or `"[REDACTED]"`).
+- The idempotency fingerprint is computed from the full unredacted args before redaction. Two jobs with the same `user_id` but different `ssn` values produce different fingerprints.
+- `redact:` applies only to top-level declared `args:` fields in v1.7.
+- Redacted typed fields are automatically exempt from `validate_required` so jobs run and retry cleanly with the field absent from stored args.
+- A typo'd `redact:` key (one not declared in `args:`) raises at compile time.
+- A `redact:` key that is also a `partition_by: {:args, field}` limiter key raises at compile time — the partition key would land in meta and defeat redaction.
+- Redaction applies to both the direct-insert path (`MyWorker.new(args) |> Oban.insert()`) and the cron-scheduled path.
+- `meta`, `errors`, and stacktraces are not scrubbed. Operational evidence stays intact for diagnosis.
+- `JobRecord.redacted` remains its honest `false` default. Output recording does not auto-scrub recorded payloads. Do not rely on `redact:` to clean the output a worker returns from `process/1`.
+
 ## Validation without enqueue
 
 Use `validate/1` when you want to fail fast before presenting or persisting a user-facing action:
