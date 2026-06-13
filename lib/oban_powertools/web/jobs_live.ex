@@ -8,6 +8,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth, Selectors}
 
     @valid_states ~w(available scheduled executing retryable cancelled discarded completed)
+    @allowed_preview_actions ~w(job_retry job_cancel job_discard)
 
     @impl true
     def mount(params, %{"oban_dashboard_path" => dashboard_path}, socket) do
@@ -136,7 +137,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       end
     end
 
-    def handle_event("preview", %{"action" => action}, socket) do
+    def handle_event("preview", %{"action" => action}, socket)
+        when action in @allowed_preview_actions do
       with :ok <-
              LiveAuth.authorize_action(socket, :preview_repair, %{
                type: :job,
@@ -159,6 +161,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         {:error, msg} -> {:noreply, assign(socket, :error_message, to_string(msg))}
       end
     end
+
+    def handle_event("preview", _, socket), do: {:noreply, socket}
 
     def handle_event("preview_bulk", %{"action" => action}, socket) do
       {:noreply,
@@ -269,6 +273,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp action_word("job_retry"), do: "retried"
     defp action_word("job_cancel"), do: "cancelled"
     defp action_word("job_discard"), do: "discarded"
+    defp action_word(action), do: action
 
     @impl true
     def render(%{live_action: :show} = assigns) do
