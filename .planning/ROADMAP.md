@@ -132,7 +132,7 @@ Plans:
 - [x] 55-01-PLAN.md — JobRecord schema, storage, limits, and JSON payload normalization
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 55-02-PLAN.md — Worker wrapper recording injection for success cases
+- [x] 55-02-PLAN.md — Worker wrapper recording injection for success cases
 - [ ] 55-03-PLAN.md — JobsLive and DisplayPolicy recorded output visualization
 - [ ] 55-04-PLAN.md — Lifeline retention pruning extension and operator docs
 
@@ -166,5 +166,5 @@ Plans:
 | 47-52.1 | v1.6    | 16/16          | Complete    | 2026-05-30 |
 | 53    | v1.7      | 2/2            | Complete    | 2026-06-12 |
 | 54    | v1.7      | 4/4 | Complete    | 2026-06-12 |
-| 55    | v1.7      | 1/4            | In Progress | -          |
+| 55    | v1.7      | 2/4 | In Progress|  |
 | 56    | v1.7      | 0/TBD          | Not started | -          |
