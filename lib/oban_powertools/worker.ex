@@ -10,6 +10,9 @@ defmodule ObanPowertools.Worker do
     limits_config = Keyword.get(opts, :limits, [])
     timeout_config = Keyword.get(opts, :timeout)
     deadline_config = Keyword.get(opts, :deadline)
+    record_output_config = Keyword.get(opts, :record_output, false)
+    output_limit_config = Keyword.get(opts, :output_limit, 65_536)
+    output_retention_config = Keyword.get(opts, :output_retention, :standard)
 
     oban_opts =
       opts
@@ -17,11 +20,22 @@ defmodule ObanPowertools.Worker do
       |> Keyword.delete(:limits)
       |> Keyword.delete(:timeout)
       |> Keyword.delete(:deadline)
+      |> Keyword.delete(:record_output)
+      |> Keyword.delete(:output_limit)
+      |> Keyword.delete(:output_retention)
 
     validate_args_config!(args_config)
     normalized_limits = normalize_limits_config!(limits_config, __CALLER__.module)
     normalized_timeout = normalize_timeout_config!(timeout_config, __CALLER__)
     normalized_deadline = normalize_deadline_config!(deadline_config, __CALLER__)
+
+    normalized_output_recording =
+      normalize_output_recording_config!(
+        record_output_config,
+        output_limit_config,
+        output_retention_config,
+        __CALLER__
+      )
 
     timeout_callback =
       if is_integer(normalized_timeout) do
@@ -46,6 +60,7 @@ defmodule ObanPowertools.Worker do
       import Ecto.Changeset
       @powertools_limits unquote(Macro.escape(normalized_limits))
       @powertools_deadline_ms unquote(normalized_deadline)
+      @powertools_output_recording unquote(Macro.escape(normalized_output_recording))
       Module.register_attribute(__MODULE__, :powertools_overridden_hooks, accumulate: true)
       Module.register_attribute(__MODULE__, :powertools_defining_default_hook, accumulate: false)
       @on_definition {ObanPowertools.Worker, :__on_definition__}
@@ -66,6 +81,7 @@ defmodule ObanPowertools.Worker do
 
       def __powertools_limits__, do: @powertools_limits
       def __powertools_deadline_ms__, do: @powertools_deadline_ms
+      def __powertools_output_recording__, do: @powertools_output_recording
 
       unquote(timeout_callback)
 
@@ -342,6 +358,42 @@ defmodule ObanPowertools.Worker do
     deadline_config
     |> eval_compile_time_option!(env)
     |> ObanPowertools.Worker.Deadlines.normalize_duration!(":deadline")
+  end
+
+  defp normalize_output_recording_config!(record_output, output_limit, output_retention, env) do
+    %{
+      record_output: normalize_record_output_config!(record_output, env),
+      output_limit: normalize_output_limit_config!(output_limit, env),
+      output_retention: normalize_output_retention_config!(output_retention, env)
+    }
+  end
+
+  defp normalize_record_output_config!(record_output, env) do
+    case eval_compile_time_option!(record_output, env) do
+      value when is_boolean(value) ->
+        value
+
+      value ->
+        raise ArgumentError,
+              "expected :record_output to be a boolean, got: #{inspect(value)}"
+    end
+  end
+
+  defp normalize_output_limit_config!(output_limit, env) do
+    output_limit
+    |> eval_compile_time_option!(env)
+    |> tap(&validate_positive_integer!(&1, ":output_limit"))
+  end
+
+  defp normalize_output_retention_config!(output_retention, env) do
+    case eval_compile_time_option!(output_retention, env) do
+      retention when retention in [:standard, :extended, :ephemeral] ->
+        retention
+
+      retention ->
+        raise ArgumentError,
+              "expected :output_retention to be :standard, :extended, or :ephemeral, got: #{inspect(retention)}"
+    end
   end
 
   defp eval_compile_time_option!(option, env) do
