@@ -8,6 +8,19 @@ defmodule ObanPowertoolsTestJobRecordedRaisingPolicy do
   def display(_kind, _value, _context), do: nil
 end
 
+defmodule ObanPowertoolsTestJobRecordedUnavailablePolicy do
+  def display(:job_recorded, _value, _context) do
+    %{
+      available?: false,
+      summary: "suppressed",
+      payload: nil,
+      redacted?: false
+    }
+  end
+
+  def display(_kind, _value, _context), do: nil
+end
+
 defmodule ObanPowertoolsTest do
   use ExUnit.Case
   doctest ObanPowertools
@@ -80,6 +93,31 @@ defmodule ObanPowertoolsTest do
                payload: "Recorded output hidden by display policy fallback."
              } =
                ObanPowertools.DisplayPolicy.render_job_field(:job_recorded, %{payload: %{}}, %{
+                 surface: :jobs,
+                 field: :recorded
+               })
+    end
+
+    test "render_job_field/3 preserves explicit unavailable policy values" do
+      Application.put_env(
+        :oban_powertools,
+        :display_policy,
+        ObanPowertoolsTestJobRecordedUnavailablePolicy
+      )
+
+      record_input = %{
+        payload: %{"secret" => true},
+        summary: "stored summary",
+        redacted: true
+      }
+
+      assert %{
+               available?: false,
+               summary: "suppressed",
+               payload: nil,
+               redacted?: false
+             } =
+               ObanPowertools.DisplayPolicy.render_job_field(:job_recorded, record_input, %{
                  surface: :jobs,
                  field: :recorded
                })
