@@ -323,8 +323,12 @@ defmodule ObanPowertools.Cron do
   end
 
   defp normalize_entry_attrs(attrs) do
+    # Normalize string keys to atoms so that Map.put_new/3 (atom-keyed) correctly detects
+    # existing caller-supplied keys even when attrs uses string keys (e.g. from JSON payloads).
+    # Without this, `cron_config_diff/2` reads the spuriously inserted atom defaults instead of
+    # the caller's string-keyed values, producing false-positive "cron.reconfigured" audit events.
     attrs
-    |> Map.new(fn {key, value} -> {key, value} end)
+    |> Map.new(fn {k, v} -> {normalize_key(k), v} end)
     |> Map.put_new(:queue, @default_queue)
     |> Map.put_new(:timezone, @default_timezone)
     |> Map.put_new(:source, "runtime")
@@ -335,6 +339,17 @@ defmodule ObanPowertools.Cron do
     |> Map.put_new(:max_catch_up, 1)
     |> Map.put_new(:metadata, %{})
   end
+
+  # Convert known string keys to their atom equivalents; leave unknown strings unchanged
+  # so that Ecto cast/3 can still resolve them. Uses String.to_existing_atom/1 so only
+  # atoms already in the atom table (i.e. compile-time declared fields) are created.
+  defp normalize_key(key) when is_binary(key) do
+    String.to_existing_atom(key)
+  rescue
+    ArgumentError -> key
+  end
+
+  defp normalize_key(key), do: key
 
   defp apply_overlap_policy(repo, entry, slot, args, now) do
     active_job =
