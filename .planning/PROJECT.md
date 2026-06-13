@@ -84,10 +84,10 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 - ✓ `timeout:` pass-through — compile-time overridable Oban `timeout/1` callback (`SAFE-01`) — v1.7 Phase 54
 - ✓ Output recording (`record_output: true`) — `ObanPowertools.JobRecord`, `oban_powertools_job_records` table, `fetch_result/1`, Recorded Output card in `/ops/jobs`, Lifeline ephemeral prune (`REC-01..05`) — v1.7 Phase 55
 - ✓ At-rest redaction (`redact: [:field]`) — `Map.drop` after fingerprint, `__redacted_fields__` meta, cron-path fix, UI disclosure + per-field overlay, docs-contract locked (`REDACT-01..04`) — v1.7 Phase 56
+- ✓ INT-01 fix: `oban_powertools_job_records` added to `@powertools_manifest` in Doctor — silent gap from Phase 55 closed, Doctor now detects missing output-recording table (`INT-01`) — v1.8 Phase 57
 
 ### Active
 
-- [ ] INT-01 fix: Add `oban_powertools_job_records` to `@powertools_manifest` in Doctor/checks.ex — deferred from v1.7 audit
 - [ ] INT-02 fix: Inject `__deadline_at__` meta on cron path in `cron.ex maybe_insert_job` — deferred from v1.7 audit
 
 Carried backlog (not in v1.6): QRY-05 args/meta filter, QRY-06 real-time counts (→ v1.9), QRY-07 Lifeline→job deep-link, QRY-08 cross-page select-all, API-03 programmatic job query.
