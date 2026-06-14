@@ -59,6 +59,8 @@ defmodule ObanPowertools.BatchInsertStreamTest do
 
     test "rejects invalid options before inserting jobs or batch rows" do
       invalid_calls = [
+        {import_jobs(1..1), [total_count: 1, chunk_size: 1], :repo},
+        {import_jobs(1..1), [repo: nil, total_count: 1, chunk_size: 1], :repo},
         {import_jobs(1..1), [repo: TestRepo, chunk_size: 1], :total_count},
         {import_jobs(1..1), [repo: TestRepo, total_count: "1", chunk_size: 1], :total_count},
         {import_jobs(1..1), [repo: TestRepo, total_count: 1, chunk_size: 0], :chunk_size},

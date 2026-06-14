@@ -20,16 +20,7 @@ defmodule ObanPowertools.Batch.Tracker do
       batch_id ->
         now = timestamp()
 
-        case insert_batch_job(repo, batch_id, job, state, now) do
-          :inserted ->
-            with {:ok, batch} <- increment_batch(repo, batch_id, state, now),
-                 {:ok, _callback} <- maybe_insert_chain_callback(repo, batch_id, job, state, now) do
-              maybe_complete_batch(repo, batch)
-            end
-
-          :duplicate ->
-            {:ok, :duplicate}
-        end
+        record_progress_transaction(repo, batch_id, job, state, now)
     end
   end
 
@@ -83,6 +74,38 @@ defmodule ObanPowertools.Batch.Tracker do
   end
 
   defp callback_id_from_meta(_meta), do: nil
+
+  defp record_progress_transaction(repo, batch_id, job, state, now) do
+    repo.transaction(fn ->
+      case insert_batch_job(repo, batch_id, job, state, now) do
+        :inserted ->
+          with {:ok, batch} <- increment_batch(repo, batch_id, state, now),
+               {:ok, _callback} <- maybe_insert_chain_callback(repo, batch_id, job, state, now),
+               {:ok, result} <- maybe_complete_batch(repo, batch) do
+            result
+          else
+            {:error, reason} -> repo.rollback(reason)
+          end
+
+        :duplicate ->
+          :duplicate
+      end
+    end)
+    |> case do
+      {:ok, result} -> {:ok, result}
+      {:error, reason} -> {:error, reason}
+    end
+  rescue
+    error in [Ecto.ConstraintError, Postgrex.Error] ->
+      {:error, progress_exception_reason(error)}
+  end
+
+  defp progress_exception_reason(%Ecto.ConstraintError{type: :foreign_key}), do: :batch_not_found
+
+  defp progress_exception_reason(%Postgrex.Error{postgres: %{code: :foreign_key_violation}}),
+    do: :batch_not_found
+
+  defp progress_exception_reason(error), do: error
 
   defp insert_batch_job(repo, batch_id, %Oban.Job{id: job_id}, state, now) do
     {count, _rows} =

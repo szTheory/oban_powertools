@@ -98,10 +98,14 @@ defmodule ObanPowertools.Chain.Progression do
          oban
        )
        when is_map(step) and is_list(remaining) do
-    with {:ok, changeset} <- next_job_changeset(repo, step, remaining, payload) do
-      case do_oban_insert(oban, changeset) do
-        {:ok, _job} -> :ok
-        {:error, reason} -> {:error, reason}
+    with {:ok, changeset, progression_key} <- next_job_changeset(repo, step, remaining, payload) do
+      if progression_job_exists?(repo, progression_key) do
+        :ok
+      else
+        case do_oban_insert(oban, changeset) do
+          {:ok, _job} -> :ok
+          {:error, reason} -> {:error, reason}
+        end
       end
     end
   end
@@ -113,6 +117,7 @@ defmodule ObanPowertools.Chain.Progression do
     queue = Map.get(step, "queue") || "default"
     opts = Map.get(step, "opts") || %{}
     args = resolve_args(repo, step, payload)
+    progression_key = progression_key(payload, step)
 
     meta =
       (Map.get(step, "meta") || %{})
@@ -122,7 +127,8 @@ defmodule ObanPowertools.Chain.Progression do
         "chain_step_name" => fetch_descriptor!(step, "name"),
         "chain_step_index" => fetch_descriptor!(step, "index"),
         "chain_step_count" => fetch_payload!(payload, "step_count"),
-        "upstream_job_id" => fetch_payload!(payload, "upstream_job_id")
+        "upstream_job_id" => fetch_payload!(payload, "upstream_job_id"),
+        "chain_progression_key" => progression_key
       })
       |> maybe_put_next_tail(remaining)
 
@@ -131,7 +137,21 @@ defmodule ObanPowertools.Chain.Progression do
       |> atomize_option_keys()
       |> Keyword.merge(worker: worker, queue: queue, meta: meta)
 
-    {:ok, Oban.Job.new(args, oban_opts)}
+    {:ok, Oban.Job.new(args, oban_opts), progression_key}
+  end
+
+  defp progression_key(payload, step) do
+    "chain.step_succeeded:#{fetch_payload!(payload, "chain_id")}:#{fetch_descriptor!(step, "index")}:#{fetch_payload!(payload, "upstream_job_id")}"
+  end
+
+  defp progression_job_exists?(repo, progression_key) do
+    repo.one(
+      from(job in Oban.Job,
+        where: fragment("?->>? = ?", job.meta, "chain_progression_key", ^progression_key),
+        select: job.id,
+        limit: 1
+      )
+    ) != nil
   end
 
   defp fetch_descriptor!(map, key) do

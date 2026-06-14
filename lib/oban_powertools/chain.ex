@@ -109,7 +109,7 @@ defmodule ObanPowertools.Chain do
   def insert(%__MODULE__{} = chain, repo, opts) when is_list(opts) do
     with {:ok, chain} <- normalize_chain(chain, opts),
          {:ok, batch} <- insert_batch(chain, repo) do
-      insert_first_job(chain, batch, opts)
+      insert_first_job(chain, batch, repo, opts)
     end
   end
 
@@ -226,7 +226,7 @@ defmodule ObanPowertools.Chain do
     |> repo.insert()
   end
 
-  defp insert_first_job(%__MODULE__{} = chain, %Batch{} = batch, opts) do
+  defp insert_first_job(%__MODULE__{} = chain, %Batch{} = batch, repo, opts) do
     [first_step | tail] = chain.steps
     meta = first_job_meta(chain, batch, first_step, tail)
     changeset = put_job_meta(first_step.job, meta)
@@ -244,12 +244,41 @@ defmodule ObanPowertools.Chain do
          }}
 
       {:error, reason} ->
+        mark_first_insert_failed(repo, batch, reason)
         {:error, reason}
     end
+  rescue
+    error ->
+      mark_first_insert_failed(repo, batch, error)
+      {:error, error}
+  catch
+    kind, reason ->
+      caught = {kind, reason}
+      mark_first_insert_failed(repo, batch, caught)
+      {:error, caught}
   end
 
   defp do_oban_insert(Oban, changeset, opts), do: Oban.insert(changeset, opts)
   defp do_oban_insert(oban, changeset, opts), do: Oban.insert(oban, changeset, opts)
+
+  defp mark_first_insert_failed(repo, %Batch{} = batch, reason) do
+    batch
+    |> Batch.changeset(%{
+      status: "insert_failed",
+      insert_failed_chunk: 1,
+      insert_failure: first_insert_failure_payload(reason),
+      insert_failed_at: DateTime.utc_now() |> DateTime.truncate(:microsecond)
+    })
+    |> repo.update()
+  end
+
+  defp first_insert_failure_payload(reason) do
+    %{
+      "reason" => inspect(reason),
+      "kind" => "insert",
+      "message" => inspect(reason)
+    }
+  end
 
   defp first_job_meta(chain, batch, step, tail) do
     base = %{

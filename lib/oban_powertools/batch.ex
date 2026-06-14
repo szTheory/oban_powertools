@@ -134,7 +134,8 @@ defmodule ObanPowertools.Batch do
       not positive_integer?(Keyword.get(opts, :chunk_size, @default_chunk_size)) ->
         invalid_option(:chunk_size, opts)
 
-      not is_atom(Keyword.get(opts, :repo)) ->
+      not Keyword.has_key?(opts, :repo) or is_nil(Keyword.get(opts, :repo)) or
+          not is_atom(Keyword.get(opts, :repo)) ->
         invalid_option(:repo, opts)
 
       true ->

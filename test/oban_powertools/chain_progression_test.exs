@@ -6,6 +6,7 @@ defmodule ObanPowertools.ChainProgressionTest do
 
   alias ObanPowertools.Batch
   alias ObanPowertools.Batch.Tracker
+  alias ObanPowertools.BatchJob
   alias ObanPowertools.Callback
   alias ObanPowertools.Chain
   alias ObanPowertools.Chain.Progression
@@ -124,6 +125,27 @@ defmodule ObanPowertools.ChainProgressionTest do
                  from(callback in Callback, where: callback.event == "chain.step_succeeded")
                )
     end
+
+    test "rolls back the batch-job dedupe row when batch progress cannot be applied" do
+      missing_batch = %Batch{id: Ecto.UUID.generate()}
+
+      job =
+        chain_job(missing_batch,
+          id: 103,
+          step_name: "fetch",
+          step_index: 0,
+          step_count: 2,
+          next_step: next_step_descriptor(:parse, ParseWorker)
+        )
+
+      assert {:error, :batch_not_found} = Tracker.record_progress(TestRepo, job, :success)
+      assert TestRepo.aggregate(BatchJob, :count) == 0
+
+      assert [] =
+               TestRepo.all(
+                 from(callback in Callback, where: callback.event == "chain.step_succeeded")
+               )
+    end
   end
 
   describe "dispatch_callbacks/2" do
@@ -201,6 +223,35 @@ defmodule ObanPowertools.ChainProgressionTest do
 
       assert TestRepo.get!(Callback, callback.id).status == "delivered"
       assert [] = TestRepo.all(Oban.Job)
+    end
+
+    test "does not duplicate a downstream job when retrying after the job already exists" do
+      batch = insert_batch!(total_count: 2)
+      next_step = next_step_descriptor(:parse, ParseWorker)
+      upstream_job_id = 204
+
+      callback =
+        insert_chain_callback!(batch,
+          upstream_job_id: upstream_job_id,
+          next_step: next_step,
+          status: "failed"
+        )
+
+      progression_key = "chain.step_succeeded:#{batch.id}:1:#{upstream_job_id}"
+
+      %{"import_id" => 1}
+      |> Oban.Job.new(
+        worker: inspect(ParseWorker),
+        queue: :default,
+        meta: %{"chain_progression_key" => progression_key}
+      )
+      |> TestRepo.insert!()
+
+      assert %{delivered: 1, failed: 0} =
+               Progression.dispatch_callbacks(TestRepo, dispatcher_id: "node-a")
+
+      assert TestRepo.get!(Callback, callback.id).status == "delivered"
+      assert TestRepo.aggregate(Oban.Job, :count) == 1
     end
 
     test "progresses the D-20 fetch parse write notify chain across repeated cycles" do

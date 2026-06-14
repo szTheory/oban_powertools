@@ -160,5 +160,27 @@ defmodule ObanPowertools.ChainTest do
       refute Map.has_key?(parse_descriptor, "upstream_payload")
       refute File.exists?("lib/oban_powertools/chain/schema.ex")
     end
+
+    test "marks the batch insert_failed when the first Oban job cannot be inserted" do
+      chain =
+        Chain.from_list([
+          {:fetch, Oban.Job.new(%{}, worker: nil)},
+          {:parse, ParseWorker.new(%{import_id: 1})}
+        ])
+
+      assert {:error, %Ecto.Changeset{}} = Chain.insert(chain, TestRepo, name: "broken:1")
+
+      assert [batch] = TestRepo.all(Batch)
+      assert batch.status == "insert_failed"
+      assert batch.total_count == 2
+      assert batch.insert_failed_chunk == 1
+
+      assert %{"kind" => "insert", "message" => message, "reason" => reason} =
+               batch.insert_failure
+
+      assert message != ""
+      assert reason != ""
+      assert TestRepo.aggregate(Oban.Job, :count) == 0
+    end
   end
 end
