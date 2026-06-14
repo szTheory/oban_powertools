@@ -160,13 +160,15 @@ Version `v1.5` shipped on 2026-05-28. The native `/ops/jobs` shell now owns the 
 
 (Earlier: `v1.4` delivered operator forensics and SRE runbooks; `v1.3` unified the native control plane and explainability story.)
 
-## Current Milestone: v1.8 Integration Fixes
+## Current Milestone: v1.9 Batches & Composition
 
-**Goal:** Close the two non-blocking integration gaps deferred from the v1.7 audit before expanding capability.
+**Goal:** Provide durable, Ecto-native batch processing and workflow composition primitives (linear chains/DAG sugar) with Lifeline-routed recovery and native inspection UI, guided by deep ecosystem research.
 
 **Target features:**
-- INT-01: Add `oban_powertools_job_records` to `@powertools_manifest` in Doctor/checks.ex so Doctor reports on the Phase 55 migration table
-- INT-02: Inject `__deadline_at__` meta on cron path in `cron.ex maybe_insert_job` for `deadline:`-configured workers
+- Dedicated `batches` / `batch_jobs` tables (not a DAG)
+- `completed` + `exhausted` callbacks via generalized callback outbox
+- Chains as linear-DAG sugar
+- Native Batches page with Lifeline-routed bulk-retry
 
 ## Next Milestone
 
@@ -238,4 +240,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-06-13 — v1.8 Integration Fixes milestone started*
+*Last updated: 2026-06-14 — v1.9 Batches & Composition milestone started*
