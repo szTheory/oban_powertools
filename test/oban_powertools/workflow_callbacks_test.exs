@@ -8,6 +8,74 @@ defmodule ObanPowertools.WorkflowCallbacksTest do
   alias ObanPowertools.WorkflowFixtures
   alias ObanPowertools.WorkflowNoopCallbackTestHandler
 
+  test "workflow dispatcher leaves chain progression callbacks pending" do
+    original_handler = Application.get_env(:oban_powertools, :workflow_callback_handler)
+    Application.put_env(:oban_powertools, :workflow_callback_handler, WorkflowCallbackTestHandler)
+
+    on_exit(fn ->
+      Application.put_env(:oban_powertools, :workflow_callback_handler, original_handler)
+    end)
+
+    callback =
+      %Callback{}
+      |> Callback.changeset(%{
+        event: "chain.step_succeeded",
+        dedupe_key: "chain.step_succeeded:chain-1:0:123",
+        status: "pending",
+        payload: %{
+          "event" => "chain.step_succeeded",
+          "chain_id" => Ecto.UUID.generate(),
+          "upstream_job_id" => 123
+        },
+        attempts: 0
+      })
+      |> TestRepo.insert!()
+
+    assert %{failed: 0, delivered: 0} =
+             Workflow.dispatch_callbacks(TestRepo, dispatcher_id: "node-a")
+
+    persisted = TestRepo.get!(Callback, callback.id)
+    assert persisted.status == "pending"
+    assert persisted.attempts == 0
+    assert is_nil(persisted.claimed_by)
+  end
+
+  test "batch callbacks still dispatch through the host callback handler path" do
+    original_handler = Application.get_env(:oban_powertools, :workflow_callback_handler)
+    Application.put_env(:oban_powertools, :workflow_callback_handler, WorkflowCallbackTestHandler)
+    Process.register(self(), :workflow_callback_test)
+
+    on_exit(fn ->
+      Application.put_env(:oban_powertools, :workflow_callback_handler, original_handler)
+
+      if Process.whereis(:workflow_callback_test) == self() do
+        Process.unregister(:workflow_callback_test)
+      end
+    end)
+
+    completed =
+      insert_callback!(
+        event: "batch.completed",
+        dedupe_key: "batch.completed:batch-1",
+        payload: %{"event" => "batch.completed", "batch_id" => Ecto.UUID.generate()}
+      )
+
+    exhausted =
+      insert_callback!(
+        event: "batch.exhausted",
+        dedupe_key: "batch.exhausted:batch-2",
+        payload: %{"event" => "batch.exhausted", "batch_id" => Ecto.UUID.generate()}
+      )
+
+    assert %{failed: 0, delivered: 2} =
+             Workflow.dispatch_callbacks(TestRepo, dispatcher_id: "node-a")
+
+    assert TestRepo.get!(Callback, completed.id).status == "delivered"
+    assert TestRepo.get!(Callback, exhausted.id).status == "delivered"
+    assert_receive {:workflow_callback, %{"event" => "batch.completed"}}
+    assert_receive {:workflow_callback, %{"event" => "batch.exhausted"}}
+  end
+
   test "terminal callbacks are persisted durably and retried through the outbox" do
     original_handler = Application.get_env(:oban_powertools, :workflow_callback_handler)
     Application.put_env(:oban_powertools, :workflow_callback_handler, WorkflowCallbackTestHandler)
@@ -132,5 +200,22 @@ defmodule ObanPowertools.WorkflowCallbacksTest do
       )
 
     assert callback.payload["recovery_session_id"] == session.id
+  end
+
+  defp insert_callback!(attrs) do
+    %Callback{}
+    |> Callback.changeset(
+      Map.merge(
+        %{
+          event: "workflow.terminal",
+          dedupe_key: Ecto.UUID.generate(),
+          status: "pending",
+          payload: %{},
+          attempts: 0
+        },
+        Map.new(attrs)
+      )
+    )
+    |> TestRepo.insert!()
   end
 end
