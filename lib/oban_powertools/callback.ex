@@ -1,6 +1,6 @@
-defmodule ObanPowertools.Workflow.CallbackOutbox do
+defmodule ObanPowertools.Callback do
   @moduledoc """
-  Durable workflow callback outbox row.
+  Durable callback outbox row.
   """
 
   use Ecto.Schema
@@ -8,7 +8,7 @@ defmodule ObanPowertools.Workflow.CallbackOutbox do
 
   @primary_key {:id, :binary_id, autogenerate: true}
 
-  schema "oban_powertools_workflow_callback_outbox" do
+  schema "oban_powertools_callbacks" do
     field(:event, :string)
     field(:dedupe_key, :string)
     field(:status, :string, default: "pending")
@@ -22,6 +22,7 @@ defmodule ObanPowertools.Workflow.CallbackOutbox do
     field(:last_error, :string)
 
     belongs_to(:workflow, ObanPowertools.Workflow.Workflow, type: :binary_id)
+    belongs_to(:batch, ObanPowertools.Batch, type: :binary_id)
     belongs_to(:recovery_attempt, ObanPowertools.Workflow.RecoveryAttempt, type: :binary_id)
 
     timestamps()
@@ -31,6 +32,7 @@ defmodule ObanPowertools.Workflow.CallbackOutbox do
     struct
     |> cast(params, [
       :workflow_id,
+      :batch_id,
       :recovery_attempt_id,
       :event,
       :dedupe_key,
@@ -45,14 +47,13 @@ defmodule ObanPowertools.Workflow.CallbackOutbox do
       :last_error
     ])
     |> validate_required([
-      :workflow_id,
       :event,
       :dedupe_key,
       :status,
       :payload,
       :attempts
     ])
-    |> validate_inclusion(:event, ["workflow.terminal", "workflow.recovery_completed"])
+    |> validate_inclusion(:event, ["workflow.terminal", "workflow.recovery_completed", "batch.completed", "batch.exhausted"])
     |> validate_number(:attempts, greater_than_or_equal_to: 0)
     |> unique_constraint(:dedupe_key)
   end

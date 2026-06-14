@@ -24,6 +24,26 @@ defmodule ObanPowertools.CronTest do
     def perform(_job), do: :ok
   end
 
+  defmodule CronDeadlineWorker do
+    use ObanPowertools.Worker,
+      queue: :default,
+      deadline: :timer.hours(1)
+
+    @impl true
+    def process(_job), do: :ok
+  end
+
+  defmodule CronRedactDeadlineWorker do
+    use ObanPowertools.Worker,
+      queue: :default,
+      args: [user_id: :integer, ssn: :string],
+      redact: [:ssn],
+      deadline: :timer.hours(1)
+
+    @impl true
+    def process(_job), do: :ok
+  end
+
   test "sync_entry persists code and runtime entries through one path" do
     assert {:ok, %Entry{} = entry} =
              Cron.sync_entry(repo(), %{
@@ -271,6 +291,91 @@ defmodule ObanPowertools.CronTest do
       stored_job = repo().get!(Oban.Job, job.id)
       assert stored_job.args["payload"] == "hello"
       refute Map.has_key?(stored_job.meta, "__redacted_fields__")
+    end
+  end
+
+  describe "cron-path deadline injection (INT-02)" do
+    test "assigns __deadline_at__ meta for the deadline-configured worker" do
+      worker_name = inspect(CronDeadlineWorker)
+
+      {:ok, entry} =
+        Cron.sync_entry(repo(), %{
+          name: "cron-deadline-#{System.unique_integer([:positive])}",
+          source: "runtime",
+          worker: worker_name,
+          queue: "default",
+          expression: "* * * * *",
+          timezone: "Etc/UTC",
+          overlap_policy: "allow"
+        })
+
+      slot_at = DateTime.utc_now() |> truncate_minute()
+
+      assert {:ok, %{job: %Oban.Job{} = job}} = Cron.claim_slot(repo(), entry, slot_at)
+
+      stored_job = repo().get!(Oban.Job, job.id)
+      assert Map.has_key?(stored_job.meta, "__deadline_at__"), "expected __deadline_at__ in meta"
+    end
+
+    test "composes __deadline_at__ and __redacted_fields__ when both are present" do
+      worker_name = inspect(CronRedactDeadlineWorker)
+
+      {:ok, entry} =
+        Cron.sync_entry(repo(), %{
+          name: "cron-redact-deadline-#{System.unique_integer([:positive])}",
+          source: "runtime",
+          worker: worker_name,
+          queue: "default",
+          expression: "* * * * *",
+          timezone: "Etc/UTC",
+          overlap_policy: "allow",
+          args: %{"user_id" => 42, "ssn" => "999-00-1234"}
+        })
+
+      slot_at = DateTime.utc_now() |> truncate_minute()
+
+      assert {:ok, %{job: %Oban.Job{} = job}} = Cron.claim_slot(repo(), entry, slot_at)
+
+      stored_job = repo().get!(Oban.Job, job.id)
+      assert stored_job.meta["__redacted_fields__"] == ["ssn"]
+      assert Map.has_key?(stored_job.meta, "__deadline_at__")
+      refute Map.has_key?(stored_job.args, "ssn")
+    end
+
+    test "plain powertools workers and bare Oban workers have no __deadline_at__" do
+      # Test PlainCronWorker (bare Oban worker)
+      {:ok, bare_entry} =
+        Cron.sync_entry(repo(), %{
+          name: "cron-bare-#{System.unique_integer([:positive])}",
+          source: "runtime",
+          worker: inspect(PlainCronWorker),
+          queue: "default",
+          expression: "* * * * *",
+          timezone: "Etc/UTC",
+          overlap_policy: "allow"
+        })
+
+      # Test CronRedactWorker (powertools worker, no deadline)
+      {:ok, powertools_entry} =
+        Cron.sync_entry(repo(), %{
+          name: "cron-pt-no-deadline-#{System.unique_integer([:positive])}",
+          source: "runtime",
+          worker: inspect(CronRedactWorker),
+          queue: "default",
+          expression: "* * * * *",
+          timezone: "Etc/UTC",
+          overlap_policy: "allow"
+        })
+
+      slot_at = DateTime.utc_now() |> truncate_minute()
+
+      assert {:ok, %{job: bare_job}} = Cron.claim_slot(repo(), bare_entry, slot_at)
+      stored_bare = repo().get!(Oban.Job, bare_job.id)
+      refute Map.has_key?(stored_bare.meta, "__deadline_at__")
+
+      assert {:ok, %{job: pt_job}} = Cron.claim_slot(repo(), powertools_entry, slot_at)
+      stored_pt = repo().get!(Oban.Job, pt_job.id)
+      refute Map.has_key?(stored_pt.meta, "__deadline_at__")
     end
   end
 

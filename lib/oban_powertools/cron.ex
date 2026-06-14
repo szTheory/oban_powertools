@@ -82,7 +82,7 @@ defmodule ObanPowertools.Cron do
       end
     end)
     |> Multi.run(:job, fn repo, %{decision: decision} ->
-      maybe_insert_job(repo, entry, args, decision)
+      maybe_insert_job(repo, entry, args, decision, now)
     end)
     |> Multi.run(:updated_slot, fn repo,
                                    %{decision: decision, job: job, current_slot: current_slot} ->
@@ -429,11 +429,11 @@ defmodule ObanPowertools.Cron do
     end
   end
 
-  defp maybe_insert_job(_repo, _entry, _args, %{decision: "skipped"}), do: {:ok, nil}
-  defp maybe_insert_job(_repo, _entry, _args, %{decision: "queued_follow_up"}), do: {:ok, nil}
-  defp maybe_insert_job(_repo, _entry, _args, %{decision: "duplicate"}), do: {:ok, nil}
+  defp maybe_insert_job(_repo, _entry, _args, %{decision: "skipped"}, _now), do: {:ok, nil}
+  defp maybe_insert_job(_repo, _entry, _args, %{decision: "queued_follow_up"}, _now), do: {:ok, nil}
+  defp maybe_insert_job(_repo, _entry, _args, %{decision: "duplicate"}, _now), do: {:ok, nil}
 
-  defp maybe_insert_job(repo, entry, args, _decision) do
+  defp maybe_insert_job(repo, entry, args, _decision, now) do
     # Pass queue as a string — Oban.Job.new/2 accepts queue: binary() per its typespec,
     # and String.to_atom/1 on DB-sourced input risks exhausting the BEAM atom table (T-48-05).
     queue = entry.queue
@@ -444,7 +444,14 @@ defmodule ObanPowertools.Cron do
 
         if function_exported?(worker_module, :__powertools_limits__, 0) do
           # ObanPowertools.Worker — route through new/2 to inherit redaction and meta injection
-          worker_module.new(args, queue: queue)
+          deadline_ms =
+            if function_exported?(worker_module, :__powertools_deadline_ms__, 0),
+              do: worker_module.__powertools_deadline_ms__(),
+              else: nil
+
+          deadline_meta = ObanPowertools.Worker.Deadlines.build_meta(deadline_ms, now)
+
+          worker_module.new(args, queue: queue, meta: deadline_meta)
         else
           # Plain Oban.Worker — keep existing bare insert behavior
           Oban.Job.new(args, worker: entry.worker, queue: queue)

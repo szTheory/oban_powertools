@@ -26,7 +26,9 @@ defmodule ObanPowertools.Doctor.Checks do
   @powertools_manifest %{
     "foundation" => [
       "oban_powertools_audit_events",
-      "oban_powertools_idempotency_receipts"
+      "oban_powertools_idempotency_receipts",
+      "oban_powertools_batches",
+      "oban_powertools_batch_jobs"
     ],
     "smart-engine" => [
       "oban_powertools_limit_resources",
@@ -46,7 +48,7 @@ defmodule ObanPowertools.Doctor.Checks do
       "oban_powertools_workflow_signals",
       "oban_powertools_workflow_recovery_sessions",
       "oban_powertools_workflow_recovery_attempts",
-      "oban_powertools_workflow_callback_outbox",
+      "oban_powertools_callbacks",
       "oban_powertools_workflow_command_attempts"
     ],
     "heartbeat-lifeline" => [

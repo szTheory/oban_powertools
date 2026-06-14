@@ -31,7 +31,7 @@ defmodule ObanPowertools.Workflow.Workflow do
     has_many(:results, ObanPowertools.Workflow.Result, foreign_key: :workflow_id)
     has_many(:awaits, ObanPowertools.Workflow.Await, foreign_key: :workflow_id)
     has_many(:signal_records, ObanPowertools.Workflow.SignalRecord, foreign_key: :workflow_id)
-    has_many(:callback_outbox, ObanPowertools.Workflow.CallbackOutbox, foreign_key: :workflow_id)
+    has_many(:callback_outbox, ObanPowertools.Callback, foreign_key: :workflow_id)
 
     has_many(:recovery_sessions, ObanPowertools.Workflow.RecoverySession,
       foreign_key: :workflow_id

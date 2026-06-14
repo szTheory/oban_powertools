@@ -11,11 +11,10 @@ defmodule ObanPowertools.Workflow.Runtime do
   import Ecto.Query
 
   alias Ecto.Multi
-  alias ObanPowertools.{Audit, RuntimeConfig, Telemetry}
+  alias ObanPowertools.{Audit, Callback, RuntimeConfig, Telemetry}
 
   alias ObanPowertools.Workflow.{
     Await,
-    CallbackOutbox,
     CommandAttempt,
     Edge,
     RecoveryAttempt,
@@ -751,7 +750,7 @@ defmodule ObanPowertools.Workflow.Runtime do
       case handler.handle_workflow_callback(row.payload) do
         :ok ->
           repo.update!(
-            CallbackOutbox.changeset(row, %{
+            Callback.changeset(row, %{
               status: "delivered",
               attempts: row.attempts + 1,
               delivered_at: now,
@@ -764,7 +763,7 @@ defmodule ObanPowertools.Workflow.Runtime do
 
         {:error, reason} ->
           repo.update!(
-            CallbackOutbox.changeset(row, %{
+            Callback.changeset(row, %{
               status: "failed",
               attempts: row.attempts + 1,
               available_at: DateTime.add(now, 30, :second),
@@ -1454,8 +1453,8 @@ defmodule ObanPowertools.Workflow.Runtime do
   defp enqueue_callback(repo, workflow, event, dedupe_suffix, payload, now \\ DateTime.utc_now()) do
     callback_id = Ecto.UUID.generate()
 
-    %CallbackOutbox{id: callback_id}
-    |> CallbackOutbox.changeset(%{
+    %Callback{id: callback_id}
+    |> Callback.changeset(%{
       workflow_id: workflow.id,
       event: event,
       dedupe_key: "#{workflow.id}:#{event}:#{dedupe_suffix}",
@@ -1681,7 +1680,7 @@ defmodule ObanPowertools.Workflow.Runtime do
 
       rows =
         repo.all(
-          from(callback in CallbackOutbox,
+          from(callback in Callback,
             where:
               callback.status in ["pending", "failed", "claimed"] and
                 (is_nil(callback.available_at) or callback.available_at <= ^now) and
@@ -1695,7 +1694,7 @@ defmodule ObanPowertools.Workflow.Runtime do
       Enum.map(rows, fn row ->
         {:ok, claimed} =
           row
-          |> CallbackOutbox.changeset(%{
+          |> Callback.changeset(%{
             status: "claimed",
             claimed_at: now,
             claimed_by: dispatcher_id,

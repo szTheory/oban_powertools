@@ -43,11 +43,15 @@ defmodule Mix.Tasks.ObanPowertools.InstallTest do
     assert source =~ "|> setup_migration()"
     assert source =~ "|> setup_smart_engine_migrations()"
     assert source =~ "|> setup_workflow_migrations()"
+    assert source =~ "|> setup_batch_migrations()"
     assert source =~ "|> setup_phase_4_migrations()"
     assert source =~ "create table(:oban_powertools_audit_events)"
     assert source =~ "create table(:oban_powertools_idempotency_receipts, primary_key: false)"
     assert source =~ "create table(:oban_powertools_cron_entries, primary_key: false)"
     assert source =~ "create table(:oban_powertools_workflows, primary_key: false)"
+    assert source =~ "rename table(:oban_powertools_workflow_callback_outbox), to: table(:oban_powertools_callbacks)"
+    assert source =~ "create table(:oban_powertools_batches, primary_key: false)"
+    assert source =~ "create table(:oban_powertools_batch_jobs, primary_key: false)"
     assert source =~ "create table(:oban_powertools_heartbeats, primary_key: false)"
   end
 

@@ -2,7 +2,8 @@ defmodule ObanPowertools.WorkflowCallbacksTest do
   use ObanPowertools.DataCase, async: false
 
   alias ObanPowertools.Workflow
-  alias ObanPowertools.Workflow.{CallbackOutbox, RecoveryAttempt, RecoverySession, Step}
+  alias ObanPowertools.Callback
+  alias ObanPowertools.Workflow.{RecoveryAttempt, RecoverySession, Step}
   alias ObanPowertools.WorkflowCallbackTestHandler
   alias ObanPowertools.WorkflowFixtures
   alias ObanPowertools.WorkflowNoopCallbackTestHandler
@@ -35,7 +36,7 @@ defmodule ObanPowertools.WorkflowCallbacksTest do
              )
 
     outbox =
-      TestRepo.get_by!(CallbackOutbox, workflow_id: workflow.id, event: "workflow.terminal")
+      TestRepo.get_by!(Callback, workflow_id: workflow.id, event: "workflow.terminal")
 
     assert outbox.status == "pending"
     assert outbox.payload["event"] == "workflow.terminal"
@@ -45,7 +46,7 @@ defmodule ObanPowertools.WorkflowCallbacksTest do
     assert %{failed: 1, delivered: 0} =
              Workflow.dispatch_callbacks(TestRepo, dispatcher_id: "node-a")
 
-    failed = TestRepo.get!(CallbackOutbox, outbox.id)
+    failed = TestRepo.get!(Callback, outbox.id)
     assert failed.status == "failed"
     assert failed.attempts == 1
     assert failed.claimed_by == "node-a"
@@ -60,7 +61,7 @@ defmodule ObanPowertools.WorkflowCallbacksTest do
                now: DateTime.add(DateTime.utc_now(), 31, :second)
              )
 
-    delivered = TestRepo.get!(CallbackOutbox, outbox.id)
+    delivered = TestRepo.get!(Callback, outbox.id)
     workflow_id = workflow.id
 
     assert delivered.status == "delivered"
@@ -83,12 +84,12 @@ defmodule ObanPowertools.WorkflowCallbacksTest do
              )
 
     outbox =
-      TestRepo.get_by!(CallbackOutbox, workflow_id: workflow.id, event: "workflow.terminal")
+      TestRepo.get_by!(Callback, workflow_id: workflow.id, event: "workflow.terminal")
 
     future = DateTime.add(DateTime.utc_now(), 60, :second)
 
     outbox
-    |> CallbackOutbox.changeset(%{
+    |> Callback.changeset(%{
       status: "claimed",
       claimed_at: DateTime.utc_now(),
       claimed_by: "node-a",
@@ -125,7 +126,7 @@ defmodule ObanPowertools.WorkflowCallbacksTest do
     session = TestRepo.get!(RecoverySession, attempt.recovery_session_id)
 
     callback =
-      TestRepo.get_by!(CallbackOutbox,
+      TestRepo.get_by!(Callback,
         workflow_id: workflow.id,
         event: "workflow.recovery_completed"
       )

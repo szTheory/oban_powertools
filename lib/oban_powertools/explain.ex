@@ -7,10 +7,10 @@ defmodule ObanPowertools.Explain do
   import Ecto.Changeset
   import Ecto.Query
 
+  alias ObanPowertools.Callback
   alias ObanPowertools.Limits.{Resource, State}
 
   alias ObanPowertools.Workflow.{
-    CallbackOutbox,
     CommandAttempt,
     RecoverySession,
     Runtime,
@@ -294,7 +294,7 @@ defmodule ObanPowertools.Explain do
 
   defp callback_posture(repo, workflow_id) do
     rows =
-      from(callback in CallbackOutbox,
+      from(callback in Callback,
         where: callback.workflow_id == ^workflow_id,
         order_by: [desc: callback.inserted_at]
       )
