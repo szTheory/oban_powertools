@@ -43,7 +43,7 @@
 - [x] 61-01-PLAN.md — Add durable batch insertion metadata and installer contract
 - [x] 61-02-PLAN.md — Implement `Batch.insert_stream/2`
 - [x] 61-03-PLAN.md — Create `ObanPowertools.Chain` DSL and first-step insert
-- [ ] 61-04-PLAN.md — Wire event-scoped chain callback progression
+- [x] 61-04-PLAN.md — Wire event-scoped chain callback progression
 - [ ] 61-05-PLAN.md — Add durable upstream output handoff and safe args builders
 
 ### Phase 62: Operations Console & Lifeline UI
@@ -63,5 +63,5 @@
 |-------|----------------|--------|-----------|
 | 59. Schemas & Foundation | 2/2 | Complete    | 2026-06-14 |
 | 60. Execution Engine & Tracker Hooks | 3/3 | Complete    | 2026-06-14 |
-| 61. APIs (Batches & Chains) | 3/5 | In Progress|  |
+| 61. APIs (Batches & Chains) | 4/5 | In Progress|  |
 | 62. Operations Console & Lifeline UI | 0/0 | Not started | - |

@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: milestone
 status: ready_to_plan
-last_updated: "2026-06-14T21:24:26.547Z"
+last_updated: "2026-06-14T21:33:19.633Z"
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 10
-  completed_plans: 8
-  percent: 80
+  completed_plans: 9
+  percent: 90
 ---
 
 # Project State
@@ -23,7 +23,7 @@ progress:
 ## Current Position
 
 Phase: 61 (apis-batches-chains) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 | Phase | Plan | Status | Progress |
 |-------|------|--------|----------|
 | 59. Schemas & Foundation | None | 🟡 Planning | `[          ] 0%` |
@@ -38,6 +38,7 @@ Plan: 4 of 5
 | Phase 61-apis-batches-chains P01 | 3 min | 2 tasks | 6 files |
 | Phase 61-apis-batches-chains P02 | 3 min | 2 tasks | 2 files |
 | Phase 61-apis-batches-chains P03 | 5 min | 2 tasks | 3 files |
+| Phase 61-apis-batches-chains P04 | 6 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -59,9 +60,9 @@ Plan: 4 of 5
 
 ## Session Continuity
 
-- **Last Action:** Completed 61-03 ObanPowertools.Chain DSL and first-step insert
-- **Next Action:** Execute 61-04 event-scoped chain callback progression
-- **Active Context:** Phase 61 plan 03 added `ObanPowertools.Chain` as a public linear spec/DSL over batches and Oban job metadata, including MFA-only dynamic args references and durable `"chain_next_step"` metadata with immediate step plus remaining tail descriptors.
+- **Last Action:** Completed 61-04 event-scoped chain callback progression
+- **Next Action:** Execute 61-05 durable upstream output handoff and safe args builders
+- **Active Context:** Phase 61 plan 04 added `chain.step_succeeded` callback rows, host callback event filtering, tracker-emitted chain progression callbacks, and `ObanPowertools.Chain.Progression.dispatch_callbacks/2` for retryable next-step enqueueing through the callback outbox.
 
 ## Decisions
 
@@ -72,3 +73,6 @@ Plan: 4 of 5
 - ObanPowertools.Chain is a public spec/DSL layer over batches and Oban job metadata, not a new persistence table.
 - Dynamic next-step arguments are persisted only as MFA builder references; anonymous functions are rejected.
 - First-job metadata stores the immediate next step separately from the ordered remaining tail so 3+ step chains survive restarts.
+- Host callback dispatch claims only workflow and batch events; chain events are reserved for Powertools-owned progression.
+- Chain progression callbacks are emitted only for first-time successful chain step progress and are deduped by chain id, step index, and upstream job id.
+- The chain dispatcher rewrites `chain_next_step` from the remaining tail instead of copying upstream payloads into callback rows.
