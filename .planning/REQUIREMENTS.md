@@ -13,7 +13,7 @@ Provide durable, Ecto-native batch processing and workflow composition primitive
 - [x] **BAT-04**: Execution of `completed` and `exhausted` callbacks via the callback outbox when batch targets are met.
 
 ### Chains (CHN)
-- [ ] **CHN-01**: Ergonomic DSL for linear Chains (e.g. `JobA |> chain(JobB)`), mapping sequentially to the Callback Outbox under the hood.
+- [x] **CHN-01**: Ergonomic DSL for linear Chains (e.g. `JobA |> chain(JobB)`), mapping sequentially to the Callback Outbox under the hood.
 - [ ] **CHN-02**: State propagation support, allowing a sequential job to access the durable output of its upstream predecessor.
 
 ### Batch Operations UI (BUI)

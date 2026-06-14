@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: milestone
 status: ready_to_plan
-last_updated: "2026-06-14T21:16:34.053Z"
+last_updated: "2026-06-14T21:24:26.547Z"
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 10
-  completed_plans: 7
-  percent: 70
+  completed_plans: 8
+  percent: 80
 ---
 
 # Project State
@@ -23,7 +23,7 @@ progress:
 ## Current Position
 
 Phase: 61 (apis-batches-chains) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 | Phase | Plan | Status | Progress |
 |-------|------|--------|----------|
 | 59. Schemas & Foundation | None | 🟡 Planning | `[          ] 0%` |
@@ -37,6 +37,7 @@ Plan: 3 of 5
 | Linting | 0 Credo warnings | - | - |
 | Phase 61-apis-batches-chains P01 | 3 min | 2 tasks | 6 files |
 | Phase 61-apis-batches-chains P02 | 3 min | 2 tasks | 2 files |
+| Phase 61-apis-batches-chains P03 | 5 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -58,9 +59,9 @@ Plan: 3 of 5
 
 ## Session Continuity
 
-- **Last Action:** Completed 61-02 Batch.insert_stream/2
-- **Next Action:** Execute 61-03 ObanPowertools.Chain DSL and first-step insert
-- **Active Context:** Phase 61 plan 02 added fixed-size `Batch.insert_stream/2` with bounded `Oban.insert_all/2` chunks, compact result/error structs, metadata injection, and durable `insert_failed` state for partial failures and count mismatches.
+- **Last Action:** Completed 61-03 ObanPowertools.Chain DSL and first-step insert
+- **Next Action:** Execute 61-04 event-scoped chain callback progression
+- **Active Context:** Phase 61 plan 03 added `ObanPowertools.Chain` as a public linear spec/DSL over batches and Oban job metadata, including MFA-only dynamic args references and durable `"chain_next_step"` metadata with immediate step plus remaining tail descriptors.
 
 ## Decisions
 
@@ -68,3 +69,6 @@ Plan: 3 of 5
 - The installer template and test migration use the same metadata columns and status/name indexes to keep host installs aligned with test storage.
 - Batch.insert_stream/2 uses caller-provided total_count with bounded Oban.insert_all chunks and compact result/error structs.
 - Batch.insert_stream/2 rejects on_conflict: :skip and existing caller-supplied batch_id values to preserve fixed-size batch invariants.
+- ObanPowertools.Chain is a public spec/DSL layer over batches and Oban job metadata, not a new persistence table.
+- Dynamic next-step arguments are persisted only as MFA builder references; anonymous functions are rejected.
+- First-job metadata stores the immediate next step separately from the ordered remaining tail so 3+ step chains survive restarts.
