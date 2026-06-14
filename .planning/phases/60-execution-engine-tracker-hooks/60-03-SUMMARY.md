@@ -56,6 +56,7 @@ completed: 2026-06-14
 ## Task Commits
 
 1. **Task 1: Wire Tracker into Worker Hooks and handle callback exhaustion** - `80ec8a7` (feat)
+2. **Review fix: Prefer callback identity for callback exhaustion** - `90db28d` (fix)
 
 ## Files Created/Modified
 
@@ -82,9 +83,17 @@ completed: 2026-06-14
 - **Verification:** `mix test test/oban_powertools/example_host_contract_test.exs --only doctor` passed.
 - **Committed in:** `80ec8a7`
 
+**2. [Review - Warning] Made callback_id authoritative for callback exhaustion**
+- **Found during:** Phase code review.
+- **Issue:** `record_callback_exhaustion/2` preferred raw `batch_id` metadata over `callback_id`, so conflicting metadata could mark the wrong batch as `callback_failed`.
+- **Fix:** Resolve the batch through the durable `Callback` row when callback identity metadata is present, then fall back to raw `batch_id` only when no callback id exists.
+- **Files modified:** `lib/oban_powertools/batch/tracker.ex`, `test/oban_powertools/batch/tracker_test.exs`.
+- **Verification:** `mix test test/oban_powertools/batch/tracker_test.exs test/oban_powertools/worker_test.exs` passed.
+- **Committed in:** `90db28d`
+
 ---
 
-**Total deviations:** 1 auto-fixed (1 blocking).
+**Total deviations:** 2 auto-fixed (1 blocking, 1 review warning).
 **Impact on plan:** The hook integration scope stayed the same; the fixture migration was required for the existing doctor contract to remain consistent with the current installer and doctor manifest.
 
 ## Issues Encountered
@@ -98,6 +107,8 @@ completed: 2026-06-14
 - GREEN: `mix test test/oban_powertools/worker_test.exs test/oban_powertools/batch/tracker_test.exs` - PASS (40 tests, 0 failures).
 - Doctor fix: `mix test test/oban_powertools/example_host_contract_test.exs --only doctor` - PASS (1 test, 0 failures, 5 excluded).
 - Focused final: `mix test test/oban_powertools/worker_test.exs test/oban_powertools/batch/tracker_test.exs test/oban_powertools/batch_job_test.exs` - PASS (44 tests, 0 failures).
+- Review fix: `mix test test/oban_powertools/batch/tracker_test.exs test/oban_powertools/worker_test.exs` - PASS (42 tests, 0 failures).
+- Phase final: `mix test` - PASS (531 tests, 0 failures, 280.2 seconds).
 - `git diff --check -- lib/oban_powertools/worker/hooks.ex lib/oban_powertools/batch/tracker.ex test/oban_powertools/worker_test.exs test/support/example_host_contract.ex` - PASS.
 
 ## User Setup Required
@@ -106,7 +117,7 @@ None - no external service configuration required.
 
 ## Next Phase Readiness
 
-All phase 60 plans are implemented. Phase-level verification should re-run the full suite now that the example host fixture has the missing migration.
+All phase 60 plans are implemented and phase-level verification is recorded in `60-VERIFICATION.md`.
 
 ---
 *Phase: 60-execution-engine-tracker-hooks*
