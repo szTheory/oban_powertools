@@ -87,6 +87,9 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 - ✓ INT-01 fix: `oban_powertools_job_records` added to `@powertools_manifest` in Doctor — silent gap from Phase 55 closed, Doctor now detects missing output-recording table (`INT-01`) — v1.8 Phase 57
 - ✓ Batch progress execution engine — exactly-once progress tracking wired into worker lifecycle hooks (`BAT-03`) — v1.8 Phase 60
 - ✓ Batch callback outbox execution — completed/exhausted callbacks inserted when batch targets are met (`BAT-04`) — v1.8 Phase 60
+- ✓ Safe fixed-size batch streaming insertion — `Batch.insert_stream/2` with bounded chunks, durable partial-failure metadata, and fixed-count invariants (`BAT-02`) — v1.9 Phase 61
+- ✓ Linear chain DSL and callback-outbox progression — `ObanPowertools.Chain` maps sequential jobs to batch metadata and `chain.step_succeeded` callbacks (`CHN-01`) — v1.9 Phase 61
+- ✓ Durable upstream output handoff — downstream chain steps fetch predecessor output through `JobRecord` with safe args builders and explicit unavailable/expired errors (`CHN-02`) — v1.9 Phase 61
 
 ### Active
 
@@ -156,7 +159,7 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 Version `v1.5` shipped on 2026-05-28. The native `/ops/jobs` shell now owns the full job lifecycle without leaning on the Oban Web bridge: operators browse jobs at `/ops/jobs/jobs` filtered by state/queue/worker/tags with URL-serialized filter state and `DisplayPolicy` redaction on args/meta; inspect full job detail; and retry/cancel/discard single jobs or bulk selections through the same Lifeline preview → reason → execute → audit pipeline, with a concurrent-modification guard and honest per-job bulk reporting. The new `ObanPowertools.Operator` module gives host code a typed, actor-attributed programmatic surface for the same single and bulk mutations, routed through the identical Lifeline pipeline and emitting `source: "api"` telemetry within the frozen low-cardinality contract. Milestone audit passed 6/6 requirements; full suite at 270 tests, 0 failures.
 
-**v1.8 Batches & Composition (Ongoing).** Phases 59-60 complete — Established the core Ecto data model for batch tracking, then wired exactly-once progress tracking into worker hooks with completed/exhausted callback outbox enqueueing.
+**v1.9 Batches & Composition (Ongoing).** Phases 59-61 complete — Established the core Ecto data model for batch tracking, wired exactly-once progress tracking into worker hooks with completed/exhausted callback outbox enqueueing, and shipped fixed-size batch insertion plus linear chain composition with durable upstream output handoff. Phase 62 is next for the operations console and Lifeline UI.
 
 **v1.7 Worker Lifecycle & Safety — SHIPPED 2026-06-13.** All 4 phases complete (53-56), 14/14 plans, 507 tests, 0 failures. Zero new runtime dependencies. Shipped: crash-safe worker lifecycle hooks with wrapper-owned dispatch and `worker_hook` telemetry; soft `deadline:` storing `__deadline_at__` meta at enqueue with pre-run cancellation and Doctor warning; opt-in `record_output: true` via new `ObanPowertools.JobRecord` schema (dedicated `oban_powertools_job_records` table, `fetch_result/1`, Recorded Output card in `/ops/jobs` detail, Lifeline ephemeral prune); `redact: [:field]` at-rest PII removal after fingerprint via `new/2` override with UI disclosure and cron-path fix. Milestone audit `tech_debt` — 18/18 requirements satisfied; INT-01 (Doctor manifest) and INT-02 (cron+deadline path) deferred as non-blocking to v1.8.
 
@@ -242,7 +245,7 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-06-14 — v1.9 Batches & Composition milestone started*
+*Last updated: 2026-06-14 — Phase 61 APIs (Batches & Chains) complete; Phase 62 operations console next*
 ptional dependency seams for host apps.
 - Native-first operator UX with the `/ops/jobs/oban` bridge kept explicitly narrower and read-only.
 - Repaired docs, example-host, first-session, native-only, bridge, and upgrade proof lanes that make public support truth enforceable.
@@ -258,4 +261,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-06-14 — v1.9 Batches & Composition milestone started*
+*Last updated: 2026-06-14 — Phase 61 APIs (Batches & Chains) complete; Phase 62 operations console next*
