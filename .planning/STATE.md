@@ -1,3 +1,17 @@
+---
+gsd_state_version: 1.0
+milestone: v1.8
+milestone_name: milestone
+status: unknown
+last_updated: "2026-06-14T04:52:54.002Z"
+progress:
+  total_phases: 4
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
+---
+
 # Project State
 
 ## Project Reference
@@ -23,6 +37,7 @@
 ## Accumulated Context
 
 ### Architectural Decisions
+
 - Dedicated `batches` / `batch_jobs` / `callbacks` tables (not overloading `oban_jobs` meta).
 - Generalized callback outbox for execution of `completed` and `exhausted` callbacks.
 - Exactly-Once progress tracking wired transactionally into v1.7 worker lifecycle hooks.
@@ -30,9 +45,11 @@
 - No `libgraph` or Redis dependencies allowed.
 
 ### Known Technical Debt / Todos
+
 - TBD
 
 ### Blockers / Open Questions
+
 - None currently
 
 ## Session Continuity
