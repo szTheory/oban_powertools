@@ -28,7 +28,7 @@
   3. `exhausted` callbacks are inserted into the outbox automatically when batch jobs complete but some are discarded.
 **Plans**: 3 plans
 - [x] 60-01-PLAN.md — Add completed_at field to Batch schema
-- [ ] 60-02-PLAN.md — Implement Tracker exactly-once progress and callback enqueueing
+- [x] 60-02-PLAN.md — Implement Tracker exactly-once progress and callback enqueueing
 - [ ] 60-03-PLAN.md — Wire Tracker into Worker Hooks
 
 ### Phase 61: APIs (Batches & Chains)
@@ -57,6 +57,6 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 59. Schemas & Foundation | 2/2 | Complete    | 2026-06-14 |
-| 60. Execution Engine & Tracker Hooks | 1/3 | In Progress|  |
+| 60. Execution Engine & Tracker Hooks | 2/3 | In Progress|  |
 | 61. APIs (Batches & Chains) | 0/0 | Not started | - |
 | 62. Operations Console & Lifeline UI | 0/0 | Not started | - |
