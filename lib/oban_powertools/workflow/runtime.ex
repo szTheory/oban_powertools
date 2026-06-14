@@ -74,6 +74,7 @@ defmodule ObanPowertools.Workflow.Runtime do
   ]
   @current_semantics_version 2
   @callback_envelope_version 1
+  @host_callback_events ["workflow.terminal", "workflow.recovery_completed", "batch.completed", "batch.exhausted"]
   @legacy_semantics_version 1
   @runtime_principal Audit.system_principal("workflow_runtime", label: "system workflow runtime")
 
@@ -1682,7 +1683,8 @@ defmodule ObanPowertools.Workflow.Runtime do
         repo.all(
           from(callback in Callback,
             where:
-              callback.status in ["pending", "failed", "claimed"] and
+              callback.event in ^@host_callback_events and
+                callback.status in ["pending", "failed", "claimed"] and
                 (is_nil(callback.available_at) or callback.available_at <= ^now) and
                 (is_nil(callback.lease_expires_at) or callback.lease_expires_at <= ^now),
             order_by: [asc: callback.available_at, asc: callback.inserted_at],

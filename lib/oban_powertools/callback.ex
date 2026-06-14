@@ -53,7 +53,13 @@ defmodule ObanPowertools.Callback do
       :payload,
       :attempts
     ])
-    |> validate_inclusion(:event, ["workflow.terminal", "workflow.recovery_completed", "batch.completed", "batch.exhausted"])
+    |> validate_inclusion(:event, [
+      "workflow.terminal",
+      "workflow.recovery_completed",
+      "batch.completed",
+      "batch.exhausted",
+      "chain.step_succeeded"
+    ])
     |> validate_number(:attempts, greater_than_or_equal_to: 0)
     |> unique_constraint(:dedupe_key)
   end
