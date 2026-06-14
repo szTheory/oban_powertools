@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: milestone
 status: ready_to_plan
-last_updated: "2026-06-14T21:33:19.633Z"
+last_updated: "2026-06-14T21:41:05.191Z"
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 10
-  completed_plans: 9
-  percent: 90
+  completed_plans: 10
+  percent: 75
 ---
 
 # Project State
@@ -22,7 +22,7 @@ progress:
 
 ## Current Position
 
-Phase: 61 (apis-batches-chains) — EXECUTING
+Phase: 61 (apis-batches-chains) — COMPLETE
 Plan: 5 of 5
 | Phase | Plan | Status | Progress |
 |-------|------|--------|----------|
@@ -39,6 +39,7 @@ Plan: 5 of 5
 | Phase 61-apis-batches-chains P02 | 3 min | 2 tasks | 2 files |
 | Phase 61-apis-batches-chains P03 | 5 min | 2 tasks | 3 files |
 | Phase 61-apis-batches-chains P04 | 6 min | 2 tasks | 6 files |
+| Phase 61-apis-batches-chains P05 | 5 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -60,9 +61,9 @@ Plan: 5 of 5
 
 ## Session Continuity
 
-- **Last Action:** Completed 61-04 event-scoped chain callback progression
-- **Next Action:** Execute 61-05 durable upstream output handoff and safe args builders
-- **Active Context:** Phase 61 plan 04 added `chain.step_succeeded` callback rows, host callback event filtering, tracker-emitted chain progression callbacks, and `ObanPowertools.Chain.Progression.dispatch_callbacks/2` for retryable next-step enqueueing through the callback outbox.
+- **Last Action:** Completed 61-05 durable upstream output handoff and safe args builders
+- **Next Action:** Verify Phase 61 or begin Phase 62 operations console planning
+- **Active Context:** Phase 61 is complete. Batch insertion, chain DSL insertion, event-scoped chain progression, and durable upstream output handoff are implemented. Output-dependent chain steps fetch predecessor results through `JobRecord`, require upstream `record_output: true`, and fail callback rows explicitly when output is unavailable or expired.
 
 ## Decisions
 
@@ -76,3 +77,6 @@ Plan: 5 of 5
 - Host callback dispatch claims only workflow and batch events; chain events are reserved for Powertools-owned progression.
 - Chain progression callbacks are emitted only for first-time successful chain step progress and are deduped by chain id, step index, and upstream job id.
 - The chain dispatcher rewrites `chain_next_step` from the remaining tail instead of copying upstream payloads into callback rows.
+- Chain output handoff reads upstream payloads through `JobRecord.fetch_record/2` so expiry can be enforced before returning payloads.
+- Output-dependent chain args builders must opt in with `ObanPowertools.Chain.ArgsBuilder` and expose the persisted arity-2 function.
+- Chain progression builds downstream args only from the builder return value; upstream payloads are never automatically merged into job args.

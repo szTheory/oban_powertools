@@ -14,7 +14,7 @@ Provide durable, Ecto-native batch processing and workflow composition primitive
 
 ### Chains (CHN)
 - [x] **CHN-01**: Ergonomic DSL for linear Chains (e.g. `JobA |> chain(JobB)`), mapping sequentially to the Callback Outbox under the hood.
-- [ ] **CHN-02**: State propagation support, allowing a sequential job to access the durable output of its upstream predecessor.
+- [x] **CHN-02**: State propagation support, allowing a sequential job to access the durable output of its upstream predecessor.
 
 ### Batch Operations UI (BUI)
 - [ ] **BUI-01**: Native `/ops/jobs/batches` LiveView page showing batch progress, statuses, and failed member inspection.
