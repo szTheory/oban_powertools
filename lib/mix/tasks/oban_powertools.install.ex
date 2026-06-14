@@ -690,16 +690,25 @@ defmodule Mix.Tasks.ObanPowertools.Install do
 
           create table(:oban_powertools_batches, primary_key: false) do
             add :id, :uuid, primary_key: true
+            add :name, :string
             add :status, :string, null: false, default: "executing"
             add :total_count, :integer, null: false, default: 0
             add :success_count, :integer, null: false, default: 0
             add :discard_count, :integer, null: false, default: 0
             add :cancelled_count, :integer, null: false, default: 0
             add :snooze_count, :integer, null: false, default: 0
+            add :inserted_count, :integer, null: false, default: 0
+            add :insert_chunk_count, :integer, null: false, default: 0
+            add :insert_failed_chunk, :integer
+            add :insert_failure, :map, null: false, default: %{}
+            add :insert_failed_at, :utc_datetime_usec
             add :completed_at, :utc_datetime_usec
 
             timestamps()
           end
+
+          create index(:oban_powertools_batches, [:status])
+          create index(:oban_powertools_batches, [:name])
 
           create table(:oban_powertools_batch_jobs, primary_key: false) do
             add :id, :uuid, primary_key: true
