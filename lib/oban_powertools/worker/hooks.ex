@@ -3,7 +3,8 @@ defmodule ObanPowertools.Worker.Hooks do
 
   require Logger
 
-  alias ObanPowertools.Telemetry
+  alias ObanPowertools.Batch.Tracker
+  alias ObanPowertools.{RuntimeConfig, Telemetry}
 
   @ok_outcome "ok"
   @crash_caught_outcome "crash_caught"
@@ -15,12 +16,16 @@ defmodule ObanPowertools.Worker.Hooks do
   def after_result(worker_mod, %Oban.Job{} = job, result) do
     case result do
       :ok ->
+        record_batch_progress(job, :success)
+
         safe_invoke(worker_mod, :on_success, [
           job,
           %{state: :success, result: :ok, value: nil}
         ])
 
       {:ok, value} = success_result ->
+        record_batch_progress(job, :success)
+
         safe_invoke(worker_mod, :on_success, [
           job,
           %{state: :success, result: success_result, value: value}
@@ -28,6 +33,8 @@ defmodule ObanPowertools.Worker.Hooks do
 
       {:error, reason} = error_result ->
         if terminal_attempt?(job) do
+          record_batch_discard(job)
+
           safe_invoke(worker_mod, :on_discard, [
             job,
             discard_event(reason, error_result, nil, nil)
@@ -40,12 +47,16 @@ defmodule ObanPowertools.Worker.Hooks do
         end
 
       :discard ->
+        record_batch_discard(job)
+
         safe_invoke(worker_mod, :on_discard, [
           job,
           discard_event(:discard, :discard, nil, nil)
         ])
 
       {:discard, reason} = discard_result ->
+        record_batch_discard(job)
+
         safe_invoke(worker_mod, :on_discard, [
           job,
           discard_event(reason, discard_result, nil, nil)
@@ -64,6 +75,8 @@ defmodule ObanPowertools.Worker.Hooks do
 
   def after_exception(worker_mod, %Oban.Job{} = job, kind, reason, stacktrace) do
     if terminal_attempt?(job) do
+      record_batch_discard(job)
+
       safe_invoke(worker_mod, :on_discard, [
         job,
         discard_event(reason, nil, kind, stacktrace)
@@ -75,6 +88,41 @@ defmodule ObanPowertools.Worker.Hooks do
       ])
     end
   end
+
+  defp record_batch_progress(%Oban.Job{} = job, state) do
+    unless callback_job?(job) do
+      with repo when not is_nil(repo) <- RuntimeConfig.repo() do
+        _ = Tracker.record_progress(repo, job, state)
+      end
+    end
+
+    :ok
+  end
+
+  defp record_batch_discard(%Oban.Job{} = job) do
+    with repo when not is_nil(repo) <- RuntimeConfig.repo() do
+      if callback_job?(job) do
+        _ = Tracker.record_callback_exhaustion(repo, job)
+      else
+        _ = Tracker.record_progress(repo, job, :discard)
+      end
+    end
+
+    :ok
+  end
+
+  defp callback_job?(%Oban.Job{meta: meta}) do
+    callback_meta?(meta)
+  end
+
+  defp callback_meta?(meta) when is_map(meta) do
+    Map.has_key?(meta, "callback_id") or
+      Map.has_key?(meta, :callback_id) or
+      Map.has_key?(meta, "oban_powertools_callback_id") or
+      Map.has_key?(meta, :oban_powertools_callback_id)
+  end
+
+  defp callback_meta?(_meta), do: false
 
   defp safe_invoke(worker_mod, hook, args) do
     arity = length(args)

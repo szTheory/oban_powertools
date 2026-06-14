@@ -13,7 +13,7 @@ defmodule ObanPowertools.Batch.Tracker do
   @valid_states [:success, :discard]
 
   def record_progress(repo, %Oban.Job{} = job, state) when state in @valid_states do
-    case batch_id(job) do
+    case batch_id_from_meta(job.meta) do
       nil ->
         {:ok, :ignored}
 
@@ -34,11 +34,54 @@ defmodule ObanPowertools.Batch.Tracker do
 
   def record_progress(_repo, %Oban.Job{}, _state), do: {:error, :invalid_state}
 
-  defp batch_id(%Oban.Job{meta: meta}) when is_map(meta) do
+  def record_callback_exhaustion(repo, %Oban.Job{} = job) do
+    case callback_batch_id(repo, job) do
+      nil ->
+        {:ok, :ignored}
+
+      batch_id ->
+        {count, _rows} =
+          repo.update_all(
+            from(batch in Batch, where: batch.id == ^batch_id),
+            set: [status: "callback_failed", updated_at: timestamp()]
+          )
+
+        if count == 1, do: {:ok, :callback_failed}, else: {:ok, :ignored}
+    end
+  end
+
+  defp callback_batch_id(repo, %Oban.Job{meta: meta}) when is_map(meta) do
+    cond do
+      batch_id = batch_id_from_meta(meta) ->
+        batch_id
+
+      callback_id = callback_id_from_meta(meta) ->
+        case repo.get(Callback, callback_id) do
+          %Callback{batch_id: batch_id} when not is_nil(batch_id) -> batch_id
+          _other -> nil
+        end
+
+      true ->
+        nil
+    end
+  end
+
+  defp callback_batch_id(_repo, _job), do: nil
+
+  defp batch_id_from_meta(meta) when is_map(meta) do
     Map.get(meta, "batch_id") || Map.get(meta, :batch_id)
   end
 
-  defp batch_id(_job), do: nil
+  defp batch_id_from_meta(_meta), do: nil
+
+  defp callback_id_from_meta(meta) when is_map(meta) do
+    Map.get(meta, "callback_id") ||
+      Map.get(meta, :callback_id) ||
+      Map.get(meta, "oban_powertools_callback_id") ||
+      Map.get(meta, :oban_powertools_callback_id)
+  end
+
+  defp callback_id_from_meta(_meta), do: nil
 
   defp insert_batch_job(repo, batch_id, %Oban.Job{id: job_id}, state, now) do
     {count, _rows} =

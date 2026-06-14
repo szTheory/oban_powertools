@@ -2,7 +2,7 @@ defmodule ObanPowertools.WorkerTest do
   use ExUnit.Case, async: true
   import ExUnit.CaptureLog
 
-  alias ObanPowertools.{JobRecord, TestRepo}
+  alias ObanPowertools.{Batch, BatchJob, Callback, JobRecord, TestRepo}
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(TestRepo)
@@ -230,6 +230,23 @@ defmodule ObanPowertools.WorkerTest do
     def on_success(job, event), do: send(self(), {:hook, :on_success, job, event})
     def on_failure(job, event), do: send(self(), {:hook, :on_failure, job, event})
     def on_discard(job, event), do: send(self(), {:hook, :on_discard, job, event})
+  end
+
+  defmodule BatchObservingHookWorker do
+    def __powertools_hook_overridden?(hook), do: hook in [:on_success, :on_discard]
+
+    def on_success(job, event),
+      do: send(self(), {:batch_seen, :success, batch_counts(job), event})
+
+    def on_discard(job, event),
+      do: send(self(), {:batch_seen, :discard, batch_counts(job), event})
+
+    defp batch_counts(%Oban.Job{meta: %{"batch_id" => batch_id}}) do
+      batch = ObanPowertools.TestRepo.get!(ObanPowertools.Batch, batch_id)
+      {batch.success_count, batch.discard_count}
+    end
+
+    defp batch_counts(_job), do: :no_batch
   end
 
   defmodule OmittedHookWorker do
@@ -729,6 +746,161 @@ defmodule ObanPowertools.WorkerTest do
                     }}
   end
 
+  test "dispatcher records batch success before invoking success hook" do
+    batch = insert_batch!(total_count: 2)
+    job = worker_job(%{}, id: 60_301, meta: %{"batch_id" => batch.id})
+
+    assert :ok = ObanPowertools.Worker.Hooks.after_result(BatchObservingHookWorker, job, :ok)
+
+    assert_receive {:batch_seen, :success, {1, 0}, %{state: :success, result: :ok}}
+
+    assert [%BatchJob{batch_id: batch_id, job_id: 60_301, state: "success"}] =
+             TestRepo.all(BatchJob)
+
+    assert batch_id == batch.id
+  end
+
+  test "dispatcher records terminal discards before invoking discard hook" do
+    batch = insert_batch!(total_count: 3)
+    explicit_discard = worker_job(%{}, id: 60_302, meta: %{"batch_id" => batch.id})
+
+    terminal_error =
+      worker_job(%{}, id: 60_303, attempt: 3, max_attempts: 3, meta: %{"batch_id" => batch.id})
+
+    retryable_error =
+      worker_job(%{}, id: 60_304, attempt: 1, max_attempts: 3, meta: %{"batch_id" => batch.id})
+
+    assert :ok =
+             ObanPowertools.Worker.Hooks.after_result(
+               BatchObservingHookWorker,
+               explicit_discard,
+               {:discard, :manual}
+             )
+
+    assert_receive {:batch_seen, :discard, {0, 1}, %{state: :discard, reason: :manual}}
+
+    assert :ok =
+             ObanPowertools.Worker.Hooks.after_result(
+               BatchObservingHookWorker,
+               terminal_error,
+               {:error, :exhausted}
+             )
+
+    assert_receive {:batch_seen, :discard, {0, 2}, %{state: :discard, reason: :exhausted}}
+
+    assert :ok =
+             ObanPowertools.Worker.Hooks.after_result(
+               BatchObservingHookWorker,
+               retryable_error,
+               {:error, :temporary}
+             )
+
+    refute_receive {:batch_seen, :discard, _, %{reason: :temporary}}
+
+    batch = TestRepo.get!(Batch, batch.id)
+    assert batch.discard_count == 2
+  end
+
+  test "dispatcher records terminal exceptions as batch discards" do
+    batch = insert_batch!(total_count: 1)
+
+    job =
+      worker_job(%{}, id: 60_305, attempt: 3, max_attempts: 3, meta: %{"batch_id" => batch.id})
+
+    stacktrace = [{__MODULE__, :test, 0, []}]
+
+    assert :ok =
+             ObanPowertools.Worker.Hooks.after_exception(
+               BatchObservingHookWorker,
+               job,
+               :error,
+               :bad_state,
+               stacktrace
+             )
+
+    assert_receive {:batch_seen, :discard, {0, 1}, %{state: :discard, reason: :bad_state}}
+
+    batch = TestRepo.get!(Batch, batch.id)
+    assert batch.status == "exhausted"
+    assert %DateTime{} = batch.completed_at
+  end
+
+  test "dispatcher leaves cancel and snooze outcomes out of batch tracking" do
+    batch = insert_batch!(total_count: 2)
+    cancel_job = worker_job(%{}, id: 60_306, meta: %{"batch_id" => batch.id})
+    snooze_job = worker_job(%{}, id: 60_307, meta: %{"batch_id" => batch.id})
+
+    assert :ok =
+             ObanPowertools.Worker.Hooks.after_result(
+               BatchObservingHookWorker,
+               cancel_job,
+               {:cancel, :stop}
+             )
+
+    assert :ok =
+             ObanPowertools.Worker.Hooks.after_result(
+               BatchObservingHookWorker,
+               snooze_job,
+               {:snooze, 60}
+             )
+
+    assert [] = TestRepo.all(BatchJob)
+
+    batch = TestRepo.get!(Batch, batch.id)
+    assert batch.success_count == 0
+    assert batch.discard_count == 0
+  end
+
+  test "dispatcher marks exhausted batch callbacks as callback_failed" do
+    batch = insert_batch!(status: "exhausted", total_count: 1, discard_count: 1)
+    callback = insert_callback!(batch)
+
+    job =
+      worker_job(%{},
+        id: 60_308,
+        attempt: 3,
+        max_attempts: 3,
+        meta: %{"callback_id" => callback.id}
+      )
+
+    assert :ok =
+             ObanPowertools.Worker.Hooks.after_exception(
+               BatchObservingHookWorker,
+               job,
+               :error,
+               :callback_failed,
+               [{__MODULE__, :test, 0, []}]
+             )
+
+    batch = TestRepo.get!(Batch, batch.id)
+    assert batch.status == "callback_failed"
+    assert [] = TestRepo.all(BatchJob)
+  end
+
+  test "dispatcher does not treat callback-named batch workers as callback jobs" do
+    batch = insert_batch!(total_count: 1)
+
+    job =
+      worker_job(%{},
+        id: 60_309,
+        worker: "MyApp.CustomerCallbackWorker",
+        meta: %{"batch_id" => batch.id}
+      )
+
+    assert :ok =
+             ObanPowertools.Worker.Hooks.after_result(
+               BatchObservingHookWorker,
+               job,
+               {:discard, :manual}
+             )
+
+    assert_receive {:batch_seen, :discard, {0, 1}, %{state: :discard, reason: :manual}}
+
+    batch = TestRepo.get!(Batch, batch.id)
+    assert batch.status == "exhausted"
+    assert [%BatchJob{job_id: 60_309, state: "discard"}] = TestRepo.all(BatchJob)
+  end
+
   test "dispatcher routes caught process failures by retry eligibility" do
     retry_job = %Oban.Job{args: %{}, attempt: 1, max_attempts: 3}
     terminal_job = %Oban.Job{args: %{}, attempt: 3, max_attempts: 3}
@@ -816,8 +988,37 @@ defmodule ObanPowertools.WorkerTest do
       id: Keyword.get(opts, :id, System.unique_integer([:positive])),
       attempt: Keyword.get(opts, :attempt, 1),
       max_attempts: Keyword.get(opts, :max_attempts, 3),
+      worker: Keyword.get(opts, :worker),
       meta: Keyword.get(opts, :meta, %{})
     }
+  end
+
+  defp insert_batch!(attrs) do
+    defaults = %{
+      status: "executing",
+      total_count: 1,
+      success_count: 0,
+      discard_count: 0,
+      cancelled_count: 0,
+      snooze_count: 0
+    }
+
+    %Batch{}
+    |> Batch.changeset(Map.merge(defaults, Map.new(attrs)))
+    |> TestRepo.insert!()
+  end
+
+  defp insert_callback!(batch) do
+    %Callback{}
+    |> Callback.changeset(%{
+      batch_id: batch.id,
+      event: "batch.exhausted",
+      dedupe_key: "batch.exhausted-#{batch.id}",
+      status: "pending",
+      payload: %{"batch_id" => batch.id},
+      attempts: 0
+    })
+    |> TestRepo.insert!()
   end
 
   defp assert_receive_in_order(expected_messages) do

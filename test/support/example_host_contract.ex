@@ -15,7 +15,8 @@ defmodule ObanPowertools.ExampleHostContract do
     "priv/repo/migrations/20260522000020_oban_powertools_workflows.exs",
     "priv/repo/migrations/20260522000021_oban_powertools_workflow_steps.exs",
     "priv/repo/migrations/20260522000024_oban_powertools_workflow_semantics.exs",
-    "priv/repo/migrations/20260522000025_oban_powertools_workflow_command_attempts.exs"
+    "priv/repo/migrations/20260522000025_oban_powertools_workflow_command_attempts.exs",
+    "priv/repo/migrations/20260522000026_oban_powertools_batches_and_callbacks.exs"
   ]
 
   def prepare_host!(lane) do
