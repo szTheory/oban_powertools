@@ -63,5 +63,5 @@
 |-------|----------------|--------|-----------|
 | 59. Schemas & Foundation | 2/2 | Complete    | 2026-06-14 |
 | 60. Execution Engine & Tracker Hooks | 3/3 | Complete    | 2026-06-14 |
-| 61. APIs (Batches & Chains) | 5/5 | Complete   | 2026-06-14 |
+| 61. APIs (Batches & Chains) | 5/5 | Complete    | 2026-06-14 |
 | 62. Operations Console & Lifeline UI | 0/0 | Not started | - |
