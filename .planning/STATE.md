@@ -3,13 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: milestone
 status: ready_to_plan
-last_updated: "2026-06-14T16:28:38.867Z"
+last_updated: 2026-06-14T18:15:32.478Z
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 5
   completed_plans: 5
   percent: 50
+stopped_at: Phase 60 complete (3/3) — ready to discuss Phase 61
 ---
 
 # Project State
@@ -18,12 +19,12 @@ progress:
 
 **Core Value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
 
-**Current Focus:** Phase 60 — execution-engine-tracker-hooks
+**Current Focus:** Phase 61 — apis (batches & chains)
 
 ## Current Position
 
-Phase: 60 (execution-engine-tracker-hooks) — EXECUTING
-Plan: 3 of 3
+Phase: 61
+Plan: Not started
 | Phase | Plan | Status | Progress |
 |-------|------|--------|----------|
 | 59. Schemas & Foundation | None | 🟡 Planning | `[          ] 0%` |
