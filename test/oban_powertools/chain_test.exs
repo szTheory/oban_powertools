@@ -11,7 +11,7 @@ defmodule ObanPowertools.ChainTest do
       queue: :default,
       args: [import_id: :integer]
 
-    @impl ObanPowertools.Worker
+    @impl true
     def process(_job), do: {:ok, %{"path" => "imports/1.csv"}}
   end
 
@@ -20,7 +20,7 @@ defmodule ObanPowertools.ChainTest do
       queue: :default,
       args: [import_id: :integer]
 
-    @impl ObanPowertools.Worker
+    @impl true
     def process(_job), do: {:ok, %{"rows_ref" => "rows:1"}}
   end
 
@@ -29,7 +29,7 @@ defmodule ObanPowertools.ChainTest do
       queue: :default,
       args: [import_id: :integer]
 
-    @impl ObanPowertools.Worker
+    @impl true
     def process(_job), do: :ok
   end
 
@@ -38,7 +38,7 @@ defmodule ObanPowertools.ChainTest do
       queue: :default,
       args: [import_id: :integer]
 
-    @impl ObanPowertools.Worker
+    @impl true
     def process(_job), do: :ok
   end
 

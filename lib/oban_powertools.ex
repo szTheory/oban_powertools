@@ -11,6 +11,8 @@ defmodule ObanPowertools do
   The public builder-facing primitives live in these modules:
 
   - `ObanPowertools.Worker` for typed arguments, synchronous validation, and idempotent enqueue
+  - `ObanPowertools.Batch` for fixed-size batch grouping and bounded stream insertion
+  - `ObanPowertools.Chain` for strictly linear job composition over batch metadata
   - `ObanPowertools.Limits` and `ObanPowertools.Explain` for durable limiter reservations and
     blocker inspection
   - `ObanPowertools.Workflow` for durable DAG definitions plus dependency reconciliation
