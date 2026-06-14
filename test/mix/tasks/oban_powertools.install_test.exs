@@ -55,6 +55,19 @@ defmodule Mix.Tasks.ObanPowertools.InstallTest do
     assert source =~ "create table(:oban_powertools_heartbeats, primary_key: false)"
   end
 
+  test "installer emits durable batch insertion metadata fields and indexes" do
+    source = File.read!(@installer_path)
+
+    assert source =~ "add :name, :string"
+    assert source =~ "add :inserted_count, :integer, null: false, default: 0"
+    assert source =~ "add :insert_chunk_count, :integer, null: false, default: 0"
+    assert source =~ "add :insert_failed_chunk, :integer"
+    assert source =~ "add :insert_failure, :map, null: false, default: %{}"
+    assert source =~ "add :insert_failed_at, :utc_datetime_usec"
+    assert source =~ "create index(:oban_powertools_batches, [:status])"
+    assert source =~ "create index(:oban_powertools_batches, [:name])"
+  end
+
   test "installer emits job record storage without an oban_jobs foreign key" do
     source = File.read!(@installer_path)
 
