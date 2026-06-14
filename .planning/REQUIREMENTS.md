@@ -39,13 +39,13 @@ Provide durable, Ecto-native batch processing and workflow composition primitive
 
 | REQ-ID | Phase | Plan |
 |--------|-------|------|
-| BAT-01 | TBD   | TBD  |
-| BAT-02 | TBD   | TBD  |
-| BAT-03 | TBD   | TBD  |
-| BAT-04 | TBD   | TBD  |
-| CHN-01 | TBD   | TBD  |
-| CHN-02 | TBD   | TBD  |
-| BUI-01 | TBD   | TBD  |
-| BUI-02 | TBD   | TBD  |
-| BUI-03 | TBD   | TBD  |
-| BUI-04 | TBD   | TBD  |
+| BAT-01 | Phase 59 | TBD  |
+| BAT-02 | Phase 61 | TBD  |
+| BAT-03 | Phase 60 | TBD  |
+| BAT-04 | Phase 60 | TBD  |
+| CHN-01 | Phase 61 | TBD  |
+| CHN-02 | Phase 61 | TBD  |
+| BUI-01 | Phase 62 | TBD  |
+| BUI-02 | Phase 62 | TBD  |
+| BUI-03 | Phase 62 | TBD  |
+| BUI-04 | Phase 62 | TBD  |

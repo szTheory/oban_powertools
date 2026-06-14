@@ -1,70 +1,42 @@
----
-gsd_state_version: 1.0
-milestone: v1.9
-milestone_name: Batches & Composition
-status: planning
-last_updated: "2026-06-14T04:38:32.952Z"
-last_activity: 2026-06-14
-progress:
-  total_phases: 0
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
----
-
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-13)
+**Core Value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
 
-**Core value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-**Current focus:** Phase 58 — cron deadline injection
+**Current Focus:** v1.9 Batches & Composition. Providing durable, Ecto-native batch processing and workflow composition primitives (linear chains/DAG sugar) with Lifeline-routed recovery and native inspection UI.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-06-14 — Milestone v1.9 started
+| Phase | Plan | Status | Progress |
+|-------|------|--------|----------|
+| 59. Schemas & Foundation | None | 🟡 Planning | `[          ] 0%` |
 
 ## Performance Metrics
 
-**Velocity (v1.7 baseline):**
-
-- Total plans completed: 15
-- Average duration: ~5 min
-- Total execution time: ~70 min
-
-**Recent Trend:**
-
-- Last 5 plans: 4, 4, 6, 5, 8 min
-- Trend: Stable
-
-*Updated after each plan completion*
+| Metric | Target | Current | Notes |
+|--------|--------|---------|-------|
+| Test Coverage | >95% | - | - |
+| Type Checking | 0 Dialyzer errors | - | - |
+| Linting | 0 Credo warnings | - | - |
 
 ## Accumulated Context
 
-### Decisions
+### Architectural Decisions
+- Dedicated `batches` / `batch_jobs` / `callbacks` tables (not overloading `oban_jobs` meta).
+- Generalized callback outbox for execution of `completed` and `exhausted` callbacks.
+- Exactly-Once progress tracking wired transactionally into v1.7 worker lifecycle hooks.
+- Chains as linear-DAG sugar built on top of the callback outbox.
+- No `libgraph` or Redis dependencies allowed.
 
-See PROJECT.md Key Decisions section.
+### Known Technical Debt / Todos
+- TBD
 
-**v1.8 implementation notes (from research):**
-
-- INT-01: Pure data addition to `@powertools_manifest` — add `"output-recording" => ["oban_powertools_job_records"]`; use group name matching `record_output:` option and `ObanPowertools.JobRecord` schema naming convention.
-- INT-01: Update `checks_test.exs` line 104 description from "all 4 groups present" to "all 5 groups present".
-- INT-02: Thread `now` as fifth parameter through all four `maybe_insert_job` clause heads — `now` is already bound in `claim_slot/4` at line 52, pass via `Multi.run` lambda.
-- INT-02: Inject `Deadlines.build_meta(deadline_ms, now)` inside `function_exported?(:__powertools_limits__, 0)` true branch only — never in `else` or `rescue` paths.
-- INT-02: Pass deadline meta as `meta: deadline_meta` in opts before `worker_module.new/2` call so `Redaction.apply/4` merges `__redacted_fields__` on top; do not post-process the changeset.
-- INT-02: Reference implementation is `idempotency.ex` `merge_powertools_meta/4` for correct merge ordering.
-
-### Blockers
-
-None.
+### Blockers / Open Questions
+- None currently
 
 ## Session Continuity
 
-Last session: 2026-06-13T19:26:45.495Z
-Stopped at: Phase 58 context gathered
-Resume file: .planning/phases/58-cron-deadline-injection/58-CONTEXT.md
+- **Last Action:** Created v1.9 Roadmap
+- **Next Action:** Plan Phase 59 (Schemas & Foundation)
+- **Active Context:** Focus is on establishing the core data models for batches without overloading Oban's structures.
