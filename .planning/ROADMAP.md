@@ -54,7 +54,12 @@
   1. Operator can view batch progress, statuses, and explainable blocked states in the `/ops/jobs/batches` UI.
   2. Operator can safely retry failed jobs within a batch using a bulk Lifeline action.
   3. Operator can view and retry stuck or dead callbacks to unblock seemingly hanging batches.
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 62-01-PLAN.md — Create Wave 0 validation scaffold for batch UI, read model, and callback retry
+- [ ] 62-02-PLAN.md — Add batch routes, selectors, and permission copy
+- [ ] 62-03-PLAN.md — Build the `ObanPowertools.Batches` read model
+- [ ] 62-04-PLAN.md — Extend Lifeline with callback retry target support
+- [ ] 62-05-PLAN.md — Implement the native `BatchesLive` index/detail UI and recovery flows
 **UI hint**: yes
 
 ## Progress
