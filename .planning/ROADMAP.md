@@ -2,7 +2,7 @@
 
 ## Phases
 
-- [ ] **Phase 59: Schemas & Foundation** - Establish the core Ecto data model for batch tracking and the callback outbox
+- [x] **Phase 59: Schemas & Foundation** - Establish the core Ecto data model for batch tracking and the callback outbox (completed 2026-06-14)
 - [ ] **Phase 60: Execution Engine & Tracker Hooks** - Track batch progress transactionally via worker hooks and safely dispatch callbacks
 - [ ] **Phase 61: APIs (Batches & Chains)** - Expose developer ergonomics for massive batch enqueuing and linear chain composition
 - [ ] **Phase 62: Operations Console & Lifeline UI** - Provide operators native visibility and Lifeline-routed recovery for batches and chains
@@ -53,7 +53,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 59. Schemas & Foundation | 0/0 | Not started | - |
+| 59. Schemas & Foundation | 2/2 | Complete    | 2026-06-14 |
 | 60. Execution Engine & Tracker Hooks | 0/0 | Not started | - |
 | 61. APIs (Batches & Chains) | 0/0 | Not started | - |
 | 62. Operations Console & Lifeline UI | 0/0 | Not started | - |
