@@ -8,7 +8,7 @@ Provide durable, Ecto-native batch processing and workflow composition primitive
 
 ### Batches (BAT)
 - [x] **BAT-01**: Dedicated Ecto schemas and migrations for `batches`, `batch_jobs`, and a `callbacks` outbox.
-- [ ] **BAT-02**: `Batch.insert_stream/2` API for safely enqueuing massive batches via chunked inserts to prevent DB lock starvation.
+- [x] **BAT-02**: `Batch.insert_stream/2` API for safely enqueuing massive batches via chunked inserts to prevent DB lock starvation.
 - [x] **BAT-03**: Exactly-once progress tracking wired transactionally into v1.7 worker lifecycle hooks (`on_success`, `on_discard`).
 - [x] **BAT-04**: Execution of `completed` and `exhausted` callbacks via the callback outbox when batch targets are met.
 

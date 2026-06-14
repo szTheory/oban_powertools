@@ -40,7 +40,7 @@
   2. Developer can compose sequential jobs using an ergonomic `chain` DSL that maps to the callback outbox.
   3. Downstream jobs in a chain can access the durable output of their upstream predecessor.
 **Plans**: 5 plans
-- [ ] 61-01-PLAN.md — Add durable batch insertion metadata and installer contract
+- [x] 61-01-PLAN.md — Add durable batch insertion metadata and installer contract
 - [ ] 61-02-PLAN.md — Implement `Batch.insert_stream/2`
 - [ ] 61-03-PLAN.md — Create `ObanPowertools.Chain` DSL and first-step insert
 - [ ] 61-04-PLAN.md — Wire event-scoped chain callback progression
@@ -63,5 +63,5 @@
 |-------|----------------|--------|-----------|
 | 59. Schemas & Foundation | 2/2 | Complete    | 2026-06-14 |
 | 60. Execution Engine & Tracker Hooks | 3/3 | Complete    | 2026-06-14 |
-| 61. APIs (Batches & Chains) | 0/5 | Not started | - |
+| 61. APIs (Batches & Chains) | 1/5 | In Progress|  |
 | 62. Operations Console & Lifeline UI | 0/0 | Not started | - |

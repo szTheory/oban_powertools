@@ -71,7 +71,7 @@ Each task was committed atomically:
 3. **Task 2 RED: Add failing test for installer batch metadata** - `6349453` (test)
 4. **Task 2 GREEN: Update installer batch metadata contract** - `d173cf0` (feat)
 
-**Plan metadata:** pending final docs commit
+**Plan summary metadata:** `17584fa` (docs)
 
 ## Files Created/Modified
 
