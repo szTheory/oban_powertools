@@ -1,32 +1,51 @@
-# Requirements — v1.8 Integration Fixes
+# Requirements — v1.9 Batches & Composition
 
 ## Milestone Goal
 
-Close the two non-blocking integration gaps deferred from the v1.7 audit. Both fixes are targeted, low-risk edits to existing files with no new dependencies or public API changes.
+Provide durable, Ecto-native batch processing and workflow composition primitives (linear chains/DAG sugar) with Lifeline-routed recovery and native inspection UI, guided by deep ecosystem research.
 
-## v1.8 Requirements
+## v1.9 Requirements
 
-### Integration Fixes
+### Batches (BAT)
+- [ ] **BAT-01**: Dedicated Ecto schemas and migrations for `batches`, `batch_jobs`, and a `callbacks` outbox.
+- [ ] **BAT-02**: `Batch.insert_stream/2` API for safely enqueuing massive batches via chunked inserts to prevent DB lock starvation.
+- [ ] **BAT-03**: Exactly-once progress tracking wired transactionally into v1.7 worker lifecycle hooks (`on_success`, `on_discard`).
+- [ ] **BAT-04**: Execution of `completed` and `exhausted` callbacks via the callback outbox when batch targets are met.
 
-- [x] **INT-01**: Doctor detects missing `oban_powertools_job_records` table — add to `@powertools_manifest` under `"output-recording"` group in `lib/oban_powertools/doctor/checks.ex`; update test description to "5 groups present"
-- [ ] **INT-02**: Cron-scheduled `deadline:`-configured workers inject `__deadline_at__` meta at enqueue — thread `now` through all 4 `maybe_insert_job` clause heads in `lib/oban_powertools/cron.ex`; inject `Deadlines.build_meta` inside existing `function_exported?` branch; verify `redact:` + `deadline:` compose (both meta keys present on cron path)
+### Chains (CHN)
+- [ ] **CHN-01**: Ergonomic DSL for linear Chains (e.g. `JobA |> chain(JobB)`), mapping sequentially to the Callback Outbox under the hood.
+- [ ] **CHN-02**: State propagation support, allowing a sequential job to access the durable output of its upstream predecessor.
+
+### Batch Operations UI (BUI)
+- [ ] **BUI-01**: Native `/ops/jobs/batches` LiveView page showing batch progress, statuses, and failed member inspection.
+- [ ] **BUI-02**: Operator visibility into explainable blocked states (e.g., waiting on batch completion or upstream chain).
+- [ ] **BUI-03**: Lifeline-routed bulk recovery action to safely "Retry failed in batch".
+- [ ] **BUI-04**: Operator visibility and recovery actions for "stuck/dead callbacks" to prevent silent hanging batches.
 
 ## Future Requirements (deferred)
 
-Carried backlog (not in v1.8): QRY-05 args/meta filter, QRY-06 real-time counts, QRY-07 Lifeline→job deep-link, QRY-08 cross-page select-all, API-03 programmatic job query.
-
-v1.9: Batches & Composition — dedicated `batches` / `batch_jobs` tables, `completed` + `exhausted` callbacks, chains as linear-DAG sugar, native Batches page.
+- QRY-05 args/meta filter, QRY-06 real-time counts, QRY-07 Lifeline→job deep-link, QRY-08 cross-page select-all, API-03 programmatic job query.
+- Observability / live counts (`oban_met` integration).
 
 ## Out of Scope
 
-- No new features in this milestone.
-- No new migrations or tables.
-- No new runtime dependencies.
-- No changes to the public API surface.
+- **Dynamic / Growable Batches**: Adding jobs to a batch after it starts executing introduces massive race condition complexity. Require fixed-size batches on insert.
+- **Chunking (size/timeout based batches)**: Distinct from logical grouping; optimizing throughput via chunking is a different JTBD than logical composition.
+- **Implicit Workflow Callbacks**: Overloading a worker's `on_success` hook to mean "the whole workflow is done."
+- **Complex fan-in/fan-out DAGs**: Stick to linear chains for this milestone.
+- **External Dependencies**: No `libgraph` or Redis.
 
 ## Traceability
 
 | REQ-ID | Phase | Plan |
 |--------|-------|------|
-| INT-01 | Phase 57 | TBD  |
-| INT-02 | Phase 58 | TBD  |
+| BAT-01 | TBD   | TBD  |
+| BAT-02 | TBD   | TBD  |
+| BAT-03 | TBD   | TBD  |
+| BAT-04 | TBD   | TBD  |
+| CHN-01 | TBD   | TBD  |
+| CHN-02 | TBD   | TBD  |
+| BUI-01 | TBD   | TBD  |
+| BUI-02 | TBD   | TBD  |
+| BUI-03 | TBD   | TBD  |
+| BUI-04 | TBD   | TBD  |
