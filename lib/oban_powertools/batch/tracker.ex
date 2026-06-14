@@ -22,7 +22,8 @@ defmodule ObanPowertools.Batch.Tracker do
 
         case insert_batch_job(repo, batch_id, job, state, now) do
           :inserted ->
-            with {:ok, batch} <- increment_batch(repo, batch_id, state, now) do
+            with {:ok, batch} <- increment_batch(repo, batch_id, state, now),
+                 {:ok, _callback} <- maybe_insert_chain_callback(repo, batch_id, job, state, now) do
               maybe_complete_batch(repo, batch)
             end
 
@@ -185,6 +186,46 @@ defmodule ObanPowertools.Batch.Tracker do
       attempts: 0
     })
     |> repo.insert()
+  end
+
+  defp maybe_insert_chain_callback(repo, batch_id, %Oban.Job{meta: meta, id: job_id}, :success, now)
+       when is_map(meta) do
+    with %{
+           "chain_id" => chain_id,
+           "chain_step_name" => step_name,
+           "chain_step_index" => step_index,
+           "chain_step_count" => step_count,
+           "chain_next_step" => next_step
+         } <- normalize_meta(meta) do
+      %Callback{}
+      |> Callback.changeset(%{
+        batch_id: batch_id,
+        event: "chain.step_succeeded",
+        dedupe_key: "chain.step_succeeded:#{chain_id}:#{step_index}:#{job_id}",
+        status: "pending",
+        payload: %{
+          "event" => "chain.step_succeeded",
+          "chain_id" => chain_id,
+          "batch_id" => batch_id,
+          "step_name" => step_name,
+          "step_index" => step_index,
+          "step_count" => step_count,
+          "upstream_job_id" => job_id,
+          "next_step" => next_step
+        },
+        attempts: 0,
+        available_at: now
+      })
+      |> repo.insert(on_conflict: :nothing, conflict_target: :dedupe_key)
+    else
+      _missing_chain_meta -> {:ok, :ignored}
+    end
+  end
+
+  defp maybe_insert_chain_callback(_repo, _batch_id, %Oban.Job{}, _state, _now), do: {:ok, :ignored}
+
+  defp normalize_meta(meta) do
+    Map.new(meta, fn {key, value} -> {to_string(key), value} end)
   end
 
   defp timestamp do
