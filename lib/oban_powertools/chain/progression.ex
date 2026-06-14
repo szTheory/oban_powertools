@@ -89,7 +89,12 @@ defmodule ObanPowertools.Chain.Progression do
 
   defp insert_next_job(%Callback{payload: %{"next_step" => nil}}, _oban), do: :ok
 
-  defp insert_next_job(%Callback{payload: %{"next_step" => %{"step" => step, "remaining" => remaining}} = payload}, oban)
+  defp insert_next_job(
+         %Callback{
+           payload: %{"next_step" => %{"step" => step, "remaining" => remaining}} = payload
+         },
+         oban
+       )
        when is_map(step) and is_list(remaining) do
     changeset = next_job_changeset(step, remaining, payload)
 

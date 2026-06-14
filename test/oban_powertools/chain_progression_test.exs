@@ -83,7 +83,9 @@ defmodule ObanPowertools.ChainProgressionTest do
       assert {:ok, :duplicate} = Tracker.record_progress(TestRepo, job, :success)
 
       assert [callback] =
-               TestRepo.all(from(callback in Callback, where: callback.event == "chain.step_succeeded"))
+               TestRepo.all(
+                 from(callback in Callback, where: callback.event == "chain.step_succeeded")
+               )
 
       assert callback.status == "pending"
       assert callback.attempts == 0
@@ -112,7 +114,11 @@ defmodule ObanPowertools.ChainProgressionTest do
         )
 
       assert {:ok, :tracked} = Tracker.record_progress(TestRepo, job, :discard)
-      assert [] = TestRepo.all(from(callback in Callback, where: callback.event == "chain.step_succeeded"))
+
+      assert [] =
+               TestRepo.all(
+                 from(callback in Callback, where: callback.event == "chain.step_succeeded")
+               )
     end
   end
 
@@ -182,7 +188,9 @@ defmodule ObanPowertools.ChainProgressionTest do
 
     test "claimed callback with nil next_step is delivered without inserting a job" do
       batch = insert_batch!(total_count: 1)
-      callback = insert_chain_callback!(batch, upstream_job_id: 203, next_step: nil, status: "claimed")
+
+      callback =
+        insert_chain_callback!(batch, upstream_job_id: 203, next_step: nil, status: "claimed")
 
       assert %{delivered: 1, failed: 0} =
                Progression.dispatch_callbacks(TestRepo, dispatcher_id: "node-a")
@@ -208,7 +216,10 @@ defmodule ObanPowertools.ChainProgressionTest do
       parse = newest_job!()
       assert parse.worker == inspect(ParseWorker)
       assert parse.meta["upstream_job_id"] == fetch.id
-      assert %{"step" => write_descriptor, "remaining" => [notify_descriptor]} = parse.meta["chain_next_step"]
+
+      assert %{"step" => write_descriptor, "remaining" => [notify_descriptor]} =
+               parse.meta["chain_next_step"]
+
       assert write_descriptor["name"] == "write"
       assert notify_descriptor["name"] == "notify"
 

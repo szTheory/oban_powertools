@@ -74,7 +74,12 @@ defmodule ObanPowertools.Workflow.Runtime do
   ]
   @current_semantics_version 2
   @callback_envelope_version 1
-  @host_callback_events ["workflow.terminal", "workflow.recovery_completed", "batch.completed", "batch.exhausted"]
+  @host_callback_events [
+    "workflow.terminal",
+    "workflow.recovery_completed",
+    "batch.completed",
+    "batch.exhausted"
+  ]
   @legacy_semantics_version 1
   @runtime_principal Audit.system_principal("workflow_runtime", label: "system workflow runtime")
 

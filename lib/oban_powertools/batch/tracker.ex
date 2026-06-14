@@ -188,7 +188,13 @@ defmodule ObanPowertools.Batch.Tracker do
     |> repo.insert()
   end
 
-  defp maybe_insert_chain_callback(repo, batch_id, %Oban.Job{meta: meta, id: job_id}, :success, now)
+  defp maybe_insert_chain_callback(
+         repo,
+         batch_id,
+         %Oban.Job{meta: meta, id: job_id},
+         :success,
+         now
+       )
        when is_map(meta) do
     with %{
            "chain_id" => chain_id,
@@ -222,7 +228,8 @@ defmodule ObanPowertools.Batch.Tracker do
     end
   end
 
-  defp maybe_insert_chain_callback(_repo, _batch_id, %Oban.Job{}, _state, _now), do: {:ok, :ignored}
+  defp maybe_insert_chain_callback(_repo, _batch_id, %Oban.Job{}, _state, _now),
+    do: {:ok, :ignored}
 
   defp normalize_meta(meta) do
     Map.new(meta, fn {key, value} -> {to_string(key), value} end)
