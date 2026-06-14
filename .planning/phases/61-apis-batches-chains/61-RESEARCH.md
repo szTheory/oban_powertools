@@ -345,11 +345,29 @@ end
   "event" => "chain.step_succeeded",
   "chain_id" => batch.id,
   "step_name" => "parse",
-  "next_step_name" => "write",
   "upstream_job_id" => job.id,
-  "next_job" => %{
-    "worker" => "MyApp.WriteRows",
-    "args_builder" => ["MyApp.ImportChainArgs", "write", [import_id]]
+  "next_step" => %{
+    "step" => %{
+      "name" => "write",
+      "index" => 2,
+      "worker" => "MyApp.WriteRows",
+      "args" => %{},
+      "queue" => "default",
+      "meta" => %{},
+      "args_builder" => ["MyApp.ImportChainArgs", "write", [import_id]],
+      "requires_output" => true
+    },
+    "remaining" => [
+      %{
+        "name" => "notify",
+        "index" => 3,
+        "worker" => "MyApp.NotifyImport",
+        "args" => %{"import_id" => import_id},
+        "queue" => "default",
+        "meta" => %{},
+        "requires_output" => false
+      }
+    ]
   }
 }
 ```
@@ -387,17 +405,15 @@ end
 | A1 | Default `chunk_size: 1_000` is a safe starting point for Postgres inserts in this project. [ASSUMED] | Summary / Architecture Patterns | Planner should include measurement tests and allow tuning if local DB timeout/parameter behavior says otherwise. |
 | A2 | Chain progression can be implemented without schema changes beyond callback event/status/payload support. [ASSUMED] | Architecture Patterns | Planner may need a small migration if explicit `insert_failed` details or chain status fields cannot fit existing schemas. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Where should durable insertion failure details live?**
+1. **Where should durable insertion failure details live? RESOLVED by Plan 61-01.**
    - What we know: `Batch` currently has `status`, counters, and `completed_at` only. [VERIFIED: lib/oban_powertools/batch.ex]
-   - What's unclear: There is no existing `last_error`, `inserted_count`, or failure metadata field on `oban_powertools_batches`. [VERIFIED: lib/oban_powertools/batch.ex]
-   - Recommendation: Plan a Wave 0 schema decision: either add explicit batch failure fields or store details in a callback/status-support row; prefer explicit batch fields if Phase 62 needs direct display. [ASSUMED]
+   - Resolution: Plan 61-01 adds explicit batch fields `name`, `inserted_count`, `insert_chunk_count`, `insert_failed_chunk`, `insert_failure`, and `insert_failed_at` to the schema, test migration, and host installer migration. This directly supports Phase 62 display and D-04 durable partial failure semantics. [VERIFIED: .planning/phases/61-apis-batches-chains/61-01-PLAN.md]
 
-2. **Should chain progression reuse `Workflow.dispatch_callbacks/2` or get its own API?**
+2. **Should chain progression reuse `Workflow.dispatch_callbacks/2` or get its own API? RESOLVED by Plan 61-04.**
    - What we know: Current dispatcher claims all callback rows matching pending/failed/claimed states. [VERIFIED: lib/oban_powertools/workflow/runtime.ex]
-   - What's unclear: Reusing it without event filters will mix host workflow callback handling and internal chain progression. [VERIFIED: lib/oban_powertools/workflow/runtime.ex]
-   - Recommendation: Add event-scoped claiming and a `Chain.dispatch_callbacks/2` or internal progression function for chain events. [ASSUMED]
+   - Resolution: Plan 61-04 keeps host callback dispatch responsible for `"workflow.terminal"`, `"workflow.recovery_completed"`, `"batch.completed"`, and `"batch.exhausted"` while excluding `"chain.step_succeeded"`. Chain events get a separate `ObanPowertools.Chain.Progression.dispatch_callbacks/2` path that claims only chain rows and consumes the durable `%{"step" => immediate, "remaining" => tail}` descriptor so D-20 3+ step chains continue progressing. [VERIFIED: .planning/phases/61-apis-batches-chains/61-04-PLAN.md]
 
 ## Environment Availability
 
