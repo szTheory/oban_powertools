@@ -707,7 +707,7 @@ defmodule Mix.Tasks.ObanPowertools.Install do
             add :job_id, :bigint, null: false
             add :state, :string, null: false, default: "available"
 
-            timestamps(updated_at: true)
+            timestamps()
           end
 
           create unique_index(:oban_powertools_batch_jobs, [:batch_id, :job_id])

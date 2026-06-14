@@ -14,7 +14,7 @@ defmodule ObanPowertools.BatchJob do
 
     belongs_to(:batch, ObanPowertools.Batch, type: :binary_id)
 
-    timestamps(updated_at: true)
+    timestamps()
   end
 
   def changeset(struct, params) do

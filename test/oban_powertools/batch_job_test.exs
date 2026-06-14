@@ -4,6 +4,12 @@ defmodule ObanPowertools.BatchJobTest do
   alias ObanPowertools.BatchJob
 
   describe "changeset/2" do
+    test "uses standard inserted_at and updated_at timestamps" do
+      assert :inserted_at in BatchJob.__schema__(:fields)
+      assert :updated_at in BatchJob.__schema__(:fields)
+      refute true in BatchJob.__schema__(:fields)
+    end
+
     test "validates required fields" do
       changeset = BatchJob.changeset(%BatchJob{}, %{})
 
