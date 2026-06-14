@@ -115,14 +115,15 @@ defmodule ObanPowertools.BatchTest do
         |> List.flatten()
         |> MapSet.new()
 
-      assert columns == MapSet.new([
-               "name",
-               "inserted_count",
-               "insert_chunk_count",
-               "insert_failed_chunk",
-               "insert_failure",
-               "insert_failed_at"
-             ])
+      assert columns ==
+               MapSet.new([
+                 "name",
+                 "inserted_count",
+                 "insert_chunk_count",
+                 "insert_failed_chunk",
+                 "insert_failure",
+                 "insert_failed_at"
+               ])
     end
   end
 end

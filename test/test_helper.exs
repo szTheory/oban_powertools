@@ -11,6 +11,7 @@ unless skip_db_boot? do
   Code.require_file("test/support/migrations/5_phase_6_tables.exs")
   Code.require_file("test/support/migrations/6_phase_55_tables.exs")
   Code.require_file("test/support/migrations/7_phase_59_tables.exs")
+  Code.require_file("test/support/migrations/8_phase_61_batch_failure_fields.exs")
 
   {:ok, _} = ObanPowertools.TestRepo.start_link()
 
@@ -142,6 +143,26 @@ unless skip_db_boot? do
 
       if is_nil(phase_59_tables?) do
         Ecto.Migrator.up(repo, 7, ObanPowertools.TestRepo.Migrations.Phase59Tables, log: false)
+      end
+
+      phase_61_batch_fields? =
+        repo
+        |> Ecto.Adapters.SQL.query!("""
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'oban_powertools_batches'
+        AND column_name = 'inserted_count'
+        """)
+        |> Map.fetch!(:rows)
+        |> List.first()
+
+      if is_nil(phase_61_batch_fields?) do
+        Ecto.Migrator.up(
+          repo,
+          8,
+          ObanPowertools.TestRepo.Migrations.Phase61BatchFailureFields,
+          log: false
+        )
       end
 
       limiter_history_tables? =
