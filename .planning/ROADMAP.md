@@ -3,7 +3,7 @@
 ## Phases
 
 - [x] **Phase 59: Schemas & Foundation** - Establish the core Ecto data model for batch tracking and the callback outbox (completed 2026-06-14)
-- [ ] **Phase 60: Execution Engine & Tracker Hooks** - Track batch progress transactionally via worker hooks and safely dispatch callbacks
+- [x] **Phase 60: Execution Engine & Tracker Hooks** - Track batch progress transactionally via worker hooks and safely dispatch callbacks (completed 2026-06-14)
 - [ ] **Phase 61: APIs (Batches & Chains)** - Expose developer ergonomics for massive batch enqueuing and linear chain composition
 - [ ] **Phase 62: Operations Console & Lifeline UI** - Provide operators native visibility and Lifeline-routed recovery for batches and chains
 
@@ -29,7 +29,7 @@
 **Plans**: 3 plans
 - [x] 60-01-PLAN.md — Add completed_at field to Batch schema
 - [x] 60-02-PLAN.md — Implement Tracker exactly-once progress and callback enqueueing
-- [ ] 60-03-PLAN.md — Wire Tracker into Worker Hooks
+- [x] 60-03-PLAN.md — Wire Tracker into Worker Hooks
 
 ### Phase 61: APIs (Batches & Chains)
 **Goal**: Expose developer ergonomics for massive batch enqueuing and linear chain composition without lock contention or DAG abuse.
@@ -57,6 +57,6 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 59. Schemas & Foundation | 2/2 | Complete    | 2026-06-14 |
-| 60. Execution Engine & Tracker Hooks | 2/3 | In Progress|  |
+| 60. Execution Engine & Tracker Hooks | 3/3 | Complete   | 2026-06-14 |
 | 61. APIs (Batches & Chains) | 0/0 | Not started | - |
 | 62. Operations Console & Lifeline UI | 0/0 | Not started | - |
