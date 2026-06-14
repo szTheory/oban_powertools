@@ -99,7 +99,8 @@ Full phase details: [milestones/v1.7-ROADMAP.md](milestones/v1.7-ROADMAP.md)
   2. A cron-enqueued job from a Powertools worker without `deadline:` has no `__deadline_at__` key in meta — no contamination of plain workers
   3. A cron-enqueued job from a worker with both `redact:` and `deadline:` has both `__redacted_fields__` and `__deadline_at__` present in meta — composition works correctly
   4. Plain (non-Powertools) Oban workers scheduled via cron are unaffected — no `__deadline_at__` injection on the non-Powertools path
-**Plans**: TBD
+**Plans**: 1 plan
+  - [ ] 58-01-PLAN.md — Inject deadline meta into cron enqueue path
 
 ## Progress
 
@@ -113,5 +114,5 @@ Full phase details: [milestones/v1.7-ROADMAP.md](milestones/v1.7-ROADMAP.md)
 | 43-46 | v1.5      | 9/9            | Complete    | 2026-05-28 |
 | 47-52.1 | v1.6    | 16/16          | Complete    | 2026-05-30 |
 | 53-56 | v1.7      | 14/14          | Complete    | 2026-06-13 |
-| 57    | v1.8      | 1/1 | Complete    | 2026-06-13 |
-| 58    | v1.8      | 0/TBD          | Not started | -          |
+| 57    | v1.8      | 1/1            | Complete    | 2026-06-13 |
+| 58    | v1.8      | 0/1            | Not started | -          |
