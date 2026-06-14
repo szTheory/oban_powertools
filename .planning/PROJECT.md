@@ -154,7 +154,7 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 Version `v1.5` shipped on 2026-05-28. The native `/ops/jobs` shell now owns the full job lifecycle without leaning on the Oban Web bridge: operators browse jobs at `/ops/jobs/jobs` filtered by state/queue/worker/tags with URL-serialized filter state and `DisplayPolicy` redaction on args/meta; inspect full job detail; and retry/cancel/discard single jobs or bulk selections through the same Lifeline preview → reason → execute → audit pipeline, with a concurrent-modification guard and honest per-job bulk reporting. The new `ObanPowertools.Operator` module gives host code a typed, actor-attributed programmatic surface for the same single and bulk mutations, routed through the identical Lifeline pipeline and emitting `source: "api"` telemetry within the frozen low-cardinality contract. Milestone audit passed 6/6 requirements; full suite at 270 tests, 0 failures.
 
-**v1.6 Release & Operability — SHIPPED 2026-05-30.** All 7 phases complete (47-52.1), 16/16 plans, 428 tests, 0 failures, 121 files changed (+16,574/−222 LOC). Published to hex.pm at `0.5.0` with zero-touch release-please CI/CD. Shipped `mix oban_powertools.doctor` (five read-only `pg_catalog` checks, 0/1/2 exit codes, human + JSON output), `mix oban_powertools.limiter.explain` + `.simulate` (CLI over existing `Explain` API + pure `compute_reservation/4`, rate-limit glossary), opt-in `ObanPowertools.Telemetry.metrics/0` (17 counters over frozen contract, optional deps), `guides/telemetry-and-slos.md`, `examples/hex_consumer/` Phoenix adoption proof, and `verify-published` CI job. Phase 52.1 (inserted) fixed the Igniter committed-modules conflict in `verify-published`. Deferred: live CI E2E gate for REL-04 (resolves on next release cycle).
+**v1.8 Batches & Composition (Ongoing).** Phase 59 complete — Established the core Ecto data model for batch tracking and generalized the callback outbox.
 
 **v1.7 Worker Lifecycle & Safety — SHIPPED 2026-06-13.** All 4 phases complete (53-56), 14/14 plans, 507 tests, 0 failures. Zero new runtime dependencies. Shipped: crash-safe worker lifecycle hooks with wrapper-owned dispatch and `worker_hook` telemetry; soft `deadline:` storing `__deadline_at__` meta at enqueue with pre-run cancellation and Doctor warning; opt-in `record_output: true` via new `ObanPowertools.JobRecord` schema (dedicated `oban_powertools_job_records` table, `fetch_result/1`, Recorded Output card in `/ops/jobs` detail, Lifeline ephemeral prune); `redact: [:field]` at-rest PII removal after fingerprint via `new/2` override with UI disclosure and cron-path fix. Milestone audit `tech_debt` — 18/18 requirements satisfied; INT-01 (Doctor manifest) and INT-02 (cron+deadline path) deferred as non-blocking to v1.8.
 
@@ -226,6 +226,22 @@ Goal: make Oban Powertools predictable to install, configure, secure, and operat
 
 Delivered:
 - Stable install, upgrade, auth, redaction, display-policy, and optional dependency seams for host apps.
+- Native-first operator UX with the `/ops/jobs/oban` bridge kept explicitly narrower and read-only.
+- Repaired docs, example-host, first-session, native-only, bridge, and upgrade proof lanes that make public support truth enforceable.
+
+</details>
+
+## Evolution
+
+This document evolves at milestone boundaries and whenever the active milestone meaningfully changes.
+
+- Keep validated requirements and major constraints accurate as shipped behavior changes.
+- Prefer left-shifting prerequisite and support-truth work before broadening public capability claims.
+- Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
+
+---
+*Last updated: 2026-06-14 — v1.9 Batches & Composition milestone started*
+ptional dependency seams for host apps.
 - Native-first operator UX with the `/ops/jobs/oban` bridge kept explicitly narrower and read-only.
 - Repaired docs, example-host, first-session, native-only, bridge, and upgrade proof lanes that make public support truth enforceable.
 
