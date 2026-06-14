@@ -85,6 +85,8 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 - ✓ Output recording (`record_output: true`) — `ObanPowertools.JobRecord`, `oban_powertools_job_records` table, `fetch_result/1`, Recorded Output card in `/ops/jobs`, Lifeline ephemeral prune (`REC-01..05`) — v1.7 Phase 55
 - ✓ At-rest redaction (`redact: [:field]`) — `Map.drop` after fingerprint, `__redacted_fields__` meta, cron-path fix, UI disclosure + per-field overlay, docs-contract locked (`REDACT-01..04`) — v1.7 Phase 56
 - ✓ INT-01 fix: `oban_powertools_job_records` added to `@powertools_manifest` in Doctor — silent gap from Phase 55 closed, Doctor now detects missing output-recording table (`INT-01`) — v1.8 Phase 57
+- ✓ Batch progress execution engine — exactly-once progress tracking wired into worker lifecycle hooks (`BAT-03`) — v1.8 Phase 60
+- ✓ Batch callback outbox execution — completed/exhausted callbacks inserted when batch targets are met (`BAT-04`) — v1.8 Phase 60
 
 ### Active
 
@@ -154,7 +156,7 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 Version `v1.5` shipped on 2026-05-28. The native `/ops/jobs` shell now owns the full job lifecycle without leaning on the Oban Web bridge: operators browse jobs at `/ops/jobs/jobs` filtered by state/queue/worker/tags with URL-serialized filter state and `DisplayPolicy` redaction on args/meta; inspect full job detail; and retry/cancel/discard single jobs or bulk selections through the same Lifeline preview → reason → execute → audit pipeline, with a concurrent-modification guard and honest per-job bulk reporting. The new `ObanPowertools.Operator` module gives host code a typed, actor-attributed programmatic surface for the same single and bulk mutations, routed through the identical Lifeline pipeline and emitting `source: "api"` telemetry within the frozen low-cardinality contract. Milestone audit passed 6/6 requirements; full suite at 270 tests, 0 failures.
 
-**v1.8 Batches & Composition (Ongoing).** Phase 59 complete — Established the core Ecto data model for batch tracking and generalized the callback outbox.
+**v1.8 Batches & Composition (Ongoing).** Phases 59-60 complete — Established the core Ecto data model for batch tracking, then wired exactly-once progress tracking into worker hooks with completed/exhausted callback outbox enqueueing.
 
 **v1.7 Worker Lifecycle & Safety — SHIPPED 2026-06-13.** All 4 phases complete (53-56), 14/14 plans, 507 tests, 0 failures. Zero new runtime dependencies. Shipped: crash-safe worker lifecycle hooks with wrapper-owned dispatch and `worker_hook` telemetry; soft `deadline:` storing `__deadline_at__` meta at enqueue with pre-run cancellation and Doctor warning; opt-in `record_output: true` via new `ObanPowertools.JobRecord` schema (dedicated `oban_powertools_job_records` table, `fetch_result/1`, Recorded Output card in `/ops/jobs` detail, Lifeline ephemeral prune); `redact: [:field]` at-rest PII removal after fingerprint via `new/2` override with UI disclosure and cron-path fix. Milestone audit `tech_debt` — 18/18 requirements satisfied; INT-01 (Doctor manifest) and INT-02 (cron+deadline path) deferred as non-blocking to v1.8.
 
