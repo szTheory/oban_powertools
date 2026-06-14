@@ -69,7 +69,7 @@ Each task was committed atomically:
 1. **Task 1 RED: Add failing batch insert stream tests** - `55c06c0` (test)
 2. **Task 2 GREEN: Implement `Batch.insert_stream/2`** - `4724966` (feat)
 
-**Plan summary metadata:** pending docs commit
+**Plan summary metadata:** `c62ed1b` (docs)
 **Plan tracking metadata:** pending tracking commit
 
 ## Files Created/Modified
