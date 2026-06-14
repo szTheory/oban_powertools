@@ -19,6 +19,7 @@ defmodule ObanPowertools.TestRepo.Migrations.Phase59Tables do
       add :discard_count, :integer, null: false, default: 0
       add :cancelled_count, :integer, null: false, default: 0
       add :snooze_count, :integer, null: false, default: 0
+      add :completed_at, :utc_datetime_usec
 
       timestamps()
     end
