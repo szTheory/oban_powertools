@@ -52,14 +52,14 @@ defmodule ObanPowertools.Batch.Tracker do
 
   defp callback_batch_id(repo, %Oban.Job{meta: meta}) when is_map(meta) do
     cond do
-      batch_id = batch_id_from_meta(meta) ->
-        batch_id
-
       callback_id = callback_id_from_meta(meta) ->
         case repo.get(Callback, callback_id) do
           %Callback{batch_id: batch_id} when not is_nil(batch_id) -> batch_id
           _other -> nil
         end
+
+      batch_id = batch_id_from_meta(meta) ->
+        batch_id
 
       true ->
         nil

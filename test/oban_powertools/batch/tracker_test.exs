@@ -79,6 +79,24 @@ defmodule ObanPowertools.Batch.TrackerTest do
     end
   end
 
+  describe "record_callback_exhaustion/2" do
+    test "uses callback_id as the authoritative batch identity" do
+      target_batch = insert_batch!(status: "exhausted", total_count: 1, discard_count: 1)
+      other_batch = insert_batch!(status: "exhausted", total_count: 1, discard_count: 1)
+      callback = insert_callback!(target_batch)
+
+      job = %Oban.Job{
+        id: 21,
+        meta: %{"callback_id" => callback.id, "batch_id" => other_batch.id}
+      }
+
+      assert {:ok, :callback_failed} = Tracker.record_callback_exhaustion(TestRepo, job)
+
+      assert TestRepo.get!(Batch, target_batch.id).status == "callback_failed"
+      assert TestRepo.get!(Batch, other_batch.id).status == "exhausted"
+    end
+  end
+
   defp insert_batch!(attrs) do
     defaults = %{
       status: "executing",
@@ -91,6 +109,19 @@ defmodule ObanPowertools.Batch.TrackerTest do
 
     %Batch{}
     |> Batch.changeset(Map.merge(defaults, Map.new(attrs)))
+    |> TestRepo.insert!()
+  end
+
+  defp insert_callback!(batch) do
+    %Callback{}
+    |> Callback.changeset(%{
+      batch_id: batch.id,
+      event: "batch.exhausted",
+      dedupe_key: "batch.exhausted-#{batch.id}",
+      status: "pending",
+      payload: %{"batch_id" => batch.id},
+      attempts: 0
+    })
     |> TestRepo.insert!()
   end
 
