@@ -15,6 +15,7 @@ defmodule ObanPowertools.Batch do
     field(:discard_count, :integer, default: 0)
     field(:cancelled_count, :integer, default: 0)
     field(:snooze_count, :integer, default: 0)
+    field(:completed_at, :utc_datetime_usec)
 
     timestamps()
   end
@@ -27,7 +28,8 @@ defmodule ObanPowertools.Batch do
       :success_count,
       :discard_count,
       :cancelled_count,
-      :snooze_count
+      :snooze_count,
+      :completed_at
     ])
     |> validate_required([
       :status,
