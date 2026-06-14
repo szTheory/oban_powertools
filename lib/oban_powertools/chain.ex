@@ -8,6 +8,8 @@ defmodule ObanPowertools.Chain do
   alias ObanPowertools.JobRecord
   alias ObanPowertools.RuntimeConfig
 
+  @job_option_fields ~w(max_attempts priority scheduled_at tags replace unique)a
+
   defstruct name: nil, steps: []
 
   defmodule Step do
@@ -317,8 +319,56 @@ defmodule ObanPowertools.Chain do
       "meta" => Changeset.get_field(step.job, :meta) || %{},
       "requires_output" => step.requires_output?
     }
+    |> maybe_put("opts", job_opts_descriptor(step.job))
     |> maybe_put("args_builder", args_builder_descriptor(step.args_builder))
   end
+
+  defp job_opts_descriptor(%Changeset{} = job) do
+    @job_option_fields
+    |> Enum.reduce(%{}, fn field, opts ->
+      case Changeset.fetch_change(job, field) do
+        {:ok, value} -> maybe_put_job_option(opts, field, value)
+        :error -> opts
+      end
+    end)
+    |> case do
+      opts when map_size(opts) == 0 -> nil
+      opts -> opts
+    end
+  end
+
+  defp maybe_put_job_option(opts, field, value) do
+    if default_job_option?(field, value) do
+      opts
+    else
+      Map.put(opts, Atom.to_string(field), encode_job_option(value))
+    end
+  end
+
+  defp default_job_option?(:max_attempts, 20), do: true
+  defp default_job_option?(:priority, value) when value in [nil, 0], do: true
+  defp default_job_option?(:tags, []), do: true
+  defp default_job_option?(:replace, []), do: true
+  defp default_job_option?(:unique, value) when value in [nil, false], do: true
+  defp default_job_option?(_field, _value), do: false
+
+  defp encode_job_option(%DateTime{} = value), do: DateTime.to_iso8601(value)
+  defp encode_job_option(atom) when is_atom(atom), do: Atom.to_string(atom)
+
+  defp encode_job_option({state, fields}) when is_atom(state) and is_list(fields) do
+    %{
+      "state" => Atom.to_string(state),
+      "fields" => Enum.map(fields, &encode_job_option/1)
+    }
+  end
+
+  defp encode_job_option(list) when is_list(list), do: Enum.map(list, &encode_job_option/1)
+
+  defp encode_job_option(map) when is_map(map) do
+    Map.new(map, fn {key, value} -> {to_string(key), encode_job_option(value)} end)
+  end
+
+  defp encode_job_option(value), do: value
 
   defp args_builder_descriptor(nil), do: nil
 
@@ -382,11 +432,19 @@ defmodule ObanPowertools.Chain do
   defp module_from_worker_name(_worker), do: nil
 
   defp job_changeset(%Oban.Job{} = job) do
-    Oban.Job.new(job.args || %{},
-      worker: job.worker,
-      queue: job.queue || "default",
-      meta: job.meta || %{}
-    )
+    opts =
+      [
+        worker: job.worker,
+        queue: job.queue || "default",
+        meta: job.meta || %{},
+        max_attempts: job.max_attempts,
+        priority: job.priority,
+        scheduled_at: job.scheduled_at,
+        tags: job.tags
+      ]
+      |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+
+    Oban.Job.new(job.args || %{}, opts)
   end
 
   defp derived_step_name(nil), do: "start"

@@ -9,6 +9,8 @@ defmodule ObanPowertools.Chain.Progression do
   alias ObanPowertools.Callback
   alias ObanPowertools.Chain
 
+  @job_option_keys ~w(max_attempts priority scheduled_at tags replace unique)a
+
   def dispatch_callbacks(repo, opts \\ []) do
     now = Keyword.get(opts, :now, DateTime.utc_now())
     limit = Keyword.get(opts, :limit, 25)
@@ -177,13 +179,64 @@ defmodule ObanPowertools.Chain.Progression do
   end
 
   defp atomize_option_keys(opts) when is_map(opts) do
-    Enum.map(opts, fn
-      {key, value} when is_atom(key) -> {key, value}
-      {key, value} when is_binary(key) -> {String.to_existing_atom(key), value}
+    Enum.map(opts, fn {key, value} ->
+      key = option_key!(key)
+      {key, decode_option_value(key, value)}
     end)
   end
 
   defp atomize_option_keys(_opts), do: []
+
+  defp option_key!(key) when is_atom(key) and key in @job_option_keys, do: key
+
+  defp option_key!(key) when is_binary(key) do
+    key
+    |> String.to_existing_atom()
+    |> option_key!()
+  end
+
+  defp option_key!(key), do: raise(ArgumentError, "invalid chain job option #{inspect(key)}")
+
+  defp decode_option_value(:scheduled_at, value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, datetime, _offset} -> datetime
+      {:error, _reason} -> value
+    end
+  end
+
+  defp decode_option_value(:replace, replace) when is_list(replace) do
+    Enum.map(replace, &decode_replace_option/1)
+  end
+
+  defp decode_option_value(:unique, unique) when is_map(unique) do
+    Enum.map(unique, fn {key, value} ->
+      key = String.to_existing_atom(to_string(key))
+      {key, decode_unique_option(key, value)}
+    end)
+  end
+
+  defp decode_option_value(_key, value), do: value
+
+  defp decode_replace_option(%{"state" => state, "fields" => fields}) when is_list(fields) do
+    {String.to_existing_atom(to_string(state)), Enum.map(fields, &decode_atom/1)}
+  end
+
+  defp decode_replace_option(value), do: decode_atom(value)
+
+  defp decode_unique_option(key, values)
+       when key in [:fields, :keys, :states] and is_list(values) do
+    Enum.map(values, &decode_atom/1)
+  end
+
+  defp decode_unique_option(key, value) when key in [:states, :timestamp] and is_binary(value) do
+    decode_atom(value)
+  end
+
+  defp decode_unique_option(:period, "infinity"), do: :infinity
+  defp decode_unique_option(_key, value), do: value
+
+  defp decode_atom(value) when is_atom(value), do: value
+  defp decode_atom(value) when is_binary(value), do: String.to_existing_atom(value)
 
   defp resolve_args(repo, %{"args_builder" => %{} = builder}, payload) do
     upstream_job_id = fetch_payload!(payload, "upstream_job_id")

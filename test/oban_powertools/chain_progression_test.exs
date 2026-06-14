@@ -254,6 +254,46 @@ defmodule ObanPowertools.ChainProgressionTest do
       assert TestRepo.aggregate(Oban.Job, :count) == 1
     end
 
+    test "preserves downstream Oban options from chain descriptors" do
+      scheduled_at =
+        DateTime.utc_now()
+        |> DateTime.add(3_600, :second)
+        |> DateTime.truncate(:second)
+
+      chain =
+        FetchWorker.new(%{import_id: 1})
+        |> chain(
+          :parse,
+          ParseWorker.new(%{import_id: 1},
+            max_attempts: 3,
+            priority: 4,
+            scheduled_at: scheduled_at,
+            tags: ["Import", "Urgent"]
+          )
+        )
+
+      assert {:ok, %Chain.InsertResult{first_job_id: fetch_id}} =
+               Chain.insert(chain, TestRepo, name: "import:options")
+
+      fetch = TestRepo.get!(Oban.Job, fetch_id)
+      assert %{"step" => %{"opts" => opts}} = fetch.meta["chain_next_step"]
+      assert opts["max_attempts"] == 3
+      assert opts["priority"] == 4
+      assert opts["tags"] == ["import", "urgent"]
+      assert is_binary(opts["scheduled_at"])
+
+      assert {:ok, :tracked} = Tracker.record_progress(TestRepo, fetch, :success)
+      assert %{delivered: 1, failed: 0} = Progression.dispatch_callbacks(TestRepo)
+
+      parse = newest_job!()
+      assert parse.worker == inspect(ParseWorker)
+      assert parse.max_attempts == 3
+      assert parse.priority == 4
+      assert parse.tags == ["import", "urgent"]
+      assert parse.state == "scheduled"
+      assert DateTime.diff(parse.scheduled_at, scheduled_at, :second) == 0
+    end
+
     test "progresses the D-20 fetch parse write notify chain across repeated cycles" do
       chain =
         FetchWorker.new(%{import_id: 1})
