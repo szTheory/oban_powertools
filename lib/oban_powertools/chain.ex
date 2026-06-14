@@ -5,13 +5,15 @@ defmodule ObanPowertools.Chain do
 
   alias Ecto.Changeset
   alias ObanPowertools.Batch
+  alias ObanPowertools.JobRecord
+  alias ObanPowertools.RuntimeConfig
 
   defstruct name: nil, steps: []
 
   defmodule Step do
     @moduledoc false
 
-    defstruct [:name, :index, :worker, :job, :args_builder, :requires_output?]
+    defstruct [:name, :index, :worker, :worker_module, :job, :args_builder, :requires_output?]
   end
 
   defmodule InsertResult do
@@ -51,6 +53,30 @@ defmodule ObanPowertools.Chain do
   def chain(_seed, _step_name, next_job_or_worker, _opts)
       when is_list(next_job_or_worker) or is_struct(next_job_or_worker, __MODULE__),
       do: {:error, {:validation, :non_linear_chain}}
+
+  def fetch_upstream_result(%Oban.Job{} = job) do
+    RuntimeConfig.repo!()
+    |> fetch_upstream_result(job)
+  end
+
+  def fetch_upstream_result(upstream_job_id) when is_integer(upstream_job_id) do
+    RuntimeConfig.repo!()
+    |> fetch_upstream_result(upstream_job_id)
+  end
+
+  def fetch_upstream_result(repo, %Oban.Job{meta: meta}) do
+    case upstream_job_id_from_meta(meta) do
+      nil -> {:error, :missing_upstream_job_id}
+      upstream_job_id -> fetch_upstream_result(repo, upstream_job_id)
+    end
+  end
+
+  def fetch_upstream_result(repo, upstream_job_id) when is_integer(upstream_job_id) do
+    case JobRecord.fetch_record(repo, upstream_job_id) do
+      {:ok, %JobRecord{} = record} -> available_record_result(record)
+      {:error, :not_found} -> {:error, :output_unavailable}
+    end
+  end
 
   def from_list(entries, opts \\ [])
 
@@ -119,6 +145,7 @@ defmodule ObanPowertools.Chain do
          name: normalize_name(step_name),
          index: index,
          worker: worker_name(job),
+         worker_module: worker_module(job),
          job: job,
          args_builder: args_builder,
          requires_output?: not is_nil(args_builder)
@@ -138,6 +165,7 @@ defmodule ObanPowertools.Chain do
          name: normalize_name(step_name),
          index: index,
          worker: inspect(worker),
+         worker_module: worker,
          job: job,
          args_builder: args_builder,
          requires_output?: not is_nil(args_builder)
@@ -156,6 +184,7 @@ defmodule ObanPowertools.Chain do
        name: name,
        index: 0,
        worker: worker_name(seed),
+       worker_module: worker_module(seed),
        job: seed,
        args_builder: nil,
        requires_output?: false
@@ -176,7 +205,8 @@ defmodule ObanPowertools.Chain do
   end
 
   defp normalize_chain(%__MODULE__{steps: steps} = chain, opts) do
-    with {:ok, steps} <- validate_steps(steps) do
+    with {:ok, steps} <- validate_steps(steps),
+         :ok <- validate_output_dependencies(steps) do
       {:ok,
        %__MODULE__{
          chain
@@ -306,6 +336,22 @@ defmodule ObanPowertools.Chain do
 
   defp worker_name(%Changeset{} = changeset), do: Changeset.get_field(changeset, :worker)
 
+  defp worker_module(%Changeset{} = changeset) do
+    changeset
+    |> worker_name()
+    |> module_from_worker_name()
+  end
+
+  defp module_from_worker_name(worker) when is_atom(worker), do: worker
+
+  defp module_from_worker_name(worker) when is_binary(worker) do
+    Module.safe_concat([worker])
+  rescue
+    ArgumentError -> nil
+  end
+
+  defp module_from_worker_name(_worker), do: nil
+
   defp job_changeset(%Oban.Job{} = job) do
     Oban.Job.new(job.args || %{},
       worker: job.worker,
@@ -344,4 +390,84 @@ defmodule ObanPowertools.Chain do
 
   defp normalize_payload(list) when is_list(list), do: Enum.map(list, &normalize_payload/1)
   defp normalize_payload(value), do: value
+
+  defp upstream_job_id_from_meta(meta) when is_map(meta) do
+    Map.get(meta, "upstream_job_id") || Map.get(meta, :upstream_job_id)
+  end
+
+  defp upstream_job_id_from_meta(_meta), do: nil
+
+  defp available_record_result(%JobRecord{expires_at: expires_at, payload: payload}) do
+    case DateTime.compare(expires_at, DateTime.utc_now()) do
+      :lt -> {:error, :output_expired}
+      _not_expired -> {:ok, payload}
+    end
+  end
+
+  defp validate_output_dependencies(steps) do
+    steps
+    |> Enum.chunk_every(2, 1, :discard)
+    |> Enum.find_value(:ok, fn [previous, current] ->
+      if current.args_builder do
+        with :ok <- validate_args_builder(current.args_builder),
+             :ok <- validate_record_output(previous) do
+          false
+        else
+          {:error, reason} -> {:error, {:validation, reason}}
+        end
+      else
+        false
+      end
+    end)
+  end
+
+  defp validate_args_builder({module, function, extra_args}) when is_list(extra_args) do
+    with {:module, ^module} <- Code.ensure_loaded(module),
+         true <- function_exported?(module, :__powertools_chain_args_builder__, 0),
+         true <- module.__powertools_chain_args_builder__(),
+         true <- function_exported?(module, function, 2) do
+      :ok
+    else
+      {:error, _reason} -> {:error, {:unsafe_args_builder, module}}
+      false -> {:error, {:unsafe_args_builder, module}}
+    end
+    |> case do
+      :ok -> :ok
+      {:error, {:unsafe_args_builder, ^module}} = error -> error
+    end
+    |> validate_args_builder_function(module, function)
+  end
+
+  defp validate_args_builder({module, function, _extra_args}),
+    do: {:error, {:invalid_args_builder, {module, function}}}
+
+  defp validate_args_builder_function(:ok, _module, _function), do: :ok
+
+  defp validate_args_builder_function(
+         {:error, {:unsafe_args_builder, module}} = error,
+         module,
+         function
+       ) do
+    if Code.ensure_loaded?(module) and
+         function_exported?(module, :__powertools_chain_args_builder__, 0) and
+         module.__powertools_chain_args_builder__() == true and
+         not function_exported?(module, function, 2) do
+      {:error, {:invalid_args_builder, {module, function}}}
+    else
+      error
+    end
+  end
+
+  defp validate_record_output(%Step{worker_module: worker}) when is_atom(worker) do
+    if function_exported?(worker, :__powertools_output_recording__, 0) and
+         match?(%{record_output: true}, worker.__powertools_output_recording__()) do
+      :ok
+    else
+      {:error, {:record_output_required, worker}}
+    end
+  end
+
+  defp validate_record_output(%Step{worker: worker}) do
+    {:error, {:record_output_required, worker}}
+  end
 end

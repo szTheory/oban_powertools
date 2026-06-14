@@ -7,6 +7,7 @@ defmodule ObanPowertools.Chain.Progression do
 
   alias Ecto.Changeset
   alias ObanPowertools.Callback
+  alias ObanPowertools.Chain
 
   def dispatch_callbacks(repo, opts \\ []) do
     now = Keyword.get(opts, :now, DateTime.utc_now())
@@ -67,7 +68,7 @@ defmodule ObanPowertools.Chain.Progression do
   end
 
   defp dispatch_callback(repo, %Callback{} = row, now, oban) do
-    case insert_next_job(row, oban) do
+    case insert_next_job(repo, row, oban) do
       :ok ->
         mark_delivered(repo, row, now)
         :ok
@@ -87,30 +88,31 @@ defmodule ObanPowertools.Chain.Progression do
       {:error, caught}
   end
 
-  defp insert_next_job(%Callback{payload: %{"next_step" => nil}}, _oban), do: :ok
+  defp insert_next_job(_repo, %Callback{payload: %{"next_step" => nil}}, _oban), do: :ok
 
   defp insert_next_job(
+         repo,
          %Callback{
            payload: %{"next_step" => %{"step" => step, "remaining" => remaining}} = payload
          },
          oban
        )
        when is_map(step) and is_list(remaining) do
-    changeset = next_job_changeset(step, remaining, payload)
-
-    case do_oban_insert(oban, changeset) do
-      {:ok, _job} -> :ok
-      {:error, reason} -> {:error, reason}
+    with {:ok, changeset} <- next_job_changeset(repo, step, remaining, payload) do
+      case do_oban_insert(oban, changeset) do
+        {:ok, _job} -> :ok
+        {:error, reason} -> {:error, reason}
+      end
     end
   end
 
-  defp insert_next_job(_row, _oban), do: {:error, :invalid_next_step}
+  defp insert_next_job(_repo, _row, _oban), do: {:error, :invalid_next_step}
 
-  defp next_job_changeset(step, remaining, payload) do
+  defp next_job_changeset(repo, step, remaining, payload) do
     worker = fetch_descriptor!(step, "worker")
-    args = Map.get(step, "args") || %{}
     queue = Map.get(step, "queue") || "default"
     opts = Map.get(step, "opts") || %{}
+    args = resolve_args(repo, step, payload)
 
     meta =
       (Map.get(step, "meta") || %{})
@@ -129,7 +131,7 @@ defmodule ObanPowertools.Chain.Progression do
       |> atomize_option_keys()
       |> Keyword.merge(worker: worker, queue: queue, meta: meta)
 
-    Oban.Job.new(args, oban_opts)
+    {:ok, Oban.Job.new(args, oban_opts)}
   end
 
   defp fetch_descriptor!(map, key) do
@@ -162,6 +164,71 @@ defmodule ObanPowertools.Chain.Progression do
   end
 
   defp atomize_option_keys(_opts), do: []
+
+  defp resolve_args(repo, %{"args_builder" => %{} = builder}, payload) do
+    upstream_job_id = fetch_payload!(payload, "upstream_job_id")
+
+    with {:ok, upstream_payload} <- Chain.fetch_upstream_result(repo, upstream_job_id),
+         {:ok, module} <- builder_module(builder),
+         {:ok, function} <- builder_function(builder),
+         :ok <- safe_builder?(module),
+         {:ok, args} <-
+           apply_builder(module, function, upstream_payload, Map.get(builder, "extra_args") || []) do
+      args
+    else
+      {:error, reason} -> throw({:chain_args_builder_failed, reason})
+    end
+  end
+
+  defp resolve_args(_repo, step, _payload), do: Map.get(step, "args") || %{}
+
+  defp builder_module(%{"module" => module}) when is_binary(module) do
+    {:ok, Module.safe_concat([module])}
+  rescue
+    ArgumentError -> {:error, {:unsafe_args_builder, module}}
+  end
+
+  defp builder_module(%{"module" => module}) when is_atom(module), do: {:ok, module}
+  defp builder_module(_builder), do: {:error, :invalid_args_builder}
+
+  defp builder_function(%{"function" => function}) when is_binary(function) do
+    {:ok, String.to_existing_atom(function)}
+  rescue
+    ArgumentError -> {:error, {:invalid_args_builder, function}}
+  end
+
+  defp builder_function(%{"function" => function}) when is_atom(function), do: {:ok, function}
+  defp builder_function(_builder), do: {:error, :invalid_args_builder}
+
+  defp safe_builder?(module) do
+    if Code.ensure_loaded?(module) and
+         function_exported?(module, :__powertools_chain_args_builder__, 0) and
+         module.__powertools_chain_args_builder__() == true do
+      :ok
+    else
+      {:error, {:unsafe_args_builder, module}}
+    end
+  end
+
+  defp apply_builder(module, function, upstream_payload, extra_args) when is_list(extra_args) do
+    if function_exported?(module, function, 2) do
+      case apply(module, function, [upstream_payload, extra_args]) do
+        {:ok, args} when is_map(args) -> {:ok, args}
+        args when is_map(args) -> {:ok, args}
+        {:error, reason} -> {:error, reason}
+        other -> {:error, {:invalid_args_builder_return, other}}
+      end
+    else
+      {:error, {:invalid_args_builder, {module, function}}}
+    end
+  rescue
+    error -> {:error, error}
+  catch
+    kind, reason -> {:error, {kind, reason}}
+  end
+
+  defp apply_builder(module, function, _upstream_payload, _extra_args),
+    do: {:error, {:invalid_args_builder, {module, function}}}
 
   defp do_oban_insert(Oban, %Changeset{} = changeset), do: Oban.insert(changeset)
   defp do_oban_insert(oban, %Changeset{} = changeset), do: Oban.insert(oban, changeset)

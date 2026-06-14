@@ -9,7 +9,8 @@ defmodule ObanPowertools.ChainTest do
   defmodule FetchWorker do
     use ObanPowertools.Worker,
       queue: :default,
-      args: [import_id: :integer]
+      args: [import_id: :integer],
+      record_output: true
 
     @impl true
     def process(_job), do: {:ok, %{"path" => "imports/1.csv"}}
@@ -43,6 +44,8 @@ defmodule ObanPowertools.ChainTest do
   end
 
   defmodule ImportChainArgs do
+    use ObanPowertools.Chain.ArgsBuilder
+
     def parse(_job, import_id), do: %{"import_id" => import_id}
   end
 

@@ -53,7 +53,15 @@ defmodule ObanPowertools.ChainOutputTest do
   describe "fetch_upstream_result/2" do
     test "returns durable upstream payload for a job meta upstream reference" do
       upstream = insert_job!()
-      assert :ok = JobRecord.record(TestRepo, RecordingFetchWorker, upstream, %{"path" => "x.csv"}, [])
+
+      assert :ok =
+               JobRecord.record(
+                 TestRepo,
+                 RecordingFetchWorker,
+                 upstream,
+                 %{"path" => "x.csv"},
+                 []
+               )
 
       downstream = %Oban.Job{meta: %{"upstream_job_id" => upstream.id}}
 
@@ -69,7 +77,15 @@ defmodule ObanPowertools.ChainOutputTest do
 
     test "returns output_expired for expired recorded output" do
       upstream = insert_job!()
-      assert :ok = JobRecord.record(TestRepo, RecordingFetchWorker, upstream, %{"path" => "old.csv"}, [])
+
+      assert :ok =
+               JobRecord.record(
+                 TestRepo,
+                 RecordingFetchWorker,
+                 upstream,
+                 %{"path" => "old.csv"},
+                 []
+               )
 
       record = TestRepo.get_by!(JobRecord, oban_job_id: upstream.id)
 
@@ -109,10 +125,16 @@ defmodule ObanPowertools.ChainOutputTest do
       fetch = TestRepo.get!(Oban.Job, fetch_id)
 
       assert :ok =
-               JobRecord.record(TestRepo, RecordingFetchWorker, fetch, %{
-                 "path" => "imports/1.csv",
-                 "private" => "do-not-copy"
-               }, [])
+               JobRecord.record(
+                 TestRepo,
+                 RecordingFetchWorker,
+                 %{fetch | attempt: 1},
+                 %{
+                   "path" => "imports/1.csv",
+                   "private" => "do-not-copy"
+                 },
+                 []
+               )
 
       assert {:ok, :tracked} = Tracker.record_progress(TestRepo, fetch, :success)
       assert %{delivered: 1, failed: 0} = Progression.dispatch_callbacks(TestRepo)
@@ -163,6 +185,7 @@ defmodule ObanPowertools.ChainOutputTest do
   defp insert_job! do
     %{}
     |> Oban.Job.new(worker: inspect(RecordingFetchWorker), queue: :default)
+    |> Ecto.Changeset.change(attempt: 1)
     |> TestRepo.insert!()
   end
 

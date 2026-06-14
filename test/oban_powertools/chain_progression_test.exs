@@ -9,11 +9,13 @@ defmodule ObanPowertools.ChainProgressionTest do
   alias ObanPowertools.Callback
   alias ObanPowertools.Chain
   alias ObanPowertools.Chain.Progression
+  alias ObanPowertools.JobRecord
 
   defmodule FetchWorker do
     use ObanPowertools.Worker,
       queue: :default,
-      args: [import_id: :integer]
+      args: [import_id: :integer],
+      record_output: true
 
     @impl true
     def process(_job), do: {:ok, %{"path" => "imports/1.csv"}}
@@ -47,6 +49,8 @@ defmodule ObanPowertools.ChainProgressionTest do
   end
 
   defmodule ImportChainArgs do
+    use ObanPowertools.Chain.ArgsBuilder
+
     def parse(_job, import_id), do: %{"import_id" => import_id}
   end
 
@@ -210,6 +214,18 @@ defmodule ObanPowertools.ChainProgressionTest do
                Chain.insert(chain, TestRepo, name: "import:1")
 
       fetch = TestRepo.get!(Oban.Job, fetch_id)
+
+      assert :ok =
+               JobRecord.record(
+                 TestRepo,
+                 FetchWorker,
+                 %{fetch | attempt: 1},
+                 %{
+                   "path" => "imports/1.csv"
+                 },
+                 []
+               )
+
       assert {:ok, :tracked} = Tracker.record_progress(TestRepo, fetch, :success)
       assert %{delivered: 1, failed: 0} = Progression.dispatch_callbacks(TestRepo)
 
