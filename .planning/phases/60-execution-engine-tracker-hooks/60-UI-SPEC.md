@@ -75,7 +75,7 @@ Accent reserved for: Primary actions and active navigation indicators
 | Primary CTA | Retry Callback |
 | Empty state heading | No active batches |
 | Empty state body | There are no batch jobs currently processing. |
-| Error state | Callback failed to execute |
+| Error state | Callback failed to execute. Use the Lifeline tool to retry. |
 | Destructive confirmation | Cancel: Are you sure you want to cancel this batch? |
 
 ---
