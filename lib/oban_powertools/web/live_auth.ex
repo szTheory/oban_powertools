@@ -36,8 +36,16 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         "Permission: read-only. You can inspect the Powertools-native job list, but mutation controls stay disabled until you receive broader permission.",
       view_job_detail:
         "Permission: read-only. You can inspect this Powertools-native job detail, but mutation controls stay disabled until you receive broader permission.",
+      view_batches:
+        "Permission: read-only. You can inspect the Powertools-native batch list, but mutation controls stay disabled until you receive broader permission.",
+      view_batch_detail:
+        "Permission: read-only. You can inspect this Powertools-native batch detail, but mutation controls stay disabled until you receive broader permission.",
       retry_job:
         "Permission: read-only. You can inspect this Powertools-native job, but you do not have permission to retry it.",
+      retry_batch_jobs:
+        "Permission: read-only. You can inspect Powertools-native batch failures, but you do not have permission to retry failed jobs.",
+      retry_callback:
+        "Permission: read-only. You can inspect Powertools-native callback evidence, but you do not have permission to retry callbacks.",
       cancel_job:
         "Permission: read-only. You can inspect this Powertools-native job, but you do not have permission to cancel it.",
       discard_job:
@@ -57,7 +65,11 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       jobs:
         "Permission: read-only. Job list stays visible, but mutation controls stay disabled until you receive broader permission.",
       job_detail:
-        "Permission: read-only. Job detail stays visible, but retry, cancel, and discard controls stay disabled until you receive broader permission."
+        "Permission: read-only. Job detail stays visible, but retry, cancel, and discard controls stay disabled until you receive broader permission.",
+      batches:
+        "Permission: read-only. Powertools-native batch evidence stays visible, but failed-job and callback retry controls stay disabled until you receive broader permission.",
+      batch_detail:
+        "Permission: read-only. Powertools-native batch detail stays visible, but failed-job and callback retry controls stay disabled until you receive broader permission."
     }
 
     def on_mount(:default, _params, session, socket) do
