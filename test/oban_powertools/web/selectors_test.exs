@@ -9,6 +9,8 @@ defmodule ObanPowertools.Web.SelectorsTest do
     assert Selectors.audit_path([]) == "/ops/jobs/audit"
     assert Selectors.limiter_path([]) == "/ops/jobs/limiters"
     assert Selectors.cron_path([]) == "/ops/jobs/cron"
+    assert Selectors.batches_path([]) == "/ops/jobs/batches"
+    assert Selectors.batch_detail_path("batch-1") == "/ops/jobs/batches/batch-1"
   end
 
   test "drops nil and empty string values before encoding" do
@@ -16,6 +18,9 @@ defmodule ObanPowertools.Web.SelectorsTest do
       Selectors.lifeline_path([{"view", "active"}, {"incident_fingerprint", nil}, {"step", ""}])
 
     assert result == "/ops/jobs/lifeline?view=active"
+
+    assert Selectors.batches_path([{"status", "callback_failed"}, {"query", ""}]) ==
+             "/ops/jobs/batches?status=callback_failed"
   end
 
   test "returns bare path when no params survive filtering" do
@@ -30,6 +35,16 @@ defmodule ObanPowertools.Web.SelectorsTest do
     # Reversed order
     result2 = Selectors.lifeline_path([{"incident_fingerprint", "fp-123"}, {"view", "active"}])
     assert result2 == "/ops/jobs/lifeline?incident_fingerprint=fp-123&view=active"
+
+    result3 =
+      Selectors.batches_path([
+        {"status", "callback_failed"},
+        {"query", "billing"},
+        {"chain_only", "true"}
+      ])
+
+    assert result3 ==
+             "/ops/jobs/batches?status=callback_failed&query=billing&chain_only=true"
   end
 
   test "encodes delimiter-heavy values (: / ? # % space & =) so they decode back to the original binary" do
