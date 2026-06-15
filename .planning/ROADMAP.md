@@ -56,7 +56,7 @@
   3. Operator can view and retry stuck or dead callbacks to unblock seemingly hanging batches.
 **Plans**: 5 plans
 - [x] 62-01-PLAN.md — Create Wave 0 validation scaffold for batch UI, read model, and callback retry
-- [ ] 62-02-PLAN.md — Add batch routes, selectors, and permission copy
+- [x] 62-02-PLAN.md — Add batch routes, selectors, and permission copy
 - [ ] 62-03-PLAN.md — Build the `ObanPowertools.Batches` read model
 - [ ] 62-04-PLAN.md — Extend Lifeline with callback retry target support
 - [ ] 62-05-PLAN.md — Implement the native `BatchesLive` index/detail UI and recovery flows
@@ -69,4 +69,4 @@
 | 59. Schemas & Foundation | 2/2 | Complete    | 2026-06-14 |
 | 60. Execution Engine & Tracker Hooks | 3/3 | Complete    | 2026-06-14 |
 | 61. APIs (Batches & Chains) | 5/5 | Complete    | 2026-06-14 |
-| 62. Operations Console & Lifeline UI | 1/5 | In Progress|  |
+| 62. Operations Console & Lifeline UI | 2/5 | In Progress|  |
