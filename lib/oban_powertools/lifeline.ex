@@ -8,7 +8,7 @@ defmodule ObanPowertools.Lifeline do
   require Logger
 
   alias Ecto.Multi
-  alias ObanPowertools.{Audit, Auth, Explain, HostEscalation}
+  alias ObanPowertools.{Audit, Auth, Callback, Explain, HostEscalation}
   alias ObanPowertools.Lifeline.{ArchiveRun, Heartbeat, Incident, RepairPreview, TargetType}
   alias ObanPowertools.Telemetry
   alias ObanPowertools.Workflow
@@ -20,7 +20,7 @@ defmodule ObanPowertools.Lifeline do
   @heartbeat_retention_seconds 6 * 60 * 60
   @preview_retention_seconds 7 * 24 * 60 * 60
   @audit_retention_seconds 90 * 24 * 60 * 60
-  @supported_actions ~w(job_rescue job_retry job_cancel job_discard workflow_step_retry workflow_step_cancel workflow_request_cancel)
+  @supported_actions ~w(job_rescue job_retry job_cancel job_discard workflow_step_retry workflow_step_cancel workflow_request_cancel callback_retry)
 
   def refresh_heartbeats(repo, executors, opts \\ []) when is_list(executors) do
     now = Keyword.get(opts, :now, DateTime.utc_now())
@@ -631,6 +631,9 @@ defmodule ObanPowertools.Lifeline do
         {"workflow", "workflow_request_cancel"} ->
           build_workflow_preview(repo, incident, target_id, action, now)
 
+        {"callback", "callback_retry"} ->
+          build_callback_preview(repo, incident, target_id, action, now)
+
         _ ->
           {:error, :unsupported_target}
       end
@@ -809,6 +812,71 @@ defmodule ObanPowertools.Lifeline do
        "diagnosis_state" => story.diagnosis || "needs_review",
        "evidence_completeness" => evidence_completeness_for_preview(incident)
      })}
+  end
+
+  defp build_callback_preview(repo, incident, target_id, action, now) do
+    callback = repo.get!(Callback, target_id)
+
+    if callback_retryable?(callback, now) do
+      before_state = callback_before_state(callback)
+      after_state = callback_after_state(callback)
+      preview_token = Ecto.UUID.generate()
+
+      incident_fingerprint =
+        (incident && incident.incident_fingerprint) || "callback:#{callback.id}"
+
+      preview = %{
+        incident_id: incident && incident.id,
+        incident_class: (incident && incident.incident_class) || "callback_retry",
+        incident_fingerprint: incident_fingerprint,
+        plan_hash:
+          plan_hash(
+            action,
+            "callback",
+            target_id,
+            before_state,
+            incident && incident.health_state
+          ),
+        preview_token: preview_token,
+        action: action,
+        target_type: "callback",
+        target_id: to_string(target_id),
+        health_state: incident && incident.health_state,
+        status: "ready",
+        affected_counts: %{"callbacks" => 1},
+        before_snapshot: before_state,
+        after_snapshot: after_state,
+        evidence: %{
+          "previewed_at" => now,
+          "preview_status" => "ready",
+          "preview_token" => preview_token
+        },
+        reason_required: true,
+        expires_at: DateTime.add(now, 7 * 24 * 60 * 60, :second),
+        metadata: %{
+          "summary" => repair_summary(action, "callback", target_id),
+          "risk" => "high",
+          "resource" => %{"type" => "callback", "id" => to_string(target_id)},
+          "batch" => %{"id" => callback.batch_id},
+          "callback" => %{
+            "event" => callback.event,
+            "dedupe_key" => callback.dedupe_key,
+            "attempts" => callback.attempts,
+            "status" => callback.status,
+            "last_error" => callback.last_error
+          },
+          "chain" => callback_chain_context(callback)
+        }
+      }
+
+      {:ok,
+       put_preview_runbook_context(preview, %{
+         "diagnosis_state" => "callback_retryable",
+         "evidence_completeness" => evidence_completeness_for_preview(incident)
+       })}
+    else
+      {:error, :callback_not_retryable}
+    end
   end
 
   defp resolve_incident(repo, attrs) do
@@ -1039,6 +1107,19 @@ defmodule ObanPowertools.Lifeline do
            before_state,
            preview.health_state
          )}
+
+      "callback" ->
+        callback = repo.get!(Callback, preview.target_id)
+        before_state = callback_before_state(callback)
+
+        {:ok,
+         plan_hash(
+           preview.action,
+           "callback",
+           preview.target_id,
+           before_state,
+           preview.health_state
+         )}
     end
   end
 
@@ -1082,6 +1163,8 @@ defmodule ObanPowertools.Lifeline do
           preview.metadata
           |> Kernel.||(%{})
           |> Map.put("reason", trimmed_reason)
+          |> Map.put("before", preview.before_snapshot)
+          |> Map.put("after", preview.after_snapshot)
           |> Map.put(
             "runbook_context",
             runbook_context_for_attempt(preview, "consumed", trimmed_reason)
@@ -1096,6 +1179,8 @@ defmodule ObanPowertools.Lifeline do
         "plan_hash" => preview_record.plan_hash,
         "reason" => trimmed_reason,
         "affected_counts" => preview_record.affected_counts,
+        "before" => preview_record.before_snapshot,
+        "after" => preview_record.after_snapshot,
         "result" => "ok",
         "runbook_context" =>
           runbook_context_for_attempt(preview_record, "succeeded", trimmed_reason)
@@ -1222,6 +1307,24 @@ defmodule ObanPowertools.Lifeline do
           reason: String.trim(reason),
           source: "lifeline"
         )
+
+      {"callback", "callback_retry"} ->
+        callback = repo.get!(Callback, preview.target_id)
+
+        if callback_retryable?(callback, now) do
+          callback
+          |> Callback.changeset(%{
+            status: "pending",
+            claimed_at: nil,
+            claimed_by: nil,
+            lease_expires_at: nil,
+            delivered_at: nil,
+            last_error: nil
+          })
+          |> repo.update()
+        else
+          {:error, :callback_not_retryable}
+        end
     end
   end
 
@@ -1293,6 +1396,74 @@ defmodule ObanPowertools.Lifeline do
   defp repair_summary("workflow_request_cancel", "workflow", target_id),
     do:
       "Request cancel for workflow #{target_id}. Idle work may stop immediately while in-flight work can still finish."
+
+  defp repair_summary("callback_retry", "callback", target_id),
+    do: "Retry callback #{target_id} from the native Lifeline repair flow."
+
+  defp callback_retryable?(%Callback{status: "failed"}, _now), do: true
+
+  defp callback_retryable?(
+         %Callback{status: "claimed", lease_expires_at: %DateTime{} = expires},
+         now
+       ),
+       do: DateTime.compare(expires, now) != :gt
+
+  defp callback_retryable?(_callback, _now), do: false
+
+  defp callback_before_state(%Callback{} = callback) do
+    %{
+      "callback_id" => callback.id,
+      "batch_id" => callback.batch_id,
+      "event" => callback.event,
+      "dedupe_key" => callback.dedupe_key,
+      "status" => callback.status,
+      "payload" => callback.payload || %{},
+      "attempts" => callback.attempts,
+      "available_at" => callback.available_at,
+      "claimed_at" => callback.claimed_at,
+      "claimed_by" => callback.claimed_by,
+      "lease_expires_at" => callback.lease_expires_at,
+      "delivered_at" => callback.delivered_at,
+      "last_error" => callback.last_error
+    }
+  end
+
+  defp callback_after_state(%Callback{} = callback) do
+    %{
+      "callback_id" => callback.id,
+      "batch_id" => callback.batch_id,
+      "event" => callback.event,
+      "dedupe_key" => callback.dedupe_key,
+      "status" => "pending",
+      "payload" => callback.payload || %{},
+      "attempts" => callback.attempts,
+      "available_at" => callback.available_at,
+      "claimed_at" => nil,
+      "claimed_by" => nil,
+      "lease_expires_at" => nil,
+      "delivered_at" => nil,
+      "last_error" => nil
+    }
+  end
+
+  defp callback_chain_context(%Callback{payload: payload}) when is_map(payload) do
+    %{
+      "chain_id" => Map.get(payload, "chain_id") || Map.get(payload, :chain_id),
+      "chain_step_name" =>
+        Map.get(payload, "chain_step_name") || Map.get(payload, :chain_step_name),
+      "chain_step_index" =>
+        Map.get(payload, "chain_step_index") || Map.get(payload, :chain_step_index),
+      "chain_step_count" =>
+        Map.get(payload, "chain_step_count") || Map.get(payload, :chain_step_count),
+      "upstream_job_id" =>
+        Map.get(payload, "upstream_job_id") || Map.get(payload, :upstream_job_id),
+      "next_step" => Map.get(payload, "next_step") || Map.get(payload, :next_step)
+    }
+    |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+    |> Map.new()
+  end
+
+  defp callback_chain_context(_callback), do: %{}
 
   defp fetch_value!(attrs, key) do
     Map.get(attrs, key) || Map.get(attrs, Atom.to_string(key)) ||

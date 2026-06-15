@@ -10,12 +10,13 @@ defmodule ObanPowertools.Lifeline.TargetType do
     - `"workflow"` → `:workflow`
     - `"workflow_step"` → `:workflow_step`
     - `"step"` → `:step`
+    - `"callback"` → `:callback`
 
   ## Current producer set
 
-  The current Lifeline repair preview and workflow handoff producers emit only
-  `"job"`, `"workflow"`, and `"workflow_step"`. The `"step"` value is included
-  for forward compatibility per Phase 41 D-07.
+  The current Lifeline repair preview and workflow handoff producers emit
+  `"job"`, `"workflow"`, `"workflow_step"`, and `"callback"`. The `"step"`
+  value is included for forward compatibility per Phase 41 D-07.
 
   ## Unknown values raise
 
@@ -37,4 +38,5 @@ defmodule ObanPowertools.Lifeline.TargetType do
   def to_atom("workflow"), do: :workflow
   def to_atom("workflow_step"), do: :workflow_step
   def to_atom("step"), do: :step
+  def to_atom("callback"), do: :callback
 end
