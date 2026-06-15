@@ -40,7 +40,8 @@ defmodule ObanPowertools.Web.Selectors do
     audit: "/ops/jobs/audit",
     limiters: "/ops/jobs/limiters",
     cron: "/ops/jobs/cron",
-    jobs: "/ops/jobs/jobs"
+    jobs: "/ops/jobs/jobs",
+    batches: "/ops/jobs/batches"
   }
 
   @doc """
@@ -84,4 +85,10 @@ defmodule ObanPowertools.Web.Selectors do
 
   @doc "Returns the path for a specific job detail page."
   def job_detail_path(id), do: "#{@canonical_paths.jobs}/#{id}"
+
+  @doc "Returns the `/ops/jobs/batches` path with the given params encoded."
+  def batches_path(params \\ []), do: encode(:batches, params)
+
+  @doc "Returns the path for a specific batch detail page."
+  def batch_detail_path(id), do: "#{@canonical_paths.batches}/#{id}"
 end
