@@ -53,6 +53,10 @@ defmodule Mix.Tasks.ObanPowertools.InstallTest do
     assert source =~
              "rename table(:oban_powertools_workflow_callback_outbox), to: table(:oban_powertools_callbacks)"
 
+    assert source =~ "alter table(:oban_powertools_callbacks)"
+    assert source =~ "add :batch_id, :uuid"
+    assert source =~ "modify :workflow_id, :uuid, null: true"
+    assert source =~ "create index(:oban_powertools_callbacks, [:batch_id])"
     assert source =~ "create table(:oban_powertools_batches, primary_key: false)"
     assert source =~ "create table(:oban_powertools_batch_jobs, primary_key: false)"
     assert source =~ "create table(:oban_powertools_heartbeats, primary_key: false)"
