@@ -71,6 +71,7 @@ defmodule Mix.Tasks.ObanPowertools.InstallTest do
     assert source =~ "add :insert_failed_chunk, :integer"
     assert source =~ "add :insert_failure, :map, null: false, default: %{}"
     assert source =~ "add :insert_failed_at, :utc_datetime_usec"
+    assert source =~ "add :completed_at, :utc_datetime_usec"
     assert source =~ "create index(:oban_powertools_batches, [:status])"
     assert source =~ "create index(:oban_powertools_batches, [:name])"
   end

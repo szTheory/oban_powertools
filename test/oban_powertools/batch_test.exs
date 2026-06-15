@@ -25,6 +25,8 @@ defmodule ObanPowertools.BatchTest do
     end
 
     test "accepts valid params" do
+      completed_at = DateTime.utc_now()
+
       changeset =
         Batch.changeset(%Batch{}, %{
           status: "completed",
@@ -32,10 +34,12 @@ defmodule ObanPowertools.BatchTest do
           success_count: 8,
           discard_count: 1,
           cancelled_count: 0,
-          snooze_count: 1
+          snooze_count: 1,
+          completed_at: completed_at
         })
 
       assert changeset.valid?
+      assert get_change(changeset, :completed_at) == completed_at
     end
 
     test "accepts durable insertion metadata" do
@@ -107,7 +111,8 @@ defmodule ObanPowertools.BatchTest do
               "insert_chunk_count",
               "insert_failed_chunk",
               "insert_failure",
-              "insert_failed_at"
+              "insert_failed_at",
+              "completed_at"
             ]
           ]
         )
@@ -122,7 +127,8 @@ defmodule ObanPowertools.BatchTest do
                  "insert_chunk_count",
                  "insert_failed_chunk",
                  "insert_failure",
-                 "insert_failed_at"
+                 "insert_failed_at",
+                 "completed_at"
                ])
     end
   end
