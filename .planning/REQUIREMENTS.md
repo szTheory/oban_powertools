@@ -17,10 +17,10 @@ Provide durable, Ecto-native batch processing and workflow composition primitive
 - [x] **CHN-02**: State propagation support, allowing a sequential job to access the durable output of its upstream predecessor.
 
 ### Batch Operations UI (BUI)
-- [ ] **BUI-01**: Native `/ops/jobs/batches` LiveView page showing batch progress, statuses, and failed member inspection.
-- [ ] **BUI-02**: Operator visibility into explainable blocked states (e.g., waiting on batch completion or upstream chain).
-- [ ] **BUI-03**: Lifeline-routed bulk recovery action to safely "Retry failed in batch".
-- [ ] **BUI-04**: Operator visibility and recovery actions for "stuck/dead callbacks" to prevent silent hanging batches.
+- [x] **BUI-01**: Native `/ops/jobs/batches` LiveView page showing batch progress, statuses, and failed member inspection.
+- [x] **BUI-02**: Operator visibility into explainable blocked states (e.g., waiting on batch completion or upstream chain).
+- [x] **BUI-03**: Lifeline-routed bulk recovery action to safely "Retry failed in batch".
+- [x] **BUI-04**: Operator visibility and recovery actions for "stuck/dead callbacks" to prevent silent hanging batches.
 
 ## Future Requirements (deferred)
 
