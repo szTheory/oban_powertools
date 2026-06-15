@@ -407,19 +407,19 @@ end)
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
 | A1 | Exact final module name `ObanPowertools.Web.BatchesLive` is recommended, not locked by existing code. [ASSUMED] | Recommended Project Structure | Planner can choose a different module name if it updates routes/tests consistently. |
-| A2 | Callback retry should reset eligible callback rows to `pending`, clear claim/delivery failure fields as appropriate, and preserve attempts/audit evidence. [ASSUMED] | Architecture Patterns | Lifeline design may choose a narrower mutation shape after implementation tests. |
+| A2 | Callback retry should reset eligible callback rows to `pending`, clear claim/lease/delivery failure fields as appropriate, preserve attempts, and preserve audit evidence through Lifeline. [RESOLVED] | Architecture Patterns | Implement exactly as resolved below; do not narrow the mutation shape during implementation. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **What exact callback retry mutation should Lifeline perform?**
+1. **RESOLVED: What exact callback retry mutation should Lifeline perform?**
    - What we know: callback rows have `status`, `attempts`, `available_at`, claim/lease fields, `delivered_at`, and `last_error`. [VERIFIED: `callback.ex`]
-   - What's unclear: whether retry should increment attempts during preview, reset attempts, or only reset status/lease/error on execute. [ASSUMED]
-   - Recommendation: planner should add a first task to design and test callback Lifeline semantics before UI wiring. [VERIFIED: `62-CONTEXT.md`]
+   - Resolution: preview does not mutate the callback and does not increment or reset `attempts`. Execute runs through `Lifeline.execute_repair/5`, resets eligible failed or expired-lease claimed callbacks to `status: "pending"`, clears claim/lease/delivery failure fields including `claimed_at`, `claimed_by`, `lease_expires_at`, `delivered_at`, and `last_error`, preserves `attempts`, consumes the preview, and writes `lifeline.repair_executed` audit evidence with callback resource identity and prior-state metadata. If the dispatcher requires immediate availability, set `available_at` consistently with the existing pending-callback retry path rather than inventing a new callback state. [RESOLVED: `62-CONTEXT.md`; VERIFIED: `callback.ex`; VERIFIED: `lifeline.ex`]
+   - Planning implication: Plan 62-04 must implement this as the Lifeline callback target/action, and Plan 62-05 must only invoke it through Lifeline. [RESOLVED]
 
-2. **How much audit history should batch detail show in Phase 62?**
+2. **RESOLVED: How much audit history should batch detail show in Phase 62?**
    - What we know: Lifeline writes `lifeline.repair_executed` audit events with resource type/id and metadata. [VERIFIED: `lifeline.ex`]
-   - What's unclear: whether batch detail should aggregate job-level retry audit events by batch or only show directly linked callback/job evidence. [ASSUMED]
-   - Recommendation: show audit evidence where directly findable by resource id; do not invent synthetic audit rows. [VERIFIED: `62-CONTEXT.md`]
+   - Resolution: batch detail should show directly findable audit evidence by resource id, including callback resource id, failed member job id, and batch id only where persisted audit evidence is directly keyed that way. It must not aggregate unrelated job-level retry events into synthetic batch audit history, invent audit rows, or imply evidence that was not persisted. [RESOLVED: `62-CONTEXT.md`; VERIFIED: `lifeline.ex`]
+   - Planning implication: `ObanPowertools.Batches.get/3` supplies only persisted, directly findable manual intervention/audit evidence, and `BatchesLive` renders that evidence without fabricating history. [RESOLVED]
 
 ## Environment Availability
 
