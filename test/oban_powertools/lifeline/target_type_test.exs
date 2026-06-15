@@ -8,6 +8,7 @@ defmodule ObanPowertools.Lifeline.TargetTypeTest do
     assert TargetType.to_atom("workflow") == :workflow
     assert TargetType.to_atom("workflow_step") == :workflow_step
     assert TargetType.to_atom("step") == :step
+    assert TargetType.to_atom("callback") == :callback
   end
 
   test "raises FunctionClauseError for unknown target_type strings" do
