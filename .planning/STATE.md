@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: milestone
 status: ready_to_plan
-last_updated: "2026-06-15T02:43:51.791Z"
+last_updated: "2026-06-15T02:44:33.652Z"
 progress:
   total_phases: 4
   completed_phases: 3
@@ -62,7 +62,7 @@ Plan: Not started
 ## Session Continuity
 
 - **Last Action:** Phase 62 planned and plan-checker verification passed
-- **Next Action:** Execute Phase 62 using -execute-phase 62
+- **Next Action:** Execute Phase 62 using $gsd-execute-phase 62
 - **Active Context:** Phase 62 has 5 verified plans across 3 waves: Wave 0 validation scaffold, Wave 1 routes/auth plus read model plus Lifeline callback retry, and Wave 2 BatchesLive UI/recovery flows. Plan checker passed after revision; BUI-01 through BUI-04 and CONTEXT decisions D-01 through D-19 are covered.
 
 ## Decisions
