@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: milestone
 status: ready_to_plan
-last_updated: "2026-06-15T03:17:23.955Z"
+last_updated: "2026-06-16T20:49:34.649Z"
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 15
-  completed_plans: 15
+  total_phases: 5
+  completed_phases: 5
+  total_plans: 16
+  completed_plans: 16
   percent: 100
 ---
 
@@ -18,15 +18,15 @@ progress:
 
 **Core Value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
 
-**Current Focus:** Phase 62 — operations console & lifeline ui
+**Current Focus:** Phase 63 — Close gap: runtime callback and chain progression consumers
 
 ## Current Position
 
-Phase: 62
+Phase: 63
 Plan: Not started
 | Phase | Plan | Status | Progress |
 |-------|------|--------|----------|
-| 59. Schemas & Foundation | None | 🟡 Planning | `[          ] 0%` |
+| 63. Close gap | 63-01 | 🔵 Planned | `[          ] 0%` |
 
 ## Performance Metrics
 
@@ -48,6 +48,10 @@ Plan: Not started
 
 ## Accumulated Context
 
+### Roadmap Evolution
+
+- Phase 63 added: Close gap: runtime callback and chain progression consumers
+
 ### Architectural Decisions
 
 - Dedicated `batches` / `batch_jobs` / `callbacks` tables (not overloading `oban_jobs` meta).
@@ -66,9 +70,9 @@ Plan: Not started
 
 ## Session Continuity
 
-- **Last Action:** Phase 62 planned and plan-checker verification passed
-- **Next Action:** Execute Phase 62 using $gsd-execute-phase 62
-- **Active Context:** Phase 62 has 5 verified plans across 3 waves: Wave 0 validation scaffold, Wave 1 routes/auth plus read model plus Lifeline callback retry, and Wave 2 BatchesLive UI/recovery flows. Plan checker passed after revision; BUI-01 through BUI-04 and CONTEXT decisions D-01 through D-19 are covered.
+- **Last Action:** Completed Phase 63-01-PLAN.md
+- **Next Action:** Plan Phase 64 or evaluate milestone.
+- **Active Context:** Phase 63 was added as a closure phase after the v1.8 milestone audit found runtime callback and chain progression consumers missing.
 
 ## Decisions
 
@@ -85,3 +89,5 @@ Plan: Not started
 - Chain output handoff reads upstream payloads through `JobRecord.fetch_record/2` so expiry can be enforced before returning payloads.
 - Output-dependent chain args builders must opt in with `ObanPowertools.Chain.ArgsBuilder` and expose the persisted arity-2 function.
 - Chain progression builds downstream args only from the builder return value; upstream payloads are never automatically merged into job args.
+- Uses state.conf.repo for reliable polling execution in test environments without ETS initialization overhead.
+- Implemented try/rescue boundary around dispatch rows to prevent poison pill callbacks from crashing the polling loop and inducing a denial of service.

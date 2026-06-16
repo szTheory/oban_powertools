@@ -70,3 +70,13 @@
 | 60. Execution Engine & Tracker Hooks | 3/3 | Complete    | 2026-06-14 |
 | 61. APIs (Batches & Chains) | 5/5 | Complete    | 2026-06-14 |
 | 62. Operations Console & Lifeline UI | 5/5 | Complete   | 2026-06-15 |
+
+### Phase 63: Close gap: runtime callback and chain progression consumers
+
+**Goal:** Implement the runtime Oban Plugin (`ObanPowertools.Plugin.CallbackDispatcher`) to continuously poll and invoke callback consumers.
+**Requirements**: BAT-04, CHN-01, CHN-02
+**Depends on:** Phase 62
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] 63-01-PLAN.md — Build robust callback polling and dispatch test suite and implement/harden the CallbackDispatcher Plugin
