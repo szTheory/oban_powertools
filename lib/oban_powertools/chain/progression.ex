@@ -69,7 +69,8 @@ defmodule ObanPowertools.Chain.Progression do
     end
   end
 
-  defp dispatch_callback(repo, %Callback{} = row, now, oban) do
+  @doc false
+  def dispatch_callback(repo, %Callback{} = row, now, oban) do
     case insert_next_job(repo, row, oban) do
       :ok ->
         mark_delivered(repo, row, now)
@@ -325,7 +326,7 @@ defmodule ObanPowertools.Chain.Progression do
         attempts: row.attempts + 1,
         available_at: DateTime.add(now, 30, :second),
         lease_expires_at: nil,
-        last_error: inspect(reason)
+        last_error: String.slice(inspect(reason), 0, 255)
       })
     )
   end

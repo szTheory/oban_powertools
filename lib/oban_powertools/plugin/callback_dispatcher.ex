@@ -78,6 +78,10 @@ defmodule ObanPowertools.Plugin.CallbackDispatcher do
             exception ->
               mark_failed(repo, row, now, Exception.message(exception))
               %{acc | failed: acc.failed + 1}
+          catch
+            kind, reason ->
+              mark_failed(repo, row, now, inspect({kind, reason}))
+              %{acc | failed: acc.failed + 1}
           end
         end)
 
@@ -155,11 +159,13 @@ defmodule ObanPowertools.Plugin.CallbackDispatcher do
     ObanPowertools.Workflow.Runtime.dispatch_callback(repo, row, now)
   end
 
-  defp mark_failed(repo, row, _now, error) do
+  defp mark_failed(repo, row, now, error) do
     row
     |> Callback.changeset(%{
       status: "failed",
-      last_error: String.slice(error, 0, 500),
+      attempts: row.attempts + 1,
+      available_at: DateTime.add(now, 30, :second),
+      last_error: String.slice(error, 0, 255),
       lease_expires_at: nil
     })
     |> repo.update()

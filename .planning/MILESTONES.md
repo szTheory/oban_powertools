@@ -1,5 +1,45 @@
 # Milestones
 
+## v1.9 Batches & Composition
+
+- **Status:** Shipped 2026-06-16
+- **Phases:** 59-63 (5 phases)
+- **Plans:** 16
+- **Timeline:** 2026-06-14 → 2026-06-16 (2 days)
+- **Requirements:** 10/10 satisfied (BAT-01..04, CHN-01..02, BUI-01..04)
+- **Test suite:** Full suite passing (583 tests, 0 failures)
+- **Audit:** `tech_debt` — all requirements satisfied; non-blocking metadata and docs drift
+
+### Delivered
+
+Provided durable, Ecto-native batch processing and workflow composition primitives (linear chains) with Lifeline-routed recovery and native inspection UI.
+
+- **Schemas & Foundation (BAT-01):** Dedicated `batches`, `batch_jobs`, and `callbacks` tables.
+- **Execution Engine & Tracker Hooks (BAT-03, BAT-04):** Exactly-once progress tracking wired transactionally into worker lifecycle hooks. Execution of `completed` and `exhausted` callbacks via the callback outbox when batch targets are met. Includes runtime `CallbackDispatcher` plugin.
+- **APIs (BAT-02, CHN-01, CHN-02):** `Batch.insert_stream/2` API for safely enqueuing massive batches via chunked inserts. Ergonomic DSL for linear Chains mapping sequentially to the outbox. State propagation support allowing downstream jobs to access durable upstream output.
+- **Operations Console & Lifeline UI (BUI-01..04):** Native `/ops/jobs/batches` LiveView page with batch progress and blocked state visibility. Lifeline-routed bulk recovery action to safely retry failed jobs in a batch or stuck callbacks.
+
+---
+
+## v1.8 Integration Fixes
+
+- **Status:** Shipped 2026-06-14
+- **Phases:** 57-58 (2 phases)
+- **Plans:** 2
+- **Timeline:** 2026-06-13 → 2026-06-14 (2 days)
+- **Requirements:** 2/2 satisfied (INT-01, INT-02)
+- **Test suite:** Full suite passing (15 targeted integration tests)
+- **Audit:** `passed` — all requirements satisfied, integration gaps closed
+
+### Delivered
+
+Closed the two non-blocking integration gaps deferred from the v1.7 audit before expanding capability.
+
+- **Doctor manifest fix (INT-01):** Added `oban_powertools_job_records` to `@powertools_manifest` so Doctor correctly detects missing output-recording tables.
+- **Cron deadline injection (INT-02):** Injected `__deadline_at__` meta into the cron enqueue path for `deadline:`-configured Powertools workers. Ensured metadata correctly composes with `__redacted_fields__` without side-effects on plain Oban workers.
+
+---
+
 ## v1.7 Worker Lifecycle & Safety
 
 - **Status:** Shipped 2026-06-13

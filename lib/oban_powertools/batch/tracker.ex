@@ -219,13 +219,16 @@ defmodule ObanPowertools.Batch.Tracker do
          now
        )
        when is_map(meta) do
+    normalized_meta = normalize_meta(meta)
+
     with %{
            "chain_id" => chain_id,
            "chain_step_name" => step_name,
            "chain_step_index" => step_index,
-           "chain_step_count" => step_count,
-           "chain_next_step" => next_step
-         } <- normalize_meta(meta) do
+           "chain_step_count" => step_count
+         } <- normalized_meta do
+      next_step = Map.get(normalized_meta, "chain_next_step")
+
       %Callback{}
       |> Callback.changeset(%{
         batch_id: batch_id,

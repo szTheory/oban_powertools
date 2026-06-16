@@ -1,0 +1,109 @@
+---
+phase: "60"
+plan: "01"
+type: execute
+wave: 1
+depends_on: []
+files_modified:
+  - lib/oban_powertools/batch.ex
+  - lib/mix/tasks/oban_powertools.install.ex
+  - test/support/migrations/7_phase_59_tables.exs
+autonomous: true
+requirements:
+  - BAT-03
+  - BAT-04
+must_haves:
+  truths:
+    - "Worker exactly-once tracking properly sets the batch completed_at timestamp."
+  artifacts:
+    - path: "lib/oban_powertools/batch.ex"
+      provides: "Batch schema"
+  key_links: []
+---
+
+<objective>
+Update the schemas and migrations to include the `completed_at` field on `oban_powertools_batches`.
+Purpose: The `completed_at` timestamp is explicitly required as a race-condition guard when evaluating batch targets.
+Output: Modified schemas and updated generators.
+</objective>
+
+<execution_context>
+@$HOME/.gemini/get-shit-done/workflows/execute-plan.md
+@$HOME/.gemini/get-shit-done/templates/summary.md
+</execution_context>
+
+<context>
+@.planning/PROJECT.md
+@.planning/ROADMAP.md
+@.planning/STATE.md
+@.planning/phases/60-execution-engine-tracker-hooks/60-CONTEXT.md
+</context>
+
+<tasks>
+
+<task type="auto">
+  <name>Task 1: Add completed_at field to Batch schema</name>
+  <files>lib/oban_powertools/batch.ex</files>
+  <read_first>
+    - lib/oban_powertools/batch.ex
+  </read_first>
+  <action>
+    Add `field(:completed_at, :utc_datetime_usec)` to the schema `oban_powertools_batches` below the `snooze_count` field. Add `:completed_at` to the `cast` list in `changeset/2`. DO NOT add it to `validate_required`.
+  </action>
+  <verify>
+    <automated>mix test</automated>
+  </verify>
+  <done>
+    - `lib/oban_powertools/batch.ex` contains `field(:completed_at, :utc_datetime_usec)`.
+    - `:completed_at` is in the `cast` arguments.
+  </done>
+</task>
+
+<task type="auto">
+  <name>Task 2: Update migrations for completed_at</name>
+  <files>lib/mix/tasks/oban_powertools.install.ex, test/support/migrations/7_phase_59_tables.exs</files>
+  <read_first>
+    - lib/mix/tasks/oban_powertools.install.ex
+    - test/support/migrations/7_phase_59_tables.exs
+  </read_first>
+  <action>
+    In `lib/mix/tasks/oban_powertools.install.ex`, locate the `setup_batch_migrations` function. Inside the `create table(:oban_powertools_batches)` block, add `add :completed_at, :utc_datetime_usec` below `add :snooze_count`.
+    Apply the exact same addition to `test/support/migrations/7_phase_59_tables.exs` in its `create table(:oban_powertools_batches)` block.
+  </action>
+  <verify>
+    <automated>mix ecto.setup</automated>
+  </verify>
+  <done>
+    - `lib/mix/tasks/oban_powertools.install.ex` contains `add :completed_at, :utc_datetime_usec` within `oban_powertools_batches`.
+    - `test/support/migrations/7_phase_59_tables.exs` contains `add :completed_at, :utc_datetime_usec` within `oban_powertools_batches`.
+    - `mix ecto.setup` passes successfully without errors.
+  </done>
+</task>
+
+</tasks>
+
+<threat_model>
+## Trust Boundaries
+
+| Boundary | Description |
+|----------|-------------|
+| Database Schema | Structure governing state boundaries |
+
+## STRIDE Threat Register
+
+| Threat ID | Category | Component | Disposition | Mitigation Plan |
+|-----------|----------|-----------|-------------|-----------------|
+| T-60-01   | Tampering | Batch counts | accept | This plan only sets up the schema; race condition mitigation occurs in Tracker logic. |
+</threat_model>
+
+<verification>
+`mix test` passes without compilation errors.
+</verification>
+
+<success_criteria>
+The `completed_at` field exists on the `Batch` schema and migrations.
+</success_criteria>
+
+<output>
+Create `.planning/phases/60-execution-engine-tracker-hooks/60-01-SUMMARY.md` when done
+</output>

@@ -49,7 +49,11 @@ defmodule ObanPowertools.ControlPlane do
   end
 
   def workflow_status(%{diagnosis: diagnosis}) when is_binary(diagnosis) do
-    workflow_status(%{diagnosis: String.to_atom(diagnosis)})
+    try do
+      workflow_status(%{diagnosis: String.to_existing_atom(diagnosis)})
+    rescue
+      ArgumentError -> %{operator_status: :blocked, diagnosis: :unknown}
+    end
   end
 
   def workflow_status(%{state: state}) when state in [:completed, "completed"] do

@@ -430,7 +430,10 @@ defmodule ObanPowertools.Cron do
   end
 
   defp maybe_insert_job(_repo, _entry, _args, %{decision: "skipped"}, _now), do: {:ok, nil}
-  defp maybe_insert_job(_repo, _entry, _args, %{decision: "queued_follow_up"}, _now), do: {:ok, nil}
+
+  defp maybe_insert_job(_repo, _entry, _args, %{decision: "queued_follow_up"}, _now),
+    do: {:ok, nil}
+
   defp maybe_insert_job(_repo, _entry, _args, %{decision: "duplicate"}, _now), do: {:ok, nil}
 
   defp maybe_insert_job(repo, entry, args, _decision, now) do

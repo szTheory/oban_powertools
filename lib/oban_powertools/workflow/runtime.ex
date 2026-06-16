@@ -743,9 +743,6 @@ defmodule ObanPowertools.Workflow.Runtime do
     limit = Keyword.get(opts, :limit, 25)
     lease_seconds = Keyword.get(opts, :lease_seconds, 30)
 
-    handler =
-      Keyword.get(opts, :handler) || RuntimeConfig.workflow_callback_handler!(required: true)
-
     dispatcher_id =
       Keyword.get(opts, :dispatcher_id) ||
         "runtime:#{node()}:#{System.get_env("USER") || "unknown"}"
@@ -753,6 +750,18 @@ defmodule ObanPowertools.Workflow.Runtime do
     rows = claim_callbacks(repo, now, dispatcher_id, lease_seconds, limit)
 
     Enum.reduce(rows, %{delivered: 0, failed: 0}, fn row, acc ->
+      case dispatch_callback(repo, row, now) do
+        :ok -> %{acc | delivered: acc.delivered + 1}
+        {:error, _reason} -> %{acc | failed: acc.failed + 1}
+      end
+    end)
+  end
+
+  @doc false
+  def dispatch_callback(repo, row, now) do
+    handler = RuntimeConfig.workflow_callback_handler!(required: true)
+
+    try do
       case handler.handle_workflow_callback(row.payload) do
         :ok ->
           repo.update!(
@@ -765,7 +774,7 @@ defmodule ObanPowertools.Workflow.Runtime do
             })
           )
 
-          %{acc | delivered: acc.delivered + 1}
+          :ok
 
         {:error, reason} ->
           repo.update!(
@@ -778,9 +787,35 @@ defmodule ObanPowertools.Workflow.Runtime do
             })
           )
 
-          %{acc | failed: acc.failed + 1}
+          {:error, reason}
       end
-    end)
+    rescue
+      error ->
+        repo.update!(
+          Callback.changeset(row, %{
+            status: "failed",
+            attempts: row.attempts + 1,
+            available_at: DateTime.add(now, 30, :second),
+            lease_expires_at: nil,
+            last_error: inspect(error)
+          })
+        )
+
+        {:error, error}
+    catch
+      kind, reason ->
+        repo.update!(
+          Callback.changeset(row, %{
+            status: "failed",
+            attempts: row.attempts + 1,
+            available_at: DateTime.add(now, 30, :second),
+            lease_expires_at: nil,
+            last_error: inspect({kind, reason})
+          })
+        )
+
+        {:error, {kind, reason}}
+    end
   end
 
   def reconcile_workflow(repo, workflow_id, now \\ DateTime.utc_now()) do
