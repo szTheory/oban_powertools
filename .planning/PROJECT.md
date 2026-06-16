@@ -245,7 +245,7 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-06-14 — Phase 61 APIs (Batches & Chains) complete; Phase 62 operations console next*
+*Last updated: 2026-06-16 — Phase 63 (Close gap: runtime callback and chain progression consumers) complete*
 ptional dependency seams for host apps.
 - Native-first operator UX with the `/ops/jobs/oban` bridge kept explicitly narrower and read-only.
 - Repaired docs, example-host, first-session, native-only, bridge, and upgrade proof lanes that make public support truth enforceable.
@@ -261,4 +261,5 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-06-14 — Phase 61 APIs (Batches & Chains) complete; Phase 62 operations console next*
+*Last updated: 2026-06-16 — Phase 63 (Close gap: runtime callback and chain progression consumers) complete*
+1 APIs (Batches & Chains) complete; Phase 62 operations console next*
