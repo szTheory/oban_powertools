@@ -215,6 +215,78 @@ defmodule ObanPowertools.Web.JobsLiveTest do
   end
 
   # ---------------------------------------------------------------------------
+  # Test 6b: Filters by JSON args/meta
+  # ---------------------------------------------------------------------------
+
+  test "filters by args/meta JSON", %{conn: conn} do
+    insert_job!(worker: "MyApp.Worker1", queue: :default, args: %{"user_id" => 123}, meta: %{"batch_id" => 1})
+    insert_job!(worker: "MyApp.Worker2", queue: :default, args: %{"user_id" => 456}, meta: %{"batch_id" => 2})
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_jobs]}
+      )
+
+    {:ok, view, _html} = live(conn, "/ops/jobs/jobs?state=available")
+
+    html =
+      view
+      |> form("form[phx-change=filter]",
+        filter: %{queue: "", worker: "", tags: "", args: "{\"user_id\": 123}", meta: ""}
+      )
+      |> render_change()
+
+    assert_patch(view, "/ops/jobs/jobs?state=available&args=%7B%22user_id%22%3A123%7D")
+    assert html =~ "Worker1"
+    refute html =~ "Worker2"
+
+    html =
+      view
+      |> form("form[phx-change=filter]",
+        filter: %{queue: "", worker: "", tags: "", args: "", meta: "{\"batch_id\": 2}"}
+      )
+      |> render_change()
+
+    assert_patch(view, "/ops/jobs/jobs?state=available&meta=%7B%22batch_id%22%3A2%7D")
+    assert html =~ "Worker2"
+    refute html =~ "Worker1"
+  end
+
+  # ---------------------------------------------------------------------------
+  # Test 6c: Invalid JSON args/meta blocks filter application
+  # ---------------------------------------------------------------------------
+
+  test "invalid JSON args/meta blocks filter application and shows error", %{conn: conn} do
+    insert_job!(worker: "MyApp.Worker1", queue: :default)
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_jobs]}
+      )
+
+    {:ok, view, _html} = live(conn, "/ops/jobs/jobs?state=available")
+
+    html =
+      view
+      |> form("form[phx-change=filter]",
+        filter: %{queue: "", worker: "", tags: "", args: "{invalid", meta: ""}
+      )
+      |> render_change()
+
+    assert html =~ "Invalid JSON"
+    assert html =~ "border-red-500"
+
+    html =
+      view
+      |> form("form[phx-change=filter]",
+        filter: %{queue: "", worker: "", tags: "", args: "", meta: "[1,2,"}
+      )
+      |> render_change()
+
+    assert html =~ "Invalid JSON"
+  end
+
+  # ---------------------------------------------------------------------------
   # Test 7: Navigates state via tab click
   # ---------------------------------------------------------------------------
 
@@ -759,6 +831,7 @@ defmodule ObanPowertools.Web.JobsLiveTest do
 
       # Disclosure header must appear
       assert html =~ "Fields redacted at enqueue"
+
       # Comma-joined atom-presentation form (D-13/D-17/UI-SPEC) — locked joined form, not separate assertions
       assert html =~ ":ssn, :token"
     end

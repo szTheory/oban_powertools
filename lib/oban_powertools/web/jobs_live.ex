@@ -48,6 +48,14 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           # Dead render (conn.params is %Plug.Conn.Unfetched{} regardless of URL query string),
           # or live phase with state param present — build filter and load jobs.
           filter = filter_from_params(params)
+          
+          socket =
+            socket
+            |> assign(:args_input, Map.get(params, "args", ""))
+            |> assign(:args_error, nil)
+            |> assign(:meta_input, Map.get(params, "meta", ""))
+            |> assign(:meta_error, nil)
+
           {:noreply, load_jobs(socket, filter)}
       end
     end
@@ -69,10 +77,16 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     def handle_event(
           "filter",
-          %{"filter" => %{"queue" => q, "worker" => w, "tags" => tags_str}},
+          %{"filter" => filter_params},
           socket
         ) do
       filter = socket.assigns.filter
+      q = Map.get(filter_params, "queue")
+      w = Map.get(filter_params, "worker")
+      tags_str = Map.get(filter_params, "tags")
+      args_str = Map.get(filter_params, "args", "")
+      meta_str = Map.get(filter_params, "meta", "")
+
       queue = if q == "", do: nil, else: q
       worker = if w == "", do: nil, else: w
 
@@ -83,12 +97,40 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           str -> str |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
         end
 
-      new_filter = %{filter | queue: queue, worker: worker, tags: tags, page: 1}
+      args_res = validate_json_input(args_str)
+      meta_res = validate_json_input(meta_str)
 
-      {:noreply,
-       socket
-       |> assign(:selected_jobs, MapSet.new())
-       |> push_patch(to: Selectors.jobs_path(filter_path(new_filter)))}
+      case {args_res, meta_res} do
+        {{:error, _}, _} ->
+          {:noreply,
+           assign(socket,
+             args_input: args_str,
+             args_error: "Invalid JSON",
+             meta_input: meta_str,
+             meta_error: if(elem(meta_res, 0) == :error, do: "Invalid JSON")
+           )}
+
+        {_, {:error, _}} ->
+          {:noreply,
+           assign(socket,
+             args_input: args_str,
+             args_error: nil,
+             meta_input: meta_str,
+             meta_error: "Invalid JSON"
+           )}
+
+        {{:ok, args}, {:ok, meta}} ->
+          new_filter = %{filter | queue: queue, worker: worker, tags: tags, args: args, meta: meta, page: 1}
+
+          {:noreply,
+           socket
+           |> assign(:args_input, args_str)
+           |> assign(:args_error, nil)
+           |> assign(:meta_input, meta_str)
+           |> assign(:meta_error, nil)
+           |> assign(:selected_jobs, MapSet.new())
+           |> push_patch(to: Selectors.jobs_path(filter_path(new_filter)))}
+      end
     end
 
     def handle_event("toggle_job", %{"id" => id_str}, socket) do
@@ -581,7 +623,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 name="filter[queue]"
                 value={@filter.queue || ""}
                 placeholder="All queues"
-                class="mt-1 rounded border px-3 py-2 text-sm"
+                class="mt-1 rounded border px-3 py-2 text-sm border-gray-300"
               />
             </div>
             <div>
@@ -591,7 +633,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 name="filter[worker]"
                 value={@filter.worker || ""}
                 placeholder="All workers"
-                class="mt-1 rounded border px-3 py-2 text-sm"
+                class="mt-1 rounded border px-3 py-2 text-sm border-gray-300"
               />
             </div>
             <div>
@@ -601,8 +643,32 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 name="filter[tags]"
                 value={if @filter.tags, do: Enum.join(@filter.tags, ","), else: ""}
                 placeholder="Any tag"
-                class="mt-1 rounded border px-3 py-2 text-sm"
+                class="mt-1 rounded border px-3 py-2 text-sm border-gray-300"
               />
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-zinc-700">Args (JSON)</label>
+              <input
+                type="text"
+                name="filter[args]"
+                value={@args_input}
+                placeholder={"e.g. {\"id\": 1}"}
+                phx-debounce="blur"
+                class={"mt-1 rounded border px-3 py-2 text-sm " <> if(@args_error, do: "border-red-500", else: "border-gray-300")}
+              />
+              <p :if={@args_error} class="mt-1 text-xs text-red-600"><%= @args_error %></p>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-zinc-700">Meta (JSON)</label>
+              <input
+                type="text"
+                name="filter[meta]"
+                value={@meta_input}
+                placeholder={"e.g. {\"batch_id\": 1}"}
+                phx-debounce="blur"
+                class={"mt-1 rounded border px-3 py-2 text-sm " <> if(@meta_error, do: "border-red-500", else: "border-gray-300")}
+              />
+              <p :if={@meta_error} class="mt-1 text-xs text-red-600"><%= @meta_error %></p>
             </div>
           </div>
         </form>
@@ -788,7 +854,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           {"state", to_string(filter.state)},
           {"queue", filter.queue},
           {"worker", filter.worker},
-          {"tags", if(filter.tags, do: Enum.join(filter.tags, ","))}
+          {"tags", if(filter.tags, do: Enum.join(filter.tags, ","))},
+          {"args", if(filter.args, do: Jason.encode!(filter.args))},
+          {"meta", if(filter.meta, do: Jason.encode!(filter.meta))}
         ])
       else
         Selectors.jobs_path([])
@@ -811,6 +879,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> assign(:reason, "")
       |> assign(:error_message, nil)
       |> assign(:success_message, nil)
+      |> assign(:args_input, "")
+      |> assign(:args_error, nil)
+      |> assign(:meta_input, "")
+      |> assign(:meta_error, nil)
       |> assign(:back_path, Selectors.jobs_path([]))
       |> assign(
         :read_only?,
@@ -873,9 +945,28 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         queue: Map.get(params, "queue"),
         worker: Map.get(params, "worker"),
         tags: tags,
+        args: decode_json_param(Map.get(params, "args")),
+        meta: decode_json_param(Map.get(params, "meta")),
         page: page,
         page_size: %Jobs{}.page_size
       }
+    end
+
+    defp decode_json_param(nil), do: nil
+    defp decode_json_param(""), do: nil
+    defp decode_json_param(str) do
+      case Jason.decode(str) do
+        {:ok, decoded} -> decoded
+        {:error, _} -> nil
+      end
+    end
+
+    defp validate_json_input(""), do: {:ok, nil}
+    defp validate_json_input(str) do
+      case Jason.decode(str) do
+        {:ok, decoded} -> {:ok, decoded}
+        {:error, _} -> {:error, :invalid}
+      end
     end
 
     defp filter_path(filter) do
@@ -884,6 +975,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         {"queue", filter.queue},
         {"worker", filter.worker},
         {"tags", if(filter.tags, do: Enum.join(filter.tags, ","))},
+        {"args", if(filter.args, do: Jason.encode!(filter.args))},
+        {"meta", if(filter.meta, do: Jason.encode!(filter.meta))},
         {"page", if(filter.page > 1, do: to_string(filter.page))}
       ]
     end
