@@ -5,6 +5,22 @@ defmodule ObanPowertools.Operator do
   """
 
   alias ObanPowertools.Lifeline
+  alias ObanPowertools.Jobs
+
+  @doc """
+  Lists jobs matching the given filters.
+  Filters can be a map, keyword list, or a `%ObanPowertools.Jobs{}` struct.
+  """
+  def list(repo, filters \\ %{}, opts \\ []) do
+    filters =
+      case filters do
+        %Jobs{} = struct -> struct
+        map when is_map(map) -> struct(Jobs, map)
+        kw when is_list(kw) -> struct(Jobs, kw)
+      end
+
+    Jobs.list(repo, filters, opts)
+  end
 
   @doc """
   Retries a job from its current state, routing through the native repair flow.

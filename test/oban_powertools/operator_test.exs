@@ -9,6 +9,56 @@ defmodule ObanPowertools.OperatorTest do
     :ok
   end
 
+  describe "list/3" do
+    test "delegates to Jobs.list and supports map filters" do
+      job1 = insert_job!("executing")
+      job2 = insert_job!("available")
+
+      result = Operator.list(repo(), %{state: "executing"})
+      assert length(result) == 1
+      assert hd(result).id == job1.id
+    end
+
+    test "supports keyword list filters" do
+      job1 = insert_job!("retryable")
+      _job2 = insert_job!("available")
+
+      result = Operator.list(repo(), state: "retryable")
+      assert length(result) == 1
+      assert hd(result).id == job1.id
+    end
+
+    test "supports struct filters directly" do
+      job1 = insert_job!("executing")
+      _job2 = insert_job!("available")
+
+      filters = %ObanPowertools.Jobs{state: "executing"}
+      result = Operator.list(repo(), filters)
+      assert length(result) == 1
+      assert hd(result).id == job1.id
+    end
+
+    test "supports args and meta filtering" do
+      %{"tenant_id" => "123"}
+      |> Oban.Job.new(
+        worker: "Example.Worker",
+        queue: :default,
+        meta: %{"executor_id" => "some-executor"}
+      )
+      |> Changeset.change(state: "available")
+      |> repo().insert!()
+
+      result = Operator.list(repo(), %{args: %{"tenant_id" => "123"}})
+      assert length(result) == 1
+
+      result_meta = Operator.list(repo(), %{meta: %{"executor_id" => "some-executor"}})
+      assert length(result_meta) == 1
+
+      result_empty = Operator.list(repo(), %{args: %{"tenant_id" => "999"}})
+      assert result_empty == []
+    end
+  end
+
   test "retry_job mutates the job and emits telemetry with source: api" do
     job = insert_job!("executing")
     actor = %{id: "operator-1", permissions: [:preview_repair, :execute_repair]}
