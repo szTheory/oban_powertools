@@ -955,17 +955,22 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp decode_json_param(nil), do: nil
     defp decode_json_param(""), do: nil
     defp decode_json_param(str) do
-      case Jason.decode(str) do
-        {:ok, decoded} -> decoded
-        {:error, _} -> nil
+      case Jason.decode(String.trim(str)) do
+        {:ok, decoded} when is_map(decoded) -> decoded
+        _ -> nil
       end
     end
 
     defp validate_json_input(""), do: {:ok, nil}
     defp validate_json_input(str) do
-      case Jason.decode(str) do
-        {:ok, decoded} -> {:ok, decoded}
-        {:error, _} -> {:error, :invalid}
+      str = String.trim(str)
+      if str == "" do
+        {:ok, nil}
+      else
+        case Jason.decode(str) do
+          {:ok, decoded} when is_map(decoded) -> {:ok, decoded}
+          _ -> {:error, :invalid}
+        end
       end
     end
 
