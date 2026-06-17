@@ -1,27 +1,31 @@
 defmodule PhoenixHost.Repo.Migrations.ObanPowertoolsJobRecords do
   use Ecto.Migration
+  @disable_ddl_transaction true
 
   def change do
     create table(:oban_powertools_job_records, primary_key: false) do
-      add :id, :uuid, primary_key: true
-      add :oban_job_id, :bigint
-      add :worker, :string, null: false
-      add :attempt, :integer, null: false, default: 1
-      add :status, :string, null: false, default: "ok"
-      add :payload, :map, null: false, default: %{}
-      add :payload_bytes, :integer, null: false, default: 0
-      add :retention, :string, null: false, default: "standard"
-      add :redacted, :boolean, null: false, default: false
-      add :summary, :string
-      add :recorded_at, :utc_datetime_usec, null: false
-      add :expires_at, :utc_datetime_usec, null: false
+      add(:id, :uuid, primary_key: true)
+      add(:oban_job_id, :bigint)
+      add(:worker, :string, null: false)
+      add(:attempt, :integer, null: false, default: 1)
+      add(:status, :string, null: false, default: "ok")
+      add(:payload, :map, null: false, default: %{})
+      add(:payload_bytes, :integer, null: false, default: 0)
+      add(:retention, :string, null: false, default: "standard")
+      add(:redacted, :boolean, null: false, default: false)
+      add(:summary, :string)
+      add(:recorded_at, :utc_datetime_usec, null: false)
+      add(:expires_at, :utc_datetime_usec, null: false)
 
       timestamps(updated_at: false)
     end
 
-    create unique_index(:oban_powertools_job_records, [:oban_job_id, :attempt])
-    create index(:oban_powertools_job_records, [:worker])
-    create index(:oban_powertools_job_records, [:status])
-    create index(:oban_powertools_job_records, [:expires_at])
+    create(
+      unique_index(:oban_powertools_job_records, [:oban_job_id, :attempt], concurrently: true)
+    )
+
+    create(index(:oban_powertools_job_records, [:worker], concurrently: true))
+    create(index(:oban_powertools_job_records, [:status], concurrently: true))
+    create(index(:oban_powertools_job_records, [:expires_at], concurrently: true))
   end
 end

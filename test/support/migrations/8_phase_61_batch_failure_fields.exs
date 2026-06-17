@@ -1,5 +1,6 @@
 defmodule ObanPowertools.TestRepo.Migrations.Phase61BatchFailureFields do
   use Ecto.Migration
+  @disable_ddl_transaction true
 
   def change do
     alter table(:oban_powertools_batches) do

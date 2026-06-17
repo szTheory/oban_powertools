@@ -341,6 +341,7 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       "oban_powertools_limiter_history_facts",
       timestamp: migration_timestamp(15),
       body: """
+        @disable_ddl_transaction true
         def change do
           create table(:oban_powertools_limiter_history_facts, primary_key: false) do
             add :id, :uuid, primary_key: true
@@ -355,8 +356,8 @@ defmodule Mix.Tasks.ObanPowertools.Install do
             timestamps(updated_at: false)
           end
 
-          create index(:oban_powertools_limiter_history_facts, [:resource_name, :occurred_at])
-          create index(:oban_powertools_limiter_history_facts, [:event_type])
+          create index(:oban_powertools_limiter_history_facts, [:resource_name, :occurred_at], concurrently: true)
+          create index(:oban_powertools_limiter_history_facts, [:event_type], concurrently: true)
         end
       """
     )
@@ -390,6 +391,7 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       "oban_powertools_workflows",
       timestamp: migration_timestamp(20),
       body: """
+        @disable_ddl_transaction true
         def change do
           create table(:oban_powertools_workflows, primary_key: false) do
             add :id, :uuid, primary_key: true
@@ -413,8 +415,8 @@ defmodule Mix.Tasks.ObanPowertools.Install do
             timestamps()
           end
 
-          create unique_index(:oban_powertools_workflows, [:name])
-          create index(:oban_powertools_workflows, [:state])
+          create unique_index(:oban_powertools_workflows, [:name], concurrently: true)
+          create index(:oban_powertools_workflows, [:state], concurrently: true)
         end
       """
     )
@@ -423,6 +425,7 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       "oban_powertools_workflow_steps",
       timestamp: migration_timestamp(21),
       body: """
+        @disable_ddl_transaction true
         def change do
           create table(:oban_powertools_workflow_steps, primary_key: false) do
             add :id, :uuid, primary_key: true
@@ -456,10 +459,10 @@ defmodule Mix.Tasks.ObanPowertools.Install do
             timestamps()
           end
 
-          create unique_index(:oban_powertools_workflow_steps, [:workflow_id, :step_name])
-          create index(:oban_powertools_workflow_steps, [:state])
-          create index(:oban_powertools_workflow_steps, [:job_id])
-          create index(:oban_powertools_workflow_steps, [:nested_workflow_id])
+          create unique_index(:oban_powertools_workflow_steps, [:workflow_id, :step_name], concurrently: true)
+          create index(:oban_powertools_workflow_steps, [:state], concurrently: true)
+          create index(:oban_powertools_workflow_steps, [:job_id], concurrently: true)
+          create index(:oban_powertools_workflow_steps, [:nested_workflow_id], concurrently: true)
         end
       """
     )
@@ -678,6 +681,7 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       "oban_powertools_batches_and_callbacks",
       timestamp: migration_timestamp(26),
       body: """
+        @disable_ddl_transaction true
         def change do
           rename table(:oban_powertools_workflow_callback_outbox), to: table(:oban_powertools_callbacks)
 
@@ -686,7 +690,7 @@ defmodule Mix.Tasks.ObanPowertools.Install do
             modify :workflow_id, :uuid, null: true
           end
 
-          create index(:oban_powertools_callbacks, [:batch_id])
+          create index(:oban_powertools_callbacks, [:batch_id], concurrently: true)
 
           create table(:oban_powertools_batches, primary_key: false) do
             add :id, :uuid, primary_key: true
@@ -707,8 +711,8 @@ defmodule Mix.Tasks.ObanPowertools.Install do
             timestamps()
           end
 
-          create index(:oban_powertools_batches, [:status])
-          create index(:oban_powertools_batches, [:name])
+          create index(:oban_powertools_batches, [:status], concurrently: true)
+          create index(:oban_powertools_batches, [:name], concurrently: true)
 
           create table(:oban_powertools_batch_jobs, primary_key: false) do
             add :id, :uuid, primary_key: true
@@ -719,8 +723,8 @@ defmodule Mix.Tasks.ObanPowertools.Install do
             timestamps()
           end
 
-          create unique_index(:oban_powertools_batch_jobs, [:batch_id, :job_id])
-          create index(:oban_powertools_batch_jobs, [:job_id])
+          create unique_index(:oban_powertools_batch_jobs, [:batch_id, :job_id], concurrently: true)
+          create index(:oban_powertools_batch_jobs, [:job_id], concurrently: true)
         end
       """
     )
@@ -833,6 +837,7 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       "oban_powertools_archive_runs",
       timestamp: migration_timestamp(33),
       body: """
+        @disable_ddl_transaction true
         def change do
           create table(:oban_powertools_archive_runs, primary_key: false) do
             add :id, :uuid, primary_key: true
@@ -852,10 +857,10 @@ defmodule Mix.Tasks.ObanPowertools.Install do
             timestamps()
           end
 
-          create index(:oban_powertools_archive_runs, [:run_type])
-          create index(:oban_powertools_archive_runs, [:status])
-          create index(:oban_powertools_archive_runs, [:retention_class])
-          create index(:oban_powertools_archive_runs, [:started_at])
+          create index(:oban_powertools_archive_runs, [:run_type], concurrently: true)
+          create index(:oban_powertools_archive_runs, [:status], concurrently: true)
+          create index(:oban_powertools_archive_runs, [:retention_class], concurrently: true)
+          create index(:oban_powertools_archive_runs, [:started_at], concurrently: true)
         end
       """
     )
@@ -902,6 +907,7 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       "oban_powertools_job_records",
       timestamp: migration_timestamp(40),
       body: """
+        @disable_ddl_transaction true
         def change do
           create table(:oban_powertools_job_records, primary_key: false) do
             add :id, :uuid, primary_key: true
@@ -920,10 +926,10 @@ defmodule Mix.Tasks.ObanPowertools.Install do
             timestamps(updated_at: false)
           end
 
-          create unique_index(:oban_powertools_job_records, [:oban_job_id, :attempt])
-          create index(:oban_powertools_job_records, [:worker])
-          create index(:oban_powertools_job_records, [:status])
-          create index(:oban_powertools_job_records, [:expires_at])
+          create unique_index(:oban_powertools_job_records, [:oban_job_id, :attempt], concurrently: true)
+          create index(:oban_powertools_job_records, [:worker], concurrently: true)
+          create index(:oban_powertools_job_records, [:status], concurrently: true)
+          create index(:oban_powertools_job_records, [:expires_at], concurrently: true)
         end
       """
     )

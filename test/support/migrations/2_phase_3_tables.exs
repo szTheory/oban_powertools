@@ -1,5 +1,6 @@
 defmodule ObanPowertools.TestRepo.Migrations.Phase3Tables do
   use Ecto.Migration
+  @disable_ddl_transaction true
 
   def up do
     create table(:oban_powertools_workflows, primary_key: false) do

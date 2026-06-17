@@ -7,7 +7,9 @@ defmodule PhoenixHost.Repo.Migrations.ObanPowertoolsWorkflowSemantics do
 
       add(
         :workflow_id,
-        references(:oban_powertools_workflows, type: :uuid, on_delete: :delete_all), null: false)
+        references(:oban_powertools_workflows, type: :uuid, on_delete: :delete_all),
+        null: false
+      )
 
       add(
         :step_id,
@@ -81,7 +83,9 @@ defmodule PhoenixHost.Repo.Migrations.ObanPowertoolsWorkflowSemantics do
 
       add(
         :workflow_id,
-        references(:oban_powertools_workflows, type: :uuid, on_delete: :delete_all), null: false)
+        references(:oban_powertools_workflows, type: :uuid, on_delete: :delete_all),
+        null: false
+      )
 
       add(:status, :string, null: false, default: "completed")
       add(:trigger, :string, null: false, default: "recover_step")
@@ -103,7 +107,9 @@ defmodule PhoenixHost.Repo.Migrations.ObanPowertoolsWorkflowSemantics do
 
       add(
         :workflow_id,
-        references(:oban_powertools_workflows, type: :uuid, on_delete: :delete_all), null: false)
+        references(:oban_powertools_workflows, type: :uuid, on_delete: :delete_all),
+        null: false
+      )
 
       add(
         :step_id,
@@ -142,7 +148,9 @@ defmodule PhoenixHost.Repo.Migrations.ObanPowertoolsWorkflowSemantics do
 
       add(
         :workflow_id,
-        references(:oban_powertools_workflows, type: :uuid, on_delete: :delete_all), null: false)
+        references(:oban_powertools_workflows, type: :uuid, on_delete: :delete_all),
+        null: false
+      )
 
       add(
         :recovery_attempt_id,

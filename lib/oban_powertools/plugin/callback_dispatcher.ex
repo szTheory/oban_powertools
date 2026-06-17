@@ -15,7 +15,6 @@ defmodule ObanPowertools.Plugin.CallbackDispatcher do
   import Ecto.Query
 
   alias ObanPowertools.Callback
-  alias ObanPowertools.RuntimeConfig
 
   @type option ::
           {:interval, pos_integer()}

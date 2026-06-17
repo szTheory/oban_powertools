@@ -1,5 +1,6 @@
 defmodule PhoenixHost.Repo.Migrations.ObanPowertoolsBatchesAndCallbacks do
   use Ecto.Migration
+  @disable_ddl_transaction true
 
   def change do
     rename(table(:oban_powertools_workflow_callback_outbox),
