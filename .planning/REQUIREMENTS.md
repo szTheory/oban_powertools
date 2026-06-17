@@ -21,6 +21,6 @@
 |-------------|-------|--------|
 | QRY-05 | Phase 64 | Complete |
 | API-03 | Phase 64 | Pending |
-| QRY-07 | Phase 65 | Pending |
-| QRY-08 | Phase 65 | Pending |
-| QRY-06 | Phase 66 | Pending |
+| QRY-07 | Phase 65 | Completed |
+| QRY-08 | Phase 65 | Completed |
+| QRY-06 | Phase 66 | Completed |

@@ -93,7 +93,16 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <tbody class="divide-y text-sm">
               <tr :for={event <- @events}>
                 <td class="px-4 py-3 font-medium"><%= ControlPlanePresenter.audit_event_label(event) %></td>
-                <td class="px-4 py-3"><%= ControlPlanePresenter.audit_resource_label(event) %></td>
+                <td class="px-4 py-3">
+                  <% resource = ObanPowertools.Audit.event_resource_identity(event) %>
+                  <%= if resource.type == "job" and resource.id do %>
+                    <.link navigate={ObanPowertools.Web.Selectors.job_detail_path(resource.id)} class="text-indigo-600 hover:underline">
+                      <%= ControlPlanePresenter.audit_resource_label(event) %>
+                    </.link>
+                  <% else %>
+                    <%= ControlPlanePresenter.audit_resource_label(event) %>
+                  <% end %>
+                </td>
                 <td class="px-4 py-3"><%= actor_label(event) %></td>
                 <td class="px-4 py-3"><%= reason_label(event) %></td>
                 <td class="px-4 py-3">

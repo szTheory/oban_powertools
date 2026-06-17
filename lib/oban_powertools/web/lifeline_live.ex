@@ -288,7 +288,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                       class="text-left"
                     >
                       <div class="font-medium"><%= row.incident.summary %></div>
-                      <div class="mt-1 text-zinc-500"><%= row.target_summary %></div>
+                      <div class="mt-1 text-zinc-500">
+                        <%= if row.target_type == "job" and row.target_id do %>
+                          <.link navigate={Selectors.job_detail_path(row.target_id)} class="text-indigo-600 hover:underline">
+                            <%= row.target_summary %>
+                          </.link>
+                        <% else %>
+                          <%= row.target_summary %>
+                        <% end %>
+                      </div>
                       <div class="mt-1 text-xs text-zinc-500">
                         Detection basis: <%= detection_basis(row.incident) %>
                       </div>
@@ -331,7 +339,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           <div :if={@selected_row} class="space-y-4">
             <div class="rounded-lg border bg-white p-4">
               <div class="flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-base font-semibold"><%= @selected_row.target_summary %></h2>
+                <h2 class="text-base font-semibold">
+                  <%= if @selected_row.target_type == "job" and @selected_row.target_id do %>
+                    <.link navigate={Selectors.job_detail_path(@selected_row.target_id)} class="text-indigo-600 hover:underline">
+                      <%= @selected_row.target_summary %>
+                    </.link>
+                  <% else %>
+                    <%= @selected_row.target_summary %>
+                  <% end %>
+                </h2>
                 <span :if={@preview_state != :idle} class={preview_badge_class(@preview_state)}>
                   <%= preview_badge_copy(@preview_state) %>
                 </span>

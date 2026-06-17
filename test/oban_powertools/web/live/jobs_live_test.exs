@@ -351,8 +351,7 @@ defmodule ObanPowertools.Web.JobsLiveTest do
 
     {:ok, _view, html} = live(conn, "/ops/jobs/jobs?state=available")
 
-    assert html =~ "No available jobs"
-    assert html =~ "No jobs are currently in the available state."
+    assert html =~ "No jobs found"
   end
 
   # ---------------------------------------------------------------------------
@@ -1046,7 +1045,7 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       |> render_submit()
 
       html = render(view)
-      assert html =~ "No retryable jobs"
+      assert html =~ "No jobs found"
 
       # Selection should be cleared
       refute html =~ "jobs selected"

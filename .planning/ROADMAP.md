@@ -3,8 +3,8 @@
 ## Phases
 
 - [x] **Phase 64: Args/Meta Filtering & Programmatic Querying** - API and UI support for precise filtering of jobs by arguments and metadata (completed 2026-06-17)
-- [ ] **Phase 65: Cross-Page Bulk & Navigation Polish** - Lifeline deep links and cross-page selection for bulk actions
-- [ ] **Phase 66: Optional Live Counts** - Real-time job and queue counts powered optionally by `oban_met`
+- [x] **Phase 65: Cross-Page Bulk & Navigation Polish** - Lifeline deep links and cross-page selection for bulk actions
+- [x] **Phase 66: Optional Live Counts** - Real-time job and queue counts powered optionally by `oban_met` (completed 2026-06-17)
 
 ## Phase Details
 

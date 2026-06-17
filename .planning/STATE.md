@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.10
 milestone_name: Observability & Native Job-Surface Polish
 status: in_progress
-last_updated: "2026-06-17T18:14:15.027Z"
+last_updated: "2026-06-17T19:35:16.000Z"
 progress:
   total_phases: 3
-  completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
-  percent: 33
+  completed_phases: 2
+  total_plans: 3
+  completed_plans: 3
+  percent: 66
 ---
 
 # Project State
@@ -22,11 +22,10 @@ progress:
 
 ## Current Position
 
-Phase: 64
-Plan: 02
 | Phase | Plan | Status | Progress |
 |-------|------|--------|----------|
-| 64 | 02 | 🟡 Active | `[====      ] 40%` |
+| 64 | - | 🟢 Complete | `[==========] 100%` |
+| 65 | - | 🟢 Complete | `[==========] 100%` |
 
 ## Performance Metrics
 
@@ -68,6 +67,8 @@ Plan: 02
 
 ## Session Continuity
 
-- **Last Action:** Created v1.10 roadmap and requirements.
-- **Next Action:** Run `/gsd:plan-phase 64`
-- **Active Context:** We are starting v1.10 to improve operator QoL with live counts, advanced filtering, and deeper Lifeline navigation.
+- **Last Action:** Completed Phase 66 (Optional Live Counts).
+- **Next Action:** Finalize v1.10 milestone.
+- **Active Context:** Reviewing the completed work for v1.10.
+ Action:** Run `/gsd:execute-plan .planning/phases/66-optional-live-counts/PLAN.md`
+- **Active Context:** We are finishing v1.10 by implementing optional live counts via `oban_met` with polling fallbacks.

@@ -89,6 +89,24 @@ defmodule ObanPowertools.Jobs do
   def list(repo, %__MODULE__{} = filter, _opts \\ []) do
     offset = (filter.page - 1) * filter.page_size
 
+    base_query(filter)
+    |> order_by([j], desc: j.scheduled_at, desc: j.id)
+    |> limit(^filter.page_size)
+    |> offset(^offset)
+    |> repo.all()
+  end
+
+  @doc """
+  Returns just the IDs of all jobs matching the given filter, without pagination limit.
+  Useful for cross-page bulk operations.
+  """
+  def list_ids(repo, %__MODULE__{} = filter) do
+    base_query(filter)
+    |> select([j], j.id)
+    |> repo.all()
+  end
+
+  defp base_query(%__MODULE__{} = filter) do
     Oban.Job
     |> where([j], j.state == ^to_string(filter.state))
     |> maybe_filter_queue(filter.queue)
@@ -96,12 +114,7 @@ defmodule ObanPowertools.Jobs do
     |> maybe_filter_tags(filter.tags)
     |> maybe_filter_args(filter.args)
     |> maybe_filter_meta(filter.meta)
-    |> order_by([j], desc: j.scheduled_at, desc: j.id)
-    |> limit(^filter.page_size)
-    |> offset(^offset)
-    |> repo.all()
   end
-
   @doc """
   Returns the `%Oban.Job{}` with the given `job_id`, or `nil` if not found.
   """
