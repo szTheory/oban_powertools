@@ -15,8 +15,22 @@ defmodule ObanPowertools.Operator do
     filters =
       case filters do
         %Jobs{} = struct -> struct
-        map when is_map(map) -> struct(Jobs, map)
         kw when is_list(kw) -> struct(Jobs, kw)
+        map when is_map(map) ->
+          atom_map =
+            Map.new(map, fn
+              {k, v} when is_binary(k) ->
+                try do
+                  {String.to_existing_atom(k), v}
+                rescue
+                  ArgumentError -> {k, v}
+                end
+
+              {k, v} ->
+                {k, v}
+            end)
+
+          struct(Jobs, atom_map)
       end
 
     Jobs.list(repo, filters, opts)
