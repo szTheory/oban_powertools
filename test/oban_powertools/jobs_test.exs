@@ -52,6 +52,33 @@ defmodule ObanPowertools.JobsTest do
     assert hd(result).id == tagged_job.id
   end
 
+  test "list/3 narrows by args via @> jsonb contains" do
+    job_with_args = insert_job!(%{"account_id" => 123, "type" => "export"}, worker: "MyApp.Worker", queue: :default)
+    _job_without_args = insert_job!(%{"account_id" => 456, "type" => "export"}, worker: "MyApp.Worker", queue: :default)
+
+    result = Jobs.list(TestRepo, %Jobs{state: :available, args: %{"account_id" => 123}})
+
+    assert length(result) == 1
+    assert hd(result).id == job_with_args.id
+  end
+
+  test "list/3 narrows by meta via @> jsonb contains" do
+    job_with_meta =
+      %{"id" => 1}
+      |> Oban.Job.new(worker: "MyApp.Worker", queue: :default, meta: %{"batch_id" => "b_123", "group" => "a"})
+      |> TestRepo.insert!()
+
+    _job_without_meta =
+      %{"id" => 2}
+      |> Oban.Job.new(worker: "MyApp.Worker", queue: :default, meta: %{"batch_id" => "b_456", "group" => "a"})
+      |> TestRepo.insert!()
+
+    result = Jobs.list(TestRepo, %Jobs{state: :available, meta: %{"batch_id" => "b_123"}})
+
+    assert length(result) == 1
+    assert hd(result).id == job_with_meta.id
+  end
+
   test "list/3 orders by scheduled_at DESC, id DESC" do
     # Insert two jobs with the same scheduled_at; the higher id should come first
     fixed_time = DateTime.truncate(DateTime.utc_now(), :microsecond)
@@ -143,15 +170,25 @@ defmodule ObanPowertools.JobsTest do
   end
 
   test "count_by_state/2 honors non-state filters from base_filter" do
-    insert_job!(%{}, worker: "MyApp.Worker", queue: :default)
-    insert_job!(%{}, worker: "MyApp.Worker", queue: :other)
+    insert_job!(%{"account_id" => 123}, worker: "MyApp.Worker", queue: :default)
+    insert_job!(%{"account_id" => 456}, worker: "MyApp.Worker", queue: :other)
+    
+    %{"id" => 1}
+    |> Oban.Job.new(worker: "MyApp.Worker", queue: :default, meta: %{"batch_id" => "b_123"})
+    |> TestRepo.insert!()
 
     counts = Jobs.count_by_state(TestRepo, %Jobs{queue: "default"})
 
-    assert counts["available"] == 1
+    assert counts["available"] == 2
     # state field in base_filter is ignored; other queues not counted
     counts_other = Jobs.count_by_state(TestRepo, %Jobs{queue: "other"})
     assert counts_other["available"] == 1
+    
+    counts_args = Jobs.count_by_state(TestRepo, %Jobs{args: %{"account_id" => 123}})
+    assert counts_args["available"] == 1
+    
+    counts_meta = Jobs.count_by_state(TestRepo, %Jobs{meta: %{"batch_id" => "b_123"}})
+    assert counts_meta["available"] == 1
   end
 
   # -------------------------------------------------------------------------

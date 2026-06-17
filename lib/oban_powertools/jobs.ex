@@ -53,7 +53,7 @@ defmodule ObanPowertools.Jobs do
 
   - `state` — required; the atom state to browse (e.g. `:available`). Converted to a string
     at the WHERE boundary via `to_string/1`.
-  - `queue`, `worker`, `tags` — optional narrowing filters; `nil` means "all".
+  - `queue`, `worker`, `tags`, `args`, `meta` — optional narrowing filters; `nil` means "all".
   - `page`, `page_size` — offset pagination controls (D-03).
   """
   @type t :: %__MODULE__{
@@ -61,6 +61,8 @@ defmodule ObanPowertools.Jobs do
           queue: String.t() | nil,
           worker: String.t() | nil,
           tags: [String.t()] | nil,
+          args: map() | nil,
+          meta: map() | nil,
           page: pos_integer(),
           page_size: pos_integer()
         }
@@ -69,6 +71,8 @@ defmodule ObanPowertools.Jobs do
             queue: nil,
             worker: nil,
             tags: nil,
+            args: nil,
+            meta: nil,
             page: 1,
             page_size: 20
 
@@ -90,6 +94,8 @@ defmodule ObanPowertools.Jobs do
     |> maybe_filter_queue(filter.queue)
     |> maybe_filter_worker(filter.worker)
     |> maybe_filter_tags(filter.tags)
+    |> maybe_filter_args(filter.args)
+    |> maybe_filter_meta(filter.meta)
     |> order_by([j], desc: j.scheduled_at, desc: j.id)
     |> limit(^filter.page_size)
     |> offset(^offset)
@@ -107,7 +113,7 @@ defmodule ObanPowertools.Jobs do
   Returns a map of job counts keyed by all 7 Oban state strings (D-13).
 
   The `state` field of `base_filter` is ignored — this function iterates all 7 states and
-  returns a count for each. Non-state filters (`queue`, `worker`, `tags`) from `base_filter`
+  returns a count for each. Non-state filters (`queue`, `worker`, `tags`, `args`, `meta`) from `base_filter`
   narrow each per-state count.
 
   This issues 7 round-trips per filter change, which is acceptable for Phase 43 because each
@@ -124,6 +130,8 @@ defmodule ObanPowertools.Jobs do
         |> maybe_filter_queue(base_filter.queue)
         |> maybe_filter_worker(base_filter.worker)
         |> maybe_filter_tags(base_filter.tags)
+        |> maybe_filter_args(base_filter.args)
+        |> maybe_filter_meta(base_filter.meta)
         |> select([j], count(j.id))
         |> repo.one()
 
@@ -140,4 +148,12 @@ defmodule ObanPowertools.Jobs do
   defp maybe_filter_tags(query, nil), do: query
   defp maybe_filter_tags(query, []), do: query
   defp maybe_filter_tags(query, tags), do: where(query, [j], fragment("? @> ?", j.tags, ^tags))
+
+  defp maybe_filter_args(query, nil), do: query
+  defp maybe_filter_args(query, args) when args == %{}, do: query
+  defp maybe_filter_args(query, args), do: where(query, [j], fragment("? @> ?", j.args, type(^args, :map)))
+
+  defp maybe_filter_meta(query, nil), do: query
+  defp maybe_filter_meta(query, meta) when meta == %{}, do: query
+  defp maybe_filter_meta(query, meta), do: where(query, [j], fragment("? @> ?", j.meta, type(^meta, :map)))
 end
