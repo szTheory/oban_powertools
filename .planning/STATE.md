@@ -1,15 +1,14 @@
 ---
-gsd_state_version: 1.0
-milestone: v1.10
-milestone_name: Observability & Native Job-Surface Polish
+milestone: v1.11
+milestone_name: Stability & 1.0 Release Prep
 status: in_progress
-last_updated: "2026-06-17T19:35:16.000Z"
+last_updated: "2026-06-17T20:15:00.000Z"
 progress:
   total_phases: 3
-  completed_phases: 2
-  total_plans: 3
-  completed_plans: 3
-  percent: 66
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -18,14 +17,15 @@ progress:
 
 **Core Value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
 
-**Current Focus:** v1.10 Observability & Native Job-Surface Polish
+**Current Focus:** v1.11 Stability & 1.0 Release Prep
 
 ## Current Position
 
 | Phase | Plan | Status | Progress |
 |-------|------|--------|----------|
-| 64 | - | 🟢 Complete | `[==========] 100%` |
-| 65 | - | 🟢 Complete | `[==========] 100%` |
+| 67 | - | 🟡 Active | `[          ] 0%` |
+| 68 | - | ⚪ Pending | `[          ] 0%` |
+| 69 | - | ⚪ Pending | `[          ] 0%` |
 
 ## Performance Metrics
 
@@ -34,28 +34,17 @@ progress:
 | Test Coverage | >95% | - | - |
 | Type Checking | 0 Dialyzer errors | - | - |
 | Linting | 0 Credo warnings | - | - |
-| Phase 61-apis-batches-chains P01 | 3 min | 2 tasks | 6 files |
-| Phase 61-apis-batches-chains P02 | 3 min | 2 tasks | 2 files |
-| Phase 61-apis-batches-chains P03 | 5 min | 2 tasks | 3 files |
-| Phase 61-apis-batches-chains P04 | 6 min | 2 tasks | 6 files |
-| Phase 61-apis-batches-chains P05 | 5 min | 2 tasks | 6 files |
-| Phase 62 P01 | 10 min | 3 tasks | 6 files |
-| Phase 62 P02 | 3 min | 2 tasks | 3 files |
-| Phase 62 P03 | 8 min | 3 tasks | 1 files |
-| Phase 62 P04 | 4 min | 2 tasks | 2 files |
-| Phase 62 P05 | 8 min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
-- Shipped v1.9 Batches & Composition.
-- Initialized v1.10 Observability & Native Job-Surface Polish.
+- Shipped v1.10 Observability & Native Job-Surface Polish.
+- Initialized v1.11 Stability & 1.0 Release Prep. Overbuilding boundary explicitly established.
 
 ### Architectural Decisions
 
-- `oban_met` must remain an optional dependency, never a hard requirement. Fallbacks must exist for environments where it is absent.
-- All filtering logic implemented for `Operator.list/2` API must be natively shared with the UI (no dual implementations).
+- **Diminishing Returns:** Do not build Chunks, Dynamic Scaler, Relay/Task-await, or Per-field Encryption unless explicitly demanded by real-world adopters.
 
 ### Known Technical Debt / Todos
 
@@ -67,8 +56,5 @@ progress:
 
 ## Session Continuity
 
-- **Last Action:** Completed Phase 66 (Optional Live Counts).
-- **Next Action:** Finalize v1.10 milestone.
-- **Active Context:** Reviewing the completed work for v1.10.
- Action:** Run `/gsd:execute-plan .planning/phases/66-optional-live-counts/PLAN.md`
-- **Active Context:** We are finishing v1.10 by implementing optional live counts via `oban_met` with polling fallbacks.
+- **Last Action:** Created the v1.11 requirements, roadmap, and state files.
+- **Active Context:** We are starting v1.11 by executing a final stability and static analysis sweep.
