@@ -93,9 +93,9 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 
 ### Active
 
-- [ ] INT-02 fix: Inject `__deadline_at__` meta on cron path in `cron.ex maybe_insert_job` — deferred from v1.7 audit
+- None
 
-Carried backlog (not in v1.6): QRY-05 args/meta filter, QRY-06 real-time counts (→ v1.9), QRY-07 Lifeline→job deep-link, QRY-08 cross-page select-all, API-03 programmatic job query.
+Carried backlog (not in v1.6): All v1.6-v1.10 carried backlog items have now been shipped (QRY-05, QRY-06, QRY-07, QRY-08, API-03).
 
 ### Out of Scope
 
