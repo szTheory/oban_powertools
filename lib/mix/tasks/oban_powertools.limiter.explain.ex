@@ -325,7 +325,7 @@ defmodule Mix.Tasks.ObanPowertools.Limiter.Explain do
       %{
         code: b[:code] || b.code,
         summary: b[:summary] || b.summary,
-        retry_at: format_datetime(b[:retry_at] || b[:retry_at]),
+        retry_at: format_datetime(b[:retry_at] || b.retry_at),
         scope: b[:scope] || b.scope,
         details: b[:details] || b.details
       }

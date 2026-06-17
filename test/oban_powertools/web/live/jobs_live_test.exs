@@ -219,8 +219,19 @@ defmodule ObanPowertools.Web.JobsLiveTest do
   # ---------------------------------------------------------------------------
 
   test "filters by args/meta JSON", %{conn: conn} do
-    insert_job!(worker: "MyApp.Worker1", queue: :default, args: %{"user_id" => 123}, meta: %{"batch_id" => 1})
-    insert_job!(worker: "MyApp.Worker2", queue: :default, args: %{"user_id" => 456}, meta: %{"batch_id" => 2})
+    insert_job!(
+      worker: "MyApp.Worker1",
+      queue: :default,
+      args: %{"user_id" => 123},
+      meta: %{"batch_id" => 1}
+    )
+
+    insert_job!(
+      worker: "MyApp.Worker2",
+      queue: :default,
+      args: %{"user_id" => 456},
+      meta: %{"batch_id" => 2}
+    )
 
     conn =
       Plug.Test.init_test_session(conn,

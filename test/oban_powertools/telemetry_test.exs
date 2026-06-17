@@ -25,7 +25,7 @@ defmodule ObanPowertools.TelemetryTest do
   test "metrics/0 returns a non-empty list of Telemetry.Metrics structs" do
     metrics = ObanPowertools.Telemetry.metrics()
     assert is_list(metrics)
-    assert length(metrics) > 0
+    assert metrics != []
 
     valid_types = [Telemetry.Metrics.Counter, Telemetry.Metrics.Sum]
     assert Enum.all?(metrics, fn m -> m.__struct__ in valid_types end)

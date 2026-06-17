@@ -14,8 +14,12 @@ defmodule ObanPowertools.Operator do
   def list(repo, filters \\ %{}, opts \\ []) do
     filters =
       case filters do
-        %Jobs{} = struct -> struct
-        kw when is_list(kw) -> struct(Jobs, kw)
+        %Jobs{} = struct ->
+          struct
+
+        kw when is_list(kw) ->
+          struct(Jobs, kw)
+
         map when is_map(map) ->
           atom_map =
             Map.new(map, fn

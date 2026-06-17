@@ -169,7 +169,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     def handle_event("toggle_all", _, socket) do
       jobs = socket.assigns.jobs
       selected_jobs = socket.assigns.selected_jobs
-      all_selected? = length(jobs) > 0 and Enum.all?(jobs, &(&1.id in selected_jobs))
+      all_selected? = jobs != [] and Enum.all?(jobs, &(&1.id in selected_jobs))
 
       selected_jobs =
         if all_selected? do
@@ -772,7 +772,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         <% else %>
           <div class="overflow-hidden rounded-lg border bg-white">
             <% total_count = Map.get(@counts, to_string(@filter.state), 0) %>
-            <% local_selected? = length(@jobs) > 0 and Enum.all?(@jobs, &(&1.id in @selected_jobs)) %>
+            <% local_selected? = @jobs != [] and Enum.all?(@jobs, &(&1.id in @selected_jobs)) %>
             <% show_banner? = local_selected? and total_count > length(@jobs) %>
 
             <div :if={show_banner?} class="bg-indigo-50 border-b border-indigo-200 py-2 px-4 text-center text-sm" aria-live="polite">

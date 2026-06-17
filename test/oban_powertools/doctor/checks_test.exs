@@ -72,7 +72,7 @@ defmodule ObanPowertools.Doctor.ChecksTest do
       end)
 
       result = Checks.missing_indexes(TestRepo, "public")
-      assert length(result) >= 1
+      assert result != []
 
       assert Enum.any?(result, fn f ->
                f.check == :missing_indexes and

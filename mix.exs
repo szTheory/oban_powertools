@@ -54,7 +54,9 @@ defmodule ObanPowertools.MixProject do
       {:oban_web, "~> 2.10", optional: true},
       {:telemetry_metrics, "~> 1.0", only: [:test, :dev], optional: true},
       {:telemetry_poller, "~> 1.0", optional: true},
-      {:lazy_html, ">= 0.1.0", only: :test}
+      {:lazy_html, ">= 0.1.0", only: :test},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
 

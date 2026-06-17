@@ -115,6 +115,7 @@ defmodule ObanPowertools.Jobs do
     |> maybe_filter_args(filter.args)
     |> maybe_filter_meta(filter.meta)
   end
+
   @doc """
   Returns the `%Oban.Job{}` with the given `job_id`, or `nil` if not found.
   """
@@ -164,9 +165,13 @@ defmodule ObanPowertools.Jobs do
 
   defp maybe_filter_args(query, nil), do: query
   defp maybe_filter_args(query, args) when args == %{}, do: query
-  defp maybe_filter_args(query, args), do: where(query, [j], fragment("? @> ?", j.args, type(^args, :map)))
+
+  defp maybe_filter_args(query, args),
+    do: where(query, [j], fragment("? @> ?", j.args, type(^args, :map)))
 
   defp maybe_filter_meta(query, nil), do: query
   defp maybe_filter_meta(query, meta) when meta == %{}, do: query
-  defp maybe_filter_meta(query, meta), do: where(query, [j], fragment("? @> ?", j.meta, type(^meta, :map)))
+
+  defp maybe_filter_meta(query, meta),
+    do: where(query, [j], fragment("? @> ?", j.meta, type(^meta, :map)))
 end
