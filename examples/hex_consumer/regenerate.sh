@@ -30,11 +30,11 @@ mix phx.new "${TARGET_DIR}" \
   --no-gettext \
   --no-install
 
-# Insert hex dep: {:oban_powertools, "~> 0.5"} (native-only target, no bridge dep)
+# Insert hex dep: {:oban_powertools, "~> 1.0"} (native-only target, no bridge dep)
 replace_once \
   "${TARGET_DIR}/mix.exs" \
   "{:postgrex, \">= 0.0.0\"}," \
-  "{:postgrex, \">= 0.0.0\"},\n      {:oban, \"~> 2.18\"},\n      {:oban_powertools, \"~> 0.5\"},"
+  "{:postgrex, \">= 0.0.0\"},\n      {:oban, \"~> 2.18\"},\n      {:oban_powertools, \"~> 1.0\"},"
 
 # NOTE: oban_powertools_auth.ex and oban_powertools_display_policy.ex are committed
 # in examples/hex_consumer/lib/hex_consumer_web/ as local dev scaffolding so that

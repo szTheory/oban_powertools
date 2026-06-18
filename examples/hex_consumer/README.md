@@ -1,7 +1,7 @@
 # hex_consumer
 
 A minimal Phoenix application that consumes `oban_powertools` as a **true hex
-dependency** — `{:oban_powertools, "~> 0.5"}` resolved via `mix deps.get` from
+dependency** — `{:oban_powertools, "~> 1.0"}` resolved via `mix deps.get` from
 hex.pm.
 
 ## Purpose
@@ -16,7 +16,7 @@ dep and tests in-repo changes. The hex consumer tests what ships to adopters.
 
 ## Key differences from examples/phoenix_host
 
-- **Dep source:** `{:oban_powertools, "~> 0.5"}` (hex) vs `path: "../.."` (local).
+- **Dep source:** `{:oban_powertools, "~> 1.0"}` (hex) vs `path: "../.."` (local).
 - **No `oban_web` dep:** This consumer exercises the **native-only** operator
   path. The first-session test explicitly asserts `refute html =~ "Oban Web"`.
   This is intentional — not a bug (D-06).

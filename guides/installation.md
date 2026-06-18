@@ -22,7 +22,7 @@ nested read-only bridge at `/ops/jobs/oban`.
 ```elixir
 def deps do
   [
-    {:oban_powertools, "~> 0.5"},
+    {:oban_powertools, "~> 1.0"},
     {:oban_web, "~> 2.10", optional: true}
   ]
 end

@@ -1,7 +1,7 @@
 defmodule ObanPowertools.MixProject do
   use Mix.Project
 
-  @version "0.5.1"
+  @version "1.0.0"
   @source_url "https://github.com/szTheory/oban_powertools"
 
   def project do
