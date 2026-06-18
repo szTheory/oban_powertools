@@ -131,6 +131,8 @@ passed and a real native mutation succeeds.
 - [Support Truth And Ownership Boundaries](guides/support-truth-and-ownership-boundaries.md)
   expands the shared supported/tested/best-effort/host-owned/intentionally unsupported
   vocabulary.
+- [Powertools vs. Oban Pro](guides/powertools-vs-oban-pro.md) provides a definitive feature
+  comparison, including Batches, Chains, Dynamic Cron, Limiters, Lifeline, and the Native UI.
 
 ## Canonical Example Host
 
