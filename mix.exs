@@ -70,6 +70,7 @@ defmodule ObanPowertools.MixProject do
       groups_for_extras: [
         "Day 0": [
           "guides/installation.md",
+          "guides/powertools-vs-oban-pro.md",
           "guides/first-operator-session.md",
           "guides/example-app-walkthrough.md"
         ],
