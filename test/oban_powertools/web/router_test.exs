@@ -68,6 +68,13 @@ defmodule ObanPowertools.Web.RouterTest do
                "/ops/jobs/batches/batch-1",
                "localhost"
              )
+
+    assert %{
+             plug: Phoenix.LiveView.Plug,
+             route: "/ops/jobs/_showcase",
+             phoenix_live_view: {ObanPowertools.Web.Dev.ShowcaseLive, :index, _, _}
+           } =
+             Phoenix.Router.route_info(TestRouter, "GET", "/ops/jobs/_showcase", "localhost")
   end
 
   test "the host-owned outer scope does not expose the bridge at the router root" do
