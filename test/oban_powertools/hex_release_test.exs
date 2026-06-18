@@ -17,6 +17,7 @@ defmodule ObanPowertools.HexReleaseTest do
   @rp_config_path "release-please-config.json"
   @rp_manifest_path ".release-please-manifest.json"
   @release_workflow_path ".github/workflows/release.yml"
+  @showcase_catalog_path "test/support/showcase_catalog.ex"
 
   # ---------------------------------------------------------------------------
   # REL-03  CHANGELOG + LICENSE
@@ -135,6 +136,37 @@ defmodule ObanPowertools.HexReleaseTest do
 
       refute ".planning" in files,
              ":files must NOT include \".planning\" (internal planning must never ship to adopters)"
+    end
+
+    test "Phase 72 showcase catalog is local-only and excluded from Hex package files" do
+      files = Mix.Project.config()[:package][:files]
+
+      assert "priv" in files,
+             ":files must keep \"priv\" so Phase 71 runtime assets continue to ship"
+
+      assert File.exists?("priv/static/oban_powertools/oban_powertools.css"),
+             "compiled CSS asset must still exist before adding Phase 72 package exclusions"
+
+      assert File.exists?("priv/static/oban_powertools/oban_powertools.js"),
+             "compiled JS asset must still exist before adding Phase 72 package exclusions"
+
+      assert File.exists?(@showcase_catalog_path),
+             "Phase 72 canonical fixture catalog #{@showcase_catalog_path} must exist for local dev/test use"
+
+      refute "test" in files,
+             ":files must NOT include \"test\"; #{@showcase_catalog_path} is a dev/test-only artifact"
+
+      refute ".planning" in files,
+             ":files must NOT include \".planning\"; internal GSD artifacts must never ship to adopters"
+
+      refute @showcase_catalog_path in files,
+             ":files must NOT directly include #{@showcase_catalog_path}"
+
+      refute Enum.any?(files, &String.starts_with?(&1, "test/")),
+             ":files must NOT include any test/ subtree entries"
+
+      refute Enum.any?(files, &String.contains?(&1, "showcase_catalog")),
+             ":files must NOT include showcase catalog support artifacts"
     end
 
     test "igniter dep has runtime: false (keeps code-gen machinery out of adopter prod)" do
