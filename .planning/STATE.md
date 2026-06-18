@@ -4,14 +4,13 @@ milestone: v2.0
 milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 71
 current_phase_name: Token Layer & Isolated Theming Engine
-status: verifying
-last_updated: "2026-06-18T17:28:27.067Z"
-last_activity: 2026-06-18
-last_activity_desc: Phase 70 complete, transitioned to Phase 71
+status: executing
+last_updated: "2026-06-18T18:53:19.050Z"
+last_activity: 2026-06-18 -- Phase 71 planning complete
 progress:
   total_phases: 15
   completed_phases: 1
-  total_plans: 2
+  total_plans: 7
   completed_plans: 2
   percent: 7
 ---
@@ -22,14 +21,14 @@ progress:
 
 **Core Value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
 
-**Current Focus:** Phase 70 — brand-book-identity-foundation
+**Current Focus:** Phase 71 — token-layer-isolated-theming-engine
 
 ## Current Position
 
 Phase: 71 — Token Layer & Isolated Theming Engine
 Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-06-18 — Phase 70 complete, transitioned to Phase 71
+Status: Ready to execute
+Last activity: 2026-06-18 -- Phase 71 planning complete
 
 ## Performance Metrics
 
@@ -66,6 +65,6 @@ Last activity: 2026-06-18 — Phase 70 complete, transitioned to Phase 71
 
 ## Session Continuity
 
-- **Last Action:** Executed plan 70-01 — authored the brand book (`guides/brand-book.md`), built the `checks.sh` content-assertion harness, and registered the guide under a "Design System" HexDocs group. 3 atomic commits (f6b4fd9, 9534ca0, 6a1a861).
-- **Next Action:** Execute plan 70-02 — `ObanPowertools.Web.Dev.BrandBookLive`, the `/ops/jobs/_brand_book` dev route, `:dev_routes` config, README "Brand Identity" section, and the render test.
-- **Active Context:** Design-system milestone. Brand book is the source of truth; tokens + audit harness precede page migrations; improvement is idempotent (forward-only, regression-gated).
+- **Last Action:** Planned Phase 71 with research, validation strategy, five executable plans, and a plan-checker revision loop. Verification passed after revising the package contract, research dispositions, layout-invariance checks, and operator-LiveView diff guard.
+- **Next Action:** Execute Phase 71 — run `71-01` through `71-05` to build the token layer, theme controller, md5 immutable asset routes, ThemeShell integration, and JobsLive proof seam.
+- **Active Context:** Design-system milestone. Phase 70 brand decisions D-07..D-15 and D-22 are the source of truth for Phase 71 tokens; Wave 0 tests must precede implementation; host isolation and byte stability are phase gates.
