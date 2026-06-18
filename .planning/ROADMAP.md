@@ -7,7 +7,7 @@
 ## Phases
 
 - [x] **Phase 70: Brand Book & Identity Foundation** — Author the brand book as the single source of truth for all visual/verbal decisions. (completed 2026-06-18)
-- [ ] **Phase 71: Token Layer & Isolated Theming Engine** — Ship the library-owned `--obpt-*` token layer + precompiled CSS asset + dark/light/system (system default), zero leakage.
+- [x] **Phase 71: Token Layer & Isolated Theming Engine** — Ship the library-owned `--obpt-*` token layer + precompiled CSS asset + dark/light/system (system default), zero leakage. (completed 2026-06-18)
 - [ ] **Phase 72: Stress Fixtures & Showcase Skeleton** — Deterministic dev/test fixtures + the dev-only `/ops/jobs/_showcase` with theme + viewport switchers.
 - [ ] **Phase 73: Visual-Regression & A11y Harness** — Playwright snapshots + axe gate in CI, established *before* any page changes.
 - [ ] **Phase 74: Primitives Library** — Token-driven `Phoenix.Component` primitives as showcase stories under VRT/a11y.
@@ -55,13 +55,13 @@
   3. No style leakage in or out of the namespace, proven against `examples/phoenix_host` (host pages outside `/ops/jobs` unchanged; `<html>`/host storage untouched).
   4. The asset build is byte-stable on re-run; theme switch causes no FOUC/layout shift. A proof seam (`jobs_live.ex` badge/tab/modal) is migrated onto tokens to validate end-to-end.
 
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans complete
 
 - [x] 71-01-PLAN.md — Wave 0 validation harness for token/theme/assets/proof-seam/isolation checks (wave 0)
 - [x] 71-02-PLAN.md — Scoped token CSS, theme JS, deterministic build task, and compiled assets (wave 1)
 - [x] 71-03-PLAN.md — MD5 immutable asset Plug/routes plus `priv` package inclusion (wave 2)
 - [x] 71-04-PLAN.md — Powertools ThemeShell live-session integration with `.obpt-root` system default (wave 3)
-- [ ] 71-05-PLAN.md — JobsLive proof seam and example-host isolation closure (wave 4)
+- [x] 71-05-PLAN.md — JobsLive proof seam and example-host isolation closure (wave 4)
 
 ### Phase 72: Stress Fixtures & Showcase Skeleton
 
@@ -238,7 +238,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 70. Brand Book & Identity Foundation | 2/2 | Complete    | 2026-06-18 |
-| 71. Token Layer & Isolated Theming Engine | 4/5 | In Progress|  |
+| 71. Token Layer & Isolated Theming Engine | 5/5 | Complete   | 2026-06-18 |
 | 72. Stress Fixtures & Showcase Skeleton | 0/TBD | Not started | — |
 | 73. Visual-Regression & A11y Harness | 0/TBD | Not started | — |
 | 74. Primitives Library | 0/TBD | Not started | — |
