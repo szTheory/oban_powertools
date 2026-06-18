@@ -450,7 +450,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               <div class="flex gap-4">
                 <dt class="w-36 text-zinc-500">State</dt>
                 <dd>
-                  <span class={"rounded border px-2 py-1 text-xs font-semibold " <> state_badge_class(@job.state)}>
+                  <span class="obpt-badge" data-obpt-tone={state_badge_tone(@job.state)}>
                     <%= @job.state %>
                   </span>
                 </dd>
@@ -620,8 +620,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
         <%!-- Action Preview Modal --%>
         <%= if @preview do %>
-          <div class="fixed inset-0 bg-zinc-900/50 backdrop-blur-sm z-50 flex items-center justify-center">
-            <div class="relative bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+          <div class="obpt-modal-backdrop">
+            <div class="obpt-modal">
               <h2 class="text-base font-semibold">
                 <%= case @preview.action do %>
                   <% "job_retry" -> %> Retry Job #<%= @job.id %>
@@ -630,23 +630,23 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 <% end %>
               </h2>
 
-              <div class="mt-4 rounded bg-slate-50 p-4 text-sm space-y-1">
+              <div class="obpt-modal-summary">
                 <div><strong>Job ID:</strong> <%= @job.id %></div>
                 <div><strong>Current State:</strong> <%= @job.state %></div>
                 <div><strong>Action:</strong> <%= @preview.action %></div>
               </div>
 
               <form phx-change="reason" phx-submit="execute" class="mt-4 space-y-4">
-                <label class="block text-sm font-semibold text-zinc-700">Reason (required)</label>
-                <input type="text" name="reason" value={@reason} placeholder="e.g., Network timeout, operator intervention..." class="w-full rounded-md border-gray-300 text-sm" />
+                <label class="obpt-form-label">Reason (required)</label>
+                <input type="text" name="reason" value={@reason} placeholder="e.g., Network timeout, operator intervention..." class="obpt-input" />
 
-                <div :if={@error_message} class="mt-4 rounded bg-red-50 p-4 text-sm text-red-800 border border-red-200">
+                <div :if={@error_message} class="obpt-alert obpt-alert--danger">
                   <%= @error_message %>
                 </div>
 
                 <div class="mt-6 flex justify-end gap-4">
-                  <button type="button" phx-click="close_preview" class="text-sm font-semibold text-slate-600">Keep Job</button>
-                  <button type="submit" disabled={String.trim(@reason) == ""} class={"rounded px-4 py-2 text-sm font-semibold text-white " <> if(@preview.action == "job_retry", do: "bg-indigo-600 hover:bg-indigo-700", else: "bg-red-600 hover:bg-red-700")}>
+                  <button type="button" phx-click="close_preview" class="obpt-button obpt-button--neutral">Keep Job</button>
+                  <button type="submit" disabled={String.trim(@reason) == ""} class={preview_confirm_button_class(@preview.action)}>
                     <%= case @preview.action do %>
                       <% "job_retry" -> %> Confirm Retry
                       <% "job_cancel" -> %> Confirm Cancel
@@ -805,7 +805,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                     <input type="checkbox" checked={job.id in @selected_jobs} phx-click="toggle_job" phx-value-id={job.id} class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
                   </td>
                   <td class="px-4 py-3">
-                    <span class={"rounded border px-2 py-1 text-xs font-semibold " <> state_badge_class(job.state)}>
+                    <span class="obpt-badge" data-obpt-tone={state_badge_tone(job.state)}>
                       <%= job.state %>
                     </span>
                   </td>
@@ -852,8 +852,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         <%!-- Bulk Action Preview Modal --%>
         <%= if @bulk_preview_action do %>
           <% selected_count = if @global_select, do: Map.get(@counts, to_string(@filter.state), 0), else: MapSet.size(@selected_jobs) %>
-          <div class="fixed inset-0 bg-zinc-900/50 backdrop-blur-sm z-50 flex items-center justify-center">
-            <div class="relative bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+          <div class="obpt-modal-backdrop">
+            <div class="obpt-modal">
               <h2 class="text-base font-semibold">
                 <%= case @bulk_preview_action do %>
                   <% "job_retry" -> %> Bulk Retry <%= selected_count %> Jobs
@@ -867,16 +867,16 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               </p>
 
               <form phx-change="reason" phx-submit="execute_bulk" class="mt-4 space-y-4">
-                <label class="block text-sm font-semibold text-zinc-700">Reason (required)</label>
-                <input type="text" name="reason" value={@reason} placeholder="e.g., Network timeout, operator intervention..." class="w-full rounded-md border-gray-300 text-sm" />
+                <label class="obpt-form-label">Reason (required)</label>
+                <input type="text" name="reason" value={@reason} placeholder="e.g., Network timeout, operator intervention..." class="obpt-input" />
 
-                <div :if={@error_message} class="mt-4 rounded bg-red-50 p-4 text-sm text-red-800 border border-red-200">
+                <div :if={@error_message} class="obpt-alert obpt-alert--danger">
                   <%= @error_message %>
                 </div>
 
                 <div class="mt-6 flex justify-end gap-4">
-                  <button type="button" phx-click="close_preview" class="text-sm font-semibold text-slate-600">Cancel</button>
-                  <button type="submit" disabled={String.trim(@reason) == ""} class={"rounded px-4 py-2 text-sm font-semibold text-white " <> if(@bulk_preview_action == "job_retry", do: "bg-indigo-600 hover:bg-indigo-700", else: "bg-red-600 hover:bg-red-700")}>
+                  <button type="button" phx-click="close_preview" class="obpt-button obpt-button--neutral">Cancel</button>
+                  <button type="submit" disabled={String.trim(@reason) == ""} class={preview_confirm_button_class(@bulk_preview_action)}>
                     <%= case @bulk_preview_action do %>
                       <% "job_retry" -> %> Confirm Bulk Retry
                       <% "job_cancel" -> %> Confirm Bulk Cancel
@@ -1094,22 +1094,17 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       ]
     end
 
-    defp state_tab_class(true),
-      do:
-        "rounded border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700"
+    defp state_tab_class(true), do: "obpt-tab obpt-tab--active"
+    defp state_tab_class(false), do: "obpt-tab"
 
-    defp state_tab_class(false),
-      do:
-        "rounded border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600"
+    defp state_badge_tone("executing"), do: "info"
+    defp state_badge_tone("retryable"), do: "warning"
+    defp state_badge_tone("discarded"), do: "danger"
+    defp state_badge_tone("completed"), do: "success"
+    defp state_badge_tone(_), do: "neutral"
 
-    defp state_badge_class("available"), do: "border-slate-200 bg-slate-50 text-slate-700"
-    defp state_badge_class("scheduled"), do: "border-slate-200 bg-slate-50 text-slate-700"
-    defp state_badge_class("executing"), do: "border-indigo-200 bg-indigo-50 text-indigo-700"
-    defp state_badge_class("retryable"), do: "border-amber-200 bg-amber-50 text-amber-700"
-    defp state_badge_class("cancelled"), do: "border-slate-200 bg-slate-50 text-slate-500"
-    defp state_badge_class("discarded"), do: "border-red-200 bg-red-50 text-red-700"
-    defp state_badge_class("completed"), do: "border-emerald-200 bg-emerald-50 text-emerald-700"
-    defp state_badge_class(_), do: "border-slate-200 bg-slate-50 text-slate-700"
+    defp preview_confirm_button_class("job_retry"), do: "obpt-button obpt-button--primary"
+    defp preview_confirm_button_class(_), do: "obpt-button obpt-button--danger"
 
     defp short_worker_name(worker) when is_binary(worker),
       do: worker |> String.split(".") |> List.last()
