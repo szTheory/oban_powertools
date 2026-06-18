@@ -1,16 +1,15 @@
-# Upgrade & Compatibility
+# 1.0 Upgrade & Compatibility
 
-This guide documents one supported upgrade lane. It starts from a real Phoenix host shape that
-already runs Oban Powertools natively at `/ops/jobs`, then upgrades that host to the current
-public contract without guessing at hidden seam changes.
+This guide documents the supported upgrade lane for transitioning from **0.5.x to 1.0.0**. It starts from a real Phoenix host shape that
+already runs Oban Powertools 0.5.x natively at `/ops/jobs`, then upgrades that host to the 1.0.0 public contract without guessing at hidden seam changes.
 That contract is the unified native `/ops/jobs` control plane, with `/ops/jobs/oban` kept as a narrower read-only bridge.
 
-## Supported Source Lane
+## Supported Source Lane (0.5.x)
 
 The supported source lane is a Phoenix host generated from `mix phx.new` with:
 
 - Postgres and Ecto already in place
-- Oban Powertools already installed
+- Oban Powertools 0.5.x already installed
 - `repo: MyApp.Repo` already configured
 - `auth_module: MyAppWeb.ObanPowertoolsAuth` already configured
 - the host-owned `/ops/jobs` scope already mounted
@@ -19,7 +18,9 @@ The supported source lane is a Phoenix host generated from `mix phx.new` with:
 
 This is the only source host shape that the upgrade proof and this guide claim directly.
 
-## Exact Upgrade Actions
+## Exact Upgrade Actions to 1.0.0
+
+To cross the 1.0 threshold, the following host actions are required:
 
 1. Add the host-owned display policy module:
 
