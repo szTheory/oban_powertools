@@ -13,8 +13,8 @@
 
 **Goal:** Write the "Powertools vs. Oban Pro" feature matrix and complete the `1.0` upgrade guide from `0.5.x` to ensure adopters have a clear migration path.
 **Requirements:** [DOC-01, DOC-02]
-**Plans:** 1 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 68-01-PLAN.md — Write competitive feature matrix and 1.0 upgrade guide
+- [x] 68-01-PLAN.md — Write competitive feature matrix and 1.0 upgrade guide
 - [ ] **Phase 69: The 1.0.0 Release** - Cut the release.
