@@ -74,7 +74,12 @@
   2. The dev-only `/ops/jobs/_showcase` route renders (initially tokens + theming) with a theme switcher (light/dark/system/high-contrast) and a 320/tablet/wide viewport toggle; it compiles to no route in prod.
   3. The showcase runs from `examples/phoenix_host` with no host changes.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+- [ ] 72-01-PLAN.md — RED fixture catalog and package exclusion contracts (wave 1)
+- [ ] 72-02-PLAN.md — RED showcase route, control, selector, and example-host contracts (wave 1)
+- [ ] 72-03-PLAN.md — Canonical deterministic scenario catalog implementation (wave 2)
+- [ ] 72-04-PLAN.md — Dev-only showcase LiveView, route, token-backed shell CSS, and final proof gates (wave 3)
 
 ### Phase 73: Visual-Regression & A11y Harness
 
