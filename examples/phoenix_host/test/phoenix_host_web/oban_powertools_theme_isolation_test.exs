@@ -13,6 +13,11 @@ defmodule PhoenixHostWeb.ObanPowertoolsThemeIsolationTest do
     refute html =~ "obpt-root"
     refute html =~ "/ops/jobs/_assets/"
     refute html =~ "oban_powertools:theme"
+    refute html =~ "_showcase"
+    refute html =~ "data-obpt-showcase"
+    refute html =~ "data-obpt-theme-choice"
+    refute html =~ "data-obpt-viewport"
+    refute html =~ "data-obpt-open-state-target"
   end
 
   test "Powertools jobs page owns the scoped theme root and md5 assets", %{conn: conn} do
