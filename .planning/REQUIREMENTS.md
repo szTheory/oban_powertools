@@ -19,11 +19,11 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 
 ### Tokens & Theming (TOKEN)
 
-- [ ] **TOKEN-01**: A single library-owned token layer (two-tier `--obpt-*` CSS custom properties: primitive palette → semantic roles) is the only source of color/space/type/radii/elevation/motion values; no raw hex/px in components.
-- [ ] **TOKEN-02**: The theme is scoped to a Powertools namespace root (`.obpt-root`, preflight disabled, `obpt:` utility prefix) so it cannot leak into or be overridden by host styles, and host styles cannot bleed in.
-- [ ] **TOKEN-03**: The library ships its own compiled CSS/JS asset (precompiled, md5-hashed, served by a Plug with immutable caching), independent of the host Tailwind build; the host opts in with no Tailwind config changes.
-- [ ] **TOKEN-04**: Light/dark/system themes work via `data-obpt-theme` on `.obpt-root` (never `<html>`); **system is default**; explicit choice persists under a namespaced `localStorage` key and respects `prefers-color-scheme` and `prefers-reduced-motion`.
-- [ ] **TOKEN-05**: The token/asset build is idempotent — re-running yields byte-stable output; no FOUC; theme switch causes no layout shift. Token names are treated as a semver-protected public contract.
+- [x] **TOKEN-01**: A single library-owned token layer (two-tier `--obpt-*` CSS custom properties: primitive palette → semantic roles) is the only source of color/space/type/radii/elevation/motion values; no raw hex/px in components.
+- [x] **TOKEN-02**: The theme is scoped to a Powertools namespace root (`.obpt-root`, preflight disabled, `obpt:` utility prefix) so it cannot leak into or be overridden by host styles, and host styles cannot bleed in.
+- [x] **TOKEN-03**: The library ships its own compiled CSS/JS asset (precompiled, md5-hashed, served by a Plug with immutable caching), independent of the host Tailwind build; the host opts in with no Tailwind config changes.
+- [x] **TOKEN-04**: Light/dark/system themes work via `data-obpt-theme` on `.obpt-root` (never `<html>`); **system is default**; explicit choice persists under a namespaced `localStorage` key and respects `prefers-color-scheme` and `prefers-reduced-motion`.
+- [x] **TOKEN-05**: The token/asset build is idempotent — re-running yields byte-stable output; no FOUC; theme switch causes no layout shift. Token names are treated as a semver-protected public contract.
 
 ### Primitives (COMP)
 
@@ -75,12 +75,12 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 
 - [ ] **A11Y-01**: Automated a11y checks (axe-core, WCAG 2.2 AA tags, open-state variants) run in CI against the showcase and pages; 0 critical/serious is merge-blocking.
 - [ ] **A11Y-02**: All interactive elements are keyboard-reachable/operable with visible focus; color is never the sole information carrier; dialogs trap and restore focus and close on Esc.
-- [ ] **A11Y-03**: Contrast meets AA in light/dark; high-contrast mode meets enhanced ratios; target sizes are comfortable (2.5.8) and focus is not obscured (2.4.11).
+- [x] **A11Y-03**: Contrast meets AA in light/dark; high-contrast mode meets enhanced ratios; target sizes are comfortable (2.5.8) and focus is not obscured (2.4.11).
 - [ ] **A11Y-04**: Reduced-motion preference disables non-essential animation without hiding content; a manual checklist covers what automation can't (focus order, SR-announcement quality, APG patterns).
 
 ### Motion (MOTION)
 
-- [ ] **MOTION-01**: Motion tokens (duration/easing) live in the token layer; components use them, never inline timings.
+- [x] **MOTION-01**: Motion tokens (duration/easing) live in the token layer; components use them, never inline timings.
 - [ ] **MOTION-02**: Transitions are purposeful, interruptible, and reduced-motion-safe; overlays are origin-aware where feasible; no motion blocks operator action or obscures feedback.
 
 ### Microcopy / Voice (COPY)
@@ -134,7 +134,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 |--------|-------|--------|
 | BRAND-01..05 | Phase 70 | Complete |
 | TOKEN-01..05 | Phase 71 | Pending |
-| MOTION-01 | Phase 71 | Pending |
+| MOTION-01 | Phase 71 | Complete |
 | FIX-01..03 | Phase 72 | Pending |
 | SHOW-01..03 | Phase 72 (skeleton), Phase 83 (full) | Pending |
 | VRT-01..03 | Phase 73 | Pending |
@@ -156,6 +156,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 | DOC-01..03 | Phase 83 | Pending |
 
 **Coverage:**
+
 - v2.0 requirements: 56 total across 15 categories
 - Mapped to phases: 56
 - Unmapped: 0 ✓
