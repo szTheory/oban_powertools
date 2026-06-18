@@ -1,5 +1,10 @@
 import Config
 
+# Compile the dev-only routes (e.g. the brand book LiveView) in the test env so
+# the BrandBookLive module is defined and the /ops/jobs/_brand_book route is
+# mounted for the render test. Mirrors config/dev.exs; absent from prod.
+config :oban_powertools, dev_routes: true
+
 put_if_present = fn keyword, key, env_name ->
   case System.get_env(env_name) do
     nil -> keyword
