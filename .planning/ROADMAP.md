@@ -55,7 +55,13 @@
   3. No style leakage in or out of the namespace, proven against `examples/phoenix_host` (host pages outside `/ops/jobs` unchanged; `<html>`/host storage untouched).
   4. The asset build is byte-stable on re-run; theme switch causes no FOUC/layout shift. A proof seam (`jobs_live.ex` badge/tab/modal) is migrated onto tokens to validate end-to-end.
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+- [ ] 71-01-PLAN.md — Wave 0 validation harness for token/theme/assets/proof-seam/isolation checks (wave 0)
+- [ ] 71-02-PLAN.md — Scoped token CSS, theme JS, deterministic build task, and compiled assets (wave 1)
+- [ ] 71-03-PLAN.md — MD5 immutable asset Plug/routes plus `priv` package inclusion (wave 2)
+- [ ] 71-04-PLAN.md — Powertools ThemeShell live-session integration with `.obpt-root` system default (wave 3)
+- [ ] 71-05-PLAN.md — JobsLive proof seam and example-host isolation closure (wave 4)
 
 ### Phase 72: Stress Fixtures & Showcase Skeleton
 
