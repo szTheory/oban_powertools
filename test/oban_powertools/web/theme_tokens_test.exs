@@ -212,7 +212,7 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
   end
 
   defp blocks_for(css, selector_fragment) do
-    Regex.scan(~r/(?<selector>[^{}]+)\{(?<body>[^{}]+)\}/m, css, capture: :all_names)
+    Regex.scan(~r/([^{}]+)\{([^{}]+)\}/m, css, capture: :all_but_first)
     |> Enum.map(fn [selector, body] -> {String.trim(selector), body} end)
     |> Enum.filter(fn {selector, _body} -> String.contains?(selector, selector_fragment) end)
   end
