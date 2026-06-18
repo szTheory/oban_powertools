@@ -124,6 +124,14 @@ See [Path to 1.0](#path-to-10) below for the explicit gate.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-18
+
+### Changed
+- Promoted package version to `1.0.0` following comprehensive stabilization sweep.
+- Ecto migrations updated to utilize concurrent index generation (`concurrently: true` and `@disable_ddl_transaction true`) for high-throughput tables.
+- Ran comprehensive static analysis with Dialyzer and Credo, resolving all code contract warnings.
+- Introduced `powertools-vs-oban-pro.md` matrix and `upgrade-and-compatibility.md` documentation.
+
 ### Added
 
 #### Health Check CLI

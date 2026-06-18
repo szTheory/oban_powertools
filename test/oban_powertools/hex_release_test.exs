@@ -23,11 +23,11 @@ defmodule ObanPowertools.HexReleaseTest do
   # ---------------------------------------------------------------------------
 
   describe "REL-03 CHANGELOG + LICENSE" do
-    test "CHANGELOG contains the 0.5.0 release heading" do
+    test "CHANGELOG contains the 1.0.0 release heading" do
       source = File.read!(@changelog_path)
 
-      assert source =~ "## [0.5.0]",
-             "CHANGELOG.md must have a ## [0.5.0] section heading"
+      assert source =~ "## [1.0.0]",
+             "CHANGELOG.md must have a ## [1.0.0] section heading"
     end
 
     test "CHANGELOG contains the Unreleased section" do
@@ -51,11 +51,11 @@ defmodule ObanPowertools.HexReleaseTest do
              "CHANGELOG.md must reference keepachangelog in the preamble"
     end
 
-    test "CHANGELOG contains NO [1.x.y] SemVer headings (no backfilled 1.x milestones)" do
+    test "CHANGELOG contains NO [2.x.y] SemVer headings (no backfilled 2.x milestones)" do
       source = File.read!(@changelog_path)
 
-      refute source =~ ~r/## \[1\.\d+\.\d+\]/,
-             "CHANGELOG.md must NOT contain any ## [1.x.y] headings — internal planning milestones must not appear as Hex releases (D-13)"
+      refute source =~ ~r/## \[2\.\d+\.\d+\]/,
+             "CHANGELOG.md must NOT contain any ## [2.x.y] headings — internal planning milestones must not appear as Hex releases (D-13)"
     end
 
     test "LICENSE contains the Apache License header" do
@@ -192,11 +192,11 @@ defmodule ObanPowertools.HexReleaseTest do
   # ---------------------------------------------------------------------------
 
   describe "REL-01 README install snippet + stability" do
-    test "README contains the ~> 0.5 install snippet" do
+    test "README contains the ~> 1.0 install snippet" do
       source = File.read!(@readme_path)
 
-      assert source =~ ~s({:oban_powertools, "~> 0.5"}),
-             "README.md must show {:oban_powertools, \"~> 0.5\"} as the install snippet"
+      assert source =~ ~s({:oban_powertools, "~> 1.0"}),
+             "README.md must show {:oban_powertools, \"~> 1.0\"} as the install snippet"
     end
 
     test "README does NOT contain the old ~> 0.1.0 snippet" do
@@ -230,7 +230,7 @@ defmodule ObanPowertools.HexReleaseTest do
              "release-please-config.json must have \"release-type\": \"elixir\""
     end
 
-    test "release-please-config.json has include-v-in-tag == true (produces v0.5.0 tag format)" do
+    test "release-please-config.json has include-v-in-tag == true (produces v1.0.0 tag format)" do
       config = rp_config()
 
       assert config["include-v-in-tag"] == true,
