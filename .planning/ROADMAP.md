@@ -35,7 +35,9 @@
   2. Every planned token category has a named brand decision behind it (traceability table).
   3. The "explain, then act" principle and danger/confirmation voice are codified as enforceable rules.
   4. No code/UI changes to the 9 pages (brand book is documentation + intent).
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 70-01-PLAN.md — Author guides/brand-book.md (all 22 decisions + BRAND-05 traceability table) + content-assertion harness + HexDocs registration (wave 1)
+- [ ] 70-02-PLAN.md — Dev-only BrandBookLive route + zero-dep Markdown render + dev/test config + render & prod-exclusion checks + README link (wave 2)
 
 ### Phase 71: Token Layer & Isolated Theming Engine
 **Goal**: Ship the library-owned, namespaced, self-contained token + theming layer (light/dark/system; system default).
