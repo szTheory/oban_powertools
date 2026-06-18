@@ -48,7 +48,10 @@ defmodule ObanPowertools.Web.Router do
         end
 
       quote do
+        import Phoenix.Router, only: [get: 3, get: 4, scope: 2, scope: 3]
         import Phoenix.LiveView.Router, only: [live: 3, live: 4, live_session: 3]
+
+        get("/_assets/:filename", ObanPowertools.Web.Assets, :asset)
 
         live_session :oban_powertools_native,
           on_mount: [ObanPowertools.Web.LiveAuth],

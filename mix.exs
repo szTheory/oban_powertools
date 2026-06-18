@@ -33,7 +33,7 @@ defmodule ObanPowertools.MixProject do
       description: "A host-owned operations layer for Oban-backed Phoenix applications.",
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => @source_url},
-      files: ~w[lib guides .formatter.exs mix.exs mix.lock README.md CHANGELOG.md LICENSE]
+      files: ~w[lib priv guides .formatter.exs mix.exs mix.lock README.md CHANGELOG.md LICENSE]
     ]
   end
 

@@ -106,9 +106,10 @@ defmodule ObanPowertools.HexReleaseTest do
              "package :licenses must be [\"Apache-2.0\"] for SPDX compliance, got #{inspect(licenses)}"
     end
 
-    test "package :files includes lib, guides, mix.exs, mix.lock, README.md, CHANGELOG.md, LICENSE" do
+    test "package :files includes lib, priv, guides, mix.exs, mix.lock, README.md, CHANGELOG.md, LICENSE" do
       files = Mix.Project.config()[:package][:files]
       assert "lib" in files, ":files must include \"lib\""
+      assert "priv" in files, ":files must include \"priv\" so compiled Powertools assets ship"
       assert "guides" in files, ":files must include \"guides\""
       assert "mix.exs" in files, ":files must include \"mix.exs\""
       assert "mix.lock" in files, ":files must include \"mix.lock\""
@@ -117,11 +118,17 @@ defmodule ObanPowertools.HexReleaseTest do
       assert "LICENSE" in files, ":files must include \"LICENSE\""
     end
 
-    test "package :files does NOT include priv, test, or .planning" do
+    test "package :files includes Phase 71 static assets and excludes test or .planning" do
       files = Mix.Project.config()[:package][:files]
 
-      refute "priv" in files,
-             ":files must NOT include \"priv\" — no priv/ directory exists (Igniter generates inline)"
+      assert "priv" in files,
+             ":files must include \"priv\" for priv/static/oban_powertools compiled CSS/JS"
+
+      assert File.exists?("priv/static/oban_powertools/oban_powertools.css"),
+             "compiled CSS asset must exist before Hex packaging"
+
+      assert File.exists?("priv/static/oban_powertools/oban_powertools.js"),
+             "compiled JS asset must exist before Hex packaging"
 
       refute "test" in files,
              ":files must NOT include \"test\" (dev artifact must be excluded from tarball)"
