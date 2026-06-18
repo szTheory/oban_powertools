@@ -72,9 +72,9 @@ Phase 72 should add a validation-first foundation: a deterministic scenario cata
 
 The showcase must reuse Phase 71 exactly: the route belongs inside the existing `:oban_powertools_native` live session, so `ThemeShell.live/1` provides the md5 CSS/JS asset tags, `.obpt-root`, `data-obpt-theme="system"`, and `main.obpt-shell` without host root-layout or host Tailwind changes. [VERIFIED: lib/oban_powertools/web/router.ex; lib/oban_powertools/web/theme_shell.ex; lib/oban_powertools/web/assets.ex]
 
-The main risk is the dev-route/module boundary in `examples/phoenix_host`: the existing `_brand_book` route is visible in example-host dev route info, but `Code.ensure_loaded?(ObanPowertools.Web.Dev.BrandBookLive)` returns false and the host emits an undefined LiveView warning because dependency-local dev/test config and deps are not enough when compiled as a path dependency. [VERIFIED: `cd examples/phoenix_host && MIX_ENV=dev mix run ...` probe] Phase 72 must not repeat that failure; the planner should make `ShowcaseLive` compile safely in the example host without direct compile-time dependency on the excluded catalog, while keeping the route absent in prod. [VERIFIED: code probe; .planning/phases/72-stress-fixtures-showcase-skeleton/72-CONTEXT.md]
+The main risk is the dev-route/module boundary in `examples/phoenix_host`: the existing `_brand_book` route is visible in example-host dev route info, but `Code.ensure_loaded?(ObanPowertools.Web.Dev.BrandBookLive)` returns false and the host emits an undefined LiveView warning because dependency-local dev/test config and deps are not enough when compiled as a path dependency. [VERIFIED: `cd examples/phoenix_host && MIX_ENV=dev mix run ...` probe] Phase 72 must not repeat that failure; the planner should make `ShowcaseLive` compile and load safely in the example host under `MIX_ENV=dev` without direct compile-time dependency on the excluded catalog, while preserving D-06 by guarding the `ShowcaseLive` module body and route with `Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev)` and proving the module is not loaded plus route info is `:error` in prod. [VERIFIED: code probe; .planning/phases/72-stress-fixtures-showcase-skeleton/72-CONTEXT.md]
 
-**Primary recommendation:** implement Wave 0 tests first, then add `test/support/showcase_catalog.ex`, a guarded `_showcase` route next to `_brand_book`, and a dependency-safe `ShowcaseLive` that loads the optional catalog by module name at runtime and renders stable token/theming plus fixture index stories. [VERIFIED: codebase route/test patterns; official LiveViewTest docs]
+**Primary recommendation:** implement Wave 0 tests first, then add `test/support/showcase_catalog.ex`, a guarded `ShowcaseLive` module body, a guarded `_showcase` route next to `_brand_book`, and dependency-safe catalog loading that makes the dev-mode path dependency compile/load in the example host while remaining absent in prod. [VERIFIED: codebase route/test patterns; official LiveViewTest docs]
 
 ## Architectural Responsibility Map
 
@@ -331,7 +331,7 @@ end
 
 **Why it happens:** `examples/phoenix_host` compiles `oban_powertools` as a path dependency; dependency-local dev/test config and dev-only deps do not behave like root-project compilation, so the existing `_brand_book` module is not loaded in example-host dev even though route info shows the route. [VERIFIED: `Code.ensure_loaded?` probe; examples/phoenix_host deps tree]
 
-**How to avoid:** Make `ShowcaseLive` compile without excluded catalog data or dev-only dependencies, keep the route compile_env-gated at the host router boundary, and load catalog data optionally by module name. [VERIFIED: mix.exs; Hex package proof]
+**How to avoid:** Guard the `ShowcaseLive` module body and router entry with the same `Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev)` condition, make the guarded dev body compile without excluded catalog data or dev-only dependencies, and load catalog data optionally by module name or the local canonical support path when running from the repo/path dependency. [VERIFIED: mix.exs; Hex package proof]
 
 **Warning signs:** `PhoenixHostWeb.Router.__checks__/0` warning about `ObanPowertools.Web.Dev.ShowcaseLive.__live__/0` or `Code.ensure_loaded?(ObanPowertools.Web.Dev.ShowcaseLive) == false` in `examples/phoenix_host`. [VERIFIED: example-host `_brand_book` warning]
 
@@ -450,19 +450,18 @@ end
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | A dependency-safe `ShowcaseLive` with optional catalog lookup is the best no-host-change resolution for the example-host dev-route/module mismatch. [ASSUMED] | Summary, Architecture Patterns, Open Questions | Planner may need to choose a different strategy if strict dev-module absence in prod is more important than example-host no-host-change behavior. |
+| A1 | A dependency-safe, compile-env-guarded `ShowcaseLive` with optional catalog lookup is the resolved no-host-change strategy for the example-host dev-route/module mismatch. [RESOLVED] | Summary, Architecture Patterns, Open Questions | Must satisfy both dev-mode path dependency loading and prod module/route absence. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **How strict is "modules are guarded" versus "route absent in prod" for `_showcase`?**
    - What we know: Context D-06 says route and modules mirror the `_brand_book` compile_env guard, but the example host currently shows the `_brand_book` route can be mounted while its module is unavailable in dev dependency compilation. [VERIFIED: 72-CONTEXT.md; example-host probe]
-   - What's unclear: Whether Phase 72 may compile `ShowcaseLive` as safe inert code in `lib/` while route availability remains compile_env-gated, or whether module body absence is mandatory. [ASSUMED]
-   - Recommendation: Prefer route absence as the prod guarantee, keep `ShowcaseLive` free of dev-only deps and catalog compile-time references, and add explicit prod route absence plus Hex catalog exclusion tests. [ASSUMED]
+   - RESOLVED: D-06 is strict. `ObanPowertools.Web.Dev.ShowcaseLive` must wrap its module body in `if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do ... end`, matching the router guard. Prod verification must prove both `Code.ensure_loaded?(ObanPowertools.Web.Dev.ShowcaseLive) == false` and `Phoenix.Router.route_info(..., "/ops/jobs/_showcase", ...) == :error`.
+   - RESOLVED: The guarded dev body must stay dependency-safe: no compile-time dependency on `test/support/showcase_catalog.ex`, no ExDoc/EarmarkParser dependency, and optional catalog loading from the loaded module or canonical local support file only when available.
 
 2. **Should example-host `_showcase` proof be automated in `MIX_ENV=test` or verified in `MIX_ENV=dev`?**
    - What we know: `examples/phoenix_host/config/test.exs` does not set `config :oban_powertools, dev_routes: true`; `Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev)` evaluates false in example-host test. [VERIFIED: examples/phoenix_host/config/test.exs; code probe]
-   - What's unclear: Whether modifying example-host test config is allowed under "no host changes." [VERIFIED: phase prompt]
-   - Recommendation: Do not change host config unless explicitly accepted; use a dev-mode route/module proof and root-project LiveView tests for connected render assertions. [ASSUMED]
+   - RESOLVED: Example-host `_showcase` proof is dev-mode automation, not test-env host configuration. Do not edit example-host router, layout, Tailwind, or config files. Use `cd examples/phoenix_host && MIX_ENV=dev ...` compile/route/module commands to prove the existing path dependency loads `ShowcaseLive`; use prod commands to prove the same module and route are absent.
 
 ## Environment Availability
 
@@ -523,10 +522,10 @@ Expected evidence: `live(conn, "/ops/jobs/_showcase")` returns HTML with exactly
 
 ```bash
 MIX_ENV=prod mix compile --warnings-as-errors
-cd examples/phoenix_host && MIX_ENV=prod mix run --no-start -e 'IO.inspect(Phoenix.Router.route_info(PhoenixHostWeb.Router, "GET", "/ops/jobs/_showcase", "localhost"))'
+cd examples/phoenix_host && MIX_ENV=prod mix run --no-start -e 'IO.inspect({Code.ensure_loaded?(ObanPowertools.Web.Dev.ShowcaseLive), Phoenix.Router.route_info(PhoenixHostWeb.Router, "GET", "/ops/jobs/_showcase", "localhost")})'
 ```
 
-Expected evidence: prod compile succeeds and route info prints `:error`; no `_showcase` route is mounted in prod. [VERIFIED: Application.compile_env docs; lib/oban_powertools/web/router.ex pattern]
+Expected evidence: prod compile succeeds and the tuple prints `{false, :error}`; no `_showcase` route or `ShowcaseLive` module is present in prod. [VERIFIED: Application.compile_env docs; lib/oban_powertools/web/router.ex pattern]
 
 **Hex tarball exclusion:**
 
@@ -536,7 +535,7 @@ OBAN_POWERTOOLS_SKIP_DB_BOOT=1 mix hex.build --unpack -o /tmp/obpt_phase72_pkg
 test -f /tmp/obpt_phase72_pkg/priv/static/oban_powertools/oban_powertools.css
 test -f /tmp/obpt_phase72_pkg/priv/static/oban_powertools/oban_powertools.js
 test ! -e /tmp/obpt_phase72_pkg/test/support/showcase_catalog.ex
-! find /tmp/obpt_phase72_pkg -type f | rg '(^|/)showcase_catalog\.ex$|^\.planning/|^test/'
+! find /tmp/obpt_phase72_pkg -type f | rg '(^|/)(showcase_catalog\.ex|\.planning|test)(/|$)'
 ```
 
 Expected evidence: runtime Phase 71 assets remain packaged; `test`, `.planning`, and showcase catalog/support files are absent. [VERIFIED: Hex docs; current `mix hex.build --unpack` proof]
@@ -550,7 +549,7 @@ MIX_ENV=dev mix run --no-start -e 'IO.inspect({Code.ensure_loaded?(ObanPowertool
 mix test test/phoenix_host_web/oban_powertools_theme_isolation_test.exs test/phoenix_host_web/controllers/page_controller_test.exs
 ```
 
-Expected evidence: dev compile has no undefined LiveView warning, `Code.ensure_loaded?` is true, route info returns a LiveView route, host `/` remains free of `obpt-root`, `/ops/jobs/_assets/`, and `oban_powertools:theme`; if test-env route rendering is desired, the plan must solve example-host `dev_routes` without host changes. [VERIFIED: example-host route probe; examples/phoenix_host tests]
+Expected evidence: dev compile has no undefined LiveView warning, `Code.ensure_loaded?` is true, route info returns a LiveView route, and host `/` remains free of `obpt-root`, `/ops/jobs/_assets/`, and `oban_powertools:theme`; no example-host router/layout/config edits are required. [VERIFIED: example-host route probe; examples/phoenix_host tests]
 
 ### Sampling Rate
 
@@ -597,8 +596,8 @@ OWASP ASVS 5.0 is the current stable version dated May 2025 and defines a web ap
 
 | Risk | Severity | Recommendation |
 |------|----------|----------------|
-| Existing `_brand_book` route/module mismatch in example host may repeat for `_showcase`. [VERIFIED: example-host probe] | High | Add the route/module availability proof before implementation completion; avoid direct compile-time dependencies from `ShowcaseLive` to excluded support files. [ASSUMED] |
-| `test/support/showcase_catalog.ex` is not compiled in dev by current root `mix.exs`. [VERIFIED: mix.exs] | Medium | Either compile the support catalog in local dev without packaging it, or let `ShowcaseLive` render with optional catalog data while tests exercise catalog in `MIX_ENV=test`. [ASSUMED] |
+| Existing `_brand_book` route/module mismatch in example host may repeat for `_showcase`. [VERIFIED: example-host probe] | High | Add the route/module availability proof before implementation completion; keep the module body compile-env guarded and avoid direct compile-time dependencies from `ShowcaseLive` to excluded support files. [RESOLVED] |
+| `test/support/showcase_catalog.ex` is not compiled in dev by current root `mix.exs`. [VERIFIED: mix.exs] | Medium | Make the guarded dev module optionally load `ObanPowertools.ShowcaseCatalog` from the loaded module or canonical local support path without duplicating fixture data, while tests exercise catalog in `MIX_ENV=test`. [RESOLVED] |
 | Scope creep into primitives/VRT/a11y harness. [VERIFIED: roadmap] | Medium | Restrict Phase 72 to skeleton, tokens/theming, fixture index/examples, controls, stable placeholders, and validation contracts. [VERIFIED: 72-CONTEXT.md] |
 | Hex package proof could accidentally remove required Phase 71 assets. [VERIFIED: current package includes `priv/static`] | Medium | Extend tests to reject fixture data while still requiring `priv/static/oban_powertools/*.css|*.js`. [VERIFIED: test/oban_powertools/hex_release_test.exs] |
 | High-contrast and viewport controls may be visual-only without state exposure. [VERIFIED: SHOW-02] | Low | Assert explicit DOM attributes for selected control state, even if Phase 73 later drives real browser viewport sizes. [VERIFIED: 72-CONTEXT.md D-12] |
@@ -627,7 +626,7 @@ OWASP ASVS 5.0 is the current stable version dated May 2025 and defines a web ap
 
 ### Tertiary (LOW confidence)
 
-- A1 recommendation around dependency-safe `ShowcaseLive` optional catalog lookup is an implementation strategy inferred from local probes, not a locked user decision. [ASSUMED]
+- A1 dependency-safe `ShowcaseLive` optional catalog lookup is now resolved by strict D-06 module/route guarding, dev-mode example-host automation, and prod module/route absence proof. [RESOLVED]
 
 ## Metadata
 

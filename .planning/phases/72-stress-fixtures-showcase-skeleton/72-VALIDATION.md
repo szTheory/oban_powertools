@@ -93,17 +93,17 @@ Expected evidence:
 - Viewport controls expose stable values for `320`, `tablet`, and `wide` through `data-obpt-viewport`.
 - Story cells expose `data-obpt-story`, `data-obpt-domain`, `data-obpt-persona`, and `data-obpt-state`.
 
-### Production Route Absence
+### Production Route And Module Absence
 
 ```bash
 MIX_ENV=prod mix compile --warnings-as-errors
-cd examples/phoenix_host && MIX_ENV=prod mix run --no-start -e 'IO.inspect(Phoenix.Router.route_info(PhoenixHostWeb.Router, "GET", "/ops/jobs/_showcase", "localhost"))'
+cd examples/phoenix_host && MIX_ENV=prod mix run --no-start -e 'IO.inspect({Code.ensure_loaded?(ObanPowertools.Web.Dev.ShowcaseLive), Phoenix.Router.route_info(PhoenixHostWeb.Router, "GET", "/ops/jobs/_showcase", "localhost")})'
 ```
 
 Expected evidence:
 - Prod compile succeeds.
-- Route info prints `:error`.
-- No `_showcase` route is mounted in production.
+- The tuple prints `{false, :error}`.
+- No `_showcase` route is mounted and `ObanPowertools.Web.Dev.ShowcaseLive` is not loaded in production.
 
 ### Hex Tarball Exclusion
 
@@ -113,7 +113,7 @@ OBAN_POWERTOOLS_SKIP_DB_BOOT=1 mix hex.build --unpack -o /tmp/obpt_phase72_pkg
 test -f /tmp/obpt_phase72_pkg/priv/static/oban_powertools/oban_powertools.css
 test -f /tmp/obpt_phase72_pkg/priv/static/oban_powertools/oban_powertools.js
 test ! -e /tmp/obpt_phase72_pkg/test/support/showcase_catalog.ex
-! find /tmp/obpt_phase72_pkg -type f | rg '(^|/)showcase_catalog\.ex$|^\.planning/|^test/'
+! find /tmp/obpt_phase72_pkg -type f | rg '(^|/)(showcase_catalog\.ex|\.planning|test)(/|$)'
 ```
 
 Expected evidence:
