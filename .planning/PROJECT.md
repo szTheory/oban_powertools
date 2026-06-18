@@ -93,9 +93,9 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 
 ### Active
 
-- None
+- v2.0 Powertools Identity — brand book + design-system overhaul (categories `BRAND-`, `TOKEN-`, `COMP-`, `FORM-`, `NAV-`, `DATA-`, `GROUP-`, `PAGE-`, `A11Y-`, `MOTION-`, `COPY-`, `SHOW-`, `VRT-`, `FIX-`, `DOC-`). See `.planning/REQUIREMENTS.md`.
 
-Carried backlog (not in v1.6): All v1.6-v1.10 carried backlog items have now been shipped (QRY-05, QRY-06, QRY-07, QRY-08, API-03).
+Carried backlog: QRY-05, QRY-06, QRY-07, QRY-08, API-03 remain deferred-until-signal (observability / job-surface polish).
 
 ### Out of Scope
 
@@ -157,31 +157,31 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 ## Current State
 
-Version `v1.5` shipped on 2026-05-28. The native `/ops/jobs` shell now owns the full job lifecycle without leaning on the Oban Web bridge: operators browse jobs at `/ops/jobs/jobs` filtered by state/queue/worker/tags with URL-serialized filter state and `DisplayPolicy` redaction on args/meta; inspect full job detail; and retry/cancel/discard single jobs or bulk selections through the same Lifeline preview → reason → execute → audit pipeline, with a concurrent-modification guard and honest per-job bulk reporting. The new `ObanPowertools.Operator` module gives host code a typed, actor-attributed programmatic surface for the same single and bulk mutations, routed through the identical Lifeline pipeline and emitting `source: "api"` telemetry within the frozen low-cardinality contract. Milestone audit passed 6/6 requirements; full suite at 270 tests, 0 failures.
+`1.0.0` shipped and published to hex.pm (v1.11 Stability & 1.0 Release Prep). The library is functionally complete for its intended *feature* scope: typed worker contracts, durable idempotency, limiter/cron control planes, durable workflow DAGs + signaling, batches/chains with callback outbox, a native `/ops/jobs` operator shell (browse/detail/retry/cancel/discard single+bulk through the Lifeline preview→reason→execute→audit pipeline, plus the typed `ObanPowertools.Operator` API), `mix oban_powertools.doctor` / `.limiter.explain` / `.simulate`, opt-in telemetry, worker lifecycle hooks, output recording, and at-rest redaction.
 
-**v1.9 Batches & Composition (Ongoing).** Phases 59-61 complete — Established the core Ecto data model for batch tracking, wired exactly-once progress tracking into worker hooks with completed/exhausted callback outbox enqueueing, and shipped fixed-size batch insertion plus linear chain composition with durable upstream output handoff. Phase 62 is next for the operations console and Lifeline UI.
+**v2.0 Powertools Identity (active).** A coherence/quality milestone, not new operator capability. The `/ops/jobs` UI today is 9 LiveViews of inline `defp` function components with hardcoded Tailwind utilities — no component library, no design tokens, no dark mode, no theme switcher. v2.0 authors a brand book and re-founds the UI on a library-owned, isolated, themeable design system with dark/light/system, WCAG 2.2 AA, and idempotent regression guardrails (showcase + visual-regression + a11y harness + stress fixtures). Phases 70–84.
 
-**v1.7 Worker Lifecycle & Safety — SHIPPED 2026-06-13.** All 4 phases complete (53-56), 14/14 plans, 507 tests, 0 failures. Zero new runtime dependencies. Shipped: crash-safe worker lifecycle hooks with wrapper-owned dispatch and `worker_hook` telemetry; soft `deadline:` storing `__deadline_at__` meta at enqueue with pre-run cancellation and Doctor warning; opt-in `record_output: true` via new `ObanPowertools.JobRecord` schema (dedicated `oban_powertools_job_records` table, `fetch_result/1`, Recorded Output card in `/ops/jobs` detail, Lifeline ephemeral prune); `redact: [:field]` at-rest PII removal after fingerprint via `new/2` override with UI disclosure and cron-path fix. Milestone audit `tech_debt` — 18/18 requirements satisfied; INT-01 (Doctor manifest) and INT-02 (cron+deadline path) deferred as non-blocking to v1.8.
+(Earlier: `v1.9` shipped batches & composition; `v1.7` worker lifecycle & safety; `v1.4` operator forensics and SRE runbooks; `v1.3` unified the native control plane and explainability story.)
 
-(Earlier: `v1.4` delivered operator forensics and SRE runbooks; `v1.3` unified the native control plane and explainability story.)
+## Current Milestone: v2.0 Powertools Identity
 
-## Current Milestone: v1.9 Batches & Composition
-
-**Goal:** Provide durable, Ecto-native batch processing and workflow composition primitives (linear chains/DAG sugar) with Lifeline-routed recovery and native inspection UI, guided by deep ecosystem research.
+**Goal:** Give Oban Powertools a coherent visual + verbal identity (a written brand book) and re-found the entire `/ops/jobs` operator UI on a library-owned, isolated, themeable design system — tokens → primitives → patterns → pages — with dark/light/system theming, WCAG 2.2 AA accessibility, mobile-first responsiveness, purposeful motion, and on-brand microcopy. Not new operator capability; a coherence/quality milestone built so improvement is idempotent (re-runnable, forward-only, regression-gated).
 
 **Target features:**
-- Dedicated `batches` / `batch_jobs` tables (not a DAG)
-- `completed` + `exhausted` callbacks via generalized callback outbox
-- Chains as linear-DAG sugar
-- Native Batches page with Lifeline-routed bulk-retry
+- Brand book in-repo as the single source of truth (color/type/space/radii/elevation/motion/voice/IA)
+- Library-owned, namespaced, self-contained theme (precompiled CSS/JS via Plug; `.obpt-root` scoping; `--obpt-*` tokens; dark/light/system, system default) — no host Tailwind dependency
+- A `Phoenix.Component` library (primitives, forms, app shell, data-display, operator meta-components) replacing inline `defp` markup across 9 LiveViews
+- Dev-only component showcase + visual-regression + automated a11y harness + deterministic stress fixtures (the idempotency guardrails)
+- Systematic migration of all 9 operator pages onto the design system with zero behavior regression
+
+**Phases:** 70–84 (see ROADMAP.md). Deep per-decision subagent research + adversarial-judge review run at each phase.
 
 ## Next Milestone
 
-**v1.9 Batches & Composition** is the recommended next milestone (from the 2026-05-28 post-v1.5 assessment, confirmed by v1.7 shipping the prerequisite hook + recording infra):
+To be assessed after v2.0 closes. Prior candidates remain deferred-until-signal:
 
-1. **v1.9 Batches & Composition** *(the pick)* — dedicated `batches` / `batch_jobs` tables (not a DAG), `completed` + `exhausted` callbacks via the generalized callback outbox, chains as linear-DAG sugar, native Batches page with Lifeline-routed bulk-retry. Defer chunks / nested / growable batches.
-2. **v1.10 Observability / live counts (QRY-06)** — `oban_met` as an optional read source, never a hard dep.
-3. **Native job-surface polish** — QRY-05 (args/meta filter), QRY-07 (Lifeline→job deep-link), QRY-08 (cross-page select), API-03 (`Operator.list/2`). Opportunistic.
+1. **Observability / live counts (QRY-06)** — `oban_met` as an optional read source, never a hard dep.
+2. **Native job-surface polish** — QRY-05 (args/meta filter), QRY-07 (Lifeline→job deep-link), QRY-08 (cross-page select), API-03 (`Operator.list/2`). Opportunistic.
 
 ## Recently Shipped
 
@@ -245,21 +245,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-06-16 — Phase 63 (Close gap: runtime callback and chain progression consumers) complete*
-ptional dependency seams for host apps.
-- Native-first operator UX with the `/ops/jobs/oban` bridge kept explicitly narrower and read-only.
-- Repaired docs, example-host, first-session, native-only, bridge, and upgrade proof lanes that make public support truth enforceable.
-
-</details>
-
-## Evolution
-
-This document evolves at milestone boundaries and whenever the active milestone meaningfully changes.
-
-- Keep validated requirements and major constraints accurate as shipped behavior changes.
-- Prefer left-shifting prerequisite and support-truth work before broadening public capability claims.
-- Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
-
----
-*Last updated: 2026-06-16 — Phase 63 (Close gap: runtime callback and chain progression consumers) complete*
-1 APIs (Batches & Chains) complete; Phase 62 operations console next*
+*Last updated: 2026-06-18 — v2.0 Powertools Identity milestone started (Phases 70–84)*
