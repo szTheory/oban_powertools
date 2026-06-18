@@ -65,6 +65,14 @@ defmodule ObanPowertools.Web.Router do
           live("/jobs/:id", ObanPowertools.Web.JobsLive, :show)
           live("/batches", ObanPowertools.Web.BatchesLive, :index)
           live("/batches/:id", ObanPowertools.Web.BatchesLive, :show)
+
+          # Dev-only brand book route. Gated by Application.compile_env so it is
+          # evaluated at the HOST's compile time (not the library's env at macro
+          # expansion). Absent in prod, where dev_routes defaults to false. The
+          # leading underscore marks the internal/dev-only convention.
+          if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
+            live("/_brand_book", ObanPowertools.Web.Dev.BrandBookLive, :index)
+          end
         end
 
         unquote(bridge_routes)
