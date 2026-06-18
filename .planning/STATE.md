@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 72
 current_phase_name: Stress Fixtures & Showcase Skeleton
-status: verifying
+status: planning
 last_updated: "2026-06-18T19:40:44.402Z"
 last_activity: 2026-06-18
 last_activity_desc: Phase 71 complete, transitioned to Phase 72
@@ -22,13 +22,13 @@ progress:
 
 **Core Value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
 
-**Current Focus:** Phase 71 — Token Layer & Isolated Theming Engine
+**Current Focus:** Phase 72 — Stress Fixtures & Showcase Skeleton
 
 ## Current Position
 
 Phase: 72 — Stress Fixtures & Showcase Skeleton
 Plan: Not started
-Status: Phase complete — ready for verification
+Status: Not started
 Last activity: 2026-06-18 — Phase 71 complete, transitioned to Phase 72
 
 ## Performance Metrics
@@ -71,6 +71,6 @@ Last activity: 2026-06-18 — Phase 71 complete, transitioned to Phase 72
 
 ## Session Continuity
 
-- **Last Action:** Planned Phase 71 with research, validation strategy, five executable plans, and a plan-checker revision loop. Verification passed after revising the package contract, research dispositions, layout-invariance checks, and operator-LiveView diff guard.
-- **Next Action:** Execute Phase 71 — run `71-01` through `71-05` to build the token layer, theme controller, md5 immutable asset routes, ThemeShell integration, and JobsLive proof seam.
-- **Active Context:** Design-system milestone. Phase 70 brand decisions D-07..D-15 and D-22 are the source of truth for Phase 71 tokens; Wave 0 tests must precede implementation; host isolation and byte stability are phase gates.
+- **Last Action:** Completed and verified Phase 71 — token layer, theme controller, md5 immutable asset routes, ThemeShell integration, JobsLive proof seam, and host isolation all passed.
+- **Next Action:** Start Phase 72 — Stress Fixtures & Showcase Skeleton.
+- **Active Context:** Design-system milestone. Phase 71 established the library-owned `.obpt-root` token/theme foundation; Phase 72 builds deterministic fixtures and the dev-only showcase skeleton on top of it.

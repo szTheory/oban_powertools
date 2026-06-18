@@ -133,7 +133,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
 | BRAND-01..05 | Phase 70 | Complete |
-| TOKEN-01..05 | Phase 71 | Pending |
+| TOKEN-01..05 | Phase 71 | Complete |
 | MOTION-01 | Phase 71 | Complete |
 | FIX-01..03 | Phase 72 | Pending |
 | SHOW-01..03 | Phase 72 (skeleton), Phase 83 (full) | Pending |
