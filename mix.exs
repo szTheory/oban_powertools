@@ -68,6 +68,9 @@ defmodule ObanPowertools.MixProject do
       source_url_pattern: "#{@source_url}/blob/v#{@version}/%{path}#L%{line}",
       extras: ["README.md", "CHANGELOG.md" | Path.wildcard("guides/*.md")],
       groups_for_extras: [
+        "Design System": [
+          "guides/brand-book.md"
+        ],
         "Day 0": [
           "guides/installation.md",
           "guides/powertools-vs-oban-pro.md",
