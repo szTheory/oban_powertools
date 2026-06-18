@@ -110,7 +110,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 
 - [ ] **DOC-01**: A contributor guide documents how to add/extend a component, the token contract, theming rules, and the "no raw values" lint.
 - [ ] **DOC-02**: The idempotency guardrails (VRT snapshots, a11y gate, token byte-stability, forward-only quality) are documented as the explicit quality contract.
-- [ ] **DOC-03**: The brand book is published to the dev-rendered route and linked from the README.
+- [x] **DOC-03**: The brand book is published to the dev-rendered route and linked from the README.
 
 ## Future Requirements (deferred)
 

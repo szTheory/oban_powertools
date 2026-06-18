@@ -6,7 +6,7 @@
 
 ## Phases
 
-- [ ] **Phase 70: Brand Book & Identity Foundation** — Author the brand book as the single source of truth for all visual/verbal decisions.
+- [x] **Phase 70: Brand Book & Identity Foundation** — Author the brand book as the single source of truth for all visual/verbal decisions. (completed 2026-06-18)
 - [ ] **Phase 71: Token Layer & Isolated Theming Engine** — Ship the library-owned `--obpt-*` token layer + precompiled CSS asset + dark/light/system (system default), zero leakage.
 - [ ] **Phase 72: Stress Fixtures & Showcase Skeleton** — Deterministic dev/test fixtures + the dev-only `/ops/jobs/_showcase` with theme + viewport switchers.
 - [ ] **Phase 73: Visual-Regression & A11y Harness** — Playwright snapshots + axe gate in CI, established *before* any page changes.
@@ -37,7 +37,7 @@
   4. No code/UI changes to the 9 pages (brand book is documentation + intent).
 **Plans**: 2 plans
 - [x] 70-01-PLAN.md — Author guides/brand-book.md (all 22 decisions + BRAND-05 traceability table) + content-assertion harness + HexDocs registration (wave 1)
-- [ ] 70-02-PLAN.md — Dev-only BrandBookLive route + zero-dep Markdown render + dev/test config + render & prod-exclusion checks + README link (wave 2)
+- [x] 70-02-PLAN.md — Dev-only BrandBookLive route + zero-dep Markdown render + dev/test config + render & prod-exclusion checks + README link (wave 2)
 
 ### Phase 71: Token Layer & Isolated Theming Engine
 **Goal**: Ship the library-owned, namespaced, self-contained token + theming layer (light/dark/system; system default).
@@ -185,7 +185,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 70. Brand Book & Identity Foundation | 1/2 | In Progress|  |
+| 70. Brand Book & Identity Foundation | 2/2 | Complete   | 2026-06-18 |
 | 71. Token Layer & Isolated Theming Engine | 0/TBD | Not started | — |
 | 72. Stress Fixtures & Showcase Skeleton | 0/TBD | Not started | — |
 | 73. Visual-Regression & A11y Harness | 0/TBD | Not started | — |

@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Identity Milestone Audit & Idempotency Proof
-status: executing
-last_updated: "2026-06-18T16:51:24.231Z"
+status: verifying
+last_updated: "2026-06-18T17:23:13.454Z"
 last_activity: 2026-06-18
 progress:
   total_phases: 15
@@ -25,7 +25,7 @@ progress:
 
 Phase: 70 (brand-book-identity-foundation) — EXECUTING
 Plan: 2 of 2
-Status: Plan 70-01 complete (brand book authored); 70-02 pending
+Status: Phase complete — ready for verification
 Last activity: 2026-06-18
 
 ## Performance Metrics
@@ -35,6 +35,7 @@ Last activity: 2026-06-18
 | Test Coverage | >95% | - | - |
 | Type Checking | 0 Dialyzer errors | 0 | - |
 | Linting | 0 Credo warnings | 0 | - |
+| Phase 70 Plan 02 | - | ~6m, 4 tasks, 7 files | Brand book dev route + README; 588 tests pass |
 
 ## Accumulated Context
 
@@ -50,6 +51,7 @@ Last activity: 2026-06-18
 - **Library-owned isolated theme (v2.0):** ship precompiled, namespaced CSS/JS via a Plug (LiveDashboard/Oban-Web pattern); scope everything under `.obpt-root` with preflight disabled and `obpt:` prefix; tokens as two-tier `--obpt-*` CSS variables; dark/light/system via `data-obpt-theme` on `.obpt-root` (never `<html>`), system default, namespaced `localStorage`. No host Tailwind dependency.
 - **Infra (v2.0):** dev-gated custom showcase route (not PhoenixStorybook dep); external Node Playwright for visual-regression + axe a11y; deterministic stress-fixture catalog. Zero new Hex runtime deps.
 - **Brand book (70-01):** authored at `guides/brand-book.md` (v2.0.0-draft, Locked 2026-06-18) encoding all 22 locked decisions D-01..D-22 + a BRAND-05 traceability table; gated by `checks.sh` grep harness; registered under a "Design System" HexDocs extras group. Downstream phases 71–84 cite D-xx for traceability. Requirements BRAND-01..05 complete.
+- **Brand book delivery (70-02):** `ObanPowertools.Web.Dev.BrandBookLive` renders `guides/brand-book.md` to HTML at compile time via `EarmarkParser.as_ast/2` + a self-contained AST→HTML walk (zero new runtime deps, zero runtime I/O). Mounted at `/ops/jobs/_brand_book` inside the `oban_powertools_routes/1` macro, gated by `Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev)` — provably absent under `MIX_ENV=prod`. `dev_routes: true` set in dev+test config; `ex_doc` widened to `only: [:dev, :test]` (still `runtime: false`) so `earmark_parser` compiles the view in test. README "Brand Identity" section links the static guide + dev route (DOC-03 initial). The same compile_env idiom is the template for Phase 72's `/ops/jobs/_showcase`. Requirements DOC-03, BRAND-01 complete.
 
 ### Known Technical Debt / Todos
 
