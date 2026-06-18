@@ -40,13 +40,11 @@ defmodule ObanPowertools.Web.AssetsTest do
   test "mismatched asset hashes return 404", %{conn: conn} do
     assert_assets_module_loaded!()
 
-    assert_error_sent(404, fn ->
-      get(conn, "/ops/jobs/_assets/oban_powertools-00000000000000000000000000000000.css")
-    end)
+    css_conn = get(conn, "/ops/jobs/_assets/oban_powertools-00000000000000000000000000000000.css")
+    assert response(css_conn, 404) == "not found"
 
-    assert_error_sent(404, fn ->
-      get(conn, "/ops/jobs/_assets/oban_powertools-00000000000000000000000000000000.js")
-    end)
+    js_conn = get(conn, "/ops/jobs/_assets/oban_powertools-00000000000000000000000000000000.js")
+    assert response(js_conn, 404) == "not found"
   end
 
   test "compiled assets are byte stable across repeated build task runs" do
