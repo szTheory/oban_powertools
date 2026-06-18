@@ -27,165 +27,211 @@
 > Every phase ends with a **deep-research input** (subagent research per decision: idiomatic Elixir/Phoenix, ecosystem lessons right+wrong, DX, UX/JTBD/user-psychology, brand alignment) and an **adversarial-judge review** at its level of abstraction.
 
 ### Phase 70: Brand Book & Identity Foundation
+
 **Goal**: Author the brand book as the single source of truth for all later visual/verbal decisions.
 **Depends on**: — (root)
 **Requirements**: BRAND-01, BRAND-02, BRAND-03, BRAND-04, BRAND-05, DOC-03 (initial)
 **Success Criteria** (what must be TRUE):
+
   1. A versioned brand book exists in-repo and renders at a dev route; it covers essence/positioning, the color story (light/dark/high-contrast with contrast targets), type/space/radii/elevation, motion principles, voice/microcopy, and IA principles.
   2. Every planned token category has a named brand decision behind it (traceability table).
   3. The "explain, then act" principle and danger/confirmation voice are codified as enforceable rules.
   4. No code/UI changes to the 9 pages (brand book is documentation + intent).
+
 **Plans**: 2 plans
+
 - [x] 70-01-PLAN.md — Author guides/brand-book.md (all 22 decisions + BRAND-05 traceability table) + content-assertion harness + HexDocs registration (wave 1)
 - [x] 70-02-PLAN.md — Dev-only BrandBookLive route + zero-dep Markdown render + dev/test config + render & prod-exclusion checks + README link (wave 2)
 
 ### Phase 71: Token Layer & Isolated Theming Engine
+
 **Goal**: Ship the library-owned, namespaced, self-contained token + theming layer (light/dark/system; system default).
 **Depends on**: Phase 70
 **Requirements**: TOKEN-01, TOKEN-02, TOKEN-03, TOKEN-04, TOKEN-05, MOTION-01, A11Y-03 (contrast tokens)
 **Success Criteria** (what must be TRUE):
+
   1. All brand-book values exist as two-tier `--obpt-*` CSS custom properties under `.obpt-root`; the library ships its own compiled CSS asset (Plug-served, md5-hashed, immutable) independent of the host Tailwind build.
   2. Light/dark/high-contrast themes resolve from tokens; **system is default**; explicit choice persists under a namespaced key; `prefers-reduced-motion`/`prefers-color-scheme` honored.
   3. No style leakage in or out of the namespace, proven against `examples/phoenix_host` (host pages outside `/ops/jobs` unchanged; `<html>`/host storage untouched).
   4. The asset build is byte-stable on re-run; theme switch causes no FOUC/layout shift. A proof seam (`jobs_live.ex` badge/tab/modal) is migrated onto tokens to validate end-to-end.
+
 **Plans**: TBD
 
 ### Phase 72: Stress Fixtures & Showcase Skeleton
+
 **Goal**: Stand up deterministic fixtures + the dev-only showcase shell that hosts the systematic audit, VRT, and a11y scans.
 **Depends on**: Phase 71
 **Requirements**: FIX-01, FIX-02, FIX-03, SHOW-01 (skeleton), SHOW-02, SHOW-03
 **Success Criteria** (what must be TRUE):
+
   1. A seedable, deterministic, dev/test-only named-scenario catalog covers normal + adversarial states across all domains and per-persona JTBD scenarios; excluded from the hex tarball (verified).
   2. The dev-only `/ops/jobs/_showcase` route renders (initially tokens + theming) with a theme switcher (light/dark/system/high-contrast) and a 320/tablet/wide viewport toggle; it compiles to no route in prod.
   3. The showcase runs from `examples/phoenix_host` with no host changes.
+
 **Plans**: TBD
 
 ### Phase 73: Visual-Regression & A11y Harness
+
 **Goal**: Establish VRT + axe-core a11y gates **before** any page is touched, so every later change is regression-caught.
 **Depends on**: Phase 72
 **Requirements**: VRT-01, VRT-02, VRT-03, A11Y-01
 **Success Criteria** (what must be TRUE):
+
   1. An external Node Playwright harness snapshots showcase stories across themes × {320, tablet, wide} in a pinned Docker image; baselines are committed; CI fails on unintended diff; baseline update is explicit/reviewable.
   2. An axe-core scan (WCAG 2.2 AA tags, open-state variants) runs over the showcase in CI; 0 critical/serious is merge-blocking.
   3. The harness is hermetic against fixtures (re-run = identical results); animations disabled, timestamps/IDs masked, fonts ready.
+
 **Plans**: TBD
 
 ### Phase 74: Primitives Library
+
 **Goal**: Build the token-driven primitive components and register them as showcase stories under VRT/a11y.
 **Depends on**: Phase 71, Phase 73
 **Requirements**: COMP-01, COMP-02, COMP-03, COMP-04, MOTION-02, A11Y-02, SHOW-01 (primitive stories)
 **Success Criteria** (what must be TRUE):
+
   1. Primitives (Button, Icon button, Link, Badge/Tag/StatusPill, Card/Surface, Divider, Spinner/Skeleton, Tooltip, Kbd, Stat) ship as `Phoenix.Component`s, tokens-only, with documented attrs/slots — only those the 9 pages use.
   2. Each primitive is keyboard-operable, SR-correct, renders in all themes and at 320px, has showcase stories, and passes the VRT + a11y gates.
   3. No raw hex/px in primitive source (lint/grep clean).
+
 **Plans**: TBD
 
 ### Phase 75: Form Components
+
 **Goal**: Build accessible form primitives on `Phoenix.Component`/`to_form`, as showcase stories.
 **Depends on**: Phase 74
 **Requirements**: FORM-01, FORM-02, COMP-* (form set), A11Y-02
 **Success Criteria** (what must be TRUE):
+
   1. Input/Textarea/Select/Checkbox/Radio/Switch/Combobox/FieldGroup/Label/Hint/Error ship, tokens-only.
   2. Every field has a programmatic label + error association + visible focus; disabled vs read-only are distinct; validation never relies on color alone; passes the a11y gate.
   3. Stories cover valid/invalid/disabled/loading across themes; VRT green.
+
 **Plans**: TBD
 
 ### Phase 76: Navigation & App Shell
+
 **Goal**: Build the responsive Powertools app-shell (header, nav across 9 surfaces, theme toggle, actor/context).
 **Depends on**: Phase 74
 **Requirements**: NAV-01, NAV-02, NAV-03, NAV-04, A11Y-02, COPY-* (nav labels)
 **Success Criteria** (what must be TRUE):
+
   1. The shell component owns header/nav/theme-toggle/actor display; mobile-first, collapsible below breakpoint, no horizontal scroll at 320px.
   2. Active-route + breadcrumb + skip-to-content + logical focus order; a11y gate green.
   3. The shell has a showcase story across themes/viewports; VRT green.
+
 **Plans**: TBD
 
 ### Phase 77: Data-Display & Operator Patterns
+
 **Goal**: Build shared data-display components and unify the status taxonomy. *[split-risk: DataTable + args/redaction viewer may each warrant a plan]*
 **Depends on**: Phase 74, Phase 75
 **Requirements**: DATA-01, DATA-02, DATA-03, DATA-04, A11Y-02
 **Success Criteria** (what must be TRUE):
+
   1. DataTable (sort/empty/loading/error), KeyValue/DescriptionList, StatusPill (unified taxonomy), Timeline, ProgressBar, MetricCard, CodeBlock/args-viewer with redaction overlay, EmptyState, Toast/Flash ship.
   2. One StatusPill maps every Oban/Powertools state; tables degrade to stacked/card at 320px; explicit empty/loading/unavailable/permission-denied everywhere; long IDs/module names/stacktraces handled.
   3. Redaction is rendered through one shared component; stories + VRT + a11y green over stress fixtures (huge args, thousands of rows).
+
 **Plans**: TBD
 
 ### Phase 78: Component Groups (Meta-Components)
+
 **Goal**: Assemble operator meta-patterns that encapsulate "explain, then act" + preview/reason/audit.
 **Depends on**: Phase 76, Phase 77
 **Requirements**: GROUP-01, GROUP-02, FORM-04, COPY-02, A11Y-02
 **Success Criteria** (what must be TRUE):
+
   1. ConfirmActionDialog (dry-run→reason→confirm→result), FilterBar, DetailDrawer/Panel, AttentionCard, AuditEntry, and "Why blocked?" Explainer ship from primitives + data components.
   2. The danger pattern enforces a required reason + consequence/scope copy; a11y (focus trap, Esc, SR announcements, focus restore) green.
   3. Stories + VRT cover each group; pages will compose these, not re-implement.
+
 **Plans**: TBD
 
 ### Phase 79: Page Migration Wave 1 — Overview, Cron, Limiters, Audit
+
 **Goal**: Migrate the four lighter LiveViews onto shell + primitives + groups with zero behavior regression.
 **Depends on**: Phase 78
 **Requirements**: PAGE-01, PAGE-05, PAGE-06, PAGE-08, PAGE-10, COPY-01, A11Y-*, MOTION-*
 **Success Criteria** (what must be TRUE):
+
   1. Each page is rebuilt on the shell/components; all existing tests stay green; URLs/actions/audit unchanged.
   2. Each page passes the VRT + a11y gates across themes × breakpoints over fixtures.
   3. Concepts shared with other pages render identically (consistency check).
+
 **Plans**: TBD
 
 ### Phase 80: Page Migration Wave 2 — Jobs, Forensics
+
 **Goal**: Migrate the data-dense jobs + forensics surfaces (filter bars, big tables, detail/timeline). *[split-risk: jobs likely its own plan, forensics another]*
 **Depends on**: Phase 79
 **Requirements**: PAGE-02, PAGE-09, FORM-03, DATA-*, PAGE-10, A11Y-*
 **Success Criteria** (what must be TRUE):
+
   1. Jobs + forensics are rebuilt on FilterBar/DataTable/DetailDrawer/Timeline; URL-serialized filter state preserved; all tests green.
   2. VRT + a11y green over adversarial fixtures (thousands of rows, redacted args, deep timelines).
   3. No functional regression in filter/search/bulk/deep-link behavior.
+
 **Plans**: TBD
 
 ### Phase 81: Page Migration Wave 3 — Batches, Workflows, Lifeline
+
 **Goal**: Migrate the three richest operator/repair surfaces (progress, DAG/blocked-state, repair dry-run flows). *[split-risk: three large files; lifeline's repair flow is the single riskiest unit — likely 3 plans]*
 **Depends on**: Phase 80
 **Requirements**: PAGE-03, PAGE-04, PAGE-07, GROUP-*, PAGE-10, A11Y-*, MOTION-*
 **Success Criteria** (what must be TRUE):
+
   1. Batches, workflows, and lifeline are rebuilt on the shell/groups; the Lifeline-routed preview→reason→execute→audit flows are unchanged; all tests green.
   2. "Why blocked?" and dry-run-repair patterns render via shared groups; a11y green (focus/announcements in dialogs).
   3. VRT green across themes/breakpoints over stress fixtures (saturated limiters, deep workflows, stuck callbacks).
+
 **Plans**: TBD
 
 ### Phase 82: Cross-Cutting A11y, Motion & Responsive Hardening Sweep
+
 **Goal**: System-wide sweep to close any AA gaps, motion/reduced-motion correctness, and 320→wide responsiveness left after migration.
 **Depends on**: Phase 81
 **Requirements**: A11Y-01, A11Y-02, A11Y-03, A11Y-04, MOTION-01, MOTION-02, NAV-02, DATA-03 (final), COPY-01, COPY-02 (final)
 **Success Criteria** (what must be TRUE):
+
   1. 0 critical/serious axe violations across all 9 pages + showcase; AA contrast verified light/dark; high-contrast enhanced ratios met; target size (2.5.8) and focus-not-obscured (2.4.11) checked.
   2. Reduced-motion disables non-essential animation everywhere without hiding content; no motion blocks action.
   3. Full keyboard traversal of every page; no horizontal scroll at 320px anywhere.
   4. A microcopy consistency audit passes against the BRAND-04 voice.
+
 **Plans**: TBD
 
 ### Phase 83: Showcase Completion & Documentation
+
 **Goal**: Complete the showcase (every component + page-pattern story) and write the design-system + idempotency-guardrail docs.
 **Depends on**: Phase 82
 **Requirements**: SHOW-01 (full), DOC-01, DOC-02, DOC-03, COPY-01 (centralized)
 **Success Criteria** (what must be TRUE):
+
   1. The showcase renders every token/primitive/form/data/group/page-pattern with all variants and the theme + viewport switcher; it is the canonical audit surface.
   2. A contributor guide documents the token contract, the "no raw values" lint, how to add/extend a component, and theming rules.
   3. The idempotency guardrails (VRT snapshots, a11y gate, token byte-stability, forward-only quality) are documented; the brand book is linked from the README.
+
 **Plans**: TBD
 
 ### Phase 84: v2.0 Identity Milestone Audit & Idempotency Proof
+
 **Goal**: Prove the milestone is complete, regression-free, and re-runnable; close v2.0.
 **Depends on**: Phase 83
 **Requirements**: all categories (verification), DOC-02 (proof)
 **Success Criteria** (what must be TRUE):
+
   1. Every REQ-ID traces to shipped behavior + a passing test/gate; the full suite is green.
   2. CI proves the idempotency contract: re-running the asset build is byte-stable, VRT baselines match with no `--update-snapshots`, the a11y gate is green, and the "no raw values" lint is clean.
   3. The milestone audit (adopter-first "done" lens) passes; overbuilding watch-out items are reviewed and explicitly accepted/deferred.
+
 **Plans**: TBD
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 70. Brand Book & Identity Foundation | 2/2 | Complete   | 2026-06-18 |
+| 70. Brand Book & Identity Foundation | 2/2 | Complete    | 2026-06-18 |
 | 71. Token Layer & Isolated Theming Engine | 0/TBD | Not started | — |
 | 72. Stress Fixtures & Showcase Skeleton | 0/TBD | Not started | — |
 | 73. Visual-Regression & A11y Harness | 0/TBD | Not started | — |
