@@ -11,11 +11,11 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 
 ### Brand Book / Identity (BRAND)
 
-- [ ] **BRAND-01**: A versioned brand book exists in-repo (Markdown + a dev-rendered route) defining brand essence, positioning, and the "explain, then act" operator-UX principle as the design north star.
-- [ ] **BRAND-02**: The brand book defines the full color story (semantic roles: surface/elevated/border/text/muted/accent/info/success/warning/danger) for light, dark, and high-contrast, each with documented contrast ratios.
-- [ ] **BRAND-03**: The brand book defines typography scale, spacing/rhythm, radii, elevation/shadow, iconography rules, and motion principles (purposeful, interruptible, reduced-motion-safe).
-- [ ] **BRAND-04**: The brand book defines voice & microcopy rules (operator tone, danger/confirmation language, empty/error/loading copy, plain-language IA).
-- [ ] **BRAND-05**: Every later token/component traces back to a named brand-book decision (traceability table — no orphan styles).
+- [x] **BRAND-01**: A versioned brand book exists in-repo (Markdown + a dev-rendered route) defining brand essence, positioning, and the "explain, then act" operator-UX principle as the design north star.
+- [x] **BRAND-02**: The brand book defines the full color story (semantic roles: surface/elevated/border/text/muted/accent/info/success/warning/danger) for light, dark, and high-contrast, each with documented contrast ratios.
+- [x] **BRAND-03**: The brand book defines typography scale, spacing/rhythm, radii, elevation/shadow, iconography rules, and motion principles (purposeful, interruptible, reduced-motion-safe).
+- [x] **BRAND-04**: The brand book defines voice & microcopy rules (operator tone, danger/confirmation language, empty/error/loading copy, plain-language IA).
+- [x] **BRAND-05**: Every later token/component traces back to a named brand-book decision (traceability table — no orphan styles).
 
 ### Tokens & Theming (TOKEN)
 
@@ -132,7 +132,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| BRAND-01..05 | Phase 70 | Pending |
+| BRAND-01..05 | Phase 70 | Complete |
 | TOKEN-01..05 | Phase 71 | Pending |
 | MOTION-01 | Phase 71 | Pending |
 | FIX-01..03 | Phase 72 | Pending |
