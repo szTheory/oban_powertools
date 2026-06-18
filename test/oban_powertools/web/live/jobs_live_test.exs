@@ -103,8 +103,8 @@ defmodule ObanPowertools.Web.JobsLiveTest do
     assert html =~ "Browse and inspect Oban jobs by state."
     # The state tab bar is rendered — available is in the tab bar
     assert html =~ "available"
-    # The active state tab class is applied to "available" (the default state)
-    assert html =~ "border-indigo-300 bg-indigo-50"
+    # The active state tab contract is semantic and token-backed.
+    assert html =~ "obpt-tab--active"
   end
 
   # ---------------------------------------------------------------------------
@@ -138,6 +138,56 @@ defmodule ObanPowertools.Web.JobsLiveTest do
     # 2 rows for available state
     assert html =~ "AvailableWorker"
     assert html =~ "AvailableWorker2"
+  end
+
+  test "renders the scoped Powertools theme shell on the jobs list", %{conn: conn} do
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_jobs]}
+      )
+
+    {:ok, _view, html} = live(conn, "/ops/jobs/jobs?state=available")
+
+    assert count(html, "obpt-root") == 1
+    assert html =~ ~s(data-obpt-theme="system")
+    assert html =~ ~r|/ops/jobs/_assets/oban_powertools-[a-f0-9]{32}\.css|
+    assert html =~ ~r|/ops/jobs/_assets/oban_powertools-[a-f0-9]{32}\.js|
+  end
+
+  test "state tabs use token-backed classes while preserving navigation behavior", %{conn: conn} do
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_jobs]}
+      )
+
+    {:ok, view, html} = live(conn, "/ops/jobs/jobs?state=available")
+
+    assert html =~ "obpt-tab"
+    assert html =~ "obpt-tab--active"
+
+    view
+    |> element("button[phx-value-state=executing]")
+    |> render_click()
+
+    assert_patch(view, "/ops/jobs/jobs?state=executing")
+  end
+
+  test "job state badges expose semantic classes and non-color tones", %{conn: conn} do
+    insert_job!(worker: "MyApp.AvailableWorker", queue: :default)
+    insert_job!(worker: "MyApp.ExecutingWorker", queue: :default, state: "executing")
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_jobs]}
+      )
+
+    {:ok, _view, available_html} = live(conn, "/ops/jobs/jobs?state=available")
+    assert available_html =~ "obpt-badge"
+    assert available_html =~ ~s(data-obpt-tone="neutral")
+
+    {:ok, _view, executing_html} = live(conn, "/ops/jobs/jobs?state=executing")
+    assert executing_html =~ "obpt-badge"
+    assert executing_html =~ ~s(data-obpt-tone="info")
   end
 
   # ---------------------------------------------------------------------------
@@ -766,6 +816,9 @@ defmodule ObanPowertools.Web.JobsLiveTest do
 
       assert html =~ "Cancel Job ##{job.id}"
       assert html =~ "Reason (required)"
+      assert html =~ "obpt-modal-backdrop"
+      assert html =~ "obpt-modal"
+      assert html =~ "obpt-modal-summary"
 
       # Execute with reason
       view
@@ -984,6 +1037,13 @@ defmodule ObanPowertools.Web.JobsLiveTest do
     end
   end
 
+  defp count(html, needle) do
+    html
+    |> String.split(needle)
+    |> length()
+    |> Kernel.-(1)
+  end
+
   # ---------------------------------------------------------------------------
   # Test 11: Bulk Job Selection and Execution
   # ---------------------------------------------------------------------------
@@ -1049,6 +1109,8 @@ defmodule ObanPowertools.Web.JobsLiveTest do
         |> render_click()
 
       assert html =~ "Bulk Discard 2 Jobs"
+      assert html =~ "obpt-modal-backdrop"
+      assert html =~ "obpt-modal"
 
       # Execute
       view
