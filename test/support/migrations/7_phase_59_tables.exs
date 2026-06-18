@@ -1,6 +1,7 @@
 defmodule ObanPowertools.TestRepo.Migrations.Phase59Tables do
   use Ecto.Migration
   @disable_ddl_transaction true
+  @disable_migration_lock true
 
   def change do
     rename(table(:oban_powertools_workflow_callback_outbox),

@@ -56,7 +56,7 @@ defmodule Mix.Tasks.ObanPowertools.InstallTest do
     assert source =~ "alter table(:oban_powertools_callbacks)"
     assert source =~ "add :batch_id, :uuid"
     assert source =~ "modify :workflow_id, :uuid, null: true"
-    assert source =~ "create index(:oban_powertools_callbacks, [:batch_id])"
+    assert source =~ "create index(:oban_powertools_callbacks, [:batch_id], concurrently: true)"
     assert source =~ "create table(:oban_powertools_batches, primary_key: false)"
     assert source =~ "create table(:oban_powertools_batch_jobs, primary_key: false)"
     assert source =~ "create table(:oban_powertools_heartbeats, primary_key: false)"
@@ -72,8 +72,8 @@ defmodule Mix.Tasks.ObanPowertools.InstallTest do
     assert source =~ "add :insert_failure, :map, null: false, default: %{}"
     assert source =~ "add :insert_failed_at, :utc_datetime_usec"
     assert source =~ "add :completed_at, :utc_datetime_usec"
-    assert source =~ "create index(:oban_powertools_batches, [:status])"
-    assert source =~ "create index(:oban_powertools_batches, [:name])"
+    assert source =~ "create index(:oban_powertools_batches, [:status], concurrently: true)"
+    assert source =~ "create index(:oban_powertools_batches, [:name], concurrently: true)"
   end
 
   test "installer emits job record storage without an oban_jobs foreign key" do
@@ -96,11 +96,11 @@ defmodule Mix.Tasks.ObanPowertools.InstallTest do
     assert source =~ "timestamps(updated_at: false)"
 
     assert source =~
-             "create unique_index(:oban_powertools_job_records, [:oban_job_id, :attempt])"
+             "unique_index(:oban_powertools_job_records, [:oban_job_id, :attempt], concurrently: true)"
 
-    assert source =~ "create index(:oban_powertools_job_records, [:worker])"
-    assert source =~ "create index(:oban_powertools_job_records, [:status])"
-    assert source =~ "create index(:oban_powertools_job_records, [:expires_at])"
+
+    assert source =~
+             "index(:oban_powertools_job_records, [:expires_at], concurrently: true)"
 
     refute source =~ "references(:oban_jobs"
   end
@@ -119,11 +119,11 @@ defmodule Mix.Tasks.ObanPowertools.InstallTest do
     assert source =~ "add(:worker, :string, null: false)"
 
     assert source =~
-             "create(unique_index(:oban_powertools_job_records, [:oban_job_id, :attempt]))"
+             "unique_index(:oban_powertools_job_records, [:oban_job_id, :attempt], concurrently: true)"
 
-    assert source =~ "create(index(:oban_powertools_job_records, [:worker]))"
-    assert source =~ "create(index(:oban_powertools_job_records, [:status]))"
-    assert source =~ "create(index(:oban_powertools_job_records, [:expires_at]))"
+    assert source =~ "index(:oban_powertools_job_records, [:worker], concurrently: true)"
+    assert source =~ "index(:oban_powertools_job_records, [:status], concurrently: true)"
+    assert source =~ "index(:oban_powertools_job_records, [:expires_at], concurrently: true)"
 
     refute source =~ "references(:oban_jobs"
   end

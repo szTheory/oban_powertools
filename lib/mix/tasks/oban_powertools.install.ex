@@ -342,6 +342,7 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       timestamp: migration_timestamp(15),
       body: """
         @disable_ddl_transaction true
+        @disable_migration_lock true
         def change do
           create table(:oban_powertools_limiter_history_facts, primary_key: false) do
             add :id, :uuid, primary_key: true
@@ -392,6 +393,7 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       timestamp: migration_timestamp(20),
       body: """
         @disable_ddl_transaction true
+        @disable_migration_lock true
         def change do
           create table(:oban_powertools_workflows, primary_key: false) do
             add :id, :uuid, primary_key: true
@@ -426,6 +428,7 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       timestamp: migration_timestamp(21),
       body: """
         @disable_ddl_transaction true
+        @disable_migration_lock true
         def change do
           create table(:oban_powertools_workflow_steps, primary_key: false) do
             add :id, :uuid, primary_key: true
@@ -682,6 +685,7 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       timestamp: migration_timestamp(26),
       body: """
         @disable_ddl_transaction true
+        @disable_migration_lock true
         def change do
           rename table(:oban_powertools_workflow_callback_outbox), to: table(:oban_powertools_callbacks)
 
@@ -838,6 +842,7 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       timestamp: migration_timestamp(33),
       body: """
         @disable_ddl_transaction true
+        @disable_migration_lock true
         def change do
           create table(:oban_powertools_archive_runs, primary_key: false) do
             add :id, :uuid, primary_key: true
@@ -908,6 +913,7 @@ defmodule Mix.Tasks.ObanPowertools.Install do
       timestamp: migration_timestamp(40),
       body: """
         @disable_ddl_transaction true
+        @disable_migration_lock true
         def change do
           create table(:oban_powertools_job_records, primary_key: false) do
             add :id, :uuid, primary_key: true

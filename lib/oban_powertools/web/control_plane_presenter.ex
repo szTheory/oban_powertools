@@ -18,10 +18,10 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
   def status_label(status) when is_binary(status) do
     String.to_existing_atom(status) |> status_label()
   rescue
-    ArgumentError -> Phoenix.Naming.humanize(status)
+    ArgumentError -> humanize(status)
   end
 
-  def status_label(status), do: Map.get(@status_labels, status, Phoenix.Naming.humanize(status))
+  def status_label(status), do: Map.get(@status_labels, status, humanize(status))
 
   def ownership_badge(ownership), do: ControlPlane.ownership_badge(ownership)
 
@@ -205,7 +205,7 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
 
   defp legal_next_move_label(steps) do
     steps
-    |> Enum.map(&Phoenix.Naming.humanize/1)
+    |> Enum.map(&humanize/1)
     |> Enum.join(", ")
   end
 
@@ -218,7 +218,15 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
   end
 
   defp refusal_reason_label(nil), do: "This action is not available right now."
-  defp refusal_reason_label(code), do: Phoenix.Naming.humanize(code)
+  defp refusal_reason_label(code), do: humanize(code)
+
+  def humanize(atom) when is_atom(atom), do: humanize(Atom.to_string(atom))
+
+  def humanize(bin) when is_binary(bin) do
+    bin
+    |> String.replace("_", " ")
+    |> String.capitalize()
+  end
 
   defp follow_up_value(map, key) do
     Map.get(map, key) || Map.get(map, safe_atom(key))

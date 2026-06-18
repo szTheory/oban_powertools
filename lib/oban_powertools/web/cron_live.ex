@@ -514,9 +514,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp source_label("code"), do: "Code"
     defp source_label(_), do: "Runtime"
     defp overlap_label("queue_one"), do: "Queue One"
-    defp overlap_label(policy), do: Phoenix.Naming.humanize(policy)
+    defp overlap_label(policy), do: ObanPowertools.Web.ControlPlanePresenter.humanize(policy)
     defp catch_up_label("latest"), do: "Latest Only"
-    defp catch_up_label(policy), do: Phoenix.Naming.humanize(policy)
+    defp catch_up_label(policy), do: ObanPowertools.Web.ControlPlanePresenter.humanize(policy)
     defp history_label(:manual_run), do: "Manual run"
     defp history_label(:missed_fire), do: "Missed fire"
     defp history_label(:delayed_claim), do: "Delayed claim"

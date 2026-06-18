@@ -120,7 +120,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp archive_summary(nil), do: "No archive or prune runs recorded yet."
 
     defp archive_summary(run) do
-      "#{Phoenix.Naming.humanize(run.status)} at #{format_timestamp(run.finished_at || run.started_at)}"
+      "#{ObanPowertools.Web.ControlPlanePresenter.humanize(run.status)} at #{format_timestamp(run.finished_at || run.started_at)}"
     end
 
     defp relative_time(nil), do: "Unknown"

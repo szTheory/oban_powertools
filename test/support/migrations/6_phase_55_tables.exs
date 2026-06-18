@@ -1,6 +1,7 @@
 defmodule ObanPowertools.TestRepo.Migrations.Phase55Tables do
   use Ecto.Migration
   @disable_ddl_transaction true
+  @disable_migration_lock true
 
   def up do
     create table(:oban_powertools_job_records, primary_key: false) do
@@ -20,10 +21,13 @@ defmodule ObanPowertools.TestRepo.Migrations.Phase55Tables do
       timestamps(updated_at: false)
     end
 
-    create(unique_index(:oban_powertools_job_records, [:oban_job_id, :attempt]))
-    create(index(:oban_powertools_job_records, [:worker]))
-    create(index(:oban_powertools_job_records, [:status]))
-    create(index(:oban_powertools_job_records, [:expires_at]))
+    create(
+      unique_index(:oban_powertools_job_records, [:oban_job_id, :attempt], concurrently: true)
+    )
+
+    create(index(:oban_powertools_job_records, [:worker], concurrently: true))
+    create(index(:oban_powertools_job_records, [:status], concurrently: true))
+    create(index(:oban_powertools_job_records, [:expires_at], concurrently: true))
   end
 
   def down do

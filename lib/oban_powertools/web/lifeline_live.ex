@@ -1075,12 +1075,13 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp resource_copy(row), do: "#{row.target_type}:#{row.target_id}"
 
     defp count_label(counts, key),
-      do: "#{Map.get(counts || %{}, key, 0)} #{Phoenix.Naming.humanize(key)}"
+      do:
+        "#{Map.get(counts || %{}, key, 0)} #{ObanPowertools.Web.ControlPlanePresenter.humanize(key)}"
 
     defp archive_summary(nil), do: "No archive or prune runs recorded yet."
 
     defp archive_summary(%ArchiveRun{} = run) do
-      "#{Phoenix.Naming.humanize(run.status)} at #{timestamp_copy(run.finished_at || run.started_at)}"
+      "#{ObanPowertools.Web.ControlPlanePresenter.humanize(run.status)} at #{timestamp_copy(run.finished_at || run.started_at)}"
     end
 
     defp archive_summary(_run), do: "Archive status unavailable."
