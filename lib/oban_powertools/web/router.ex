@@ -54,6 +54,7 @@ defmodule ObanPowertools.Web.Router do
         get("/_assets/:filename", ObanPowertools.Web.Assets, :asset)
 
         live_session :oban_powertools_native,
+          layout: {ObanPowertools.Web.ThemeShell, :live},
           on_mount: [ObanPowertools.Web.LiveAuth],
           session: %{"oban_dashboard_path" => unquote(path)} do
           live("/", ObanPowertools.Web.EngineOverviewLive, :index)
