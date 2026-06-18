@@ -105,6 +105,19 @@ passed and a real native mutation succeeds.
   when required config is missing, non-Postgres support, and broader compatibility claims
   outside verified lanes.
 
+## Brand Identity
+
+The Oban Powertools brand book is the single source of truth for all visual and verbal
+decisions across the v2.0 design system. Every downstream phase cites its locked decision
+IDs (D-01..D-22), so each shipped token, component, and string maps back to a named parent.
+
+- **Read it:** [`guides/brand-book.md`](guides/brand-book.md) — renders on HexDocs and is
+  viewable on GitHub.
+- **Render it locally:** start the `examples/phoenix_host` dev server and visit
+  [`http://localhost:4000/ops/jobs/_brand_book`](http://localhost:4000/ops/jobs/_brand_book).
+  This is a **dev-only route** (gated by `config :oban_powertools, dev_routes: true`) and is
+  **not present in production builds**.
+
 ## Guides
 
 - [Installation](guides/installation.md) covers the exact host-owned setup path, including
