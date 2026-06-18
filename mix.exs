@@ -40,7 +40,11 @@ defmodule ObanPowertools.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:ex_doc, "~> 0.40", only: :dev, runtime: false},
+      # ex_doc (and its transitive earmark_parser) is also needed in :test so the
+      # dev-only BrandBookLive can render guides/brand-book.md at compile time when
+      # dev_routes: true is set in config/test.exs. Stays runtime: false — it is
+      # NOT a runtime dependency and never loads in a host's prod build.
+      {:ex_doc, "~> 0.40", only: [:dev, :test], runtime: false},
       # Available in all envs (the lib ships `mix oban_powertools.install`, which
       # `use Igniter.Mix.Task`, so adopters need igniter loadable to compile it).
       # `runtime: false` keeps it out of the started application list. Matches the
