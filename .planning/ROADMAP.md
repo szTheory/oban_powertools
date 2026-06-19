@@ -93,11 +93,24 @@
   3. The harness is hermetic against fixtures (re-run = identical results); animations disabled, timestamps/IDs masked, fonts ready.
 
 **Plans**: 5 plans
+**Wave 1**
 
 - [ ] 73-01-PLAN.md — Root Node tooling, exact Playwright/axe lockfile, generated showcase manifest, and manifest validation (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 73-02-PLAN.md — Deterministic Playwright config, pinned Docker/example-host runners, and browser structure smoke (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 73-03-PLAN.md — Axe-core serious/critical gate, full JSON artifacts, and narrow current-showcase a11y fixes if needed (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 73-04-PLAN.md — Story-level VRT spec plus 108 Docker-generated committed PNG baselines (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 73-05-PLAN.md — `visual_a11y` CI lane, `ci-gate` fan-in, artifact uploads, and guardrail documentation (wave 5)
 
 ### Phase 74: Primitives Library
