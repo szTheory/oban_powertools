@@ -92,7 +92,13 @@
   2. An axe-core scan (WCAG 2.2 AA tags, open-state variants) runs over the showcase in CI; 0 critical/serious is merge-blocking.
   3. The harness is hermetic against fixtures (re-run = identical results); animations disabled, timestamps/IDs masked, fonts ready.
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+- [ ] 73-01-PLAN.md — Root Node tooling, exact Playwright/axe lockfile, generated showcase manifest, and manifest validation (wave 1)
+- [ ] 73-02-PLAN.md — Deterministic Playwright config, pinned Docker/example-host runners, and browser structure smoke (wave 2)
+- [ ] 73-03-PLAN.md — Axe-core serious/critical gate, full JSON artifacts, and narrow current-showcase a11y fixes if needed (wave 3)
+- [ ] 73-04-PLAN.md — Story-level VRT spec plus 108 Docker-generated committed PNG baselines (wave 4)
+- [ ] 73-05-PLAN.md — `visual_a11y` CI lane, `ci-gate` fan-in, artifact uploads, and guardrail documentation (wave 5)
 
 ### Phase 74: Primitives Library
 
@@ -245,7 +251,7 @@
 | 70. Brand Book & Identity Foundation | 2/2 | Complete    | 2026-06-18 |
 | 71. Token Layer & Isolated Theming Engine | 5/5 | Complete    | 2026-06-18 |
 | 72. Stress Fixtures & Showcase Skeleton | 4/4 | Complete    | 2026-06-19 |
-| 73. Visual-Regression & A11y Harness | 0/TBD | Not started | — |
+| 73. Visual-Regression & A11y Harness | 0/5 | Not started | — |
 | 74. Primitives Library | 0/TBD | Not started | — |
 | 75. Form Components | 0/TBD | Not started | — |
 | 76. Navigation & App Shell | 0/TBD | Not started | — |
