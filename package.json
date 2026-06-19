@@ -1,0 +1,16 @@
+{
+  "name": "oban_powertools",
+  "private": true,
+  "scripts": {
+    "showcase:manifest": "mkdir -p test/browser/.generated && MIX_ENV=test mix run --no-start scripts/showcase_manifest.exs > test/browser/.generated/showcase-manifest.json",
+    "visual:a11y": "npm run showcase:manifest && scripts/with-showcase-server.sh npm run visual:a11y:docker",
+    "visual:a11y:host": "npx playwright test",
+    "visual:a11y:docker": "scripts/playwright-docker.sh npx playwright test",
+    "vrt:update": "npm run showcase:manifest && scripts/with-showcase-server.sh scripts/playwright-docker.sh npx playwright test test/browser/specs/showcase.vrt.spec.ts --update-snapshots=changed"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.11.3",
+    "@playwright/test": "1.61.0",
+    "axe-core": "4.11.4"
+  }
+}

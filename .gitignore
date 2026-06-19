@@ -13,6 +13,12 @@
 # Temporary files, for example, from tests.
 /tmp/
 
+# Root Node/browser harness dependencies and generated run outputs.
+/node_modules/
+/playwright-report/
+/test-results/
+/test/browser/.generated/
+
 # Local agent and Finder scratch.
 .DS_Store
 /_build_phase23/
