@@ -44,8 +44,8 @@ mkdir -p "$(dirname "${SERVER_LOG}")"
 ) &
 SERVER_PID="$!"
 
-node <<NODE
-const url = ${JSON.stringify(SHOWCASE_URL)};
+SHOWCASE_URL="${SHOWCASE_URL}" node <<'NODE'
+const url = process.env.SHOWCASE_URL;
 const deadline = Date.now() + 60000;
 
 async function wait() {
