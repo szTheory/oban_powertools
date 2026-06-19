@@ -76,6 +76,7 @@ defmodule ObanPowertools.Web.Router do
           # leading underscore marks the internal/dev-only convention.
           if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
             live("/_brand_book", ObanPowertools.Web.Dev.BrandBookLive, :index)
+            live("/_showcase", ObanPowertools.Web.Dev.ShowcaseLive, :index)
           end
         end
 
