@@ -651,19 +651,22 @@ PRs that change `test/browser/__screenshots__/**/*.png` should explain why, and 
 | A3 | `document.fonts.ready` is sufficient for current system-font stack. | Determinism Risks And Controls | If future custom fonts are introduced, a stronger preload/font readiness gate may be needed. |
 | A4 | Manual package audit is sufficient for planning while the GSD legitimacy seam is unavailable. | Package Legitimacy Audit | Execution should rerun the formal seam or add a human verification checkpoint before install. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Will the first axe run find current serious/critical violations in the Phase 72 skeleton?**
+   - RESOLVED: Plan 73-03 owns the first axe run and any narrow serious/critical showcase shell fixes needed to make the merge-blocking gate green.
    - What we know: the skeleton has semantic sections, controls, and catalog cells, but axe has not been run yet. [VERIFIED: `lib/oban_powertools/web/dev/showcase_live.ex`]
    - What's unclear: whether `target-size`, contrast, or structural rules fail in current CSS. [ASSUMED]
-   - Recommendation: Plan a Wave 0 red/green run; if failures are in the showcase shell itself, fix the shell CSS/markup narrowly in Phase 73 so the gate can be merge-blocking. [VERIFIED: `73-CONTEXT.md`]
+   - Recommendation: Execute the Plan 73-03 axe task as the first serious/critical red/green run; if failures are in the showcase shell itself, fix the shell CSS/markup narrowly in Phase 73 so the gate can be merge-blocking. [VERIFIED: `73-CONTEXT.md`]
 
 2. **Should a direct `axe-core@4.12.1` install be deferred?**
+   - RESOLVED: Retain the adapter-compatible direct `axe-core@4.11.4` pin with `@axe-core/playwright@4.11.3`; upgrade both together when Deque publishes a compatible adapter line.
    - What we know: latest standalone `axe-core` is 4.12.1, but latest `@axe-core/playwright` is 4.11.3 and depends on `~4.11.4`. [VERIFIED: `npm view`]
    - What's unclear: when Deque will publish `@axe-core/playwright` 4.12.x. [ASSUMED]
    - Recommendation: Pin adapter-compatible `axe-core@4.11.4` now; upgrade both together when the wrapper publishes a 4.12 line. [VERIFIED: `npm view @axe-core/playwright@4.11.3 dependencies`]
 
 3. **Will local Docker networking need repo config changes?**
+   - RESOLVED: Plan 73-02 handles this through `scripts/playwright-docker.sh` and `scripts/with-showcase-server.sh` wrapper branching for Linux CI host networking and macOS Docker Desktop host naming.
    - What we know: Linux CI can use `--network host`; macOS Docker Desktop usually uses `host.docker.internal`. [ASSUMED]
    - What's unclear: whether the example host's current 127.0.0.1 dev bind works for every local Docker update path. [VERIFIED: `examples/phoenix_host/config/dev.exs`]
    - Recommendation: Implement script branching first; add an env-driven bind override only if local verification fails. [ASSUMED]
