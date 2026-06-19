@@ -99,7 +99,7 @@
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 73-02-PLAN.md — Deterministic Playwright config, pinned Docker/example-host runners, and browser structure smoke (wave 2)
+- [x] 73-02-PLAN.md — Deterministic Playwright config, pinned Docker/example-host runners, and browser structure smoke (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -264,7 +264,7 @@
 | 70. Brand Book & Identity Foundation | 2/2 | Complete    | 2026-06-18 |
 | 71. Token Layer & Isolated Theming Engine | 5/5 | Complete    | 2026-06-18 |
 | 72. Stress Fixtures & Showcase Skeleton | 4/4 | Complete    | 2026-06-19 |
-| 73. Visual-Regression & A11y Harness | 1/5 | In Progress|  |
+| 73. Visual-Regression & A11y Harness | 2/5 | In Progress|  |
 | 74. Primitives Library | 0/TBD | Not started | — |
 | 75. Form Components | 0/TBD | Not started | — |
 | 76. Navigation & App Shell | 0/TBD | Not started | — |
