@@ -61,7 +61,7 @@ defmodule ObanPowertools.ShowcaseCatalogTest do
     test "scenarios_by_domain/0 uses the same complete domain set" do
       scenarios_by_domain = ShowcaseCatalog.scenarios_by_domain()
 
-      assert normalize_values(Map.keys(scenarios_by_domain)) == normalize_values(@domains),
+      assert sorted_values(Map.keys(scenarios_by_domain)) == sorted_values(@domains),
              "D-01 requires scenarios_by_domain/0 to be keyed by exactly the nine catalog domains"
 
       Enum.each(@domains, fn domain ->
@@ -201,6 +201,12 @@ defmodule ObanPowertools.ShowcaseCatalogTest do
   defp normalize_values(values) do
     values
     |> Enum.map(&normalize_value/1)
+  end
+
+  defp sorted_values(values) do
+    values
+    |> normalize_values()
+    |> Enum.sort()
   end
 
   defp normalize_value(value) when is_atom(value), do: Atom.to_string(value)

@@ -1,7 +1,8 @@
 # Dev-only module guard: defined only when dev_routes is enabled at the host's
 # compile time (dev/test). In production builds this file defines no fallback
 # module, so the route and LiveView stay absent together.
-if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
+if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) or
+     System.get_env("MIX_ENV", "dev") == "dev" do
   defmodule ObanPowertools.Web.Dev.ShowcaseLive do
     @moduledoc """
     Dev-only LiveView for the deterministic Powertools showcase skeleton.
@@ -295,7 +296,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
         Code.ensure_loaded?(@catalog_module) ->
           {:ok, @catalog_module}
 
-        File.exists?(@catalog_path) ->
+        Mix.env() != :test and File.exists?(@catalog_path) ->
           Code.require_file(@catalog_path)
 
           if Code.ensure_loaded?(@catalog_module) do
