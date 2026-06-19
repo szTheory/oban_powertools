@@ -16,9 +16,12 @@ defmodule ObanPowertools.DocsContractTest do
     "guides/optional-oban-web-bridge.md",
     "guides/support-truth-and-ownership-boundaries.md",
     "guides/production-hardening.md",
-    "guides/troubleshooting.md"
+    "guides/troubleshooting.md",
+    "guides/visual-regression-and-a11y.md"
   ]
+  @ci_workflow_file ".github/workflows/ci.yml"
   @workflow_file ".github/workflows/host-contract-proof.yml"
+  @visual_guide_path "guides/visual-regression-and-a11y.md"
   @workflow_semantics_block """
   <!-- workflow-semantics-contract:start -->
   ## Canonical Workflow Semantics Contract
@@ -187,6 +190,46 @@ defmodule ObanPowertools.DocsContractTest do
     assert source =~ "--only first_session"
     assert source =~ "--only control-plane"
     assert source =~ "--only upgrade-proof"
+  end
+
+  test "visual regression and a11y guardrails stay locked in docs and CI" do
+    guide = File.read!(@visual_guide_path)
+    readme = File.read!("README.md")
+    mix_exs = File.read!("mix.exs")
+    ci = File.read!(@ci_workflow_file)
+
+    assert readme =~ "guides/visual-regression-and-a11y.md"
+    assert mix_exs =~ "guides/visual-regression-and-a11y.md"
+    assert mix_exs =~ ~s("Design System")
+
+    assert ci =~ "visual_a11y:"
+    assert ci =~ "VISUAL_A11Y"
+    assert ci =~ "npm run visual:a11y"
+    assert ci =~ "playwright-report/"
+    assert ci =~ "test-results/"
+    assert ci =~ "test/browser/.generated/showcase-manifest.json"
+    refute ci =~ "--update-snapshots"
+
+    assert guide =~ "npm run visual:a11y"
+    assert guide =~ "npm run vrt:update"
+    assert guide =~ "--update-snapshots=changed"
+    assert guide =~ "--grep"
+    assert guide =~ "--project"
+    assert guide =~ "scripts/playwright-docker.sh"
+    assert guide =~ "mcr.microsoft.com/playwright:v1.61.0-noble"
+    assert guide =~ "108 PNGs"
+    assert guide =~ "playwright-report/"
+    assert guide =~ "test-results/"
+    assert guide =~ "showcase-manifest.json"
+
+    assert guide =~
+             "Update snapshots only when the visual change is intentional; explain the reason in the PR."
+
+    assert guide =~
+             "Automated axe gate passed for critical and serious findings on the captured showcase targets."
+
+    refute guide =~ "proves the full WCAG"
+    refute guide =~ "proves manual accessibility"
   end
 
   test "workflow keeps Phase 40 shift-left coverage markers" do

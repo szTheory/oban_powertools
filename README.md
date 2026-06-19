@@ -146,6 +146,8 @@ IDs (D-01..D-22), so each shipped token, component, and string maps back to a na
   vocabulary.
 - [Powertools vs. Oban Pro](guides/powertools-vs-oban-pro.md) provides a definitive feature
   comparison, including Batches, Chains, Dynamic Cron, Limiters, Lifeline, and the Native UI.
+- [Visual Regression And A11y Guardrails](guides/visual-regression-and-a11y.md) explains the
+  Playwright/axe gate, CI artifacts, and reviewed baseline update workflow.
 
 ## Canonical Example Host
 

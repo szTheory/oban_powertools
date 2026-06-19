@@ -73,7 +73,8 @@ defmodule ObanPowertools.MixProject do
       extras: ["README.md", "CHANGELOG.md" | Path.wildcard("guides/*.md")],
       groups_for_extras: [
         "Design System": [
-          "guides/brand-book.md"
+          "guides/brand-book.md",
+          "guides/visual-regression-and-a11y.md"
         ],
         "Day 0": [
           "guides/installation.md",
