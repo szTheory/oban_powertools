@@ -103,7 +103,7 @@
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 73-03-PLAN.md — Axe-core serious/critical gate, full JSON artifacts, and narrow current-showcase a11y fixes if needed (wave 3)
+- [x] 73-03-PLAN.md — Axe-core serious/critical gate, full JSON artifacts, and narrow current-showcase a11y fixes if needed (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -264,7 +264,7 @@
 | 70. Brand Book & Identity Foundation | 2/2 | Complete    | 2026-06-18 |
 | 71. Token Layer & Isolated Theming Engine | 5/5 | Complete    | 2026-06-18 |
 | 72. Stress Fixtures & Showcase Skeleton | 4/4 | Complete    | 2026-06-19 |
-| 73. Visual-Regression & A11y Harness | 2/5 | In Progress|  |
+| 73. Visual-Regression & A11y Harness | 3/5 | In Progress|  |
 | 74. Primitives Library | 0/TBD | Not started | — |
 | 75. Form Components | 0/TBD | Not started | — |
 | 76. Navigation & App Shell | 0/TBD | Not started | — |
