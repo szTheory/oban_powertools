@@ -8,7 +8,7 @@
 
 - [x] **Phase 70: Brand Book & Identity Foundation** — Author the brand book as the single source of truth for all visual/verbal decisions. (completed 2026-06-18)
 - [x] **Phase 71: Token Layer & Isolated Theming Engine** — Ship the library-owned `--obpt-*` token layer + precompiled CSS asset + dark/light/system (system default), zero leakage. (completed 2026-06-18)
-- [ ] **Phase 72: Stress Fixtures & Showcase Skeleton** — Deterministic dev/test fixtures + the dev-only `/ops/jobs/_showcase` with theme + viewport switchers.
+- [x] **Phase 72: Stress Fixtures & Showcase Skeleton** — Deterministic dev/test fixtures + the dev-only `/ops/jobs/_showcase` with theme + viewport switchers. (completed 2026-06-19)
 - [ ] **Phase 73: Visual-Regression & A11y Harness** — Playwright snapshots + axe gate in CI, established *before* any page changes.
 - [ ] **Phase 74: Primitives Library** — Token-driven `Phoenix.Component` primitives as showcase stories under VRT/a11y.
 - [ ] **Phase 75: Form Components** — Accessible form primitives on `to_form`.
@@ -76,10 +76,10 @@
 
 **Plans**: 4 plans
 
-- [ ] 72-01-PLAN.md — RED fixture catalog and package exclusion contracts (wave 1)
-- [ ] 72-02-PLAN.md — RED showcase route, control, selector, and example-host contracts (wave 1)
-- [ ] 72-03-PLAN.md — Canonical deterministic scenario catalog implementation (wave 2)
-- [ ] 72-04-PLAN.md — Dev-only showcase LiveView, route, token-backed shell CSS, and final proof gates (wave 3)
+- [x] 72-01-PLAN.md — RED fixture catalog and package exclusion contracts (wave 1)
+- [x] 72-02-PLAN.md — RED showcase route, control, selector, and example-host contracts (wave 1)
+- [x] 72-03-PLAN.md — Canonical deterministic scenario catalog implementation (wave 2)
+- [x] 72-04-PLAN.md — Dev-only showcase LiveView, route, token-backed shell CSS, and final proof gates (wave 3)
 
 ### Phase 73: Visual-Regression & A11y Harness
 
@@ -244,7 +244,7 @@
 |-------|----------------|--------|-----------|
 | 70. Brand Book & Identity Foundation | 2/2 | Complete    | 2026-06-18 |
 | 71. Token Layer & Isolated Theming Engine | 5/5 | Complete    | 2026-06-18 |
-| 72. Stress Fixtures & Showcase Skeleton | 0/TBD | Not started | — |
+| 72. Stress Fixtures & Showcase Skeleton | 4/4 | Complete    | 2026-06-19 |
 | 73. Visual-Regression & A11y Harness | 0/TBD | Not started | — |
 | 74. Primitives Library | 0/TBD | Not started | — |
 | 75. Form Components | 0/TBD | Not started | — |
