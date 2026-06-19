@@ -2,7 +2,7 @@
   "name": "oban_powertools",
   "private": true,
   "scripts": {
-    "showcase:manifest": "mkdir -p test/browser/.generated && MIX_ENV=test mix run --no-start scripts/showcase_manifest.exs > test/browser/.generated/showcase-manifest.json",
+    "showcase:manifest": "mkdir -p test/browser/.generated && MIX_ENV=test mix compile --quiet && MIX_ENV=test mix run --no-start --no-compile scripts/showcase_manifest.exs > test/browser/.generated/showcase-manifest.json",
     "visual:a11y": "npm run showcase:manifest && scripts/with-showcase-server.sh npm run visual:a11y:docker",
     "visual:a11y:host": "npx playwright test",
     "visual:a11y:docker": "scripts/playwright-docker.sh npx playwright test",
