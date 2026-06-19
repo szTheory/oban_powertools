@@ -74,8 +74,15 @@ defmodule ObanPowertools.Web.Router do
           # evaluated at the HOST's compile time (not the library's env at macro
           # expansion). Absent in prod, where dev_routes defaults to false. The
           # leading underscore marks the internal/dev-only convention.
-          if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
-            live("/_brand_book", ObanPowertools.Web.Dev.BrandBookLive, :index)
+          if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) or
+               System.get_env("MIX_ENV", "dev") == "dev" do
+            if match?({:module, _}, Code.ensure_compiled(ObanPowertools.Web.Dev.BrandBookLive)) do
+              live("/_brand_book", ObanPowertools.Web.Dev.BrandBookLive, :index)
+            end
+
+            if match?({:module, _}, Code.ensure_compiled(ObanPowertools.Web.Dev.ShowcaseLive)) do
+              live("/_showcase", ObanPowertools.Web.Dev.ShowcaseLive, :index)
+            end
           end
         end
 
