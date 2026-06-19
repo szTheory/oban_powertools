@@ -268,7 +268,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) or
                   </div>
                 </dl>
 
-                <pre><code>{inspect(scenario.fixtures, pretty: true, limit: 30)}</code></pre>
+                <pre tabindex="0" aria-label={"#{scenario.name} fixture data"}><code>{inspect(scenario.fixtures, pretty: true, limit: 30)}</code></pre>
               </article>
             </div>
           </section>
