@@ -9,7 +9,7 @@
 - [x] **Phase 70: Brand Book & Identity Foundation** — Author the brand book as the single source of truth for all visual/verbal decisions. (completed 2026-06-18)
 - [x] **Phase 71: Token Layer & Isolated Theming Engine** — Ship the library-owned `--obpt-*` token layer + precompiled CSS asset + dark/light/system (system default), zero leakage. (completed 2026-06-18)
 - [x] **Phase 72: Stress Fixtures & Showcase Skeleton** — Deterministic dev/test fixtures + the dev-only `/ops/jobs/_showcase` with theme + viewport switchers. (completed 2026-06-19)
-- [ ] **Phase 73: Visual-Regression & A11y Harness** — Playwright snapshots + axe gate in CI, established *before* any page changes.
+- [x] **Phase 73: Visual-Regression & A11y Harness** — Playwright snapshots + axe gate in CI, established *before* any page changes. (completed 2026-06-19)
 - [ ] **Phase 74: Primitives Library** — Token-driven `Phoenix.Component` primitives as showcase stories under VRT/a11y.
 - [ ] **Phase 75: Form Components** — Accessible form primitives on `to_form`.
 - [ ] **Phase 76: Navigation & App Shell** — Responsive Powertools shell (header, nav, theme toggle, actor).
@@ -111,7 +111,7 @@
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 73-05-PLAN.md — `visual_a11y` CI lane, `ci-gate` fan-in, artifact uploads, and guardrail documentation (wave 5)
+- [x] 73-05-PLAN.md — `visual_a11y` CI lane, `ci-gate` fan-in, artifact uploads, and guardrail documentation (wave 5)
 
 ### Phase 74: Primitives Library
 
@@ -264,7 +264,7 @@
 | 70. Brand Book & Identity Foundation | 2/2 | Complete    | 2026-06-18 |
 | 71. Token Layer & Isolated Theming Engine | 5/5 | Complete    | 2026-06-18 |
 | 72. Stress Fixtures & Showcase Skeleton | 4/4 | Complete    | 2026-06-19 |
-| 73. Visual-Regression & A11y Harness | 4/5 | In Progress|  |
+| 73. Visual-Regression & A11y Harness | 5/5 | Complete   | 2026-06-19 |
 | 74. Primitives Library | 0/TBD | Not started | — |
 | 75. Form Components | 0/TBD | Not started | — |
 | 76. Navigation & App Shell | 0/TBD | Not started | — |
