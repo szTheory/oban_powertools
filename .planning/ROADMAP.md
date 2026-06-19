@@ -107,7 +107,7 @@
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 73-04-PLAN.md — Story-level VRT spec plus 108 Docker-generated committed PNG baselines (wave 4)
+- [x] 73-04-PLAN.md — Story-level VRT spec plus 108 Docker-generated committed PNG baselines (wave 4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -264,7 +264,7 @@
 | 70. Brand Book & Identity Foundation | 2/2 | Complete    | 2026-06-18 |
 | 71. Token Layer & Isolated Theming Engine | 5/5 | Complete    | 2026-06-18 |
 | 72. Stress Fixtures & Showcase Skeleton | 4/4 | Complete    | 2026-06-19 |
-| 73. Visual-Regression & A11y Harness | 3/5 | In Progress|  |
+| 73. Visual-Regression & A11y Harness | 4/5 | In Progress|  |
 | 74. Primitives Library | 0/TBD | Not started | — |
 | 75. Form Components | 0/TBD | Not started | — |
 | 76. Navigation & App Shell | 0/TBD | Not started | — |

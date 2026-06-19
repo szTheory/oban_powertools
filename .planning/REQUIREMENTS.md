@@ -97,7 +97,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 ### Visual Regression (VRT)
 
 - [x] **VRT-01**: An external Node Playwright harness captures deterministic snapshots of showcase stories across themes × {320, tablet, wide}, run in a pinned Playwright Docker image.
-- [ ] **VRT-02**: Baselines are committed (component-scoped PNGs); CI fails on unintended visual diff; baseline updates happen only via reviewed `--update-snapshots` commits.
+- [x] **VRT-02**: Baselines are committed (component-scoped PNGs); CI fails on unintended visual diff; baseline updates happen only via reviewed `--update-snapshots` commits.
 - [x] **VRT-03**: The harness is hermetic against stress fixtures (stable data → stable pixels): animations disabled, timestamps/IDs masked, fonts ready, fixed viewports.
 
 ### Stress Fixtures (FIX)
