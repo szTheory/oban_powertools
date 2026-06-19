@@ -25,17 +25,19 @@ created: 2026-06-19
 
 Design posture: Phase 73 is guardrail infrastructure. It must preserve and verify the existing Powertools identity rather than redesigning the showcase, adding components, or creating decorative report UI. The visible surface under test is the Phase 72 `/ops/jobs/_showcase` route inside `.obpt-root`.
 
+Primary focal point and hierarchy: each captured catalog story cell is the visual anchor. Within and around that anchor, severity/status labels are the second-level signal, followed by supporting metadata such as story IDs, domains, personas, selectors, snapshot names, and finally controls for theme, viewport, report filtering, or baseline review.
+
 ---
 
 ## Spacing Scale
 
-Declared values (must be multiples of 4):
+Declared values (must use only 4px, 8px, 16px, 24px, 32px, 48px, or 64px):
 
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--obpt-space-1` | 4px | Icon/text gaps, inline metadata gaps, compact badge spacing |
 | `--obpt-space-2` | 8px | Compact control gaps, button vertical padding, segmented-control gaps |
-| `--obpt-space-3` | 12px | Dense row internals, card/header micro-gaps, input horizontal padding |
+| `--obpt-space-3` | 8px | Dense row internals, card/header micro-gaps, compact input horizontal padding |
 | `--obpt-space-4` | 16px | Default element spacing, control groups, section padding |
 | `--obpt-space-5` | 24px | Major panel padding, story-grid gaps, modal padding |
 | `--obpt-space-6` | 32px | Showcase page padding and larger layout separation |
@@ -135,6 +137,7 @@ Expected Phase 73 baseline count: 9 stories x 4 themes x 3 viewports x 1 browser
 ### Visual Behavior
 
 - Use story-level `toHaveScreenshot` assertions, not full-page screenshots.
+- The story cell remains the primary visual anchor in every capture; severity/status labels rank next; supporting metadata and controls must stay subordinate and must not visually compete with the story content.
 - Baseline paths must be human-readable and grouped by project, story, theme, and viewport.
 - Wait for route readiness, one `.obpt-root`, selected theme/effective theme, selected viewport, target story visibility, network idle where useful, and `document.fonts.ready` before capture.
 - Disable animations, hide caret, fix timezone/locale/media preferences, and set `reducedMotion: "reduce"` for deterministic capture.
