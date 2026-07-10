@@ -470,17 +470,19 @@ test('primitive tooltip opens on focus and dismisses on Escape', async ({ page }
 |---|-------|---------|---------------|
 | A1 | CSS alone cannot persist an Escape-dismissed tooltip state; a tiny browser behavior seam is recommended. [ASSUMED] | Common Pitfalls / Pattern 4 | If wrong, a CSS/native-only implementation could avoid JS, but must still pass the Escape behavior test. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Exact icon source**
+1. **Exact icon source — RESOLVED**
    - What we know: No new icon package is allowed, and `StatusPill` may accept an optional icon. [VERIFIED: 74-CONTEXT.md]
-   - What's unclear: Whether the first primitive pass should ship a tiny internal icon set, use text/shape glyphs, or accept icon slot content only. [VERIFIED: codebase review]
+   - Former uncertainty: Whether the first primitive pass should ship a tiny internal icon set, use text/shape glyphs, or accept icon slot content only. [VERIFIED: codebase review]
    - Recommendation: Use slots or a tiny closed internal atom-to-markup helper with decorative `aria-hidden` icons; do not install an icon dependency. [VERIFIED: 74-CONTEXT.md]
+   - RESOLVED decision: Phase 74 uses no icon package. Primitive APIs accept icon slot content and may use a tiny closed internal atom-to-markup helper for representative decorative icons; `IconButton` accessible names come only from the required `label`, not from tooltip or icon text. This matches Plans 74-01, 74-03, and 74-05.
 
-2. **Manifest compatibility shape**
+2. **Manifest compatibility shape — RESOLVED**
    - What we know: Current TypeScript validator requires schema v1 and exactly nine `scenarios`. [VERIFIED: `test/browser/support/manifest.ts`]
-   - What's unclear: Whether to bump to schema v2 immediately or retain schema v1 plus optional `primitive_stories`. [VERIFIED: codebase review]
+   - Former uncertainty: Whether to bump to schema v2 immediately or retain schema v1 plus optional `primitive_stories`. [VERIFIED: codebase review]
    - Recommendation: Bump to schema v2, keep `scenarios` intact for compatibility, add `primitive_stories`, and make tests loop over a generated `targets` export. [VERIFIED: 74-CONTEXT.md]
+   - RESOLVED decision: Plan 74-04 bumps the manifest to schema v2, preserves the existing `scenarios` array, adds `primitive_stories`, and exports/generated-validates a unified `targets` collection consumed by structure, VRT, and axe specs. Existing scenario snapshot paths remain compatible.
 
 ## Environment Availability
 
@@ -513,13 +515,13 @@ test('primitive tooltip opens on focus and dismisses on Escape', async ({ page }
 
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
 |--------|----------|-----------|-------------------|--------------|
-| COMP-01 | Components exist with documented attrs/slots. | unit/static | `mix test test/oban_powertools/web/components/primitives_test.exs -x` | No - Wave 0. [VERIFIED: codebase] |
-| COMP-02 | No raw hex/px or class/style escape hatches in primitive source/render output. | unit/static | `mix test test/oban_powertools/web/components/primitives_test.exs -x` | No - Wave 0. [VERIFIED: codebase] |
+| COMP-01 | Components exist with documented attrs/slots. | unit/static | `mix test test/oban_powertools/web/components/primitives_test.exs` | No - Wave 0. [VERIFIED: codebase] |
+| COMP-02 | No raw hex/px or class/style escape hatches in primitive source/render output. | unit/static | `mix test test/oban_powertools/web/components/primitives_test.exs` | No - Wave 0. [VERIFIED: codebase] |
 | COMP-03 | Keyboard and SR behavior for buttons, icon buttons, links, tooltips, loading. | browser | `npm run visual:a11y:host -- test/browser/specs/primitives.behavior.spec.ts` | No - Wave 0. [VERIFIED: codebase] |
 | COMP-04 | Theme/viewport rendering for primitive stories. | browser VRT/axe | `npm run visual:a11y` | Existing harness yes; primitive targets no - Wave 0. [VERIFIED: `test/browser/specs/showcase.vrt.spec.ts`] |
 | MOTION-02 | Reduced-motion-safe primitive transitions/loading. | browser/static | `npm run visual:a11y:host -- test/browser/specs/primitives.behavior.spec.ts` | No - Wave 0. [VERIFIED: codebase] |
 | A11Y-02 | Focus-visible, accessible names, non-color channels. | browser/axe | `npm run visual:a11y` | Existing axe harness yes; primitive behavior file no - Wave 0. [VERIFIED: `test/browser/support/axe.ts`] |
-| SHOW-01 | Primitive stories render at `/ops/jobs/_showcase`. | ExUnit/browser | `mix test test/oban_powertools/web/live/showcase_live_test.exs -x` | Existing file yes; primitive assertions no - Wave 0. [VERIFIED: `test/oban_powertools/web/live/showcase_live_test.exs`] |
+| SHOW-01 | Primitive stories render at `/ops/jobs/_showcase`. | ExUnit/browser | `mix test test/oban_powertools/web/live/showcase_live_test.exs` | Existing file yes; primitive assertions no - Wave 0. [VERIFIED: `test/oban_powertools/web/live/showcase_live_test.exs`] |
 
 ### Sampling Rate
 

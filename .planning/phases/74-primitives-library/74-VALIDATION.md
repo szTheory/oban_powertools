@@ -32,9 +32,9 @@ Per-phase validation contract for feedback sampling during execution.
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 74-W0-01 | TBD | 0 | COMP-01, COMP-02 | T-74-01 | Component APIs expose closed attrs/slots and no caller `class` or `style` escape hatch | unit/static | `mix test test/oban_powertools/web/components/primitives_test.exs -x` | No - Wave 0 | pending |
-| 74-W0-02 | TBD | 0 | SHOW-01, COMP-04 | - | Primitive story metadata is deterministic and separate from stress scenarios | unit/static | `mix test test/oban_powertools/primitive_story_catalog_test.exs -x` | No - Wave 0 | pending |
-| 74-W0-03 | TBD | 0 | SHOW-01 | - | Showcase route renders primitive stories without polluting `ShowcaseCatalog.scenarios/0` | unit/integration | `mix test test/oban_powertools/web/live/showcase_live_test.exs -x` | Existing file; primitive assertions missing | pending |
+| 74-W0-01 | TBD | 0 | COMP-01, COMP-02 | T-74-01 | Component APIs expose closed attrs/slots and no caller `class` or `style` escape hatch | unit/static | `mix test test/oban_powertools/web/components/primitives_test.exs` | No - Wave 0 | pending |
+| 74-W0-02 | TBD | 0 | SHOW-01, COMP-04 | - | Primitive story metadata is deterministic and separate from stress scenarios | unit/static | `mix test test/oban_powertools/primitive_story_catalog_test.exs` | No - Wave 0 | pending |
+| 74-W0-03 | TBD | 0 | SHOW-01 | - | Showcase route renders primitive stories without polluting `ShowcaseCatalog.scenarios/0` | unit/integration | `mix test test/oban_powertools/web/live/showcase_live_test.exs` | Existing file; primitive assertions missing | pending |
 | 74-W0-04 | TBD | 0 | COMP-03, A11Y-02 | T-74-02 | Icon buttons have accessible names; focus remains visible; tooltip Escape works | browser | `npm run visual:a11y:host -- test/browser/specs/primitives.behavior.spec.ts` | No - Wave 0 | pending |
 | 74-W0-05 | TBD | 0 | COMP-04, MOTION-02 | - | Primitive stories render at 320px and respect reduced motion | browser/VRT | `npm run visual:a11y` | Existing harness; primitive targets missing | pending |
 
