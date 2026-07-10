@@ -35,7 +35,6 @@ Declared values use the existing Phase 71 token scale. Components must reference
 |-------|-------|-------|
 | `--obpt-space-1` | 4px | Icon gaps, inline metadata gaps, tight label/icon spacing. |
 | `--obpt-space-2` | 8px | Compact control padding, badge padding, segmented-control gaps. |
-| `--obpt-space-3` | 12px | Dense internal groups, tooltip offset/gap, story-cell micro spacing. |
 | `--obpt-space-4` | 16px | Default component padding, card/surface padding, standard vertical rhythm. |
 | `--obpt-space-5` | 24px | Section spacing, modal/surface body padding, larger primitive matrix gaps. |
 | `--obpt-space-6` | 32px | Wide showcase/page padding and major grouped primitive spacing. |
