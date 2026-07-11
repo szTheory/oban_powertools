@@ -156,13 +156,30 @@
   2. Every field has a programmatic label + error association + visible focus; disabled vs read-only are distinct; validation never relies on color alone; passes the a11y gate.
   3. Stories cover valid/invalid/disabled/loading across themes; VRT green.
 
-**Plans**: 5/5 plans complete
+**Plans**: 5/6 plans complete
+**Wave 1**
 
 - [x] 75-01-PLAN.md
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [x] 75-02-PLAN.md
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [x] 75-03-PLAN.md
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [x] 75-04-PLAN.md
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [x] 75-05-PLAN.md
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 75-06-PLAN.md
 
 ### Phase 76: Navigation & App Shell
 
