@@ -45,6 +45,7 @@ defmodule ObanPowertools.FormStoryCatalogTest do
     assert covered_components == Enum.sort(@components)
     assert Enum.all?(@states, &(&1 in covered_states))
     refute Enum.any?(covered_components, &(&1 in @forbidden))
+
     refute Enum.any?(stories, fn story ->
              metadata = inspect(story) |> String.downcase()
              Enum.any?(@forbidden, &String.contains?(metadata, Atom.to_string(&1)))
@@ -53,15 +54,22 @@ defmodule ObanPowertools.FormStoryCatalogTest do
 
   test "stories carry operator copy plus named boolean and event selection metadata" do
     stories = FormStoryCatalog.stories()
-    copy = inspect(stories)
+    copy = inspect(stories, limit: :infinity)
 
     for required <- [
-          "Worker name", "Search jobs", "Enter a full or partial worker module name.",
-          "Required", "Optional", "Enter a worker name.",
+          "Worker name",
+          "Search jobs",
+          "Enter a full or partial worker module name.",
+          "Required",
+          "Optional",
+          "Enter a worker name.",
           "Queue selection is unavailable while this job is running.",
           "Job ID is assigned when the job is inserted and cannot be changed.",
-          "Job state", "Any state", "Pause queue processing"
-        ], do: assert(copy =~ required)
+          "Job state",
+          "Any state",
+          "Pause queue processing"
+        ],
+        do: assert(copy =~ required)
 
     checkbox = FormStoryCatalog.story!("form-checkbox-modes")
     assert checkbox.selection_modes == [:named_boolean, :event_selection]
