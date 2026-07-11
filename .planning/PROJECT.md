@@ -90,6 +90,7 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 - ✓ Safe fixed-size batch streaming insertion — `Batch.insert_stream/2` with bounded chunks, durable partial-failure metadata, and fixed-count invariants (`BAT-02`) — v1.9 Phase 61
 - ✓ Linear chain DSL and callback-outbox progression — `ObanPowertools.Chain` maps sequential jobs to batch metadata and `chain.step_succeeded` callbacks (`CHN-01`) — v1.9 Phase 61
 - ✓ Durable upstream output handoff — downstream chain steps fetch predecessor output through `JobRecord` with safe args builders and explicit unavailable/expired errors (`CHN-02`) — v1.9 Phase 61
+- ✓ v2.0 primitive component layer — token-driven documented `Phoenix.Component` primitives with primitive showcase stories, manifest/VRT/a11y integration, browser behavior checks, clean code review, and verified security register (`COMP-01..04`) — v2.0 Phase 74
 
 ### Active
 
@@ -159,7 +160,7 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 `1.0.0` shipped and published to hex.pm (v1.11 Stability & 1.0 Release Prep). The library is functionally complete for its intended *feature* scope: typed worker contracts, durable idempotency, limiter/cron control planes, durable workflow DAGs + signaling, batches/chains with callback outbox, a native `/ops/jobs` operator shell (browse/detail/retry/cancel/discard single+bulk through the Lifeline preview→reason→execute→audit pipeline, plus the typed `ObanPowertools.Operator` API), `mix oban_powertools.doctor` / `.limiter.explain` / `.simulate`, opt-in telemetry, worker lifecycle hooks, output recording, and at-rest redaction.
 
-**v2.0 Powertools Identity (active).** A coherence/quality milestone, not new operator capability. The `/ops/jobs` UI today is 9 LiveViews of inline `defp` function components with hardcoded Tailwind utilities — no component library, no design tokens, no dark mode, no theme switcher. v2.0 authors a brand book and re-founds the UI on a library-owned, isolated, themeable design system with dark/light/system, WCAG 2.2 AA, and idempotent regression guardrails (showcase + visual-regression + a11y harness + stress fixtures). Phases 70–84.
+**v2.0 Powertools Identity (active).** A coherence/quality milestone, not new operator capability. Phases 70–74 are complete: brand book, isolated token/theme foundation, stress fixtures/showcase skeleton, visual-regression/a11y harness, and the token-driven primitive component layer. The remaining phases build forms, app shell, data-display components, operator groups, page migrations, and the final global accessibility/motion/copy/docs sweep.
 
 (Earlier: `v1.9` shipped batches & composition; `v1.7` worker lifecycle & safety; `v1.4` operator forensics and SRE runbooks; `v1.3` unified the native control plane and explainability story.)
 
@@ -245,4 +246,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-06-18 — v2.0 Powertools Identity milestone started (Phases 70–84)*
+*Last updated: 2026-07-11 — Phase 74 completed; primitive component layer validated (COMP-01..04)*
