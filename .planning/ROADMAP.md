@@ -125,11 +125,24 @@
   3. No raw hex/px in primitive source (lint/grep clean).
 
 **Plans**: 5 plans
+**Wave 1**
 
 - [ ] 74-01-PLAN.md — Primitive component API and ExUnit contract tests (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 74-02-PLAN.md — Token-only primitive CSS, tooltip behavior, and compiled assets (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 74-03-PLAN.md — Primitive story catalog and showcase rendering (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 74-04-PLAN.md — Unified Playwright manifest and VRT/a11y target integration (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 74-05-PLAN.md — Primitive behavior checks, VRT baselines, and full gate closure (wave 5)
 
 ### Phase 75: Form Components
