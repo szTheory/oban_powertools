@@ -34,12 +34,12 @@ Form CSS and components must use the existing token scale; no raw spacing litera
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--obpt-space-1` | 4px | Inline label markers, checkbox/radio internal gaps, tight error-prefix gap. |
-| `--obpt-space-2` | 8px | Label-to-control, control-to-hint/error, compact choice spacing, control vertical padding. |
-| `--obpt-space-3` | 12px | Control horizontal padding and choice label gap. |
-| `--obpt-space-4` | 16px | Default gap between fields and FieldGroup items. |
+| `--obpt-space-2` | 8px | Label-to-control, control-to-hint/error, compact choice and choice-label spacing, control vertical padding. |
+| `--obpt-space-4` | 16px | Control horizontal padding, default gap between fields, and FieldGroup item spacing. |
 | `--obpt-space-5` | 24px | Separation between form sections or grouped fieldsets. |
 | `--obpt-space-6` | 32px | Major showcase matrix grouping only. |
 | `--obpt-space-7` | 48px | Page-level separation only; not inside controls. |
+| Phase contract maximum | 64px | Reserved for page-level whitespace outside form components; no current form component uses it. |
 
 Exceptions:
 
@@ -65,6 +65,7 @@ Use exactly these form roles and only weights 400 and 600.
 
 Rules:
 
+- The close 12/13/14px progression is retained deliberately because these are the locked existing project tokens and Phase 75 may not introduce one-off type sizes. Hierarchy comes from the combined system: controls/body are 14px regular; labels/legends and errors are 13px semibold; hints are 12px regular with the more open 1.6 line height and muted color. Size, weight, line height, color, and placement together create a clear distinction without expanding the design system.
 - Labels and legends are always visible and semibold; placeholders never replace them.
 - Error text is field-specific and readable, not an icon-only or color-only mark.
 - Machine values may use mono, but ordinary queue labels, option labels, and numeric inputs remain sans; numeric values may use tabular numerals.
@@ -196,6 +197,8 @@ Rules:
 ---
 
 ## Showcase And Verification Contract
+
+The primary showcase focal point is one complete field stack rendered at realistic width. Its fixed visual hierarchy is **visible label or legend -> control -> hint -> validation message**. In the default story the control is the anchor through border, surface, and value contrast; in focus stories the focused control and its accent focus ring are the anchor; in invalid stories the invalid control plus its immediately following `Error:` message are the anchor. Supporting state matrices remain secondary and must not visually compete with this field stack.
 
 | Contract | Requirement |
 |----------|-------------|
