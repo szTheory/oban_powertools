@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Identity Milestone Audit & Idempotency Proof
-current_phase: 75
-current_phase_name: form-components
-status: gaps_found
-stopped_at: Phase 75 gap-closure plan 75-06 ready for execution
-last_updated: "2026-07-11T18:15:00.000Z"
+current_phase: 76
+current_phase_name: navigation-and-app-shell
+status: ready_for_planning
+stopped_at: Phase 75 complete; ready for Phase 76 planning
+last_updated: "2026-07-11T18:48:21Z"
 last_activity: 2026-07-11
-last_activity_desc: Phase 75 gap-closure plan 75-06 created and verified
+last_activity_desc: Phase 75 plan 75-06 completed
 progress:
   total_phases: 15
-  completed_phases: 5
-  total_plans: 26
-  completed_plans: 26
-  percent: 33
+  completed_phases: 6
+  total_plans: 27
+  completed_plans: 27
+  percent: 40
 ---
 
 # Project State
@@ -23,14 +23,14 @@ progress:
 
 **Core Value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
 
-**Current Focus:** Phase 75 — form-components
+**Current Focus:** Phase 76 — navigation-and-app-shell
 
 ## Current Position
 
-Phase: 75 (form-components) — GAP CLOSURE PLANNED
-Plan: 5 of 6
-Status: Verification found 3 implementation gaps; gap-closure plan 75-06 is ready to execute
-Last activity: 2026-07-11 — Phase 75 gap-closure plan 75-06 created and plan-checker passed
+Phase: 76 (navigation-and-app-shell) — READY FOR PLANNING
+Plan: TBD
+Status: Phase 75 complete; ready to plan Phase 76
+Last activity: 2026-07-11 — Phase 75 plan 75-06 completed
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Last activity: 2026-07-11 — Phase 75 gap-closure plan 75-06 created and plan-c
 | Phase 75 P03 | 4 min | 2 tasks | 4 files |
 | Phase 75 P04 | 10 min | 2 tasks | 4 files |
 | Phase 75 P05 | 35 min | 2 tasks | 110 files |
+| Phase 75 P06 | 20 min | 3 tasks | 63 files |
 
 ## Accumulated Context
 
@@ -86,20 +87,23 @@ Last activity: 2026-07-11 — Phase 75 gap-closure plan 75-06 created and plan-c
 
 ## Session Continuity
 
-**Last session:** 2026-07-11T18:03:10.126Z
-**Stopped at:** Phase 75 gap-closure plan 75-06 created and verified
+**Last session:** 2026-07-11T18:48:21Z
+**Stopped at:** Phase 75 complete; ready for Phase 76 planning
 **Resume file:** None
 
-- **Last Action:** Created and committed `75-06-PLAN.md` to close WR-01, WR-02, and WR-03.
-- **Next Action:** Execute `75-06-PLAN.md` via `/gsd:execute-phase 75`, then re-run Phase 75 verification.
-- **Active Context:** Phase 75 context, research, validation plan, UI-SPEC, verification gaps, and gap-closure plan 75-06 are ready for execution.
+- **Last Action:** Executed and committed `75-06-PLAN.md`, closing WR-01, WR-02, and WR-03.
+- **Next Action:** Plan Phase 76 navigation-and-app-shell.
+- **Active Context:** Phase 75 form components are complete; aggregate visual:a11y still has scenario-only VRT drift outside the form surface.
 
 ## Decisions
 
 - [Phase 75]: Keep all form controls stateless and field-first while allowing explicit identity overrides; use native semantics; centrally filter visual escape hatches. — Preserves parent-owned behavior, accessible native controls, and the scoped token-owned visual contract.
 - [Phase 75]: Keep deterministic form evidence in a separate dev/test-only catalog rather than domain stress fixtures. — Preserves production packaging and the domain fixture boundary while providing stable form evidence.
 - [Phase 75]: D-25: Browser evidence uses native interaction and generated form metadata across themes and viewports. — Proves component semantics without overclaiming Phase 82 page-level manual accessibility.
+- [Phase 75]: Switch state text is CSS-synchronized from the native checkbox state, so browser proof stays tied to real form semantics.
+- [Phase 75]: Multi-error fields preserve the single-error `-error` id contract and use indexed ids only when multiple messages render.
+- [Phase 75]: Scoped form baselines were refreshed for intentional form changes; scenario baselines remain unchanged until their owning phase.
 
 ### Blockers
 
-- Aggregate visual:a11y retains 96 pre-existing scenario-only VRT baseline failures; all Phase 75 form cases pass.
+- Aggregate visual:a11y retains 108 scenario-only VRT baseline failures; all Phase 75 form cases pass.

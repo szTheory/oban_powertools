@@ -11,7 +11,7 @@
 - [x] **Phase 72: Stress Fixtures & Showcase Skeleton** — Deterministic dev/test fixtures + the dev-only `/ops/jobs/_showcase` with theme + viewport switchers. (completed 2026-06-19)
 - [x] **Phase 73: Visual-Regression & A11y Harness** — Playwright snapshots + axe gate in CI, established *before* any page changes. (completed 2026-06-19)
 - [x] **Phase 74: Primitives Library** — Token-driven `Phoenix.Component` primitives as showcase stories under VRT/a11y. (completed 2026-07-11)
-- [ ] **Phase 75: Form Components** — Accessible form primitives on `to_form`.
+- [x] **Phase 75: Form Components** — Accessible form primitives on `to_form`. (completed 2026-07-11)
 - [ ] **Phase 76: Navigation & App Shell** — Responsive Powertools shell (header, nav, theme toggle, actor).
 - [ ] **Phase 77: Data-Display & Operator Patterns** — Shared data components + unified status taxonomy. *[split-risk]*
 - [ ] **Phase 78: Component Groups (Meta-Components)** — Operator meta-patterns encapsulating "explain, then act".
@@ -156,7 +156,7 @@
   2. Every field has a programmatic label + error association + visible focus; disabled vs read-only are distinct; validation never relies on color alone; passes the a11y gate.
   3. Stories cover valid/invalid/disabled/loading across themes; VRT green.
 
-**Plans**: 5/6 plans complete
+**Plans**: 6/6 plans complete
 **Wave 1**
 
 - [x] 75-01-PLAN.md
@@ -179,7 +179,7 @@
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 75-06-PLAN.md
+- [x] 75-06-PLAN.md
 
 ### Phase 76: Navigation & App Shell
 
