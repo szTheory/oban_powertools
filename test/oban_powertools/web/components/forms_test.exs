@@ -286,6 +286,44 @@ defmodule ObanPowertools.Web.Components.FormsTest do
       assert explicit_selection =~ ~s(phx-click="toggle_job")
     end
 
+    test "blank choice event values do not opt out of named boolean submission" do
+      nil_click =
+        render_form(:checkbox,
+          field: field(:enabled, true),
+          label: "Enable retries",
+          rest: %{"phx-click" => nil}
+        )
+
+      blank_click =
+        render_form(:checkbox,
+          field: field(:paused, false),
+          label: "Pause queue processing",
+          rest: %{"phx-click" => " "}
+        )
+
+      blank_name_selection =
+        render_form(:checkbox,
+          field: field(:selected, true),
+          label: "Select job 123",
+          name: " ",
+          rest: %{"phx-click" => "toggle_job"}
+        )
+
+      assert nil_click =~
+               ~r/<input[^>]+type="hidden"[^>]+name="filter\[enabled\]"[^>]+value="false"/
+
+      assert nil_click =~ ~r/<input[^>]+type="checkbox"[^>]+name="filter\[enabled\]"/
+
+      assert blank_click =~
+               ~r/<input[^>]+type="hidden"[^>]+name="filter\[paused\]"[^>]+value="false"/
+
+      assert blank_click =~ ~r/<input[^>]+type="checkbox"[^>]+name="filter\[paused\]"/
+
+      refute blank_name_selection =~ ~s(type="hidden")
+      refute blank_name_selection =~ ~s(name=)
+      assert blank_name_selection =~ ~s(phx-click="toggle_job")
+    end
+
     test "disabled named checkbox and switch disable their hidden unchecked values" do
       checkbox =
         render_form(:checkbox,
