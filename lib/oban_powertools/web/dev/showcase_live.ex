@@ -574,7 +574,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
             <Forms.switch field={@form[:pause]} id="form-switch-off" label="Pause queue processing" hint="Changes apply immediately when owned by a parent view." />
             <Forms.switch field={@form[:enabled]} id="form-switch-pending" label="Pause queue processing" hint="Updating queue setting." disabled />
           <% "form-validation-wiring" -> %>
-            <Forms.input field={@form[:worker]} label="Worker name" hint="Enter a full or partial worker module name." errors={["Enter a worker name."]} aria-describedby="form-validation-context" />
+            <Forms.input field={@form[:worker]} label="Worker name" hint="Enter a full or partial worker module name." errors={["Enter a worker name.", "Reason must be at least 10 characters."]} aria-describedby="form-validation-context" />
             <p id="form-validation-context">Used to narrow the operational job list.</p>
           <% "form-disabled-readonly" -> %>
             <Forms.select field={@form[:queue]} label="Queue" options={[{"Critical mailer", "critical-mailer"}]} disabled hint="Queue selection is unavailable while this job is running." />

@@ -46,7 +46,7 @@ defmodule ObanPowertools.Web.Components.Forms do
         {@rest}
       />
       <.hint :if={@hint} id={@hint_id} text={@hint} />
-      <.error :for={message <- @visible_errors} id={@error_id} error={message} />
+      <.error :for={{message, error_id} <- @error_items} id={error_id} error={message} />
     </div>
     """
   end
@@ -72,7 +72,7 @@ defmodule ObanPowertools.Web.Components.Forms do
       <textarea id={@id} name={@name} class="obpt-textarea" disabled={@disabled} readonly={@readonly}
         required={@required} aria-invalid={@aria_invalid} aria-describedby={@describedby} {@rest}>{@value}</textarea>
       <.hint :if={@hint} id={@hint_id} text={@hint} />
-      <.error :for={message <- @visible_errors} id={@error_id} error={message} />
+      <.error :for={{message, error_id} <- @error_items} id={error_id} error={message} />
     </div>
     """
   end
@@ -102,7 +102,7 @@ defmodule ObanPowertools.Web.Components.Forms do
           selected={to_string(option_value) == to_string(@value)}>{option_label}</option>
       </select>
       <.hint :if={@hint} id={@hint_id} text={@hint} />
-      <.error :for={message <- @visible_errors} id={@error_id} error={message} />
+      <.error :for={{message, error_id} <- @error_items} id={error_id} error={message} />
     </div>
     """
   end
@@ -132,7 +132,7 @@ defmodule ObanPowertools.Web.Components.Forms do
         <span>{@label}</span>
       </label>
       <.hint :if={@hint} id={@hint_id} text={@hint} />
-      <.error :for={message <- @visible_errors} id={@error_id} error={message} />
+      <.error :for={{message, error_id} <- @error_items} id={error_id} error={message} />
     </div>
     """
   end
@@ -166,7 +166,7 @@ defmodule ObanPowertools.Web.Components.Forms do
         </label>
       </div>
       <.hint :if={@hint} id={@hint_id} text={@hint} />
-      <.error :for={message <- @visible_errors} id={@error_id} error={message} />
+      <.error :for={{message, error_id} <- @error_items} id={error_id} error={message} />
     </fieldset>
     """
   end
@@ -200,7 +200,7 @@ defmodule ObanPowertools.Web.Components.Forms do
         </span>
       </label>
       <.hint :if={@hint} id={@hint_id} text={@hint} />
-      <.error :for={message <- @visible_errors} id={@error_id} error={message} />
+      <.error :for={{message, error_id} <- @error_items} id={error_id} error={message} />
     </div>
     """
   end
@@ -272,7 +272,7 @@ defmodule ObanPowertools.Web.Components.Forms do
     hint = present_text(assigns.hint)
     errors = visible_errors(assigns.field, assigns.errors)
     hint_id = if hint, do: "#{id}-hint"
-    error_id = if errors != [], do: "#{id}-error"
+    error_ids = error_ids(id, errors)
 
     assigns
     |> assign(:label, label)
@@ -281,12 +281,22 @@ defmodule ObanPowertools.Web.Components.Forms do
     |> assign(:value, value)
     |> assign(:hint, hint)
     |> assign(:hint_id, hint_id)
-    |> assign(:error_id, error_id)
+    |> assign(:error_id, List.first(error_ids))
+    |> assign(:error_items, Enum.zip(errors, error_ids))
     |> assign(:visible_errors, errors)
     |> assign(:aria_invalid, if(errors == [], do: nil, else: "true"))
-    |> assign(:describedby, merge_tokens(caller_description, hint_id, error_id))
+    |> assign(:describedby, merge_tokens([caller_description, hint_id | error_ids]))
     |> assign(:state, field_state(assigns, errors))
     |> assign(:rest, rest)
+  end
+
+  defp error_ids(_id, []), do: []
+  defp error_ids(id, [_error]), do: ["#{id}-error"]
+
+  defp error_ids(id, errors) do
+    errors
+    |> Enum.with_index(1)
+    |> Enum.map(fn {_error, index} -> "#{id}-error-#{index}" end)
   end
 
   defp visible_errors(field, nil) do
@@ -330,7 +340,6 @@ defmodule ObanPowertools.Web.Components.Forms do
   end
 
   defp merge_tokens(first, second), do: merge_tokens([first, second])
-  defp merge_tokens(first, second, third), do: merge_tokens([first, second, third])
 
   defp field_state(assigns, errors) do
     cond do
