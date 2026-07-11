@@ -5,10 +5,10 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 76
 current_phase_name: Navigation & App Shell
 status: planning
-stopped_at: Phase 75 complete; ready for Phase 76 planning
-last_updated: "2026-07-11T19:43:39.894Z"
+stopped_at: Phase 76 UI-SPEC approved
+last_updated: "2026-07-11T20:34:56.804Z"
 last_activity: 2026-07-11
-last_activity_desc: Phase 75 complete, transitioned to Phase 76
+last_activity_desc: Phase 76 UI-SPEC approved
 progress:
   total_phases: 15
   completed_phases: 6
@@ -87,13 +87,13 @@ Last activity: 2026-07-11 — Phase 75 complete, transitioned to Phase 76
 
 ## Session Continuity
 
-**Last session:** 2026-07-11T18:48:21Z
-**Stopped at:** Phase 75 complete; ready for Phase 76 planning
-**Resume file:** None
+**Last session:** 2026-07-11T20:34:56.801Z
+**Stopped at:** Phase 76 UI-SPEC approved
+**Resume file:** .planning/phases/76-navigation-app-shell/76-UI-SPEC.md
 
-- **Last Action:** Executed and committed `75-06-PLAN.md`, closing WR-01, WR-02, and WR-03.
-- **Next Action:** Plan Phase 76 navigation-and-app-shell.
-- **Active Context:** Phase 75 form components are complete; aggregate visual:a11y still has scenario-only VRT drift outside the form surface.
+- **Last Action:** Created, revised, and approved `76-UI-SPEC.md`; UI checker passed all 6 dimensions with no recommendations.
+- **Next Action:** Plan Phase 76 navigation-and-app-shell using the approved UI-SPEC.
+- **Active Context:** Phase 76 UI-SPEC is approved; spacing is limited to 4/8/16/24/32/48/64, shadcn is not applicable, and no third-party registries are used.
 
 ## Decisions
 
