@@ -1,9 +1,10 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import {
-  scenarios,
+  targets,
   themes,
   viewports,
   type ShowcaseScenario,
+  type ShowcaseTarget,
   type ShowcaseTheme,
   type ViewportName
 } from './manifest';
@@ -70,7 +71,11 @@ export async function prepareShowcase(
 }
 
 export function storyLocator(page: Page, scenario: ShowcaseScenario): Locator {
-  return page.locator(scenario.a11y);
+  return targetLocator(page, { kind: 'scenario', ...scenario });
+}
+
+export function targetLocator(page: Page, target: ShowcaseTarget): Locator {
+  return page.locator(target.a11y);
 }
 
 export async function assertShowcaseStructure(page: Page): Promise<void> {
@@ -100,7 +105,25 @@ export async function assertShowcaseStructure(page: Page): Promise<void> {
     await expect(page.locator(`a[href="#${sectionId}"]`)).toHaveCount(1);
   }
 
-  for (const scenario of scenarios) {
-    await expect(storyLocator(page, scenario)).toHaveCount(1);
+  for (const target of targets) {
+    const story = targetLocator(page, target);
+
+    await expect(story).toHaveCount(1);
+    await expect(story).toHaveAttribute('id', target.story);
+
+    if (target.kind === 'scenario') {
+      await expect(story).toHaveAttribute('data-obpt-domain', target.domain);
+      await expect(story).toHaveAttribute('data-obpt-persona', renderedPersona(target));
+      await expect(story).toHaveAttribute('data-obpt-state', /.+/);
+    } else {
+      await expect(story).toHaveAttribute('data-obpt-component', target.components.join(' '));
+      await expect(story).toHaveAttribute('data-obpt-variant', target.variant.join(' '));
+      await expect(story).toHaveAttribute('data-obpt-state', target.state.join(' '));
+      await expect(story).toHaveAttribute('data-obpt-a11y-target', target.a11y);
+    }
   }
+}
+
+function renderedPersona(scenario: ShowcaseScenario): string {
+  return scenario.id === 'forensics-long-url-stacktrace' ? 'repair' : scenario.persona;
 }
