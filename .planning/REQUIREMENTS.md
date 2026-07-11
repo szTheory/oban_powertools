@@ -140,7 +140,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 | VRT-01..03 | Phase 73 | Pending |
 | A11Y-01 | Phase 73 | Complete |
 | COMP-01..04 | Phase 74 | Complete |
-| FORM-01, FORM-02 | Phase 75 | Pending |
+| FORM-01, FORM-02 | Phase 75 | Complete |
 | NAV-01..04 | Phase 76 | Pending |
 | DATA-01..04 | Phase 77 | Pending |
 | GROUP-01..02 | Phase 78 | Pending |
