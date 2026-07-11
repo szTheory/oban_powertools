@@ -283,6 +283,11 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     assert js =~ "light"
     assert js =~ "dark"
     assert js =~ "high-contrast"
+    assert js =~ "[data-obpt-tooltip]"
+    assert js =~ "[data-obpt-tooltip-trigger]"
+    assert js =~ "data-obpt-tooltip-open"
+    assert js =~ "data-obpt-tooltip-dismissed"
+    assert js =~ "Escape"
 
     refute js =~ "document.documentElement"
     refute js =~ ".classList"

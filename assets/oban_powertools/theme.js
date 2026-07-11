@@ -4,7 +4,11 @@
   const ATTR_THEME = "data-obpt-theme";
   const ATTR_EFFECTIVE_THEME = "data-obpt-effective-theme";
   const ATTR_MOTION = "data-obpt-motion";
+  const ATTR_TOOLTIP_OPEN = "data-obpt-tooltip-open";
+  const ATTR_TOOLTIP_DISMISSED = "data-obpt-tooltip-dismissed";
   const ROOT_SELECTOR = ".obpt-root";
+  const TOOLTIP_SELECTOR = "[data-obpt-tooltip]";
+  const TOOLTIP_TRIGGER_SELECTOR = "[data-obpt-tooltip-trigger]";
 
   const colorPreference = window.matchMedia("(prefers-color-scheme: dark)");
   const contrastPreference = window.matchMedia("(prefers-contrast: more)");
@@ -68,6 +72,57 @@
     roots().forEach((root) => apply(root, requestedTheme));
   }
 
+  function closestElement(event, selector) {
+    const target = event.target;
+
+    if (!target || !target.closest) {
+      return null;
+    }
+
+    return target.closest(selector);
+  }
+
+  function scopedTooltipFor(event, selector = TOOLTIP_SELECTOR) {
+    const root = closestElement(event, ROOT_SELECTOR);
+    const target = closestElement(event, selector);
+
+    if (!root || !target || !root.contains(target)) {
+      return null;
+    }
+
+    return target.closest(TOOLTIP_SELECTOR);
+  }
+
+  function tooltipTrigger(tooltip) {
+    return tooltip ? tooltip.querySelector(TOOLTIP_TRIGGER_SELECTOR) : null;
+  }
+
+  function openTooltip(tooltip) {
+    if (!tooltip) {
+      return;
+    }
+
+    tooltip.removeAttribute(ATTR_TOOLTIP_DISMISSED);
+    tooltip.setAttribute(ATTR_TOOLTIP_OPEN, "true");
+  }
+
+  function closeTooltip(tooltip, dismissed = false) {
+    if (!tooltip) {
+      return;
+    }
+
+    tooltip.removeAttribute(ATTR_TOOLTIP_OPEN);
+
+    if (dismissed) {
+      tooltip.setAttribute(ATTR_TOOLTIP_DISMISSED, "true");
+    }
+  }
+
+  function leavingTooltip(event, tooltip) {
+    const nextTarget = event.relatedTarget;
+    return !nextTarget || !tooltip.contains(nextTarget);
+  }
+
   const currentRoot =
     document.currentScript && document.currentScript.closest
       ? document.currentScript.closest(ROOT_SELECTOR)
@@ -96,6 +151,50 @@
 
     if (control) {
       setTheme(control.getAttribute("data-obpt-theme-choice"));
+    }
+  });
+
+  document.addEventListener("pointerover", (event) => {
+    openTooltip(scopedTooltipFor(event, TOOLTIP_TRIGGER_SELECTOR));
+  });
+
+  document.addEventListener("pointerout", (event) => {
+    const tooltip = scopedTooltipFor(event, TOOLTIP_TRIGGER_SELECTOR);
+
+    if (tooltip && leavingTooltip(event, tooltip)) {
+      closeTooltip(tooltip);
+    }
+  });
+
+  document.addEventListener("focusin", (event) => {
+    openTooltip(scopedTooltipFor(event, TOOLTIP_TRIGGER_SELECTOR));
+  });
+
+  document.addEventListener("focusout", (event) => {
+    const tooltip = scopedTooltipFor(event);
+
+    if (tooltip && leavingTooltip(event, tooltip)) {
+      closeTooltip(tooltip);
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") {
+      return;
+    }
+
+    const tooltip = scopedTooltipFor(event);
+
+    if (!tooltip) {
+      return;
+    }
+
+    closeTooltip(tooltip, true);
+
+    const trigger = tooltipTrigger(tooltip);
+
+    if (trigger && trigger.focus) {
+      trigger.focus();
     }
   });
 

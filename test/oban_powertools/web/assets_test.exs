@@ -60,6 +60,40 @@ defmodule ObanPowertools.Web.AssetsTest do
     assert first == second
   end
 
+  test "compiled assets include primitive CSS and scoped tooltip behavior" do
+    assert Code.ensure_loaded?(Mix.Tasks.ObanPowertools.Assets.Build),
+           "expected mix oban_powertools.assets.build task to be loadable"
+
+    Mix.Task.rerun("oban_powertools.assets.build", [])
+
+    css = File.read!(@css_static)
+    js = File.read!(@js_static)
+
+    for selector <- [
+          ".obpt-root .obpt-icon-button",
+          ".obpt-root .obpt-link",
+          ".obpt-root .obpt-status-pill",
+          ".obpt-root .obpt-surface",
+          ".obpt-root .obpt-spinner",
+          ".obpt-root .obpt-tooltip",
+          ".obpt-root .obpt-kbd",
+          ".obpt-root .obpt-stat",
+          ".obpt-root .obpt-sr-only"
+        ] do
+      assert css =~ selector, "expected compiled CSS to include #{selector}"
+    end
+
+    assert css =~ "@keyframes obpt-spinner-spin"
+    assert css =~ "@media (prefers-reduced-motion: reduce)"
+    assert js =~ "[data-obpt-tooltip-trigger]"
+    assert js =~ "data-obpt-tooltip-open"
+    assert js =~ "data-obpt-tooltip-dismissed"
+    assert js =~ "Escape"
+    assert js =~ "window.ObanPowertoolsTheme"
+    refute js =~ "document.documentElement"
+    refute js =~ ".classList"
+  end
+
   test "hex package contract includes priv static assets" do
     package = ObanPowertools.MixProject.project() |> Keyword.fetch!(:package)
     files = Keyword.fetch!(package, :files)
