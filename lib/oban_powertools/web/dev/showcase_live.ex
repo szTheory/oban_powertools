@@ -14,7 +14,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
     use Phoenix.LiveView
 
-    alias ObanPowertools.Web.Components.Primitives
+    alias ObanPowertools.Web.Components.{Forms, Primitives}
 
     @catalog_module ObanPowertools.ShowcaseCatalog
     @catalog_path Path.expand("../../../../test/support/showcase_catalog.ex", __DIR__)
@@ -23,6 +23,8 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
                               "../../../../test/support/primitive_story_catalog.ex",
                               __DIR__
                             )
+    @form_catalog_module ObanPowertools.FormStoryCatalog
+    @form_catalog_path Path.expand("../../../../test/support/form_story_catalog.ex", __DIR__)
 
     @theme_choices [
       %{value: "system", label: "System"},
@@ -57,6 +59,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
     def mount(_params, _session, socket) do
       catalog = load_catalog()
       primitive_catalog = load_primitive_catalog()
+      form_catalog = load_form_catalog()
 
       {:ok,
        socket
@@ -70,7 +73,9 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
        |> assign(:catalog_scenarios, catalog.scenarios)
        |> assign(:catalog_domains, catalog.domains)
        |> assign(:primitive_catalog_available?, primitive_catalog.available?)
-       |> assign(:primitive_stories, primitive_catalog.stories)}
+       |> assign(:primitive_stories, primitive_catalog.stories)
+       |> assign(:form_catalog_available?, form_catalog.available?)
+       |> assign(:form_stories, form_catalog.stories)}
     end
 
     @impl Phoenix.LiveView
@@ -214,6 +219,30 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
                     No primitive stories registered. Add token-backed primitive stories before updating visual baselines.
                   </p>
                 <% end %>
+              <% "forms" -> %>
+                <%= if @form_catalog_available? and @form_stories != [] do %>
+                  <div class="obpt-showcase-story-grid">
+                    <article
+                      :for={story <- @form_stories}
+                      id={target_value(story.test_targets, :story)}
+                      class="obpt-showcase-story"
+                      data-obpt-form-story={story.id}
+                      data-obpt-component={component_value(story)}
+                      data-obpt-variant={state_value(story.variant)}
+                      data-obpt-state={state_value(story.state)}
+                      data-obpt-a11y-target={target_value(story.test_targets, :a11y)}
+                    >
+                      <header><p>{component_value(story)}</p><h3>{story.name}</h3></header>
+                      <p>{story.description}</p>
+                      <.form_story_body story={story} />
+                      <dl><div><dt>Snapshot</dt><dd><code>{target_value(story.test_targets, :snapshot)}</code></dd></div></dl>
+                    </article>
+                  </div>
+                <% else %>
+                  <p class="obpt-showcase-placeholder" data-obpt-form-index="empty">
+                    No form stories registered. Add token-backed form stories before updating visual baselines.
+                  </p>
+                <% end %>
               <% _ -> %>
                 <p class="obpt-showcase-placeholder">
                   Reserved for Phase-owned stories. The anchor and selector are stable now.
@@ -352,12 +381,25 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       end
     end
 
+    defp load_form_catalog do
+      with {:ok, module} <- ensure_form_catalog_module(),
+           true <- function_exported?(module, :stories, 0) do
+        %{available?: true, stories: apply(module, :stories, [])}
+      else
+        _ -> %{available?: false, stories: []}
+      end
+    end
+
     defp ensure_catalog_module do
       ensure_support_module(@catalog_module, @catalog_path)
     end
 
     defp ensure_primitive_catalog_module do
       ensure_support_module(@primitive_catalog_module, @primitive_catalog_path)
+    end
+
+    defp ensure_form_catalog_module do
+      ensure_support_module(@form_catalog_module, @form_catalog_path)
     end
 
     defp ensure_support_module(module, path) do
@@ -487,6 +529,63 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
             <Primitives.stat label="Completed jobs" value="248" trend="all queues healthy" tone={:success} />
           </div>
       <% end %>
+      """
+    end
+
+    attr(:story, :map, required: true)
+
+    defp form_story_body(assigns) do
+      form =
+        to_form(
+          %{
+            "worker" => "ObanPowertools.Workers.ReconcileAccount",
+            "note" => "Reviewed during incident response.",
+            "queue" => "critical-mailer",
+            "enabled" => "true",
+            "state" => "retryable",
+            "pause" => "false",
+            "job_id" => "01JZ8M5PF4Q2V6N7X8Y9Z0ABCD",
+            "search" => "mailer"
+          },
+          as: "showcase_#{String.replace(assigns.story.id, "-", "_")}"
+        )
+
+      assign(assigns, :form, form)
+      |> render_form_story()
+    end
+
+    defp render_form_story(assigns) do
+      ~H"""
+      <div class="obpt-primitive-matrix">
+        <%= case @story.id do %>
+          <% "form-input-states" -> %>
+            <Forms.input field={@form[:worker]} id="form-input-required" label="Worker name" hint="Enter a full or partial worker module name." required />
+            <Forms.input field={@form[:worker]} id="form-input-invalid" label="Worker name" errors={["Enter a worker name."]} />
+            <Forms.input field={@form[:note]} label="Operator note (Optional)" />
+          <% "form-textarea-select" -> %>
+            <Forms.textarea field={@form[:note]} label="Operator note (Optional)" hint="Record context for the next operator." />
+            <Forms.select field={@form[:queue]} label="Queue" options={[{"Critical mailer", "critical-mailer"}, {"Default", "default"}]} />
+          <% "form-checkbox-modes" -> %>
+            <Forms.checkbox field={@form[:enabled]} label="Include scheduled jobs" />
+            <Forms.checkbox field={@form[:enabled]} id="form-event-selection" label="Select job 01JZ8M5P" phx-click="select_story_job" phx-value-id="01JZ8M5P" />
+          <% "form-radio-group" -> %>
+            <Forms.radio_group field={@form[:state]} label="Job state" hint="Choose one state or clear the filter." options={[{"Any state", ""}, {"Retryable", "retryable"}, {"Discarded", "discarded"}]} />
+          <% "form-switch-states" -> %>
+            <Forms.switch field={@form[:pause]} id="form-switch-off" label="Pause queue processing" hint="Changes apply immediately when owned by a parent view." />
+            <Forms.switch field={@form[:enabled]} id="form-switch-pending" label="Pause queue processing" hint="Updating queue setting." disabled />
+          <% "form-validation-wiring" -> %>
+            <Forms.input field={@form[:worker]} label="Worker name" hint="Enter a full or partial worker module name." errors={["Enter a worker name."]} aria-describedby="form-validation-context" />
+            <p id="form-validation-context">Used to narrow the operational job list.</p>
+          <% "form-disabled-readonly" -> %>
+            <Forms.select field={@form[:queue]} label="Queue" options={[{"Critical mailer", "critical-mailer"}]} disabled hint="Queue selection is unavailable while this job is running." />
+            <Forms.input field={@form[:job_id]} label="Job ID" readonly hint="Job ID is assigned when the job is inserted and cannot be changed." />
+          <% "form-filter-ready" -> %>
+            <Forms.input field={@form[:search]} type="search" variant={:filter} label="Search jobs" hint="Enter a full or partial worker module name." />
+            <Forms.select field={@form[:state]} variant={:filter} label="Job state" options={[{"Any state", ""}, {"Retryable", "retryable"}]} />
+          <% "form-long-content" -> %>
+            <Forms.textarea field={@form[:note]} label="Worker module and operational context that must remain readable on a narrow viewport" value={"<script>alert('escaped')</script> ObanPowertools.Workers.ReconcileAccountNotificationDeliveryWithAnIntentionallyLongIdentifier"} hint="This value is displayed as ordinary escaped text and may wrap across several lines." />
+        <% end %>
+      </div>
       """
     end
   end

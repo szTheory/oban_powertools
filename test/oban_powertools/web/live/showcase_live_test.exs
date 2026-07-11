@@ -80,6 +80,11 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       %{id: "audit-non-ascii-rtl", domain: "audit", persona: "audit_review"},
       %{id: "forensics-long-url-stacktrace", domain: "forensics", persona: "repair"}
     ]
+    @form_story_ids ~w[
+      form-input-states form-textarea-select form-checkbox-modes form-radio-group
+      form-switch-states form-validation-wiring form-disabled-readonly
+      form-filter-ready form-long-content
+    ]
 
     test "renders the showcase through the Powertools theme shell", %{conn: conn} do
       {:ok, _view, html} = mount_showcase!(conn)
@@ -162,6 +167,29 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       {:ok, _view, html} = mount_showcase!(conn)
 
       assert_attribute_values(html, "data-obpt-open-state-target", @open_state_targets)
+    end
+
+    test "forms section renders nine real catalog-backed form stories", %{conn: conn} do
+      {:ok, view, html} = mount_showcase!(conn)
+
+      assert_attribute_values(html, "data-obpt-form-story", @form_story_ids)
+      refute has_element?(view, "[data-obpt-section='forms'] .obpt-showcase-placeholder")
+
+      for id <- @form_story_ids do
+        assert has_element?(
+                 view,
+                 "#obpt-form-story-#{id}[data-obpt-form-story='#{id}'][data-obpt-component][data-obpt-variant][data-obpt-state][data-obpt-a11y-target]"
+               )
+      end
+
+      assert has_element?(view, "#obpt-form-story-form-input-states input[name$='[worker]']")
+      assert has_element?(view, "#obpt-form-story-form-textarea-select textarea")
+      assert has_element?(view, "#obpt-form-story-form-textarea-select select")
+      assert has_element?(view, "#obpt-form-story-form-checkbox-modes input[type='checkbox']")
+      assert has_element?(view, "#obpt-form-story-form-radio-group fieldset input[type='radio']")
+      assert has_element?(view, "#obpt-form-story-form-switch-states input[type='checkbox']")
+      assert html =~ "&lt;script&gt;alert(&#39;escaped&#39;)&lt;/script&gt;"
+      refute html =~ "<script>alert('escaped')</script>"
     end
 
     defp assert_attribute_values(html, attribute, expected_values) do
