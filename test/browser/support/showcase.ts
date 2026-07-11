@@ -115,7 +115,14 @@ export async function assertShowcaseStructure(page: Page): Promise<void> {
       await expect(story).toHaveAttribute('data-obpt-domain', target.domain);
       await expect(story).toHaveAttribute('data-obpt-persona', target.persona);
       await expect(story).toHaveAttribute('data-obpt-state', /.+/);
+    } else if (target.kind === 'primitive') {
+      await expect(story).toHaveAttribute('data-obpt-primitive-story', target.id);
+      await expect(story).toHaveAttribute('data-obpt-component', target.components.join(' '));
+      await expect(story).toHaveAttribute('data-obpt-variant', target.variant.join(' '));
+      await expect(story).toHaveAttribute('data-obpt-state', target.state.join(' '));
+      await expect(story).toHaveAttribute('data-obpt-a11y-target', target.a11y);
     } else {
+      await expect(story).toHaveAttribute('data-obpt-form-story', target.id);
       await expect(story).toHaveAttribute('data-obpt-component', target.components.join(' '));
       await expect(story).toHaveAttribute('data-obpt-variant', target.variant.join(' '));
       await expect(story).toHaveAttribute('data-obpt-state', target.state.join(' '));
