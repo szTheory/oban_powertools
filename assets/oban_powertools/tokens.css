@@ -560,6 +560,18 @@
   font-weight: var(--obpt-font-weight-semibold);
 }
 
+.obpt-root .obpt-switch__state-label--on {
+  display: none;
+}
+
+.obpt-root .obpt-switch__input:checked ~ .obpt-switch__state .obpt-switch__state-label--off {
+  display: none;
+}
+
+.obpt-root .obpt-switch__input:checked ~ .obpt-switch__state .obpt-switch__state-label--on {
+  display: inline;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .obpt-root .obpt-input,
   .obpt-root .obpt-textarea,

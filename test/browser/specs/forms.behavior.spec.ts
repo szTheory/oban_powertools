@@ -163,7 +163,7 @@ test.describe('form behavior contracts', () => {
     await expect(active).toBeChecked();
     await expect(onState).toBeVisible();
     await expect(offState).toBeHidden();
-    await active.click();
+    await activeShell.click();
     await expect(active).not.toBeChecked();
     await expect(offState).toBeVisible();
     await expect(onState).toBeHidden();
@@ -254,7 +254,10 @@ test.describe('form behavior contracts', () => {
 
     await expect(root).toHaveAttribute('data-obpt-motion', 'reduce');
     await expect(
-      story.locator('#form-switch-off').locator('xpath=ancestor::label[contains(@class, "obpt-switch")]').locator('.obpt-switch__state-label--off')
+      story
+        .locator('#form-switch-off')
+        .locator('xpath=ancestor::label[contains(@class, "obpt-switch")]')
+        .locator('.obpt-switch__state-label--off')
     ).toBeVisible();
     expect(
       Number.parseFloat(

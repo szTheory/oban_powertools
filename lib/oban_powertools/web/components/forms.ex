@@ -124,7 +124,7 @@ defmodule ObanPowertools.Web.Components.Forms do
 
     ~H"""
     <div class="obpt-field obpt-field--choice" data-obpt-state={@state}>
-      <input :if={@named_boolean} type="hidden" name={@name} value="false" />
+      <input :if={@named_boolean} type="hidden" name={@name} value="false" disabled={@disabled} />
       <label class="obpt-choice" for={@id}>
         <input type="checkbox" id={@id} name={@name} value="true" class="obpt-checkbox"
           checked={@checked} disabled={@disabled} required={@required} aria-invalid={@aria_invalid}
@@ -187,14 +187,17 @@ defmodule ObanPowertools.Web.Components.Forms do
 
     ~H"""
     <div class="obpt-field obpt-field--choice" data-obpt-state={@state}>
-      <input :if={@named_boolean} type="hidden" name={@name} value="false" />
+      <input :if={@named_boolean} type="hidden" name={@name} value="false" disabled={@disabled} />
       <label class="obpt-switch" for={@id}>
         <input id={@id} name={@name} value="true" type="checkbox" class="obpt-switch__input"
           checked={@checked} disabled={@disabled} aria-invalid={@aria_invalid}
           aria-describedby={@describedby} {@rest} />
         <span class="obpt-switch__track" aria-hidden="true"><span class="obpt-switch__thumb"></span></span>
         <span class="obpt-switch__label">{@label}</span>
-        <span class="obpt-switch__state">{if @checked, do: "On", else: "Off"}</span>
+        <span class="obpt-switch__state" aria-hidden="true">
+          <span class="obpt-switch__state-label obpt-switch__state-label--off">Off</span>
+          <span class="obpt-switch__state-label obpt-switch__state-label--on">On</span>
+        </span>
       </label>
       <.hint :if={@hint} id={@hint_id} text={@hint} />
       <.error :for={message <- @visible_errors} id={@error_id} error={message} />
