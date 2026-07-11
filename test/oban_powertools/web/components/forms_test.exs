@@ -231,6 +231,31 @@ defmodule ObanPowertools.Web.Components.FormsTest do
       refute event_driven =~ ~s(type="hidden")
     end
 
+    test "disabled named checkbox and switch disable their hidden unchecked values" do
+      checkbox =
+        render_form(:checkbox,
+          field: field(:enabled, true),
+          label: "Enable retries",
+          disabled: true
+        )
+
+      switch =
+        render_form(:switch,
+          field: field(:paused, true),
+          label: "Pause queue processing",
+          disabled: true
+        )
+
+      assert checkbox =~
+               ~r/<input[^>]+type="hidden"[^>]+name="filter\[enabled\]"[^>]+value="false"[^>]+disabled/
+
+      assert switch =~
+               ~r/<input[^>]+type="hidden"[^>]+name="filter\[paused\]"[^>]+value="false"[^>]+disabled/
+
+      assert count(checkbox, ~s(type="hidden")) == 1
+      assert count(switch, ~s(type="hidden")) == 1
+    end
+
     test "radio groups use fieldset and legend with native, escaped options" do
       html =
         render_form(:radio_group,
@@ -250,16 +275,21 @@ defmodule ObanPowertools.Web.Components.FormsTest do
       refute html =~ ~s(role="radio")
     end
 
-    test "switch remains a checkbox-backed named field with visible state label" do
+    test "switch remains a checkbox-backed named field with CSS-synchronized visible state labels" do
       html =
         render_form(:switch,
-          field: field(:paused, true),
+          field: field(:paused, false),
           label: "Pause queue processing"
         )
 
       assert html =~ ~s(type="checkbox")
       assert html =~ ~s(name="filter[paused]")
       assert html =~ "Pause queue processing"
+      assert html =~ ~s(class="obpt-switch__state")
+      assert html =~ ~s(class="obpt-switch__state-label obpt-switch__state-label--off")
+      assert html =~ ~s(class="obpt-switch__state-label obpt-switch__state-label--on")
+      assert html =~ "Off"
+      assert html =~ "On"
       refute html =~ ~s(role="switch")
     end
 
@@ -303,6 +333,7 @@ defmodule ObanPowertools.Web.Components.FormsTest do
       assert source =~ "use Phoenix.Component"
       assert source =~ "used_input?"
       assert source =~ "visual_safe_rest"
+      refute source =~ ~s({if @checked, do: "On", else: "Off"})
 
       refute source =~ ~r/#[0-9a-fA-F]{3,8}/
       refute source =~ ~r/\b\d+(?:\.\d+)?px\b/

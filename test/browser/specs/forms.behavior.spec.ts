@@ -141,7 +141,7 @@ test.describe('form behavior contracts', () => {
     await expect(named).toBeChecked({ checked: !before });
   });
 
-  test('switch uses native Space behavior while pending ownership stays explicit', async ({
+  test('switch visible state follows native Space and click behavior while pending ownership stays explicit', async ({
     page
   }, testInfo) => {
     const story = await prepareFormStory(
@@ -149,17 +149,35 @@ test.describe('form behavior contracts', () => {
       testInfo.project.name,
       formStory('form-switch-states')
     );
-    const active = story.getByRole('checkbox', { name: 'Pause queue processing' }).first();
+    const active = story.locator('#form-switch-off');
+    const activeShell = active.locator('xpath=ancestor::label[contains(@class, "obpt-switch")]');
+    const offState = activeShell.locator('.obpt-switch__state-label--off');
+    const onState = activeShell.locator('.obpt-switch__state-label--on');
     const pending = story.locator('#form-switch-pending');
 
+    await expect(active).not.toBeChecked();
+    await expect(offState).toBeVisible();
+    await expect(onState).toBeHidden();
     await active.focus();
     await page.keyboard.press('Space');
     await expect(active).toBeChecked();
+    await expect(onState).toBeVisible();
+    await expect(offState).toBeHidden();
+    await active.click();
+    await expect(active).not.toBeChecked();
+    await expect(offState).toBeVisible();
+    await expect(onState).toBeHidden();
     await expect(pending).toBeDisabled();
     await expect(pending).toHaveAccessibleName(/Pause queue processing/);
     await expect(story).toHaveAttribute('data-obpt-state', /pending/);
     await expect(story.getByText('Updating queue setting.', { exact: true })).toBeVisible();
     await expect(story.locator('[aria-busy="true"]')).toHaveCount(0);
+
+    await expect(
+      story.locator(
+        `input[type="hidden"][name="${await pending.getAttribute('name')}"][value="false"][disabled]`
+      )
+    ).toHaveCount(1);
   });
 
   test('disabled controls cannot focus or change while readonly content remains selectable', async ({
@@ -235,7 +253,9 @@ test.describe('form behavior contracts', () => {
     const track = active.locator('xpath=following-sibling::*[contains(@class, "obpt-switch__track")]');
 
     await expect(root).toHaveAttribute('data-obpt-motion', 'reduce');
-    await expect(story.getByText('Off', { exact: true })).toBeVisible();
+    await expect(
+      story.locator('#form-switch-off').locator('xpath=ancestor::label[contains(@class, "obpt-switch")]').locator('.obpt-switch__state-label--off')
+    ).toBeVisible();
     expect(
       Number.parseFloat(
         await track.evaluate((element) => getComputedStyle(element).transitionDuration)
