@@ -362,6 +362,222 @@
   }
 }
 
+/* Stateless form components */
+.obpt-root .obpt-field,
+.obpt-root .obpt-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--obpt-space-2);
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.obpt-root .obpt-field-group {
+  gap: var(--obpt-space-4);
+  margin-block: var(--obpt-space-5);
+}
+
+.obpt-root .obpt-field-group__items,
+.obpt-root .obpt-choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--obpt-space-4);
+  min-width: 0;
+}
+
+.obpt-root .obpt-label {
+  color: var(--obpt-color-text);
+  font-family: var(--obpt-font-sans);
+  font-size: var(--obpt-font-size-sm);
+  font-weight: var(--obpt-font-weight-semibold);
+  line-height: var(--obpt-line-height-tight);
+  overflow-wrap: anywhere;
+}
+
+.obpt-root .obpt-field-status {
+  color: var(--obpt-color-muted);
+  font-size: var(--obpt-font-size-xs);
+  font-weight: var(--obpt-font-weight-regular);
+}
+
+.obpt-root .obpt-hint,
+.obpt-root .obpt-error {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.obpt-root .obpt-hint {
+  color: var(--obpt-color-muted);
+  font-size: var(--obpt-font-size-xs);
+  line-height: var(--obpt-line-height-relaxed);
+}
+
+.obpt-root .obpt-error {
+  color: var(--obpt-color-danger-fg);
+  font-size: var(--obpt-font-size-sm);
+  font-weight: var(--obpt-font-weight-semibold);
+  line-height: var(--obpt-line-height-base);
+}
+
+.obpt-root .obpt-input,
+.obpt-root .obpt-textarea,
+.obpt-root .obpt-select {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  border: 1px solid var(--obpt-color-border);
+  border-radius: var(--obpt-radius-md);
+  background: var(--obpt-color-surface);
+  color: var(--obpt-color-text);
+  padding: var(--obpt-space-2) var(--obpt-space-4);
+  font: inherit;
+  transition: border-color var(--obpt-motion-duration-fast) var(--obpt-motion-ease-standard), background-color var(--obpt-motion-duration-fast) var(--obpt-motion-ease-standard);
+}
+
+.obpt-root .obpt-textarea {
+  resize: vertical;
+}
+
+.obpt-root .obpt-select {
+  appearance: auto;
+}
+
+.obpt-root .obpt-input--filter,
+.obpt-root .obpt-select--filter {
+  background-color: var(--obpt-color-elevated);
+}
+
+.obpt-root .obpt-input:focus-visible,
+.obpt-root .obpt-textarea:focus-visible,
+.obpt-root .obpt-select:focus-visible,
+.obpt-root .obpt-checkbox:focus-visible,
+.obpt-root .obpt-radio:focus-visible,
+.obpt-root .obpt-switch__input:focus-visible + .obpt-switch__track {
+  outline: 2px solid var(--obpt-color-focus);
+  outline-offset: 2px;
+}
+
+.obpt-root .obpt-field[data-obpt-state="invalid"] .obpt-input,
+.obpt-root .obpt-field[data-obpt-state="invalid"] .obpt-textarea,
+.obpt-root .obpt-field[data-obpt-state="invalid"] .obpt-select,
+.obpt-root .obpt-radio-group[aria-invalid="true"] {
+  border-color: var(--obpt-color-danger-border);
+  background-color: var(--obpt-color-danger-bg);
+}
+
+.obpt-root .obpt-input:disabled,
+.obpt-root .obpt-textarea:disabled,
+.obpt-root .obpt-select:disabled,
+.obpt-root .obpt-choice:has(input:disabled),
+.obpt-root .obpt-switch:has(input:disabled) {
+  cursor: not-allowed;
+  color: var(--obpt-color-muted);
+  background-color: var(--obpt-color-elevated);
+  opacity: 0.7;
+}
+
+.obpt-root .obpt-input:read-only,
+.obpt-root .obpt-textarea:read-only,
+.obpt-root .obpt-field[data-obpt-state="readonly"] {
+  color: var(--obpt-color-text);
+  background-color: var(--obpt-color-elevated);
+  border-color: var(--obpt-color-border-strong);
+  cursor: text;
+  user-select: text;
+}
+
+.obpt-root .obpt-field[aria-busy="true"],
+.obpt-root .obpt-field-group[aria-busy="true"] {
+  opacity: 0.8;
+}
+
+.obpt-root .obpt-choice,
+.obpt-root .obpt-switch {
+  display: flex;
+  align-items: center;
+  gap: var(--obpt-space-2);
+  min-height: calc(var(--obpt-space-7) - var(--obpt-space-1));
+  max-width: 100%;
+  color: var(--obpt-color-text);
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.obpt-root .obpt-checkbox,
+.obpt-root .obpt-radio {
+  flex: 0 0 auto;
+  accent-color: var(--obpt-color-accent-solid);
+}
+
+.obpt-root .obpt-switch {
+  flex-wrap: wrap;
+}
+
+.obpt-root .obpt-switch__input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.obpt-root .obpt-switch__track {
+  display: inline-flex;
+  align-items: center;
+  width: var(--obpt-space-7);
+  padding: var(--obpt-space-1);
+  border: 1px solid var(--obpt-color-border-strong);
+  border-radius: var(--obpt-radius-round);
+  background: var(--obpt-color-elevated);
+  transition: background-color var(--obpt-motion-duration-fast) var(--obpt-motion-ease-standard), border-color var(--obpt-motion-duration-fast) var(--obpt-motion-ease-standard);
+}
+
+.obpt-root .obpt-switch__thumb {
+  width: var(--obpt-space-4);
+  height: var(--obpt-space-4);
+  border-radius: var(--obpt-radius-round);
+  background: var(--obpt-color-border-strong);
+  transition: transform var(--obpt-motion-duration-fast) var(--obpt-motion-ease-standard), background-color var(--obpt-motion-duration-fast) var(--obpt-motion-ease-standard);
+}
+
+.obpt-root .obpt-switch__input:checked + .obpt-switch__track {
+  border-color: var(--obpt-color-accent-border);
+  background: var(--obpt-color-accent-bg);
+}
+
+.obpt-root .obpt-switch__input:checked + .obpt-switch__track .obpt-switch__thumb {
+  background: var(--obpt-color-accent-solid);
+  transform: translateX(calc(var(--obpt-space-7) - var(--obpt-space-4) - var(--obpt-space-2)));
+}
+
+.obpt-root .obpt-switch__state {
+  color: var(--obpt-color-muted);
+  font-size: var(--obpt-font-size-xs);
+  font-weight: var(--obpt-font-weight-semibold);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .obpt-root .obpt-input,
+  .obpt-root .obpt-textarea,
+  .obpt-root .obpt-select,
+  .obpt-root .obpt-switch__track,
+  .obpt-root .obpt-switch__thumb {
+    transition-duration: var(--obpt-motion-duration-instant);
+  }
+}
+
+.obpt-root[data-obpt-motion="reduce"] .obpt-input,
+.obpt-root[data-obpt-motion="reduce"] .obpt-textarea,
+.obpt-root[data-obpt-motion="reduce"] .obpt-select,
+.obpt-root[data-obpt-motion="reduce"] .obpt-switch__track,
+.obpt-root[data-obpt-motion="reduce"] .obpt-switch__thumb {
+  transition-duration: var(--obpt-motion-duration-instant);
+}
+
 .obpt-root .obpt-shell {
   min-height: 100%;
   background: var(--obpt-color-surface);
