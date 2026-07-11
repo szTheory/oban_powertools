@@ -28,11 +28,31 @@ export type ShowcaseScenario = {
   a11y: string;
 };
 
+export type ShowcasePrimitiveStory = {
+  id: string;
+  kind: 'primitive';
+  component: string;
+  components: string[];
+  name: string;
+  description: string;
+  variant: string[];
+  state: string[];
+  story: string;
+  snapshot: string;
+  a11y: string;
+};
+
+export type ShowcaseTarget =
+  | (ShowcaseScenario & { kind: 'scenario' })
+  | (ShowcasePrimitiveStory & { kind: 'primitive' });
+
 export type ShowcaseManifest = {
-  schema_version: 1;
+  schema_version: 2;
   themes: ShowcaseTheme[];
   viewports: ShowcaseViewport[];
   scenarios: ShowcaseScenario[];
+  primitive_stories: ShowcasePrimitiveStory[];
+  targets: ShowcaseTarget[];
 };
 
 export function loadManifest(filePath = manifestPath): ShowcaseManifest {
@@ -49,7 +69,7 @@ export function loadManifest(filePath = manifestPath): ShowcaseManifest {
 function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
   const manifest = assertRecord(value, filePath);
 
-  assertEqual(manifest.schema_version, 1, 'schema_version');
+  assertEqual(manifest.schema_version, 2, 'schema_version');
 
   const themes = assertStringArray(manifest.themes, 'themes') as ShowcaseTheme[];
   assertExactList(themes, [...allowedThemes], 'themes');
@@ -95,12 +115,166 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
 
   assertEqual(scenarios.length, 9, 'scenarios.length');
 
+  const primitiveStories = assertArray(manifest.primitive_stories, 'primitive_stories').map(
+    (story, index) => {
+      const actual = assertRecord(story, `primitive_stories[${index}]`);
+      const id = assertString(actual.id, `primitive_stories[${index}].id`);
+
+      assertEqual(actual.kind, 'primitive', `primitive_stories[${index}].kind`);
+
+      if (!/^primitive-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)) {
+        throw new Error(
+          `primitive_stories[${index}].id must be a slug-like primitive-* identifier`
+        );
+      }
+
+      const component = assertString(actual.component, `primitive_stories[${index}].component`);
+      const components = assertStringArray(
+        actual.components,
+        `primitive_stories[${index}].components`
+      );
+      const name = assertString(actual.name, `primitive_stories[${index}].name`);
+      const description = assertString(
+        actual.description,
+        `primitive_stories[${index}].description`
+      );
+      const variant = assertStringArray(actual.variant, `primitive_stories[${index}].variant`);
+      const state = assertStringArray(actual.state, `primitive_stories[${index}].state`);
+      const storyTarget = assertString(actual.story, `primitive_stories[${index}].story`);
+      const snapshot = assertString(actual.snapshot, `primitive_stories[${index}].snapshot`);
+      const a11y = assertString(actual.a11y, `primitive_stories[${index}].a11y`);
+
+      assertEqual(storyTarget, `obpt-primitive-story-${id}`, `primitive_stories[${index}].story`);
+      assertEqual(snapshot, `showcase/${id}`, `primitive_stories[${index}].snapshot`);
+      assertEqual(
+        a11y,
+        `[data-obpt-primitive-story="${id}"]`,
+        `primitive_stories[${index}].a11y`
+      );
+
+      if (components.length === 0) {
+        throw new Error(`primitive_stories[${index}].components must not be empty`);
+      }
+
+      if (variant.length === 0) {
+        throw new Error(`primitive_stories[${index}].variant must not be empty`);
+      }
+
+      if (state.length === 0) {
+        throw new Error(`primitive_stories[${index}].state must not be empty`);
+      }
+
+      return {
+        id,
+        kind: 'primitive' as const,
+        component,
+        components,
+        name,
+        description,
+        variant,
+        state,
+        story: storyTarget,
+        snapshot,
+        a11y
+      };
+    }
+  );
+
+  assertEqual(primitiveStories.length, 7, 'primitive_stories.length');
+
+  const targets = assertArray(manifest.targets, 'targets').map((target, index) =>
+    validateTarget(target, index)
+  );
+  const expectedTargets: ShowcaseTarget[] = [
+    ...scenarios.map((scenario) => ({ kind: 'scenario' as const, ...scenario })),
+    ...primitiveStories
+  ];
+
+  assertEqual(targets.length, expectedTargets.length, 'targets.length');
+
+  for (const [index, expectedTarget] of expectedTargets.entries()) {
+    const actualTarget = targets[index];
+
+    assertEqual(actualTarget.kind, expectedTarget.kind, `targets[${index}].kind`);
+    assertEqual(actualTarget.id, expectedTarget.id, `targets[${index}].id`);
+    assertEqual(actualTarget.story, expectedTarget.story, `targets[${index}].story`);
+    assertEqual(actualTarget.snapshot, expectedTarget.snapshot, `targets[${index}].snapshot`);
+    assertEqual(actualTarget.a11y, expectedTarget.a11y, `targets[${index}].a11y`);
+
+    if (actualTarget.kind === 'scenario' && expectedTarget.kind === 'scenario') {
+      assertEqual(actualTarget.domain, expectedTarget.domain, `targets[${index}].domain`);
+      assertEqual(actualTarget.persona, expectedTarget.persona, `targets[${index}].persona`);
+      assertExactList(actualTarget.states, expectedTarget.states, `targets[${index}].states`);
+    }
+
+    if (actualTarget.kind === 'primitive' && expectedTarget.kind === 'primitive') {
+      assertEqual(actualTarget.component, expectedTarget.component, `targets[${index}].component`);
+      assertExactList(
+        actualTarget.components,
+        expectedTarget.components,
+        `targets[${index}].components`
+      );
+      assertEqual(actualTarget.name, expectedTarget.name, `targets[${index}].name`);
+      assertEqual(
+        actualTarget.description,
+        expectedTarget.description,
+        `targets[${index}].description`
+      );
+      assertExactList(actualTarget.variant, expectedTarget.variant, `targets[${index}].variant`);
+      assertExactList(actualTarget.state, expectedTarget.state, `targets[${index}].state`);
+    }
+  }
+
   return {
-    schema_version: 1,
+    schema_version: 2,
     themes,
     viewports,
-    scenarios
+    scenarios,
+    primitive_stories: primitiveStories,
+    targets
   };
+}
+
+function validateTarget(value: unknown, index: number): ShowcaseTarget {
+  const actual = assertRecord(value, `targets[${index}]`);
+  const kind = assertString(actual.kind, `targets[${index}].kind`);
+  const id = assertString(actual.id, `targets[${index}].id`);
+  const story = assertString(actual.story, `targets[${index}].story`);
+  const snapshot = assertString(actual.snapshot, `targets[${index}].snapshot`);
+  const a11y = assertString(actual.a11y, `targets[${index}].a11y`);
+
+  if (kind === 'scenario') {
+    const domain = assertString(actual.domain, `targets[${index}].domain`);
+    const persona = assertString(actual.persona, `targets[${index}].persona`);
+    const states = assertStringArray(actual.states, `targets[${index}].states`);
+
+    return { kind, id, domain, persona, states, story, snapshot, a11y };
+  }
+
+  if (kind === 'primitive') {
+    const component = assertString(actual.component, `targets[${index}].component`);
+    const components = assertStringArray(actual.components, `targets[${index}].components`);
+    const name = assertString(actual.name, `targets[${index}].name`);
+    const description = assertString(actual.description, `targets[${index}].description`);
+    const variant = assertStringArray(actual.variant, `targets[${index}].variant`);
+    const state = assertStringArray(actual.state, `targets[${index}].state`);
+
+    return {
+      kind,
+      id,
+      component,
+      components,
+      name,
+      description,
+      variant,
+      state,
+      story,
+      snapshot,
+      a11y
+    };
+  }
+
+  throw new Error(`targets[${index}].kind must be "scenario" or "primitive"`);
 }
 
 function assertRecord(value: unknown, label: string): Record<string, unknown> {
@@ -155,3 +329,5 @@ export const manifest = loadManifest();
 export const themes = manifest.themes;
 export const viewports = manifest.viewports;
 export const scenarios = manifest.scenarios;
+export const primitiveStories = manifest.primitive_stories;
+export const targets = manifest.targets;
