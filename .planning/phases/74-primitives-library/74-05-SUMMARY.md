@@ -107,6 +107,8 @@ None.
 
 None. This plan added browser tests and static VRT baselines only; it introduced no production route, auth path, external network dependency, package install, or trust-boundary expansion.
 
+Accessibility proof boundary: Phase 74 proves primitive-level automated checks only, covering generated structure targets, axe scans, VRT baselines, and targeted primitive browser behavior. Full manual screen-reader and page traversal verification remains owned by Phase 82.
+
 ## User Setup Required
 
 None.
