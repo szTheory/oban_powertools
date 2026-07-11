@@ -6,7 +6,7 @@ current_phase: 75
 current_phase_name: form-components
 status: executing
 stopped_at: Completed 75-02-PLAN.md
-last_updated: "2026-07-11T17:28:00.907Z"
+last_updated: "2026-07-11T17:28:10.782Z"
 last_activity: 2026-07-11
 last_activity_desc: Phase 75 execution started
 progress:
@@ -90,3 +90,7 @@ Last activity: 2026-07-11 — Phase 75 execution started
 - **Last Action:** Created and committed the Phase 75 RED form-component contract in `75-01`.
 - **Next Action:** Execute `75-02` to implement the form component module against the RED contract.
 - **Active Context:** Phase 75 context, research, validation plan, UI-SPEC, and the RED ExUnit contract are ready for production implementation.
+
+## Decisions
+
+- [Phase 75]: Keep all form controls stateless and field-first while allowing explicit identity overrides; use native semantics; centrally filter visual escape hatches. — Preserves parent-owned behavior, accessible native controls, and the scoped token-owned visual contract.
