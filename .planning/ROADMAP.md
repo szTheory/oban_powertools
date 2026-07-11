@@ -156,12 +156,12 @@
   2. Every field has a programmatic label + error association + visible focus; disabled vs read-only are distinct; validation never relies on color alone; passes the a11y gate.
   3. Stories cover valid/invalid/disabled/loading across themes; VRT green.
 
-**Plans**: 3/5 plans executed
+**Plans**: 4/5 plans executed
 
 - [x] 75-01-PLAN.md
 - [x] 75-02-PLAN.md
 - [x] 75-03-PLAN.md
-- [ ] 75-04-PLAN.md
+- [x] 75-04-PLAN.md
 - [ ] 75-05-PLAN.md
 
 ### Phase 76: Navigation & App Shell
@@ -291,7 +291,7 @@
 | 72. Stress Fixtures & Showcase Skeleton | 4/4 | Complete    | 2026-06-19 |
 | 73. Visual-Regression & A11y Harness | 5/5 | Complete   | 2026-06-19 |
 | 74. Primitives Library | 5/5 | Complete    | 2026-07-11 |
-| 75. Form Components | 3/5 | In Progress|  |
+| 75. Form Components | 4/5 | In Progress|  |
 | 76. Navigation & App Shell | 0/TBD | Not started | — |
 | 77. Data-Display & Operator Patterns | 0/TBD | Not started | — |
 | 78. Component Groups (Meta-Components) | 0/TBD | Not started | — |
