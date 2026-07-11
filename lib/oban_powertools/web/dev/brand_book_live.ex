@@ -91,12 +91,26 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
     @brand_book_path Path.join(__DIR__, "../../../../guides/brand-book.md")
     @external_resource @brand_book_path
 
-    # Parse + render at COMPILE TIME into a module attribute.
+    # Parse + render at COMPILE TIME into a module attribute when the optional
+    # parser is available in this compile graph. Path-dependent host apps can
+    # opt into dev routes without also inheriting the library's docs-only deps.
     @brand_book_html (
-                       {:ok, ast, _messages} =
-                         @brand_book_path |> File.read!() |> EarmarkParser.as_ast()
+                       markdown = File.read!(@brand_book_path)
 
-                       BrandBookMarkdown.render(ast)
+                       cond do
+                         Code.ensure_loaded?(EarmarkParser) and
+                             function_exported?(EarmarkParser, :as_ast, 1) ->
+                           {:ok, ast, _messages} = EarmarkParser.as_ast(markdown)
+                           BrandBookMarkdown.render(ast)
+
+                         Code.ensure_loaded?(EarmarkParser) and
+                             function_exported?(EarmarkParser, :as_ast, 2) ->
+                           {:ok, ast, _messages} = EarmarkParser.as_ast(markdown, [])
+                           BrandBookMarkdown.render(ast)
+
+                         true ->
+                           "<p>Brand book markdown parser unavailable in this host build.</p>"
+                       end
                      )
 
     @doc false
