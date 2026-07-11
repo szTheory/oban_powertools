@@ -124,7 +124,7 @@
   2. Each primitive is keyboard-operable, SR-correct, renders in all themes and at 320px, has showcase stories, and passes the VRT + a11y gates.
   3. No raw hex/px in primitive source (lint/grep clean).
 
-**Plans**: 3/5 plans executed
+**Plans**: 4/5 plans executed
 **Wave 1**
 
 - [x] 74-01-PLAN.md — Primitive component API and ExUnit contract tests (wave 1)
@@ -139,7 +139,7 @@
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 74-04-PLAN.md — Unified Playwright manifest and VRT/a11y target integration (wave 4)
+- [x] 74-04-PLAN.md — Unified Playwright manifest and VRT/a11y target integration (wave 4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -284,7 +284,7 @@
 | 71. Token Layer & Isolated Theming Engine | 5/5 | Complete    | 2026-06-18 |
 | 72. Stress Fixtures & Showcase Skeleton | 4/4 | Complete    | 2026-06-19 |
 | 73. Visual-Regression & A11y Harness | 5/5 | Complete   | 2026-06-19 |
-| 74. Primitives Library | 3/5 | In Progress|  |
+| 74. Primitives Library | 4/5 | In Progress|  |
 | 75. Form Components | 0/TBD | Not started | — |
 | 76. Navigation & App Shell | 0/TBD | Not started | — |
 | 77. Data-Display & Operator Patterns | 0/TBD | Not started | — |
