@@ -144,6 +144,25 @@ test.describe('form behavior contracts', () => {
     );
     const named = story.getByRole('checkbox', { name: 'Include scheduled jobs' });
     const eventSelection = story.getByRole('checkbox', { name: 'Select job 01JZ8M5P' });
+    const namedKey = await named.getAttribute('name');
+    expect(namedKey).toBeTruthy();
+    const formDataFromStory = async (): Promise<Record<string, string[]>> =>
+      story.evaluate((element) => {
+        const form = document.createElement('form');
+        const clone = element.cloneNode(true);
+        form.append(clone);
+        document.body.append(form);
+        try {
+          const data: Record<string, string[]> = {};
+          for (const [key, value] of new FormData(form).entries()) {
+            data[key] ??= [];
+            data[key].push(String(value));
+          }
+          return data;
+        } finally {
+          form.remove();
+        }
+      });
 
     await expect(
       story.locator(`input[type="hidden"][name="${await named.getAttribute('name')}"][value="false"]`)
@@ -151,11 +170,15 @@ test.describe('form behavior contracts', () => {
     await expect(
       eventSelection.locator('xpath=../..').locator('input[type="hidden"]')
     ).toHaveCount(0);
+    await expect(eventSelection).not.toHaveAttribute('name', /.+/);
+
+    expect(await formDataFromStory()).toEqual({ [namedKey as string]: ['false', 'true'] });
 
     await named.focus();
     const before = await named.isChecked();
     await page.keyboard.press('Space');
     await expect(named).toBeChecked({ checked: !before });
+    expect(await formDataFromStory()).toEqual({ [namedKey as string]: ['false'] });
   });
 
   test('switch visible state follows native Space and click behavior while pending ownership stays explicit', async ({

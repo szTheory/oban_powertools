@@ -254,6 +254,36 @@ defmodule ObanPowertools.Web.Components.FormsTest do
       assert event_driven =~ ~s(phx-click="toggle_job")
       assert event_driven =~ ~s(phx-value-id="123")
       refute event_driven =~ ~s(type="hidden")
+      refute event_driven =~ ~s(name=)
+    end
+
+    test "choice event handling keeps named booleans distinct from row selection" do
+      changed_boolean =
+        render_form(:checkbox,
+          field: field(:enabled, false),
+          label: "Enable retries",
+          rest: %{"phx-change" => "validate_filters"}
+        )
+
+      explicit_selection =
+        render_form(:checkbox,
+          field: field(:selected, false),
+          label: "Select job 123",
+          name: "selected_jobs[]",
+          rest: %{"phx-click" => "toggle_job", "phx-value-id" => "123"}
+        )
+
+      assert changed_boolean =~
+               ~r/<input[^>]+type="hidden"[^>]+name="filter\[enabled\]"[^>]+value="false"/
+
+      assert changed_boolean =~
+               ~r/<input[^>]+type="checkbox"[^>]+name="filter\[enabled\]"[^>]+value="true"/
+
+      assert changed_boolean =~ ~s(phx-change="validate_filters")
+
+      refute explicit_selection =~ ~s(type="hidden")
+      assert explicit_selection =~ ~r/<input[^>]+type="checkbox"[^>]+name="selected_jobs\[\]"/
+      assert explicit_selection =~ ~s(phx-click="toggle_job")
     end
 
     test "disabled named checkbox and switch disable their hidden unchecked values" do

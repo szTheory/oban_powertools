@@ -252,13 +252,17 @@ defmodule ObanPowertools.Web.Components.Forms do
   def error(assigns), do: ~H|<p id={@id} class="obpt-error"><span>Error:</span> {@error}</p>|
 
   defp prepare_choice(assigns, class) do
+    explicit_name? = present?(Map.get(assigns, :name))
     assigns = prepare_field(assigns, class)
     checked = if is_boolean(assigns.checked), do: assigns.checked, else: truthy?(assigns.value)
+    event_selection? = Map.has_key?(assigns.rest, "phx-click")
+    name = if event_selection? and not explicit_name?, do: nil, else: assigns.name
 
-    event_driven? =
-      Enum.any?(Map.keys(assigns.rest), &(to_string(&1) in ["phx-click", "phx-change"]))
-
-    assign(assigns, checked: checked, named_boolean: present?(assigns.name) and not event_driven?)
+    assign(assigns,
+      name: name,
+      checked: checked,
+      named_boolean: present?(name) and not event_selection?
+    )
   end
 
   defp prepare_field(assigns, _class) do
