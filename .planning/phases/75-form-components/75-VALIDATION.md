@@ -76,3 +76,21 @@ Checked items indicate complete planning coverage; execution evidence remains pe
 - [x] `nyquist_compliant: true` set in frontmatter after Wave 0 and plan coverage are complete.
 
 **Approval:** approved for execution; test artifacts and command results remain execution-time evidence.
+
+## Execution Evidence
+
+Executed 2026-07-11 for Plan 75-05:
+
+| Gate | Result | Evidence |
+|------|--------|----------|
+| Targeted behavior, chromium-320 | pass | 13 Playwright tests passed |
+| Targeted behavior, chromium-wide | pass | 13 Playwright tests passed |
+| Docker form baseline update | pass | 108/108 form VRT cases passed; exactly nine form directories per viewport and four theme PNGs per directory |
+| Fast ExUnit validation | pass | 19 tests, 0 failures |
+| Full non-host-contract ExUnit | pass | 658 tests, 0 failures, 7 excluded |
+| Warnings-as-errors compile | pass | application compiled successfully |
+| Full `npm run visual:a11y` | blocked outside Phase 75 form targets | 579/675 passed; all form behavior, axe, and VRT cases passed, while 96 existing scenario VRT baselines failed. Failure artifacts showed pre-existing scenario baseline drift/partially rendered text. The plan restricts this baseline update to the nine form families, so unrelated scenario PNGs were not replaced. |
+
+**Final automated status:** blocked on the existing scenario VRT baseline contract. Phase 75 form-specific automated evidence is green, but the exact full validation command is not green and must not be represented as passed.
+
+The approved planning sign-off, `nyquist_compliant: true`, `wave_0_complete: true`, task mappings, and Phase 82 manual boundaries remain unchanged.
