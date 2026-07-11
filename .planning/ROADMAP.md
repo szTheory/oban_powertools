@@ -193,11 +193,24 @@
   3. The shell has a showcase story across themes/viewports; VRT green.
 
 **Plans**: 5 plans
+**Wave 1**
 
 - [ ] 76-01-PLAN.md — RED AppShell render, layout/current-path, catalog, and browser behavior contracts (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 76-02-PLAN.md — AppShell component API, closed nine-surface nav model, ThemeShell integration, and LiveAuth current-path assigns (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 76-03-PLAN.md — Scoped AppShell CSS, disclosure JS, compiled assets, and static asset guards (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 76-04-PLAN.md — Shell story catalog, showcase rendering, schema 4 manifest, and shell target support (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 76-05-PLAN.md — Shell browser behavior proof, VRT baselines, a11y evidence, and validation closeout (wave 5)
 
 ### Phase 77: Data-Display & Operator Patterns
