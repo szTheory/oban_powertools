@@ -415,22 +415,19 @@ Use role/name locators for shell behavior because Playwright recommends user-fac
 | A4 | Mobile collapse state can be owned by scoped browser JS in the existing asset. [ASSUMED] | Responsibility Map, Pattern 3 | If server-owned collapse is required, plans need LiveView events and possibly page diff considerations. |
 | A5 | Phase 76 should add shell showcase stories and browser checks before production page integration. [ASSUMED] | Summary, Don't Hand-Roll | If the phase must visibly wrap production pages immediately, plan risk and VRT scope increase. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the optional `/ops/jobs/oban` bridge appear in the shell?**
    - What we know: The router can mount `/ops/jobs/oban` as an optional read-only bridge, and project docs call it "Inspection only." [VERIFIED: lib/oban_powertools/web/router.ex][VERIFIED: guides/optional-oban-web-bridge.md]
-   - What's unclear: No Phase 76 CONTEXT.md says whether to show it in the shell. [VERIFIED: missing CONTEXT.md]
-   - Recommendation: Keep it out of primary 9-surface nav; if displayed, use secondary/context copy and `ControlPlanePresenter.bridge_banner/0`. [ASSUMED][VERIFIED: lib/oban_powertools/web/control_plane_presenter.ex]
+   - RESOLVED: Do not include `/ops/jobs/oban` in primary navigation. If a later phase ever surfaces it, it must be secondary/contextual only, labeled `Oban Web bridge`, and paired with `Inspection only` support-truth copy. [VERIFIED: .planning/phases/76-navigation-app-shell/76-UI-SPEC.md][VERIFIED: lib/oban_powertools/web/control_plane_presenter.ex]
 
 2. **How much actor context belongs in the header?**
    - What we know: `LiveAuth` assigns `current_actor`, and auth principal/display policy can produce operator labels. [VERIFIED: lib/oban_powertools/web/live_auth.ex][VERIFIED: lib/oban_powertools/auth.ex][VERIFIED: lib/oban_powertools/runtime_config.ex]
-   - What's unclear: No user decision specifies tenant/environment context fields. [VERIFIED: missing CONTEXT.md]
-   - Recommendation: Show a minimal actor label plus support-truth/context text available from existing seams; avoid inventing tenant/project labels without a host-provided value. [ASSUMED]
+   - RESOLVED: Show existing actor data only. Use `Actor: {principal}` when `Auth.audit_principal/1` yields a durable label or id, and `Actor context unavailable` when it does not. Do not invent tenant, cluster, environment, account, or project labels. [VERIFIED: .planning/phases/76-navigation-app-shell/76-UI-SPEC.md]
 
 3. **Should shell wrap production pages in Phase 76 or only prove showcase stories?**
    - What we know: NAV-01 says the shell component owns header/nav/theme/actor display, while page migrations are later phases. [VERIFIED: .planning/REQUIREMENTS.md][VERIFIED: .planning/ROADMAP.md]
-   - What's unclear: No CONTEXT.md defines whether "owns" requires immediate production layout integration. [VERIFIED: missing CONTEXT.md]
-   - Recommendation: Build and integrate the wrapper at layout level, but avoid rewriting page body content; use tests to ensure no page behavior regression. [ASSUMED]
+   - RESOLVED: Phase 76 integrates AppShell through `ThemeShell.live/1` around existing native LiveViews, but must not migrate page bodies or page-owned flows. Showcase stories prove shell states; page body migrations remain Phases 79-81. [VERIFIED: .planning/phases/76-navigation-app-shell/76-UI-SPEC.md][VERIFIED: .planning/ROADMAP.md]
 
 ## Environment Availability
 
