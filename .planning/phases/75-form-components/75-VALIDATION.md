@@ -46,7 +46,7 @@ Per-phase validation contract for feedback sampling during execution.
 - [x] `test/browser/specs/forms.behavior.spec.ts` - planned in 75-05 Task 1; label association, hint/error `aria-describedby` merge, `aria-invalid`, keyboard choice behavior, label click behavior, focus, disabled/read-only contrast, reduced motion, and 320px overflow checks.
 - [x] `scripts/showcase_manifest.exs` and `test/browser/support/manifest.ts` updates - planned in 75-04 Task 1; include generated form targets without hardcoded TypeScript story lists.
 
-Checked items indicate complete planning coverage; execution evidence remains pending until the mapped plan tasks create and run each artifact.
+Checked items indicate complete planning coverage. Current execution evidence is recorded below and the form-specific Phase 75 gates are green.
 
 ## Manual-Only Verifications
 
@@ -79,18 +79,33 @@ Checked items indicate complete planning coverage; execution evidence remains pe
 
 ## Execution Evidence
 
-Executed 2026-07-11 for Plan 75-05:
+Executed 2026-07-11 after Plan 75-06 gap closure and final Phase 75 verification:
 
 | Gate | Result | Evidence |
 |------|--------|----------|
-| Targeted behavior, chromium-320 | pass | 13 Playwright tests passed |
-| Targeted behavior, chromium-wide | pass | 13 Playwright tests passed |
-| Docker form baseline update | pass | 108/108 form VRT cases passed; exactly nine form directories per viewport and four theme PNGs per directory |
-| Fast ExUnit validation | pass | 19 tests, 0 failures |
-| Full non-host-contract ExUnit | pass | 658 tests, 0 failures, 7 excluded |
-| Warnings-as-errors compile | pass | application compiled successfully |
-| Full `npm run visual:a11y` | blocked outside Phase 75 form targets | 579/675 passed; all form behavior, axe, and VRT cases passed, while 96 existing scenario VRT baselines failed. Failure artifacts showed pre-existing scenario baseline drift/partially rendered text. The plan restricts this baseline update to the nine form families, so unrelated scenario PNGs were not replaced. |
+| Final phase verifier | pass | `75-VERIFICATION.md` reports `status: passed`, 18/18 must-haves verified, `behavior_unverified: 0`, and no WR-01/WR-02/WR-03 gaps remaining. |
+| Focused component ExUnit | pass | `mix test test/oban_powertools/web/components/forms_test.exs` rerun 2026-07-11: 19 tests, 0 failures. |
+| Story/showcase ExUnit | pass | `mix test test/oban_powertools/form_story_catalog_test.exs test/oban_powertools/web/live/showcase_live_test.exs` rerun 2026-07-11: 12 tests, 0 failures. |
+| Full non-host-contract ExUnit | pass | `mix test --exclude host_contract` rerun 2026-07-11: 662 tests, 0 failures, 7 excluded. |
+| Targeted WR browser checks | pass | `npm run showcase:manifest && scripts/with-showcase-server.sh npx playwright test test/browser/specs/forms.behavior.spec.ts --project=chromium-320 --grep "switch visible state\|boolean submission\|descriptions and visible errors"` rerun 2026-07-11: 3 tests passed. |
+| Form axe matrix | pass | `npm run showcase:manifest && scripts/with-showcase-server.sh npx playwright test test/browser/specs/showcase.a11y.spec.ts --project=chromium-320 --grep "form-"` rerun 2026-07-11: 36 tests passed. |
+| Docker form VRT matrix | pass | `scripts/with-showcase-server.sh scripts/playwright-docker.sh npx playwright test test/browser/specs/showcase.vrt.spec.ts --grep "form-"` rerun 2026-07-11: 108 tests passed. |
+| Form baseline cardinality | pass | Filesystem audit rerun 2026-07-11: 108 form PNGs under 27 form story viewport directories. |
+| Warnings-as-errors compile | pass | `mix compile --warnings-as-errors` rerun 2026-07-11: exit 0. |
+| Full `npm run visual:a11y` aggregate | non-form residual | The aggregate visual/a11y command remains non-zero because of scenario-only VRT drift outside Phase 75. `75-06-SUMMARY.md`, `75-SECURITY.md`, `75-UI-REVIEW.md`, and `75-VERIFICATION.md` all scope this as a non-form residual; it is not a Phase 75 validation gap. |
 
-**Final automated status:** blocked on the existing scenario VRT baseline contract. Phase 75 form-specific automated evidence is green, but the exact full validation command is not green and must not be represented as passed.
+**Final Phase 75 form status:** green. FORM-01, FORM-02, the form-set COMP-* requirements, and component-scoped A11Y-02 all have automated behavioral evidence. The aggregate `visual:a11y` residual remains documented as non-form scenario VRT drift and does not change `nyquist_compliant: true`.
 
 The approved planning sign-off, `nyquist_compliant: true`, `wave_0_complete: true`, task mappings, and Phase 82 manual boundaries remain unchanged.
+
+## Validation Audit 2026-07-11T19:48:57Z
+
+| Metric | Count |
+|--------|-------|
+| Requirement gaps found | 0 |
+| Tests created | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+| Skipped | 0 |
+
+Audit result: existing test coverage is sufficient for Phase 75 scope; only stale execution evidence was refreshed.
