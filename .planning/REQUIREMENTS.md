@@ -27,10 +27,10 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 
 ### Primitives (COMP)
 
-- [ ] **COMP-01**: A primitive library exists as documented `Phoenix.Component` function components (Button, Icon button, Link, Badge/Tag/StatusPill, Card/Surface, Divider, Spinner/Skeleton, Tooltip, Kbd, Stat) — only those the 9 pages actually use.
-- [ ] **COMP-02**: Each primitive has documented attrs/slots, sensible defaults, and renders only via tokens (no raw values — lint/grep clean).
-- [ ] **COMP-03**: Each primitive is keyboard-operable and screen-reader-correct (roles, accessible names, `focus-visible`), and looks interactive only when interactive.
-- [ ] **COMP-04**: Each primitive renders correctly in light/dark/high-contrast and at 320px width, with a showcase story per state.
+- [x] **COMP-01**: A primitive library exists as documented `Phoenix.Component` function components (Button, Icon button, Link, Badge/Tag/StatusPill, Card/Surface, Divider, Spinner/Skeleton, Tooltip, Kbd, Stat) — only those the 9 pages actually use.
+- [x] **COMP-02**: Each primitive has documented attrs/slots, sensible defaults, and renders only via tokens (no raw values — lint/grep clean).
+- [x] **COMP-03**: Each primitive is keyboard-operable and screen-reader-correct (roles, accessible names, `focus-visible`), and looks interactive only when interactive.
+- [x] **COMP-04**: Each primitive renders correctly in light/dark/high-contrast and at 320px width, with a showcase story per state.
 
 ### Form Components (FORM)
 
@@ -139,7 +139,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 | SHOW-01..03 | Phase 72 (skeleton), Phase 83 (full) | Pending |
 | VRT-01..03 | Phase 73 | Pending |
 | A11Y-01 | Phase 73 | Complete |
-| COMP-01..04 | Phase 74 | Pending |
+| COMP-01..04 | Phase 74 | Complete |
 | FORM-01, FORM-02 | Phase 75 | Pending |
 | NAV-01..04 | Phase 76 | Pending |
 | DATA-01..04 | Phase 77 | Pending |
