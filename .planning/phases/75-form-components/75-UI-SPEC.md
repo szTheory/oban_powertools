@@ -1,7 +1,8 @@
 ---
 phase: 75
 slug: form-components
-status: draft
+status: approved
+reviewed_at: 2026-07-11
 shadcn_initialized: false
 preset: not applicable
 created: 2026-07-11
