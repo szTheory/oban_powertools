@@ -1,7 +1,8 @@
 ---
 phase: 76
 slug: navigation-app-shell
-status: draft
+status: approved
+reviewed_at: 2026-07-11T20:34:01Z
 shadcn_initialized: false
 preset: not applicable
 created: 2026-07-11
