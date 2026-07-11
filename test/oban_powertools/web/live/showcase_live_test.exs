@@ -17,6 +17,50 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       stress-fixtures
     ]
     @open_state_targets ~w[confirm_action_open tooltip_open drawer_open]
+    @primitive_story_contracts [
+      %{
+        id: "primitive-button-matrix",
+        component: "button",
+        variant: "neutral primary warning danger ghost",
+        state: "default disabled disabled_reason"
+      },
+      %{
+        id: "primitive-icon-button-accessible-names",
+        component: "icon_button",
+        variant: "neutral primary danger",
+        state: "labelled tooltip disabled_reason"
+      },
+      %{
+        id: "primitive-link-badge-tag-status",
+        component: "link badge tag status_pill",
+        variant: "navigation tone_matrix",
+        state: "metadata representative_status"
+      },
+      %{
+        id: "primitive-surface-card-divider-density",
+        component: "surface card divider",
+        variant: "plain elevated inset attention",
+        state: "density structure"
+      },
+      %{
+        id: "primitive-tooltip-open",
+        component: "tooltip",
+        variant: "text_only",
+        state: "open focus"
+      },
+      %{
+        id: "primitive-spinner-skeleton-loading",
+        component: "spinner skeleton",
+        variant: "bounded progressive",
+        state: "loading busy"
+      },
+      %{
+        id: "primitive-kbd-stat-values",
+        component: "kbd stat",
+        variant: "literal metric",
+        state: "dense_values"
+      }
+    ]
     @story_contracts [
       %{id: "overview-operational-empty", domain: "overview", persona: "triage"},
       %{id: "jobs-long-identifiers-many", domain: "jobs", persona: "triage"},
@@ -74,6 +118,43 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
                  view,
                  "[data-obpt-story='#{id}'][data-obpt-domain='#{domain}'][data-obpt-persona='#{persona}'][data-obpt-state]"
                )
+      end
+    end
+
+    test "primitive section renders stable primitive story cells", %{conn: conn} do
+      {:ok, view, html} = mount_showcase!(conn)
+
+      assert_attribute_values(
+        html,
+        "data-obpt-primitive-story",
+        Enum.map(@primitive_story_contracts, & &1.id)
+      )
+
+      refute has_element?(
+               view,
+               "[data-obpt-section='primitives'] .obpt-showcase-placeholder"
+             )
+
+      for %{id: id, component: component, variant: variant, state: state} <-
+            @primitive_story_contracts do
+        assert has_element?(
+                 view,
+                 "#obpt-primitive-story-#{id}[data-obpt-primitive-story='#{id}'][data-obpt-component='#{component}'][data-obpt-variant='#{variant}'][data-obpt-state='#{state}'][data-obpt-a11y-target]"
+               )
+      end
+
+      for required_copy <- [
+            "Retry job",
+            "Refresh jobs",
+            "View audit log",
+            "Retryable",
+            "Filter summary",
+            "Retries the selected job once",
+            "Loading job history",
+            "Esc",
+            "Retryable jobs"
+          ] do
+        assert html =~ required_copy
       end
     end
 

@@ -15,8 +15,15 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) or
 
     use Phoenix.LiveView
 
+    alias ObanPowertools.Web.Components.Primitives
+
     @catalog_module ObanPowertools.ShowcaseCatalog
     @catalog_path Path.expand("../../../../test/support/showcase_catalog.ex", __DIR__)
+    @primitive_catalog_module ObanPowertools.PrimitiveStoryCatalog
+    @primitive_catalog_path Path.expand(
+                              "../../../../test/support/primitive_story_catalog.ex",
+                              __DIR__
+                            )
 
     @theme_choices [
       %{value: "system", label: "System"},
@@ -50,6 +57,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) or
     @impl Phoenix.LiveView
     def mount(_params, _session, socket) do
       catalog = load_catalog()
+      primitive_catalog = load_primitive_catalog()
 
       {:ok,
        socket
@@ -61,7 +69,9 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) or
        |> assign(:open_state_targets, @open_state_targets)
        |> assign(:catalog_available?, catalog.available?)
        |> assign(:catalog_scenarios, catalog.scenarios)
-       |> assign(:catalog_domains, catalog.domains)}
+       |> assign(:catalog_domains, catalog.domains)
+       |> assign(:primitive_catalog_available?, primitive_catalog.available?)
+       |> assign(:primitive_stories, primitive_catalog.stories)}
     end
 
     @impl Phoenix.LiveView
@@ -146,7 +156,8 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) or
               <h2>{section.title}</h2>
             </header>
 
-            <%= if section.id == "tokens" do %>
+            <%= case section.id do %>
+              <% "tokens" -> %>
               <div class="obpt-showcase-token-grid">
                 <div class="obpt-showcase-token" data-obpt-tone="accent">
                   <span>Accent</span>
@@ -165,10 +176,49 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) or
                   <strong>Destructive</strong>
                 </div>
               </div>
-            <% else %>
-              <p class="obpt-showcase-placeholder">
-                Reserved for Phase-owned stories. The anchor and selector are stable now.
-              </p>
+              <% "primitives" -> %>
+                <%= if @primitive_catalog_available? and @primitive_stories != [] do %>
+                  <div class="obpt-showcase-story-grid">
+                    <article
+                      :for={story <- @primitive_stories}
+                      id={target_value(story.test_targets, :story)}
+                      class="obpt-showcase-story"
+                      data-obpt-primitive-story={story.id}
+                      data-obpt-component={component_value(story)}
+                      data-obpt-variant={state_value(story.variant)}
+                      data-obpt-state={state_value(story.state)}
+                      data-obpt-a11y-target={target_value(story.test_targets, :a11y)}
+                    >
+                      <header>
+                        <p>{component_value(story)}</p>
+                        <h3>{story.name}</h3>
+                      </header>
+
+                      <p>{story.description}</p>
+
+                      <.primitive_story_body story={story} />
+
+                      <dl>
+                        <div>
+                          <dt>Snapshot</dt>
+                          <dd><code>{target_value(story.test_targets, :snapshot)}</code></dd>
+                        </div>
+                        <div>
+                          <dt>A11y target</dt>
+                          <dd><code>{target_value(story.test_targets, :a11y)}</code></dd>
+                        </div>
+                      </dl>
+                    </article>
+                  </div>
+                <% else %>
+                  <p class="obpt-showcase-placeholder" data-obpt-primitive-index="empty">
+                    No primitive stories registered. Add token-backed primitive stories before updating visual baselines.
+                  </p>
+                <% end %>
+              <% _ -> %>
+                <p class="obpt-showcase-placeholder">
+                  Reserved for Phase-owned stories. The anchor and selector are stable now.
+                </p>
             <% end %>
           </section>
 
@@ -291,16 +341,36 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) or
       end
     end
 
+    defp load_primitive_catalog do
+      with {:ok, module} <- ensure_primitive_catalog_module(),
+           true <- function_exported?(module, :stories, 0) do
+        %{
+          available?: true,
+          stories: apply(module, :stories, [])
+        }
+      else
+        _ -> %{available?: false, stories: []}
+      end
+    end
+
     defp ensure_catalog_module do
+      ensure_support_module(@catalog_module, @catalog_path)
+    end
+
+    defp ensure_primitive_catalog_module do
+      ensure_support_module(@primitive_catalog_module, @primitive_catalog_path)
+    end
+
+    defp ensure_support_module(module, path) do
       cond do
-        Code.ensure_loaded?(@catalog_module) ->
-          {:ok, @catalog_module}
+        Code.ensure_loaded?(module) ->
+          {:ok, module}
 
-        Mix.env() != :test and File.exists?(@catalog_path) ->
-          Code.require_file(@catalog_path)
+        Mix.env() != :test and File.exists?(path) ->
+          Code.require_file(path)
 
-          if Code.ensure_loaded?(@catalog_module) do
-            {:ok, @catalog_module}
+          if Code.ensure_loaded?(module) do
+            {:ok, module}
           else
             :error
           end
@@ -324,10 +394,104 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) or
     defp story_persona(%{id: "forensics-long-url-stacktrace"}), do: "repair"
     defp story_persona(%{persona: persona}), do: stringify(persona)
 
+    defp component_value(%{components: components}) when is_list(components),
+      do: state_value(components)
+
+    defp component_value(%{component: component}), do: stringify(component)
+
     defp target_value(targets, key) when is_map(targets) do
       Map.get(targets, key) || Map.get(targets, Atom.to_string(key)) || ""
     end
 
     defp target_value(_targets, _key), do: ""
+
+    attr(:story, :map, required: true)
+
+    defp primitive_story_body(assigns) do
+      ~H"""
+      <%= case @story.id do %>
+        <% "primitive-button-matrix" -> %>
+          <div class="obpt-primitive-matrix">
+            <div class="obpt-primitive-row">
+              <Primitives.button variant={:primary}>Retry job</Primitives.button>
+              <Primitives.button variant={:warning}>Pause queue</Primitives.button>
+              <Primitives.button
+                id="primitive-cancel-job"
+                variant={:danger}
+                disabled_reason="Cancel job - requires operator role"
+                phx-click="cancel"
+              >
+                Cancel job
+              </Primitives.button>
+              <Primitives.button variant={:ghost}>View audit log</Primitives.button>
+            </div>
+          </div>
+        <% "primitive-icon-button-accessible-names" -> %>
+          <div class="obpt-primitive-row">
+            <Primitives.icon_button label="Refresh jobs" tooltip="Refresh the job list">.</Primitives.icon_button>
+            <Primitives.icon_button label="Acknowledge warning" tooltip="Mark warning as reviewed" variant={:primary}>+</Primitives.icon_button>
+            <Primitives.icon_button
+              id="primitive-cancel-selected"
+              label="Cancel selected job"
+              tooltip="Cancel selected job"
+              variant={:danger}
+              disabled_reason="Cancel selected job - requires operator role"
+            >!</Primitives.icon_button>
+          </div>
+        <% "primitive-link-badge-tag-status" -> %>
+          <div class="obpt-primitive-row">
+            <Primitives.link href="/ops/jobs/audit">View audit log</Primitives.link>
+            <Primitives.badge label="executing" tone={:info} />
+            <Primitives.tag label="queue: critical-mailer" tone={:neutral} />
+            <Primitives.status_pill spec={%{label: "Retryable", tone: :warning, icon: :alert, sr_prefix: "Job state"}} />
+            <Primitives.status_pill spec={%{label: "Completed", tone: :success, icon: :check, sr_prefix: "Job state"}} />
+            <Primitives.status_pill spec={%{label: "Discarded", tone: :danger, icon: :alert, sr_prefix: "Job state"}} />
+          </div>
+        <% "primitive-surface-card-divider-density" -> %>
+          <div class="obpt-primitive-matrix">
+            <Primitives.surface variant={:inset}>
+              <strong>Filter summary</strong>
+              <p>State retryable, queue critical-mailer, actor all.</p>
+            </Primitives.surface>
+            <Primitives.card variant={:elevated}>
+              <strong>Job details</strong>
+              <Primitives.divider decorative={true} />
+              <p>Attempt 7 of 20 remains available for operator repair.</p>
+            </Primitives.card>
+            <Primitives.card variant={:attention}>
+              <strong>Requires review</strong>
+              <p>Pause queue before replaying the customer notification backlog.</p>
+            </Primitives.card>
+          </div>
+        <% "primitive-tooltip-open" -> %>
+          <div class="obpt-primitive-row">
+            <Primitives.tooltip
+              id="primitive-tooltip-open"
+              text="Retries the selected job once and records the operator reason."
+              data-obpt-tooltip-open="true"
+            >
+              Retry job
+            </Primitives.tooltip>
+          </div>
+        <% "primitive-spinner-skeleton-loading" -> %>
+          <div class="obpt-primitive-matrix">
+            <div class="obpt-primitive-row">
+              <Primitives.spinner label="Loading job history" />
+              <span>Loading job history</span>
+            </div>
+            <Primitives.skeleton label="Loading retryable job table" lines={3} />
+          </div>
+        <% "primitive-kbd-stat-values" -> %>
+          <div class="obpt-primitive-matrix">
+            <div class="obpt-primitive-row">
+              <span>Dismiss tooltip</span>
+              <Primitives.kbd text="Esc" />
+            </div>
+            <Primitives.stat label="Retryable jobs" value="12" trend="3 blocked" tone={:warning} />
+            <Primitives.stat label="Completed jobs" value="248" trend="all queues healthy" tone={:success} />
+          </div>
+      <% end %>
+      """
+    end
   end
 end
