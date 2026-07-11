@@ -1,9 +1,9 @@
 ---
 phase: 75
 slug: form-components
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: approved
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-07-11
 ---
 
@@ -33,18 +33,20 @@ Per-phase validation contract for feedback sampling during execution.
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 75-W0-01 | TBD | 0 | FORM-01, FORM-02 | T-75-01, T-75-04 | Form components derive id/name/value/errors from `Phoenix.HTML.FormField`, filter caller visual escape hatches, and escape user-facing text | unit/static | `mix test test/oban_powertools/web/components/forms_test.exs` | No - Wave 0 | pending |
-| 75-W0-02 | TBD | 0 | FORM-01, COMP-01..04 | - | Form story metadata is deterministic, separate from domain stress fixtures, and generated into the showcase manifest | unit/static | `mix test test/oban_powertools/form_story_catalog_test.exs && npm run showcase:manifest` | No - Wave 0 | pending |
-| 75-W0-03 | TBD | 0 | FORM-02, A11Y-02 | T-75-02, T-75-03 | Labels, hints, errors, `aria-describedby`, `aria-invalid`, native choice keyboard behavior, disabled/read-only states, and 320px reflow are browser-proven | browser | `npm run visual:a11y:host -- test/browser/specs/forms.behavior.spec.ts` | No - Wave 0 | pending |
-| 75-W0-04 | TBD | 0 | COMP-02, COMP-04 | T-75-04 | Token-only source stays clean; form stories join the existing VRT/axe matrix across system/light/dark/high-contrast and 320/tablet/wide | browser/VRT/static | `npm run visual:a11y` | Existing harness; form targets missing | pending |
+| 75-W0-01 | 75-01 Task 1; 75-02 Task 1 | 1-2 | FORM-01, FORM-02 | T-75-01, T-75-04 | Form components derive id/name/value/errors from `Phoenix.HTML.FormField`, filter caller visual escape hatches, and escape user-facing text | unit/static | `mix test test/oban_powertools/web/components/forms_test.exs` | Planned: created in 75-01 | covered |
+| 75-W0-02 | 75-03 Task 1; 75-04 Task 1 | 3-4 | FORM-01, COMP-01..04 | - | Form story metadata is deterministic, separate from domain stress fixtures, and generated into the showcase manifest | unit/static | `mix test test/oban_powertools/form_story_catalog_test.exs && npm run showcase:manifest` | Planned: catalog/tests in 75-03; manifest integration in 75-04 | covered |
+| 75-W0-03 | 75-05 Task 1 | 5 | FORM-02, A11Y-02 | T-75-02, T-75-03, T-75-05 | Labels, hints, errors, `aria-describedby`, `aria-invalid`, native choice keyboard behavior, disabled/read-only states, true filter semantics, and 320px reflow are browser-proven | browser | `npm run visual:a11y:host -- test/browser/specs/forms.behavior.spec.ts` | Planned: created in 75-05 | covered |
+| 75-W0-04 | 75-02 Task 2; 75-04 Task 2; 75-05 Task 2 | 2, 4-5 | COMP-02, COMP-04 | T-75-04 | Token-only source stays clean; form stories join the existing VRT/axe matrix across system/light/dark/high-contrast and 320/tablet/wide | browser/VRT/static | `npm run visual:a11y` | Existing harness; CSS in 75-02, target integration in 75-04, baselines/full gate in 75-05 | covered |
 
 ## Wave 0 Requirements
 
-- [ ] `test/oban_powertools/web/components/forms_test.exs` - render/API/no-raw/no-escape/a11y wiring contracts for FORM-01, FORM-02, COMP-01..03.
-- [ ] `test/support/form_story_catalog.ex` - dev/test-only form story metadata for valid, invalid, required, optional, disabled, read-only, loading, filter-ready, long-label, and long-value states.
-- [ ] `test/oban_powertools/form_story_catalog_test.exs` - deterministic story ids, stable selectors, target metadata, and accessibility labels.
-- [ ] `test/browser/specs/forms.behavior.spec.ts` - label association, hint/error `aria-describedby` merge, `aria-invalid`, keyboard choice behavior, label click behavior, focus, disabled/read-only contrast, reduced motion, and 320px overflow checks.
-- [ ] `scripts/showcase_manifest.exs` and `test/browser/support/manifest.ts` updates - include generated form targets without hardcoded TypeScript story lists.
+- [x] `test/oban_powertools/web/components/forms_test.exs` - planned in 75-01 Task 1, implemented/closed in 75-02 Task 1; render/API/no-raw/no-escape/a11y wiring contracts for FORM-01, FORM-02, COMP-01..03.
+- [x] `test/support/form_story_catalog.ex` - planned in 75-03 Task 1; dev/test-only form story metadata for valid, invalid, required, optional, disabled, read-only, loading, filter-ready, long-label, and long-value states.
+- [x] `test/oban_powertools/form_story_catalog_test.exs` - planned in 75-03 Task 1; deterministic story ids, stable selectors, target metadata, and accessibility labels.
+- [x] `test/browser/specs/forms.behavior.spec.ts` - planned in 75-05 Task 1; label association, hint/error `aria-describedby` merge, `aria-invalid`, keyboard choice behavior, label click behavior, focus, disabled/read-only contrast, reduced motion, and 320px overflow checks.
+- [x] `scripts/showcase_manifest.exs` and `test/browser/support/manifest.ts` updates - planned in 75-04 Task 1; include generated form targets without hardcoded TypeScript story lists.
+
+Checked items indicate complete planning coverage; execution evidence remains pending until the mapped plan tasks create and run each artifact.
 
 ## Manual-Only Verifications
 
@@ -66,11 +68,11 @@ Per-phase validation contract for feedback sampling during execution.
 
 ## Validation Sign-Off
 
-- [ ] All tasks have automated verify commands or Wave 0 dependencies.
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verification.
-- [ ] Wave 0 covers all missing references.
-- [ ] No watch-mode flags.
-- [ ] Feedback latency stays within one task commit.
-- [ ] `nyquist_compliant: true` set in frontmatter after Wave 0 and plan coverage are complete.
+- [x] All tasks have automated verify commands or Wave 0 dependencies.
+- [x] Sampling continuity: no 3 consecutive tasks without automated verification.
+- [x] Wave 0 covers all missing references through the mapped plan tasks above.
+- [x] No watch-mode flags.
+- [x] Feedback latency stays within one task commit.
+- [x] `nyquist_compliant: true` set in frontmatter after Wave 0 and plan coverage are complete.
 
-**Approval:** pending
+**Approval:** approved for execution; test artifacts and command results remain execution-time evidence.
