@@ -358,7 +358,7 @@ defmodule ObanPowertools.Web.Components.Primitives do
       |> assign(:rest, visual_safe_rest(assigns.rest, suppress_actions?: true))
 
     ~H"""
-    <span class="obpt-spinner" data-obpt-size={@size} role="status" {@rest}>
+    <span class="obpt-spinner" data-obpt-size={@size} role="status" aria-label={@label} {@rest}>
       <span class="obpt-spinner-mark" aria-hidden="true"></span>
       <span class="obpt-sr-only">{@label}</span>
     </span>

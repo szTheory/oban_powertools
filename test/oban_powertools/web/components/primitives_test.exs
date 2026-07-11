@@ -254,6 +254,7 @@ defmodule ObanPowertools.Web.Components.PrimitivesTest do
 
       assert spinner =~ ~s(class="obpt-spinner")
       assert spinner =~ ~s(role="status")
+      assert spinner =~ ~s(aria-label="Loading job history")
       assert spinner =~ "Loading job history"
 
       assert skeleton =~ ~s(class="obpt-skeleton")
