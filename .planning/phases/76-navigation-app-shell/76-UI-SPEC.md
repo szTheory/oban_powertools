@@ -34,9 +34,8 @@ Shell CSS and components must use existing Powertools spacing tokens or token-ba
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--obpt-space-1` | 4px | Active-route indicator offset, icon/text micro-gaps if an internal glyph is used, tight breadcrumb separators. |
-| `--obpt-space-2` | 8px | Nav link internal gaps, theme-control gaps, breadcrumb item gaps, compact header item spacing. |
-| `--obpt-space-3` | 12px | Header control padding and nav link horizontal padding where 8px is too tight but 16px is too broad. |
-| `--obpt-space-4` | 16px | Default shell padding, mobile nav stack gap, header row gap, main content inset at 320px. |
+| `--obpt-space-2` | 8px | Nav link internal gaps, compact nav link horizontal padding, theme-control gaps, breadcrumb item gaps, compact header item spacing. |
+| `--obpt-space-4` | 16px | Header control padding, default nav link horizontal padding, default shell padding, mobile nav stack gap, header row gap, main content inset at 320px. |
 | `--obpt-space-5` | 24px | Header-to-main separation, breadcrumb-to-content separation, tablet shell padding. |
 | `--obpt-space-6` | 32px | Wide viewport shell gutters and showcase story grouping. |
 | `--obpt-space-7` | 48px | Major showcase spacing and minimum comfortable control target derivations; avoid as routine nav gap. |
