@@ -1,5 +1,6 @@
 alias ObanPowertools.ShowcaseCatalog
 alias ObanPowertools.PrimitiveStoryCatalog
+alias ObanPowertools.FormStoryCatalog
 
 themes = ["system", "light", "dark", "high-contrast"]
 
@@ -54,16 +55,38 @@ primitive_stories =
     }
   end)
 
+form_stories =
+  FormStoryCatalog.stories()
+  |> Enum.map(fn story ->
+    id = Map.fetch!(story, :id)
+    test_targets = Map.fetch!(story, :test_targets)
+
+    %{
+      id: id,
+      kind: story.kind |> Atom.to_string(),
+      component: story.component |> Atom.to_string(),
+      components: Enum.map(story.components, &Atom.to_string/1),
+      name: Map.fetch!(story, :name),
+      description: Map.fetch!(story, :description),
+      variant: stringify_list.(Map.fetch!(story, :variant)),
+      state: stringify_list.(Map.fetch!(story, :state)),
+      story: Map.fetch!(test_targets, :story),
+      snapshot: FormStoryCatalog.snapshot_name(id),
+      a11y: FormStoryCatalog.a11y_target(id)
+    }
+  end)
+
 targets =
   Enum.map(scenarios, &Map.put(&1, :kind, "scenario")) ++
-    Enum.map(primitive_stories, & &1)
+    primitive_stories ++ form_stories
 
 manifest = %{
-  schema_version: 2,
+  schema_version: 3,
   themes: themes,
   viewports: viewports,
   scenarios: scenarios,
   primitive_stories: primitive_stories,
+  form_stories: form_stories,
   targets: targets
 }
 

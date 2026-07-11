@@ -61,7 +61,7 @@ function loadManifest() {
 
 const manifest = loadManifest();
 
-equal(manifest.schema_version, 2, 'schema_version');
+equal(manifest.schema_version, 3, 'schema_version');
 exactList(array(manifest.themes, 'themes'), expectedThemes, 'themes');
 
 const viewports = array(manifest.viewports, 'viewports');
@@ -133,6 +133,33 @@ for (const [index, story] of primitiveStories.entries()) {
   expectedTargets.push({ ...actual });
 }
 
+const formStories = array(manifest.form_stories, 'form_stories');
+equal(formStories.length, 9, 'form_stories.length');
+
+for (const [index, story] of formStories.entries()) {
+  const actual = record(story, `form_stories[${index}]`);
+  const id = string(actual.id, `form_stories[${index}].id`);
+  const components = array(actual.components, `form_stories[${index}].components`);
+  const variant = array(actual.variant, `form_stories[${index}].variant`);
+  const state = array(actual.state, `form_stories[${index}].state`);
+
+  equal(actual.kind, 'form', `form_stories[${index}].kind`);
+  if (!/^form-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)) {
+    fail(`form_stories[${index}].id must be a slug-like form-* identifier`);
+  }
+  string(actual.component, `form_stories[${index}].component`);
+  string(actual.name, `form_stories[${index}].name`);
+  string(actual.description, `form_stories[${index}].description`);
+  equal(components.length > 0, true, `form_stories[${index}].components non-empty`);
+  equal(variant.length > 0, true, `form_stories[${index}].variant non-empty`);
+  equal(state.length > 0, true, `form_stories[${index}].state non-empty`);
+  equal(actual.story, `obpt-form-story-${id}`, `form_stories[${index}].story`);
+  equal(actual.snapshot, `showcase/${id}`, `form_stories[${index}].snapshot`);
+  equal(actual.a11y, `[data-obpt-form-story="${id}"]`, `form_stories[${index}].a11y`);
+
+  expectedTargets.push({ ...actual });
+}
+
 const targets = array(manifest.targets, 'targets');
 equal(targets.length, expectedTargets.length, 'targets.length');
 
@@ -176,8 +203,17 @@ for (const [index, target] of targets.entries()) {
       `targets[${index}].state`
     );
   }
+
+  if (expected.kind === 'form') {
+    equal(actual.component, expected.component, `targets[${index}].component`);
+    exactList(array(actual.components, `targets[${index}].components`), expected.components, `targets[${index}].components`);
+    equal(actual.name, expected.name, `targets[${index}].name`);
+    equal(actual.description, expected.description, `targets[${index}].description`);
+    exactList(array(actual.variant, `targets[${index}].variant`), expected.variant, `targets[${index}].variant`);
+    exactList(array(actual.state, `targets[${index}].state`), expected.state, `targets[${index}].state`);
+  }
 }
 
 console.log(
-  `showcase manifest ok: ${scenarios.length} scenarios, ${primitiveStories.length} primitive stories, ${targets.length} targets, ${expectedThemes.length} themes, ${expectedViewports.length} viewports`
+  `showcase manifest ok: ${scenarios.length} scenarios, ${primitiveStories.length} primitive stories, ${formStories.length} form stories, ${targets.length} targets, ${expectedThemes.length} themes, ${expectedViewports.length} viewports`
 );
