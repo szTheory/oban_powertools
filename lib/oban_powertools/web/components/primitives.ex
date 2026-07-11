@@ -53,7 +53,7 @@ defmodule ObanPowertools.Web.Components.Primitives do
       assigns
       |> assign(:variant, variant)
       |> assign(:size, size)
-      |> assign(:class, "obpt-button obpt-button--#{variant}")
+      |> assign(:class, "obpt-button obpt-button--#{variant} obpt-primitive-button")
       |> assign(:rest, rest)
       |> assign(:disabled_reason, disabled_reason)
       |> assign(:reason_id, if(described?, do: disabled_reason_id(rest, "obpt-button")))

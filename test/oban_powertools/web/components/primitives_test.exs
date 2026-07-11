@@ -55,7 +55,7 @@ defmodule ObanPowertools.Web.Components.PrimitivesTest do
       assert html =~ "<button"
       assert html =~ "Retry job"
       assert html =~ ~s(type="button")
-      assert html =~ ~s(class="obpt-button obpt-button--primary")
+      assert html =~ ~s(class="obpt-button obpt-button--primary obpt-primitive-button")
       assert html =~ ~s(data-obpt-variant="primary")
 
       disabled_html =
