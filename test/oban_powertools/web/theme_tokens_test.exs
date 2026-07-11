@@ -43,6 +43,69 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     --obpt-motion-ease-
   ]
 
+  @primitive_classes ~w[
+    .obpt-button
+    .obpt-icon-button
+    .obpt-link
+    .obpt-badge
+    .obpt-tag
+    .obpt-status-pill
+    .obpt-surface
+    .obpt-card
+    .obpt-divider
+    .obpt-spinner
+    .obpt-skeleton
+    .obpt-tooltip
+    .obpt-kbd
+    .obpt-stat
+    .obpt-sr-only
+  ]
+
+  @proof_seam_classes ~w[
+    .obpt-tab
+    .obpt-modal
+    .obpt-form-label
+    .obpt-input
+    .obpt-alert
+  ]
+
+  @token_backed_primitive_properties ~w[
+    animation
+    background
+    border
+    border-block-start
+    border-block-start-color
+    border-color
+    border-radius
+    box-shadow
+    color
+    font-family
+    font-size
+    font-weight
+    gap
+    inline-size
+    block-size
+    line-height
+    margin
+    max-inline-size
+    min-block-size
+    min-inline-size
+    outline
+    outline-offset
+    padding
+    text-decoration-color
+    text-decoration-thickness
+    text-underline-offset
+    transition
+  ]
+
+  @allowed_literal_primitive_values ~w[
+    0
+    none
+    transparent
+    hidden
+  ]
+
   @forbidden_theme_properties ~w[
     width height min-width max-width min-height max-height
     padding padding-top padding-right padding-bottom padding-left
@@ -100,6 +163,43 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     refute css =~ "localStorage.theme"
     refute css =~ ~s(localStorage["theme"])
     refute css =~ ~s(localStorage['theme'])
+  end
+
+  test "primitive class families are root-scoped, token-backed, and responsive" do
+    css = read_contract_file!(@tokens_path)
+    primitive_blocks = primitive_blocks(css)
+
+    for class <- @primitive_classes do
+      assert css =~ ".obpt-root #{class}", "missing root-scoped primitive selector #{class}"
+    end
+
+    for class <- @proof_seam_classes do
+      assert css =~ ".obpt-root #{class}", "Phase 71 proof-seam class drifted: #{class}"
+    end
+
+    assert css =~ "@media (max-width: 24rem)"
+    assert css =~ ".obpt-root .obpt-primitive-matrix"
+    assert css =~ "@media (prefers-reduced-motion: reduce)"
+    assert css =~ ~s(.obpt-root[data-obpt-motion="reduce"])
+
+    assert primitive_blocks != [], "expected primitive CSS blocks to be present"
+
+    for {selector, body} <- primitive_blocks do
+      for part <- selector_parts(selector) do
+        assert String.starts_with?(part, ".obpt-root"),
+               "primitive selector is not scoped below .obpt-root: #{part}"
+      end
+
+      refute body =~ ~r/#[0-9a-fA-F]{3,8}/,
+             "primitive selector #{selector} contains a raw color value"
+
+      for {property, value} <- declarations(body),
+          primitive_visual_property?(property),
+          not allowed_literal_primitive_value?(value) do
+        assert String.contains?(value, "var(--obpt-"),
+               "primitive selector #{selector} property #{property} is not token-backed: #{value}"
+      end
+    end
   end
 
   test "theme selector blocks only remap semantic color/focus variables" do
@@ -217,6 +317,21 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     |> Enum.filter(fn {selector, _body} -> String.contains?(selector, selector_fragment) end)
   end
 
+  defp primitive_blocks(css) do
+    Regex.scan(~r/([^{}]+)\{([^{}]+)\}/m, css, capture: :all_but_first)
+    |> Enum.map(fn [selector, body] -> {String.trim(selector), body} end)
+    |> Enum.filter(fn {selector, _body} ->
+      Enum.any?(@primitive_classes, &String.contains?(selector, &1))
+    end)
+  end
+
+  defp selector_parts(selector) do
+    selector
+    |> String.split(",")
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+  end
+
   defp theme_blocks(css) do
     css
     |> blocks_for("data-obpt-")
@@ -233,6 +348,14 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
 
   defp has_variable_prefix?(vars, prefix) do
     vars |> Map.keys() |> Enum.any?(&String.starts_with?(&1, prefix))
+  end
+
+  defp primitive_visual_property?(property) do
+    property in @token_backed_primitive_properties or String.starts_with?(property, "--obpt-")
+  end
+
+  defp allowed_literal_primitive_value?(value) do
+    value in @allowed_literal_primitive_values or String.starts_with?(value, "1px solid var(--obpt-")
   end
 
   defp contrast(vars, foreground, background) do
