@@ -100,16 +100,33 @@ test.describe('form behavior contracts', () => {
       formStory('form-validation-wiring')
     );
     const input = story.getByRole('textbox', { name: 'Worker name' });
+    const ids = await story.locator('[id]').evaluateAll((elements) =>
+      elements.map((element) => element.id).filter((id) => id.length > 0)
+    );
+    const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index);
+    const errors = story.locator('.obpt-error');
+    const errorIds = await errors.evaluateAll((elements) =>
+      elements.map((element) => element.id).filter((id) => id.length > 0)
+    );
     const describedBy = (await input.getAttribute('aria-describedby'))?.split(/\s+/) ?? [];
 
-    expect(describedBy).toHaveLength(3);
-    expect(new Set(describedBy).size).toBe(3);
+    expect(duplicateIds).toEqual([]);
+    await expect(errors).toHaveCount(2);
+    expect(errorIds).toHaveLength(2);
+    expect(new Set(errorIds).size).toBe(2);
+    expect(describedBy).toHaveLength(4);
+    expect(new Set(describedBy).size).toBe(4);
     expect(describedBy[0]).toBe('form-validation-context');
     expect(describedBy[1]).toBe(`${await input.getAttribute('id')}-hint`);
-    expect(describedBy[2]).toBe(`${await input.getAttribute('id')}-error`);
+    expect(describedBy[2]).toBe(`${await input.getAttribute('id')}-error-1`);
+    expect(describedBy[3]).toBe(`${await input.getAttribute('id')}-error-2`);
+    for (const errorId of errorIds) {
+      expect(describedBy).toContain(errorId);
+    }
     await expect(input).toHaveAttribute('aria-invalid', 'true');
     await expect(story.locator(`#${describedBy[1]}`)).toBeVisible();
     await expect(story.locator(`#${describedBy[2]}`)).toContainText('Enter a worker name.');
+    await expect(story.locator(`#${describedBy[3]}`)).toContainText('Reason must be at least 10 characters.');
 
     const validStory = targetLocator(page, formStory('form-input-states'));
     const validInput = validStory.locator('#form-input-required');

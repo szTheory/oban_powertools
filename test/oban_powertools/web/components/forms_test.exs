@@ -86,6 +86,31 @@ defmodule ObanPowertools.Web.Components.FormsTest do
       assert html =~ "can&#39;t be blank"
     end
 
+    test "multiple visible errors use unique ids and are all described exactly once" do
+      html =
+        render_form(:input,
+          field: field(:worker, ""),
+          label: "Worker name",
+          hint: "Enter a full or partial worker module name.",
+          errors: ["Enter a worker name.", @hostile],
+          rest: %{"aria-describedby" => "external-help"}
+        )
+
+      assert html =~ ~s(id="filter_worker-error-1")
+      assert html =~ ~s(id="filter_worker-error-2")
+      refute html =~ ~s(id="filter_worker-error")
+
+      assert html =~
+               ~s(aria-describedby="external-help filter_worker-hint filter_worker-error-1 filter_worker-error-2")
+
+      assert count(html, ~s(id="filter_worker-error-1")) == 1
+      assert count(html, ~s(id="filter_worker-error-2")) == 1
+      assert count(html, "Error:") == 2
+      assert html =~ "Enter a worker name."
+      assert html =~ "&lt;script&gt;alert(1)&lt;/script&gt;"
+      refute html =~ @hostile
+    end
+
     test "keeps unused field errors quiet while explicit action errors render truthfully" do
       quiet =
         render_form(:input,
