@@ -1,8 +1,7 @@
 # Dev-only module guard: defined only when dev_routes is enabled at the host's
 # compile time (dev/test). In production builds this file defines no fallback
 # module, so the route and LiveView stay absent together.
-if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) or
-     System.get_env("MIX_ENV", "dev") == "dev" do
+if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
   defmodule ObanPowertools.Web.Dev.ShowcaseLive do
     @moduledoc """
     Dev-only LiveView for the deterministic Powertools showcase skeleton.
@@ -269,7 +268,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) or
                 >
                   <span>{scenario.name}</span>
                   <code>{stringify(scenario.domain)}</code>
-                  <code>{story_persona(scenario)}</code>
+                  <code>{stringify(scenario.persona)}</code>
                   <span>{state_value(scenario.states)}</span>
                 </div>
               </div>
@@ -297,7 +296,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) or
                 class="obpt-showcase-story"
                 data-obpt-story={scenario.id}
                 data-obpt-domain={stringify(scenario.domain)}
-                data-obpt-persona={story_persona(scenario)}
+                data-obpt-persona={stringify(scenario.persona)}
                 data-obpt-state={state_value(scenario.states)}
               >
                 <header>
@@ -390,9 +389,6 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) or
     end
 
     defp state_value(state), do: stringify(state)
-
-    defp story_persona(%{id: "forensics-long-url-stacktrace"}), do: "repair"
-    defp story_persona(%{persona: persona}), do: stringify(persona)
 
     defp component_value(%{components: components}) when is_list(components),
       do: state_value(components)

@@ -77,6 +77,7 @@ defmodule ObanPowertools.Web.Components.PrimitivesTest do
         render_primitive(:button,
           disabled: true,
           disabled_reason: "Requires operator role",
+          type: "submit",
           rest: %{
             "id" => "cancel-job",
             "phx-click" => "cancel",
@@ -93,6 +94,7 @@ defmodule ObanPowertools.Web.Components.PrimitivesTest do
         )
 
       assert html =~ ~s(id="cancel-job")
+      assert html =~ ~s(type="button")
       assert html =~ ~s(aria-disabled="true")
       assert html =~ ~s(aria-describedby="cancel-job-disabled-reason")
       assert html =~ ~s(id="cancel-job-disabled-reason")
@@ -163,8 +165,15 @@ defmodule ObanPowertools.Web.Components.PrimitivesTest do
   describe "link/1" do
     test "renders navigation affordances only" do
       href_html = render_primitive(:link, href: "/ops/jobs", inner_block: slot("Jobs"))
-      patch_html = render_primitive(:link, patch: "/ops/jobs?state=retryable", inner_block: slot("Retryable"))
-      navigate_html = render_primitive(:link, navigate: "/ops/jobs/audit", inner_block: slot("Audit log"))
+
+      patch_html =
+        render_primitive(:link,
+          patch: "/ops/jobs?state=retryable",
+          inner_block: slot("Retryable")
+        )
+
+      navigate_html =
+        render_primitive(:link, navigate: "/ops/jobs/audit", inner_block: slot("Audit log"))
 
       assert href_html =~ ~s(href="/ops/jobs")
       assert patch_html =~ ~s(data-phx-link="patch")
@@ -177,6 +186,18 @@ defmodule ObanPowertools.Web.Components.PrimitivesTest do
 
       assert_raise ArgumentError, ~r/link requires href, patch, or navigate/i, fn ->
         render_primitive(:link, rest: %{"phx-click" => "mutate"}, inner_block: slot("Mutate"))
+      end
+    end
+
+    test "rejects executable or protocol-relative href schemes" do
+      for unsafe_href <- [
+            "javascript:alert(1)",
+            "data:text/html,<script>alert(1)</script>",
+            "//evil.example"
+          ] do
+        assert_raise ArgumentError, ~r/unsupported link href scheme/i, fn ->
+          render_primitive(:link, href: unsafe_href, inner_block: slot("Unsafe"))
+        end
       end
     end
   end
@@ -288,8 +309,8 @@ defmodule ObanPowertools.Web.Components.PrimitivesTest do
 
       assert source =~ "use Phoenix.Component"
       assert source =~ "visual_safe_rest"
-      assert source =~ "attr :rest, :global"
-      assert source =~ "slot :inner_block"
+      assert source =~ ~r/attr\(?\s*:rest,\s*:global/
+      assert source =~ ~r/slot\(?\s*:inner_block/
       assert source =~ "@button_variants"
       assert source =~ "@tones"
       assert source =~ "@surface_variants"
@@ -316,7 +337,8 @@ defmodule ObanPowertools.Web.Components.PrimitivesTest do
         refute source =~ forbidden, "D-03 forbids host selector leakage: #{forbidden}"
       end
 
-      for domain_state <- ~w[available scheduled executing retryable cancelled discarded completed] do
+      for domain_state <-
+            ~w[available scheduled executing retryable cancelled discarded completed] do
         refute source =~ domain_state,
                "D-15 defers domain-wide status mapping; primitive source included #{domain_state}"
       end

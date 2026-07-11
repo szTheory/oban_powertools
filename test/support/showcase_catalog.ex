@@ -374,7 +374,7 @@ defmodule ObanPowertools.ShowcaseCatalog do
       id: "forensics-long-url-stacktrace",
       domain: :forensics,
       name: "Forensics bundle with a long URL and stacktrace",
-      persona: :incident_response,
+      persona: :repair,
       jtbd: "Inspect a long evidence URL and stacktrace without breaking the layout.",
       states: [:long_url],
       fixtures: %{

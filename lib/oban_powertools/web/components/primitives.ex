@@ -23,19 +23,20 @@ defmodule ObanPowertools.Web.Components.Primitives do
   button remains perceivable through `aria-disabled`, exposes the reason, and
   suppresses caller action attributes.
   """
-  attr :variant, :atom, default: :neutral, values: @button_variants
-  attr :size, :atom, default: :md, values: @sizes
-  attr :type, :string, default: "button"
-  attr :disabled, :boolean, default: false
-  attr :disabled_reason, :string, default: nil
-  attr :rest, :global, default: %{}
-  slot :inner_block, required: true
+  attr(:variant, :atom, default: :neutral, values: @button_variants)
+  attr(:size, :atom, default: :md, values: @sizes)
+  attr(:type, :string, default: "button")
+  attr(:disabled, :boolean, default: false)
+  attr(:disabled_reason, :string, default: nil)
+  attr(:rest, :global, default: %{})
+  slot(:inner_block, required: true)
 
   def button(assigns) do
     variant = normalize_closed!(assigns.variant, @button_variants, "unsupported button variant")
     size = normalize_closed!(assigns.size, @sizes, "unsupported button size")
     disabled_reason = present_text(assigns.disabled_reason)
     described? = not is_nil(disabled_reason)
+    type = if described?, do: "button", else: normalize_button_type!(assigns.type)
 
     rest =
       assigns.rest
@@ -53,6 +54,7 @@ defmodule ObanPowertools.Web.Components.Primitives do
       assigns
       |> assign(:variant, variant)
       |> assign(:size, size)
+      |> assign(:type, type)
       |> assign(:class, "obpt-button obpt-button--#{variant} obpt-primitive-button")
       |> assign(:rest, rest)
       |> assign(:disabled_reason, disabled_reason)
@@ -86,14 +88,14 @@ defmodule ObanPowertools.Web.Components.Primitives do
   Icon slot content is decorative and hidden from assistive technology. Tooltip
   text can supplement the control, but never supplies the accessible name.
   """
-  attr :label, :string, required: true
-  attr :tooltip, :string, default: nil
-  attr :variant, :atom, default: :neutral, values: @button_variants
-  attr :size, :atom, default: :md, values: @sizes
-  attr :disabled, :boolean, default: false
-  attr :disabled_reason, :string, default: nil
-  attr :rest, :global, default: %{}
-  slot :inner_block, required: true
+  attr(:label, :string, required: true)
+  attr(:tooltip, :string, default: nil)
+  attr(:variant, :atom, default: :neutral, values: @button_variants)
+  attr(:size, :atom, default: :md, values: @sizes)
+  attr(:disabled, :boolean, default: false)
+  attr(:disabled_reason, :string, default: nil)
+  attr(:rest, :global, default: %{})
+  slot(:inner_block, required: true)
 
   def icon_button(assigns) do
     label = require_text!(assigns.label, "icon_button label")
@@ -154,11 +156,11 @@ defmodule ObanPowertools.Web.Components.Primitives do
   Exactly one navigation target is required: `href`, `patch`, or `navigate`.
   Mutation events are suppressed so link styling cannot become an action affordance.
   """
-  attr :href, :string, default: nil
-  attr :patch, :string, default: nil
-  attr :navigate, :string, default: nil
-  attr :rest, :global, default: %{}
-  slot :inner_block, required: true
+  attr(:href, :string, default: nil)
+  attr(:patch, :string, default: nil)
+  attr(:navigate, :string, default: nil)
+  attr(:rest, :global, default: %{})
+  slot(:inner_block, required: true)
 
   def link(assigns) do
     target_count = Enum.count([assigns.href, assigns.patch, assigns.navigate], &present?/1)
@@ -169,6 +171,7 @@ defmodule ObanPowertools.Web.Components.Primitives do
 
     assigns =
       assigns
+      |> assign(:href, safe_href!(assigns.href))
       |> assign(:rest, visual_safe_rest(assigns.rest, suppress_actions?: true))
 
     ~H"""
@@ -190,10 +193,10 @@ defmodule ObanPowertools.Web.Components.Primitives do
   Badges expose a visible label and a closed semantic tone. Caller action attrs
   are suppressed because the primitive is descriptive, not interactive.
   """
-  attr :label, :string, required: true
-  attr :tone, :atom, default: :neutral, values: @tones
-  attr :size, :atom, default: :md, values: @sizes
-  attr :rest, :global, default: %{}
+  attr(:label, :string, required: true)
+  attr(:tone, :atom, default: :neutral, values: @tones)
+  attr(:size, :atom, default: :md, values: @sizes)
+  attr(:rest, :global, default: %{})
 
   def badge(assigns) do
     assigns =
@@ -216,10 +219,10 @@ defmodule ObanPowertools.Web.Components.Primitives do
   Tags are static metadata with visible text and closed semantic tones. Use later
   form/filter components for selected, removable, or clickable chip behavior.
   """
-  attr :label, :string, required: true
-  attr :tone, :atom, default: :neutral, values: @tones
-  attr :size, :atom, default: :md, values: @sizes
-  attr :rest, :global, default: %{}
+  attr(:label, :string, required: true)
+  attr(:tone, :atom, default: :neutral, values: @tones)
+  attr(:size, :atom, default: :md, values: @sizes)
+  attr(:rest, :global, default: %{})
 
   def tag(assigns) do
     assigns =
@@ -242,13 +245,13 @@ defmodule ObanPowertools.Web.Components.Primitives do
   `spec` may provide `label`, `tone`, `icon`, and `sr_prefix`. The primitive does
   not own a domain state registry; callers pass the presentation they selected.
   """
-  attr :spec, :any, default: nil
-  attr :label, :string, default: nil
-  attr :tone, :atom, default: :neutral, values: @tones
-  attr :icon, :atom, default: nil
-  attr :sr_prefix, :string, default: nil
-  attr :size, :atom, default: :md, values: @sizes
-  attr :rest, :global, default: %{}
+  attr(:spec, :any, default: nil)
+  attr(:label, :string, default: nil)
+  attr(:tone, :atom, default: :neutral, values: @tones)
+  attr(:icon, :atom, default: nil)
+  attr(:sr_prefix, :string, default: nil)
+  attr(:size, :atom, default: :md, values: @sizes)
+  attr(:rest, :global, default: %{})
 
   def status_pill(assigns) do
     assigns = apply_status_spec(assigns)
@@ -281,14 +284,17 @@ defmodule ObanPowertools.Web.Components.Primitives do
   Surfaces are not interactive by default and expose only closed structural
   variants backed by Powertools classes and `data-obpt-variant`.
   """
-  attr :variant, :atom, default: :plain, values: @surface_variants
-  attr :rest, :global, default: %{}
-  slot :inner_block, required: true
+  attr(:variant, :atom, default: :plain, values: @surface_variants)
+  attr(:rest, :global, default: %{})
+  slot(:inner_block, required: true)
 
   def surface(assigns) do
     assigns =
       assigns
-      |> assign(:variant, normalize_closed!(assigns.variant, @surface_variants, "unsupported surface variant"))
+      |> assign(
+        :variant,
+        normalize_closed!(assigns.variant, @surface_variants, "unsupported surface variant")
+      )
       |> assign(:rest, visual_safe_rest(assigns.rest, suppress_actions?: true))
 
     ~H"""
@@ -304,14 +310,17 @@ defmodule ObanPowertools.Web.Components.Primitives do
   Cards are structural containers. They use the same closed variants as surfaces
   without creating an interactive affordance.
   """
-  attr :variant, :atom, default: :plain, values: @surface_variants
-  attr :rest, :global, default: %{}
-  slot :inner_block, required: true
+  attr(:variant, :atom, default: :plain, values: @surface_variants)
+  attr(:rest, :global, default: %{})
+  slot(:inner_block, required: true)
 
   def card(assigns) do
     assigns =
       assigns
-      |> assign(:variant, normalize_closed!(assigns.variant, @surface_variants, "unsupported card variant"))
+      |> assign(
+        :variant,
+        normalize_closed!(assigns.variant, @surface_variants, "unsupported card variant")
+      )
       |> assign(:rest, visual_safe_rest(assigns.rest, suppress_actions?: true))
 
     ~H"""
@@ -327,8 +336,8 @@ defmodule ObanPowertools.Web.Components.Primitives do
   Use `decorative: true` when the separator is only visual; otherwise it remains
   a semantic `hr`.
   """
-  attr :decorative, :boolean, default: false
-  attr :rest, :global, default: %{}
+  attr(:decorative, :boolean, default: false)
+  attr(:rest, :global, default: %{})
 
   def divider(assigns) do
     assigns =
@@ -346,9 +355,9 @@ defmodule ObanPowertools.Web.Components.Primitives do
 
   The `label` names what is loading. Bare, unnamed spinner motion is rejected.
   """
-  attr :label, :string, required: true
-  attr :size, :atom, default: :md, values: @sizes
-  attr :rest, :global, default: %{}
+  attr(:label, :string, required: true)
+  attr(:size, :atom, default: :md, values: @sizes)
+  attr(:rest, :global, default: %{})
 
   def spinner(assigns) do
     assigns =
@@ -371,9 +380,9 @@ defmodule ObanPowertools.Web.Components.Primitives do
   Skeletons represent progressive content loading and expose `aria-busy` plus a
   required loading label.
   """
-  attr :label, :string, required: true
-  attr :lines, :integer, default: 1
-  attr :rest, :global, default: %{}
+  attr(:label, :string, required: true)
+  attr(:lines, :integer, default: 1)
+  attr(:rest, :global, default: %{})
 
   def skeleton(assigns) do
     assigns =
@@ -396,10 +405,10 @@ defmodule ObanPowertools.Web.Components.Primitives do
   The trigger receives a stable id and `aria-describedby`; the tooltip content
   receives the matching description id and `role`.
   """
-  attr :id, :string, required: true
-  attr :text, :string, required: true
-  attr :rest, :global, default: %{}
-  slot :inner_block, required: true
+  attr(:id, :string, required: true)
+  attr(:text, :string, required: true)
+  attr(:rest, :global, default: %{})
+  slot(:inner_block, required: true)
 
   def tooltip(assigns) do
     id = require_text!(assigns.id, "tooltip id")
@@ -441,8 +450,8 @@ defmodule ObanPowertools.Web.Components.Primitives do
   Use this primitive only for keyboard shortcuts or literal machine input, not as
   status metadata.
   """
-  attr :text, :string, required: true
-  attr :rest, :global, default: %{}
+  attr(:text, :string, required: true)
+  attr(:rest, :global, default: %{})
 
   def kbd(assigns) do
     assigns =
@@ -461,11 +470,11 @@ defmodule ObanPowertools.Web.Components.Primitives do
   Metrics use visible label and value text, with optional trend copy so color is
   never the only channel for direction or severity.
   """
-  attr :label, :string, required: true
-  attr :value, :string, required: true
-  attr :trend, :string, default: nil
-  attr :tone, :atom, default: :neutral, values: @tones
-  attr :rest, :global, default: %{}
+  attr(:label, :string, required: true)
+  attr(:value, :string, required: true)
+  attr(:trend, :string, default: nil)
+  attr(:tone, :atom, default: :neutral, values: @tones)
+  attr(:rest, :global, default: %{})
 
   def stat(assigns) do
     assigns =
@@ -491,7 +500,9 @@ defmodule ObanPowertools.Web.Components.Primitives do
     rest
     |> normalize_rest()
     |> Enum.reject(fn {key, _value} -> key in ["class", "style"] end)
-    |> Enum.reject(fn {key, _value} -> Keyword.get(opts, :suppress_actions?, false) and action_attr?(key) end)
+    |> Enum.reject(fn {key, _value} ->
+      Keyword.get(opts, :suppress_actions?, false) and action_attr?(key)
+    end)
     |> Enum.reject(fn {_key, value} -> is_nil(value) or value == false end)
     |> Map.new()
   end
@@ -528,6 +539,30 @@ defmodule ObanPowertools.Web.Components.Primitives do
 
   defp normalize_closed!(value, _allowed, message) do
     raise ArgumentError, "#{message}: #{inspect(value)}"
+  end
+
+  defp normalize_button_type!(type) do
+    type = require_text!(type, "button type")
+
+    if type in ["button", "submit", "reset"] do
+      type
+    else
+      raise ArgumentError, "unsupported button type: #{inspect(type)}"
+    end
+  end
+
+  defp safe_href!(nil), do: nil
+
+  defp safe_href!(href) do
+    href = require_text!(href, "link href")
+    uri = URI.parse(href)
+
+    cond do
+      String.starts_with?(href, "#") -> href
+      String.starts_with?(href, "/") and not String.starts_with?(href, "//") -> href
+      uri.scheme in ["http", "https", "mailto"] -> href
+      true -> raise ArgumentError, "unsupported link href scheme: #{inspect(uri.scheme)}"
+    end
   end
 
   defp require_text!(value, name) do
@@ -572,7 +607,10 @@ defmodule ObanPowertools.Web.Components.Primitives do
     |> assign(:label, Map.get(spec, :label) || Map.get(spec, "label") || assigns.label)
     |> assign(:tone, Map.get(spec, :tone) || Map.get(spec, "tone") || assigns.tone)
     |> assign(:icon, Map.get(spec, :icon) || Map.get(spec, "icon") || assigns.icon)
-    |> assign(:sr_prefix, Map.get(spec, :sr_prefix) || Map.get(spec, "sr_prefix") || assigns.sr_prefix)
+    |> assign(
+      :sr_prefix,
+      Map.get(spec, :sr_prefix) || Map.get(spec, "sr_prefix") || assigns.sr_prefix
+    )
   end
 
   defp apply_status_spec(assigns), do: assigns

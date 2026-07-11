@@ -113,7 +113,7 @@ export async function assertShowcaseStructure(page: Page): Promise<void> {
 
     if (target.kind === 'scenario') {
       await expect(story).toHaveAttribute('data-obpt-domain', target.domain);
-      await expect(story).toHaveAttribute('data-obpt-persona', renderedPersona(target));
+      await expect(story).toHaveAttribute('data-obpt-persona', target.persona);
       await expect(story).toHaveAttribute('data-obpt-state', /.+/);
     } else {
       await expect(story).toHaveAttribute('data-obpt-component', target.components.join(' '));
@@ -122,8 +122,4 @@ export async function assertShowcaseStructure(page: Page): Promise<void> {
       await expect(story).toHaveAttribute('data-obpt-a11y-target', target.a11y);
     }
   }
-}
-
-function renderedPersona(scenario: ShowcaseScenario): string {
-  return scenario.id === 'forensics-long-url-stacktrace' ? 'repair' : scenario.persona;
 }
