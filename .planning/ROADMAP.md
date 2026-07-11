@@ -192,7 +192,13 @@
   2. Active-route + breadcrumb + skip-to-content + logical focus order; a11y gate green.
   3. The shell has a showcase story across themes/viewports; VRT green.
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+- [ ] 76-01-PLAN.md — RED AppShell render, layout/current-path, catalog, and browser behavior contracts (wave 1)
+- [ ] 76-02-PLAN.md — AppShell component API, closed nine-surface nav model, ThemeShell integration, and LiveAuth current-path assigns (wave 2)
+- [ ] 76-03-PLAN.md — Scoped AppShell CSS, disclosure JS, compiled assets, and static asset guards (wave 3)
+- [ ] 76-04-PLAN.md — Shell story catalog, showcase rendering, schema 4 manifest, and shell target support (wave 4)
+- [ ] 76-05-PLAN.md — Shell browser behavior proof, VRT baselines, a11y evidence, and validation closeout (wave 5)
 
 ### Phase 77: Data-Display & Operator Patterns
 
@@ -309,7 +315,7 @@
 | 73. Visual-Regression & A11y Harness | 5/5 | Complete   | 2026-06-19 |
 | 74. Primitives Library | 5/5 | Complete    | 2026-07-11 |
 | 75. Form Components | 6/6 | Complete    | 2026-07-11 |
-| 76. Navigation & App Shell | 0/TBD | Not started | — |
+| 76. Navigation & App Shell | 0/5 | Not started | — |
 | 77. Data-Display & Operator Patterns | 0/TBD | Not started | — |
 | 78. Component Groups (Meta-Components) | 0/TBD | Not started | — |
 | 79. Page Migration Wave 1 | 0/TBD | Not started | — |
