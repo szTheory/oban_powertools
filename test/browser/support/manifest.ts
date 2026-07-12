@@ -46,18 +46,25 @@ export type ShowcaseFormStory = Omit<ShowcasePrimitiveStory, 'kind'> & {
   kind: 'form';
 };
 
+export type ShowcaseShellStory = Omit<ShowcasePrimitiveStory, 'kind'> & {
+  kind: 'shell';
+  nav_state: 'closed' | 'open';
+};
+
 export type ShowcaseTarget =
   | (ShowcaseScenario & { kind: 'scenario' })
   | ShowcasePrimitiveStory
-  | ShowcaseFormStory;
+  | ShowcaseFormStory
+  | ShowcaseShellStory;
 
 export type ShowcaseManifest = {
-  schema_version: 3;
+  schema_version: 4;
   themes: ShowcaseTheme[];
   viewports: ShowcaseViewport[];
   scenarios: ShowcaseScenario[];
   primitive_stories: ShowcasePrimitiveStory[];
   form_stories: ShowcaseFormStory[];
+  shell_stories: ShowcaseShellStory[];
   targets: ShowcaseTarget[];
 };
 
@@ -75,7 +82,7 @@ export function loadManifest(filePath = manifestPath): ShowcaseManifest {
 function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
   const manifest = assertRecord(value, filePath);
 
-  assertEqual(manifest.schema_version, 3, 'schema_version');
+  assertEqual(manifest.schema_version, 4, 'schema_version');
 
   const themes = assertStringArray(manifest.themes, 'themes') as ShowcaseTheme[];
   assertExactList(themes, [...allowedThemes], 'themes');
@@ -194,13 +201,20 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
 
   assertEqual(formStories.length, 9, 'form_stories.length');
 
+  const shellStories = assertArray(manifest.shell_stories, 'shell_stories').map((story, index) =>
+    validateComponentStory(story, index, 'shell_stories', 'shell') as ShowcaseShellStory
+  );
+
+  assertEqual(shellStories.length, 6, 'shell_stories.length');
+
   const targets = assertArray(manifest.targets, 'targets').map((target, index) =>
     validateTarget(target, index)
   );
   const expectedTargets: ShowcaseTarget[] = [
     ...scenarios.map((scenario) => ({ kind: 'scenario' as const, ...scenario })),
     ...primitiveStories,
-    ...formStories
+    ...formStories,
+    ...shellStories
   ];
 
   assertEqual(targets.length, expectedTargets.length, 'targets.length');
@@ -221,7 +235,9 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
     }
 
     if (
-      (actualTarget.kind === 'primitive' || actualTarget.kind === 'form') &&
+      (actualTarget.kind === 'primitive' ||
+        actualTarget.kind === 'form' ||
+        actualTarget.kind === 'shell') &&
       actualTarget.kind === expectedTarget.kind
     ) {
       assertEqual(actualTarget.component, expectedTarget.component, `targets[${index}].component`);
@@ -238,16 +254,21 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
       );
       assertExactList(actualTarget.variant, expectedTarget.variant, `targets[${index}].variant`);
       assertExactList(actualTarget.state, expectedTarget.state, `targets[${index}].state`);
+
+      if (actualTarget.kind === 'shell' && expectedTarget.kind === 'shell') {
+        assertEqual(actualTarget.nav_state, expectedTarget.nav_state, `targets[${index}].nav_state`);
+      }
     }
   }
 
   return {
-    schema_version: 3,
+    schema_version: 4,
     themes,
     viewports,
     scenarios,
     primitive_stories: primitiveStories,
     form_stories: formStories,
+    shell_stories: shellStories,
     targets
   };
 }
@@ -268,15 +289,14 @@ function validateTarget(value: unknown, index: number): ShowcaseTarget {
     return { kind, id, domain, persona, states, story, snapshot, a11y };
   }
 
-  if (kind === 'primitive' || kind === 'form') {
+  if (kind === 'primitive' || kind === 'form' || kind === 'shell') {
     const component = assertString(actual.component, `targets[${index}].component`);
     const components = assertStringArray(actual.components, `targets[${index}].components`);
     const name = assertString(actual.name, `targets[${index}].name`);
     const description = assertString(actual.description, `targets[${index}].description`);
     const variant = assertStringArray(actual.variant, `targets[${index}].variant`);
     const state = assertStringArray(actual.state, `targets[${index}].state`);
-
-    return {
+    const target = {
       kind,
       id,
       component,
@@ -289,20 +309,29 @@ function validateTarget(value: unknown, index: number): ShowcaseTarget {
       snapshot,
       a11y
     };
+
+    if (kind === 'shell') {
+      return {
+        ...target,
+        nav_state: assertNavState(actual.nav_state, `targets[${index}].nav_state`)
+      };
+    }
+
+    return target;
   }
 
-  throw new Error(`targets[${index}].kind must be "scenario", "primitive", or "form"`);
+  throw new Error(`targets[${index}].kind must be "scenario", "primitive", "form", or "shell"`);
 }
 
 function validateComponentStory(
   value: unknown,
   index: number,
-  collection: 'primitive_stories' | 'form_stories',
-  kind: 'primitive' | 'form'
-): ShowcasePrimitiveStory | ShowcaseFormStory {
+  collection: 'primitive_stories' | 'form_stories' | 'shell_stories',
+  kind: 'primitive' | 'form' | 'shell'
+): ShowcasePrimitiveStory | ShowcaseFormStory | ShowcaseShellStory {
   const actual = assertRecord(value, `${collection}[${index}]`);
   const id = assertString(actual.id, `${collection}[${index}].id`);
-  const prefix = kind === 'primitive' ? 'primitive' : 'form';
+  const prefix = kind;
 
   assertEqual(actual.kind, kind, `${collection}[${index}].kind`);
   if (!new RegExp(`^${prefix}-[a-z0-9]+(?:-[a-z0-9]+)*$`).test(id)) {
@@ -327,7 +356,26 @@ function validateComponentStory(
     throw new Error(`${collection}[${index}] components, variant, and state must not be empty`);
   }
 
-  return { id, kind, component, components, name, description, variant, state, story, snapshot, a11y };
+  const result = { id, kind, component, components, name, description, variant, state, story, snapshot, a11y };
+
+  if (kind === 'shell') {
+    return {
+      ...result,
+      nav_state: assertNavState(actual.nav_state, `${collection}[${index}].nav_state`)
+    };
+  }
+
+  return result;
+}
+
+function assertNavState(value: unknown, label: string): 'closed' | 'open' {
+  const navState = assertString(value, label);
+
+  if (navState !== 'closed' && navState !== 'open') {
+    throw new Error(`${label} must be "closed" or "open"`);
+  }
+
+  return navState;
 }
 
 function assertRecord(value: unknown, label: string): Record<string, unknown> {
@@ -384,4 +432,5 @@ export const viewports = manifest.viewports;
 export const scenarios = manifest.scenarios;
 export const primitiveStories = manifest.primitive_stories;
 export const formStories = manifest.form_stories;
+export const shellStories = manifest.shell_stories;
 export const targets = manifest.targets;

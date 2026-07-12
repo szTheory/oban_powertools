@@ -18,6 +18,7 @@ declare global {
 }
 
 export const sectionIds = [
+  'app-shell',
   'tokens',
   'primitives',
   'forms',
@@ -47,7 +48,9 @@ export async function prepareShowcase(
   }, opts.theme);
 
   if (!themeApplied) {
-    await page.locator(`[data-obpt-theme-choice="${opts.theme}"]`).click();
+    await page
+      .locator(`[data-obpt-showcase] [data-obpt-theme-controls] [data-obpt-theme-choice="${opts.theme}"]`)
+      .click();
   }
 
   await expect(root).toHaveAttribute('data-obpt-theme', opts.theme);
@@ -93,7 +96,9 @@ export async function assertShowcaseStructure(page: Page): Promise<void> {
   expect(scriptSrc).toMatch(/\/ops\/jobs\/_assets\/oban_powertools-[a-f0-9]{32}\.js$/);
 
   for (const theme of themes) {
-    await expect(page.locator(`[data-obpt-theme-choice="${theme}"]`)).toHaveCount(1);
+    await expect(
+      page.locator(`[data-obpt-showcase] [data-obpt-theme-controls] [data-obpt-theme-choice="${theme}"]`)
+    ).toHaveCount(1);
   }
 
   for (const viewport of viewports) {
@@ -121,11 +126,18 @@ export async function assertShowcaseStructure(page: Page): Promise<void> {
       await expect(story).toHaveAttribute('data-obpt-variant', target.variant.join(' '));
       await expect(story).toHaveAttribute('data-obpt-state', target.state.join(' '));
       await expect(story).toHaveAttribute('data-obpt-a11y-target', target.a11y);
-    } else {
+    } else if (target.kind === 'form') {
       await expect(story).toHaveAttribute('data-obpt-form-story', target.id);
       await expect(story).toHaveAttribute('data-obpt-component', target.components.join(' '));
       await expect(story).toHaveAttribute('data-obpt-variant', target.variant.join(' '));
       await expect(story).toHaveAttribute('data-obpt-state', target.state.join(' '));
+      await expect(story).toHaveAttribute('data-obpt-a11y-target', target.a11y);
+    } else {
+      await expect(story).toHaveAttribute('data-obpt-shell-story', target.id);
+      await expect(story).toHaveAttribute('data-obpt-component', target.components.join(' '));
+      await expect(story).toHaveAttribute('data-obpt-variant', target.variant.join(' '));
+      await expect(story).toHaveAttribute('data-obpt-state', target.state.join(' '));
+      await expect(story).toHaveAttribute('data-obpt-nav-state', target.nav_state);
       await expect(story).toHaveAttribute('data-obpt-a11y-target', target.a11y);
     }
   }
