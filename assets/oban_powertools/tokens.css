@@ -868,7 +868,7 @@
 }
 
 @media (max-width: 48rem) {
-  .obpt-root .obpt-app-shell[data-obpt-nav-state="closed"] .obpt-primary-nav {
+  .obpt-root .obpt-app-shell[data-obpt-nav-state="closed"] > .obpt-app-shell__header > .obpt-primary-nav {
     display: none;
   }
 }
@@ -1673,6 +1673,10 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
   gap: var(--obpt-space-3);
+}
+
+.obpt-root [data-obpt-section="app-shell"] .obpt-showcase-story-grid {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .obpt-root .obpt-showcase-token,

@@ -83,7 +83,8 @@ defmodule ObanPowertools.Web.AssetsTest do
           ".obpt-root .obpt-app-shell__nav-toggle",
           ".obpt-root .obpt-primary-nav__link[aria-current=\"page\"]",
           ".obpt-root .obpt-theme-choice[aria-pressed=\"true\"]",
-          ".obpt-root .obpt-app-shell[data-obpt-nav-state=\"closed\"] .obpt-primary-nav",
+          ".obpt-root .obpt-app-shell[data-obpt-nav-state=\"closed\"] > .obpt-app-shell__header > .obpt-primary-nav",
+          ".obpt-root [data-obpt-section=\"app-shell\"] .obpt-showcase-story-grid",
           ".obpt-root .obpt-breadcrumb [aria-current=\"page\"]"
         ] do
       assert css =~ selector, "expected compiled CSS to include #{selector}"

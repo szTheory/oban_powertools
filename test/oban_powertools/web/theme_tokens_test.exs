@@ -251,6 +251,11 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
 
     assert css =~ ~s([data-obpt-nav-state="closed"])
     assert css =~ ~s([data-obpt-nav-state="open"])
+
+    assert css =~
+             ~s(.obpt-app-shell[data-obpt-nav-state="closed"] > .obpt-app-shell__header > .obpt-primary-nav)
+
+    assert css =~ ~s([data-obpt-section="app-shell"] .obpt-showcase-story-grid)
     assert css =~ "@media (max-width: 48rem)"
     assert css =~ "@media (min-width: 48rem)"
 
