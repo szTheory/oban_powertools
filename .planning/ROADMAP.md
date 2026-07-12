@@ -199,7 +199,7 @@
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 76-02-PLAN.md — AppShell component API, closed nine-surface nav model, ThemeShell integration, and LiveAuth current-path assigns (wave 2)
+- [x] 76-02-PLAN.md — AppShell component API, closed nine-surface nav model, ThemeShell integration, and LiveAuth current-path assigns (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -328,7 +328,7 @@
 | 73. Visual-Regression & A11y Harness | 5/5 | Complete   | 2026-06-19 |
 | 74. Primitives Library | 5/5 | Complete    | 2026-07-11 |
 | 75. Form Components | 6/6 | Complete    | 2026-07-11 |
-| 76. Navigation & App Shell | 1/5 | In Progress|  |
+| 76. Navigation & App Shell | 2/5 | In Progress|  |
 | 77. Data-Display & Operator Patterns | 0/TBD | Not started | — |
 | 78. Component Groups (Meta-Components) | 0/TBD | Not started | — |
 | 79. Page Migration Wave 1 | 0/TBD | Not started | — |

@@ -5,15 +5,14 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 76
 current_phase_name: navigation-app-shell
 status: executing
-stopped_at: Completed 76-01-PLAN.md
-last_updated: "2026-07-12T14:13:03.245Z"
+stopped_at: Completed 76-02-PLAN.md
+last_updated: "2026-07-12T14:33:13.398Z"
 last_activity: 2026-07-12
-last_activity_desc: Phase 76 execution started
 progress:
   total_phases: 15
   completed_phases: 6
   total_plans: 32
-  completed_plans: 28
+  completed_plans: 29
   percent: 40
 ---
 
@@ -28,9 +27,9 @@ progress:
 ## Current Position
 
 Phase: 76 (navigation-app-shell) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
-Last activity: 2026-07-12 -- Phase 76 execution started
+Last activity: 2026-07-12
 
 ## Performance Metrics
 
@@ -61,6 +60,7 @@ Last activity: 2026-07-12 -- Phase 76 execution started
 | Phase 75 P05 | 35 min | 2 tasks | 110 files |
 | Phase 75 P06 | 20 min | 3 tasks | 63 files |
 | Phase 76 P01 | 12min | 3 tasks | 5 files |
+| Phase 76 P02 | 8m11s | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -88,8 +88,8 @@ Last activity: 2026-07-12 -- Phase 76 execution started
 
 ## Session Continuity
 
-**Last session:** 2026-07-12T14:13:03.239Z
-**Stopped at:** Completed 76-01-PLAN.md
+**Last session:** 2026-07-12T14:32:33.200Z
+**Stopped at:** Completed 76-02-PLAN.md
 **Resume file:** None
 
 - **Last Action:** Created, revised, and approved `76-UI-SPEC.md`; UI checker passed all 6 dimensions with no recommendations.
@@ -106,6 +106,9 @@ Last activity: 2026-07-12 -- Phase 76 execution started
 - [Phase 75]: Scoped form baselines were refreshed for intentional form changes; scenario baselines remain unchanged until their owning phase.
 - [Phase 76]: Plan 76-01 remains RED-only: failures are valid only when they point at missing Phase 76 shell, layout, catalog, or manifest implementation artifacts. — Preserves the plan's test-first purpose without adding production shell behavior early.
 - [Phase 76]: The Playwright shell behavior file includes a module-load guard so the RED phase proves the generated manifest must export shellStories before browser evidence can run. — Playwright list mode otherwise passed without touching the missing export.
+- [Phase 76]: Primary nav remains a closed nine-surface native model and excludes the optional Oban Web bridge. — Preserves the UI-SPEC native route boundary and avoids adding the optional bridge to primary navigation.
+- [Phase 76]: Current route context is assigned centrally through the LiveAuth handle_params hook and consumed by ThemeShell. — Keeps active nav and breadcrumbs server-derived without page-owned shell wiring.
+- [Phase 76]: ThemeShell keeps the isolated .obpt-root asset boundary while AppShell owns the inner shell, nav, breadcrumb, and main target. — Maintains library-owned theme isolation and avoids global host theme mutation.
 
 ### Blockers
 
