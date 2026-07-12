@@ -17,7 +17,8 @@ tech-stack:
   added: []
   patterns: [normalized-only display boundary, payload-eliding redaction, bounded internal code overflow]
 key-files:
-  created: [.planning/phases/77-data-display-operator-patterns/77-05-SUMMARY.md]
+  created:
+    - .planning/phases/77-data-display-operator-patterns/77-05-SUMMARY.md
   modified:
     - lib/oban_powertools/web/components/data_display.ex
     - assets/oban_powertools/tokens.css
@@ -96,9 +97,9 @@ None.
 
 ## Verification
 
-- Combined component, token, asset, JobsLive, and WorkflowsLive regression run — 89 tests, 0 failures.
-- Component confidentiality matrix alone — 22 tests, 0 failures.
-- Existing JobsLive and WorkflowsLive display-policy regressions — 50 tests, 0 failures.
+- Combined component, token, asset, JobsLive, and WorkflowsLive regression run — all 89 tests passed.
+- Component confidentiality matrix alone — all 22 tests passed.
+- Existing JobsLive and WorkflowsLive display-policy regressions — all 50 tests passed.
 - Formatter checks for all changed Elixir files — passed.
 - mix compile --warnings-as-errors — passed.
 - Repeated deterministic asset builds — passed; source and packaged CSS compare byte-for-byte.
@@ -113,7 +114,7 @@ None - no external service configuration required.
 ## Next Phase Readiness
 
 - Ready for 77-06 to compose the completed data-display surface into the dev/test-only story catalog and schema 5 showcase pipeline.
-- Wave 6 story-catalog RED failures and isolated host-contract compilation remain outside this plan's focused verification boundary.
+- Wave 6 story-catalog RED cases and isolated host-contract compilation remain outside this plan's focused verification boundary.
 
 ## Self-Check: PASSED
 
