@@ -105,7 +105,7 @@ Phoenix LiveView AppShell with closed native navigation, route-aware breadcrumbs
 **3. [Rule 3 - Blocking] Added display-policy fixture for layout route coverage**
 - **Found during:** Task 2
 - **Issue:** The layout contract mounted `JobsLive`, which requires a configured display policy. Existing focused JobsLive tests set that fixture, but the new shell layout contract did not.
-- **Fix:** Added a local test display policy and setup/restore logic to the layout test so native route mounting exercises the shell instead of failing during page setup.
+- **Fix:** Added a local test display policy and setup/restore logic to the layout test so native route mounting exercises the shell instead of stopping during page setup.
 - **Files modified:** `test/oban_powertools/web/live/app_shell_layout_test.exs`
 - **Commit:** `fbda302`
 
