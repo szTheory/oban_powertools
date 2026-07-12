@@ -203,7 +203,7 @@
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 76-03-PLAN.md — Scoped AppShell CSS, disclosure JS, compiled assets, and static asset guards (wave 3)
+- [x] 76-03-PLAN.md — Scoped AppShell CSS, disclosure JS, compiled assets, and static asset guards (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -328,7 +328,7 @@
 | 73. Visual-Regression & A11y Harness | 5/5 | Complete   | 2026-06-19 |
 | 74. Primitives Library | 5/5 | Complete    | 2026-07-11 |
 | 75. Form Components | 6/6 | Complete    | 2026-07-11 |
-| 76. Navigation & App Shell | 2/5 | In Progress|  |
+| 76. Navigation & App Shell | 3/5 | In Progress|  |
 | 77. Data-Display & Operator Patterns | 0/TBD | Not started | — |
 | 78. Component Groups (Meta-Components) | 0/TBD | Not started | — |
 | 79. Page Migration Wave 1 | 0/TBD | Not started | — |
