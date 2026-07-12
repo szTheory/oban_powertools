@@ -1,12 +1,27 @@
+defmodule ObanPowertools.Web.Live.AppShellLayoutTestDisplayPolicy do
+  def display(_kind, _value, _context), do: nil
+end
+
 defmodule ObanPowertools.Web.Live.AppShellLayoutTest do
   use ObanPowertools.LiveCase, async: false
 
   alias ObanPowertools.Workflow
   alias ObanPowertools.WorkflowFixtures
+  alias ObanPowertools.Web.Live.AppShellLayoutTestDisplayPolicy
 
   @nav_labels ~w[Overview Jobs Batches Workflows Cron Limiters Lifeline Audit Forensics]
 
   setup do
+    original_display_policy = Application.get_env(:oban_powertools, :display_policy)
+    Application.put_env(:oban_powertools, :display_policy, AppShellLayoutTestDisplayPolicy)
+
+    on_exit(fn ->
+      case original_display_policy do
+        nil -> Application.delete_env(:oban_powertools, :display_policy)
+        policy -> Application.put_env(:oban_powertools, :display_policy, policy)
+      end
+    end)
+
     {:ok, workflow} =
       WorkflowFixtures.workflow_fixture(name: "app-shell-layout-contract")
       |> Workflow.insert(TestRepo)

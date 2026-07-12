@@ -4,10 +4,17 @@ defmodule ObanPowertools.Web.ThemeShell do
   use Phoenix.Component
 
   alias ObanPowertools.Web.Assets
+  alias ObanPowertools.Web.Components.AppShell
 
   attr(:inner_content, :any, required: true)
 
   def live(assigns) do
+    assigns =
+      assigns
+      |> assign_new(:current_path, fn -> nil end)
+      |> assign_new(:current_uri, fn -> nil end)
+      |> assign_new(:current_actor, fn -> nil end)
+
     ~H"""
     <link phx-track-static rel="stylesheet" href={Assets.path(:css)} />
     <div
@@ -18,9 +25,13 @@ defmodule ObanPowertools.Web.ThemeShell do
       data-obpt-motion="safe"
     >
       <script type="text/javascript" src={Assets.path(:js)}></script>
-      <main class="obpt-shell" data-obpt-shell>
+      <AppShell.app_shell
+        current_path={@current_path}
+        current_uri={@current_uri}
+        current_actor={@current_actor}
+      >
         <%= @inner_content %>
-      </main>
+      </AppShell.app_shell>
     </div>
     """
   end

@@ -74,7 +74,13 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     def on_mount(:default, _params, session, socket) do
       actor = Auth.current_actor(session)
-      {:cont, assign(socket, :current_actor, actor)}
+
+      socket =
+        socket
+        |> assign(:current_actor, actor)
+        |> attach_hook(:oban_powertools_current_path, :handle_params, &assign_current_path/3)
+
+      {:cont, socket}
     end
 
     def authorize_page(socket, action, resource) do
@@ -128,6 +134,25 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     def page_read_only_banner(surface) do
       Map.fetch!(@page_read_only_banners, surface)
+    end
+
+    defp assign_current_path(_params, uri, socket) do
+      {:cont,
+       socket
+       |> assign(:current_uri, uri)
+       |> assign(:current_path, normalize_current_path(uri))}
+    end
+
+    defp normalize_current_path(uri) do
+      uri
+      |> URI.parse()
+      |> Map.get(:path)
+      |> case do
+        nil -> "/ops/jobs"
+        "" -> "/ops/jobs"
+        "/" -> "/ops/jobs"
+        path -> String.trim_trailing(path, "/")
+      end
     end
   end
 end
