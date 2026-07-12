@@ -2,15 +2,18 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Identity Milestone Audit & Idempotency Proof
+current_phase: 77
+current_phase_name: data-display-operator-patterns
 status: executing
-stopped_at: Completed 77-01-PLAN.md
-last_updated: "2026-07-12T20:54:22.768Z"
+stopped_at: Completed 77-02-PLAN.md
+last_updated: "2026-07-12T22:20:21.468Z"
 last_activity: 2026-07-12
+last_activity_desc: Phase 77 execution started
 progress:
   total_phases: 15
   completed_phases: 7
-  total_plans: 32
-  completed_plans: 32
+  total_plans: 39
+  completed_plans: 34
   percent: 47
 ---
 
@@ -27,7 +30,7 @@ progress:
 Phase: 77 (data-display-operator-patterns) — EXECUTING
 Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-07-12
+Last activity: 2026-07-12 — Phase 77 execution started
 
 ## Performance Metrics
 
@@ -63,6 +66,7 @@ Last activity: 2026-07-12
 | Phase 76 P04 | 10 min | 2 tasks | 10 files |
 | Phase 76 P05 | 25m23s | 2 tasks | 79 files |
 | Phase 77 P01 | 8 min | 4 tasks | 4 files |
+| Phase 77 P02 | 7 min | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -90,8 +94,8 @@ Last activity: 2026-07-12
 
 ## Session Continuity
 
-**Last session:** 2026-07-12T20:54:22.763Z
-**Stopped at:** Completed 77-01-PLAN.md
+**Last session:** 2026-07-12T22:19:59.816Z
+**Stopped at:** Completed 77-02-PLAN.md
 **Resume file:** None
 
 - **Last Action:** Verified Phase 76, recorded `76-VERIFICATION.md`, and transitioned planning state to Phase 77.
@@ -119,6 +123,9 @@ Last activity: 2026-07-12
 - [Phase 76]: Manifest schema 4 appends generated shell_stories after form_stories and keeps shell ids Elixir-owned.
 - [Phase 76]: Phase 76 shell VRT baselines use the Docker-backed Playwright runner as canonical evidence because npm run vrt:update writes baselines through scripts/playwright-docker.sh.
 - [Phase 76]: Phase 76 shell structure proof uses target-kind-inclusive test titles so focused --grep shell commands select existing structure coverage.
+- [Phase 77]: Keep status lookup string-keyed while using only compile-time atom literals for all_specs/0 audit records. — Accepts external binary states without atom growth while retaining ergonomic deterministic audit records.
+- [Phase 77]: Require a closed status domain and render unknown states as deterministic neutral humanized values within that domain. — Colliding state names have domain-specific meaning, while known-domain unknowns still need truthful stable presentation.
+- [Phase 77]: Filter action, visual, title, and semantic override attributes before delegating StatusPill presentation to Primitives. — Keeps the wrapper non-interactive and prevents caller attributes from hiding or misrepresenting status semantics.
 
 ### Blockers
 

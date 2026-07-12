@@ -224,14 +224,14 @@
   2. One StatusPill maps every Oban/Powertools state; tables degrade to stacked/card at 320px; explicit empty/loading/unavailable/permission-denied everywhere; long IDs/module names/stacktraces handled.
   3. Redaction is rendered through one shared component; stories + VRT + a11y green over stress fixtures (huge args, thousands of rows).
 
-**Plans**: 0/7 plans executed
+**Plans**: 2/7 plans executed
 **Wave 1**
 
 - [x] 77-01-PLAN.md
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 77-02-PLAN.md
+- [x] 77-02-PLAN.md
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -356,7 +356,7 @@
 | 74. Primitives Library | 5/5 | Complete    | 2026-07-11 |
 | 75. Form Components | 6/6 | Complete    | 2026-07-11 |
 | 76. Navigation & App Shell | 5/5 | Complete    | 2026-07-12 |
-| 77. Data-Display & Operator Patterns | 1/7 | In Progress|  |
+| 77. Data-Display & Operator Patterns | 2/7 | In Progress|  |
 | 78. Component Groups (Meta-Components) | 0/TBD | Not started | — |
 | 79. Page Migration Wave 1 | 0/TBD | Not started | — |
 | 80. Page Migration Wave 2 | 0/TBD | Not started | — |
