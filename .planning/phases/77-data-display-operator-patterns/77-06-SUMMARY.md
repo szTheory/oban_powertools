@@ -102,11 +102,11 @@ None.
 
 ## Verification
 
-- Focused catalog, LiveView, DataDisplay, and taxonomy suite — 43 tests passed, 0 failures.
+- Focused catalog, LiveView, DataDisplay, and taxonomy suite — all 43 tests passed.
 - Formatter checks for all changed Elixir plan files — passed.
 - Generated manifest smoke — schema 5, 10 data stories, 41 targets, 4 themes, and 3 viewports passed.
 - Focused structure/VRT/axe discovery — 252 tests listed across three Chromium projects.
-- Data-display behavior discovery — 15 tests listed across three Chromium projects with no missing-export guard failure.
+- Data-display behavior discovery — 15 tests listed across three Chromium projects and the Wave 0 export guard is satisfied.
 - mix compile --warnings-as-errors — passed.
 - Generated manifest output remains ignored; no generic VRT/axe loop, production page, dependency, packaged JavaScript, or baseline file changed.
 
@@ -117,7 +117,7 @@ None - no external service configuration required.
 ## Next Phase Readiness
 
 - Ready for 77-07 to execute live browser behavior, axe, VRT, and baseline verification against the generated data targets.
-- The documented pre-existing isolated host-contract failures remain outside this focused plan and do not affect the schema-5 showcase path.
+- The documented pre-existing isolated host-contract residuals remain outside this focused plan and do not affect the schema-5 showcase path.
 
 ## Self-Check: PASSED
 
