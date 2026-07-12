@@ -123,6 +123,17 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     .obpt-metric-card
     .obpt-metric-card__status
     .obpt-metric-card__action
+    .obpt-code-block
+    .obpt-code-block__region
+    .obpt-code-block__code
+    .obpt-args-viewer
+    .obpt-args-viewer__context
+    .obpt-args-viewer__summary
+    .obpt-args-viewer__status
+    .obpt-args-viewer__unavailable
+    .obpt-redacted-value
+    .obpt-redacted-value__icon
+    .obpt-redacted-value__copy
     .obpt-empty-state
     .obpt-empty-state__heading
     .obpt-empty-state__body
@@ -416,6 +427,58 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
       refute body =~ ~r/overflow-x\s*:\s*(auto|scroll)/,
              "progress selector #{selector} must not introduce horizontal scrolling"
     end
+  end
+
+  test "code args and redaction are bounded, token-backed, and use the sole data overflow region" do
+    css = read_contract_file!(@tokens_path)
+    data_blocks = data_blocks(css)
+
+    assert css =~ ".obpt-root .obpt-code-block"
+    assert css =~ ".obpt-root .obpt-code-block__region"
+    assert css =~ ".obpt-root .obpt-code-block__code"
+    assert css =~ ".obpt-root .obpt-args-viewer"
+    assert css =~ ".obpt-root .obpt-redacted-value"
+    assert css =~ ".obpt-root .obpt-code-block__region:focus-visible"
+    assert css =~ "font-family: var(--obpt-font-mono)"
+    assert css =~ "max-width: 100%"
+    assert css =~ "max-block-size: calc(var(--obpt-space-7)"
+    assert css =~ "overflow: auto"
+    assert css =~ "outline: calc(var(--obpt-space-1) / 2) solid var(--obpt-color-focus)"
+
+    overflow_selectors =
+      for {selector, body} <- data_blocks,
+          body =~ ~r/overflow(?:-x)?\s*:\s*(auto|scroll)/,
+          do: selector
+
+    assert overflow_selectors != []
+
+    assert Enum.all?(overflow_selectors, fn selector ->
+             String.contains?(selector, ".obpt-code-block__region")
+           end),
+           "only the bounded code region may scroll internally, got #{inspect(overflow_selectors)}"
+
+    redaction_blocks = blocks_for(css, ".obpt-redacted-value")
+    assert redaction_blocks != []
+
+    assert Enum.any?(redaction_blocks, fn {_selector, body} ->
+             body =~ "var(--obpt-color-warning-border)" and
+               body =~ "var(--obpt-color-warning-bg)" and
+               body =~ "var(--obpt-color-warning-fg)"
+           end)
+
+    assert Enum.any?(redaction_blocks, fn {selector, body} ->
+             String.contains?(selector, ".obpt-redacted-value__icon") and
+               body =~ "border:" and body =~ "border-radius:"
+           end)
+
+    for {selector, body} <- redaction_blocks do
+      refute body =~ ~r/(^|;)\s*content\s*:/,
+             "redaction selector #{selector} must not generate hidden content"
+    end
+
+    assert css =~ "@media (max-width: 24rem)"
+    assert css =~ ~s(.obpt-root[data-obpt-motion="reduce"] .obpt-redacted-value)
+    assert css =~ "@media (prefers-reduced-motion: reduce)"
   end
 
   test "theme selector blocks only remap semantic color/focus variables" do
