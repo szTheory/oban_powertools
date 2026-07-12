@@ -16,6 +16,10 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   @data_states ~w[ready loading empty error unavailable permission_denied]a
   @sort_directions ~w[asc desc none]a
   @machine_kinds ~w[id module url literal]a
+  @code_languages ~w[json text elixir stacktrace]
+  @args_kinds ~w[
+    args meta callback_payload callback_error job_error recorded_output workflow_result stacktrace
+  ]a
   @tones ~w[neutral info success warning danger]a
   @urgencies ~w[polite assertive]a
   @redaction_reasons ~w[enqueue policy fallback]a
@@ -363,16 +367,19 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   attr(:id, :string, required: true)
   attr(:label, :string, required: true)
   attr(:content, :string, required: true)
-  attr(:language, :string, default: "text")
+  attr(:language, :string, default: "text", values: @code_languages)
   attr(:rest, :global, default: %{})
 
   def code_block(assigns) do
-    assigns = assign(assigns, :rest, visual_safe_rest(assigns.rest, suppress_actions?: true))
+    assigns =
+      assigns
+      |> assign(:label, require_text!(assigns.label, "code block label"))
+      |> assign(:rest, visual_safe_rest(assigns.rest, suppress_actions?: true))
 
     ~H"""
     <figure id={@id} class="obpt-code-block" data-obpt-language={@language} {@rest}>
       <figcaption>{@label}</figcaption>
-      <pre tabindex="0"><code>{@content}</code></pre>
+      <pre class="obpt-code-block__region" tabindex="0"><code class="obpt-code-block__code">{@content}</code></pre>
     </figure>
     """
   end
@@ -380,13 +387,32 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   attr(:id, :string, required: true)
   attr(:label, :string, required: true)
   attr(:display, :any, required: true)
-  attr(:kind, :atom, default: :args)
+  attr(:kind, :atom, default: :args, values: @args_kinds)
 
   def args_viewer(assigns) do
-    assigns = assign(assigns, :rendered_display, render_normalized_display(assigns.display))
+    assigns =
+      assigns
+      |> assign(:label, require_text!(assigns.label, "args viewer label"))
+      |> assign(:rendered_display, render_normalized_display(assigns.display))
 
     ~H"""
-    <section id={@id} class="obpt-args-viewer" data-obpt-kind={@kind}>
+    <section
+      id={@id}
+      class="obpt-args-viewer"
+      data-obpt-kind={@kind}
+      data-obpt-display-state={@rendered_display.state}
+    >
+      <div
+        :if={@rendered_display.summary || @rendered_display.status}
+        class="obpt-args-viewer__context"
+      >
+        <p :if={@rendered_display.summary} class="obpt-args-viewer__summary">
+          {@rendered_display.summary}
+        </p>
+        <span :if={@rendered_display.status} class="obpt-args-viewer__status">
+          {@rendered_display.status}
+        </span>
+      </div>
       <.code_block
         :if={@rendered_display.kind == :code}
         id={"#{@id}-code"}
@@ -400,7 +426,13 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
         reason={@rendered_display.reason}
         message={@rendered_display.message}
       />
-      <span :if={@rendered_display.sibling}>{@rendered_display.sibling}</span>
+      <div
+        :if={@rendered_display.kind == :unavailable}
+        class="obpt-args-viewer__unavailable"
+        role="status"
+      >
+        Data unavailable
+      </div>
     </section>
     """
   end
@@ -414,15 +446,15 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
       case assigns.reason do
         :enqueue -> "Redacted at enqueue"
         :policy -> "Hidden by display policy"
-        :fallback -> assigns.message || "[redacted]"
+        :fallback -> fallback_copy(assigns.message)
       end
 
     assigns = assign(assigns, :copy, copy)
 
     ~H"""
     <span id={@id} class="obpt-redacted-value" data-obpt-redaction-reason={@reason}>
-      <span aria-hidden="true">!</span>
-      <span>{@copy}</span>
+      <span class="obpt-redacted-value__icon" aria-hidden="true">!</span>
+      <span class="obpt-redacted-value__copy">{@copy}</span>
       <span class="obpt-sr-only">Sensitive value hidden</span>
     </span>
     """
@@ -519,6 +551,7 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
         "aria-labelledby",
         "aria-live",
         "class",
+        "data-obpt-language",
         "data-obpt-icon",
         "data-obpt-size",
         "data-obpt-tone",
@@ -622,43 +655,101 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   defp positive_max(_max), do: 100
   defp progress_percent(value, max), do: round(value / max * 100)
 
-  defp render_normalized_display({:raw_json, json}),
-    do: display_view(:code, %{content: json, language: "json"})
+  defp render_normalized_display({:raw_json, json}) when is_binary(json),
+    do: display_view(:code, %{content: json, language: "json", state: :ready})
 
-  defp render_normalized_display({:string, text}),
-    do: display_view(:code, %{content: text, language: "text"})
+  defp render_normalized_display({:string, text}) when is_binary(text),
+    do: display_view(:code, %{content: text, language: "text", state: :ready})
 
-  defp render_normalized_display({:fallback, message}),
-    do: display_view(:redacted, %{reason: :fallback, message: message})
+  defp render_normalized_display({:fallback, _message}),
+    do: display_view(:redacted, %{reason: :fallback, message: "[redacted]", state: :redacted})
 
   defp render_normalized_display(display) when is_map(display) do
-    cond do
-      display_value(display, :available?) == false ->
-        display_view(:redacted, %{reason: :policy})
+    available? = display_value!(display, :available?)
+    redacted? = display_value!(display, :redacted?)
+    summary = display_value(display, :summary)
+    status = display_value!(display, :status)
 
-      display_value(display, :redacted?) == true ->
+    case {available?, redacted?} do
+      {false, _redacted?} ->
+        display_view(:unavailable, %{
+          state: :unavailable,
+          summary: summary,
+          status: status
+        })
+
+      {true, true} ->
         display_view(:redacted, %{
           reason: :policy,
-          sibling: display_value(display, :sibling)
+          state: :redacted,
+          summary: summary,
+          status: status
         })
 
-      true ->
+      {true, false} ->
         display_view(:code, %{
-          content: inspect(display, pretty: true, limit: :infinity),
-          language: "elixir"
+          content: normalized_payload(display_value!(display, :payload)),
+          language: "text",
+          state: :ready,
+          summary: summary,
+          status: status
         })
+
+      _other ->
+        raise ArgumentError, "normalized display flags must be booleans"
     end
+  end
+
+  defp render_normalized_display(_display) do
+    raise ArgumentError, "unsupported normalized display shape"
   end
 
   defp display_view(kind, attrs) do
     Map.merge(
-      %{kind: kind, content: nil, language: nil, message: nil, reason: nil, sibling: nil},
+      %{
+        kind: kind,
+        content: nil,
+        language: nil,
+        message: nil,
+        reason: nil,
+        state: :ready,
+        status: nil,
+        summary: nil
+      },
       attrs
     )
   end
 
-  defp display_value(display, key),
-    do: Map.get(display, key) || Map.get(display, Atom.to_string(key))
+  defp display_value(display, key) do
+    case fetch_display_value(display, key) do
+      {:ok, value} -> value
+      :error -> nil
+    end
+  end
+
+  defp display_value!(display, key) do
+    case fetch_display_value(display, key) do
+      {:ok, value} -> value
+      :error -> raise ArgumentError, "normalized display is missing #{key}"
+    end
+  end
+
+  defp fetch_display_value(display, key) do
+    case Map.fetch(display, key) do
+      {:ok, value} -> {:ok, value}
+      :error -> Map.fetch(display, Atom.to_string(key))
+    end
+  end
+
+  defp normalized_payload(payload) when is_binary(payload), do: payload
+
+  defp normalized_payload(payload) when is_map(payload) or is_list(payload),
+    do: inspect(payload, pretty: false, limit: :infinity, printable_limit: :infinity)
+
+  defp normalized_payload(payload), do: to_string(payload)
+
+  defp fallback_copy("[redacted]"), do: "[redacted]"
+  defp fallback_copy(_message), do: "[redacted]"
 
   defp flash_items(flash) do
     for {kind, message} <- flash, message not in [nil, ""] do
