@@ -82,7 +82,7 @@ Closed Phase 76 with targeted shell browser behavior proof, 72 shell-only VRT ba
 | `mix test test/oban_powertools/web/components/app_shell_test.exs test/oban_powertools/web/live/app_shell_layout_test.exs test/oban_powertools/shell_story_catalog_test.exs test/oban_powertools/web/live/showcase_live_test.exs test/oban_powertools/web/theme_tokens_test.exs test/oban_powertools/web/assets_test.exs --seed 0` | Passed: 42 tests |
 | `mix compile --warnings-as-errors` | Passed |
 
-The exact planned host VRT compare command for `showcase.vrt.spec.ts` failed with 24 host screenshot diffs because the repository writes VRT baselines with Docker-backed Playwright while the macOS host browser renders different element heights. The canonical Docker compare, using the same runner as baseline generation, passed and is recorded in `76-VALIDATION.md`.
+The exact planned host VRT compare command for `showcase.vrt.spec.ts` returned 24 host screenshot diffs because the repository writes VRT baselines with Docker-backed Playwright while the macOS host browser renders different element heights. The canonical Docker compare, using the same runner as baseline generation, passed and is recorded in `76-VALIDATION.md`.
 
 ## Deviations from Plan
 
