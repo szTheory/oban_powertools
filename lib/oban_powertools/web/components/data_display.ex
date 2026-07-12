@@ -37,8 +37,8 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
 
   attr(:id, :string, required: true)
   attr(:caption, :string, required: true)
-  attr(:rows, :list, default: [])
-  attr(:row_id, :any, default: nil)
+  attr(:rows, :list, required: true)
+  attr(:row_id, :any, required: true)
   attr(:state, :atom, default: :ready, values: @data_states)
   attr(:resource, :string, default: nil)
   attr(:row_count, :integer, default: nil)
@@ -71,34 +71,58 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
     ~H"""
     <section id={@id} class="obpt-data-table" data-obpt-data-state={@data_state} aria-busy={@aria_busy} {@rest}>
       <div :if={@toolbar != []} class="obpt-data-table__toolbar">{render_slot(@toolbar)}</div>
-      <table>
+      <table class="obpt-data-table__table">
         <caption>
           <span>{@caption}</span>
           <span class="obpt-data-table__summary">{@row_count_text}</span>
           <span :if={@pagination_summary} class="obpt-data-table__summary">{@pagination_summary}</span>
         </caption>
         <thead>
-          <tr>
-            <th :if={@selection != []} scope="col">Selection</th>
-            <th :for={col <- @col} scope="col" aria-sort={aria_sort(col, @sort_key, @sort_direction)}>
+          <tr class="obpt-data-table__header-row">
+            <th :if={@selection != []} scope="col" class="obpt-data-table__header">Selection</th>
+            <th
+              :for={col <- @col}
+              scope="col"
+              class="obpt-data-table__header"
+              aria-sort={aria_sort(col, @sort_key, @sort_direction)}
+            >
               <button :if={sortable?(col, @sort_event)} type="button" phx-click={@sort_event} phx-value-sort-key={col.sort_key}>
                 {col.label}
               </button>
               <span :if={!sortable?(col, @sort_event)}>{col.label}</span>
             </th>
-            <th :if={@action != []} scope="col">Actions</th>
+            <th :if={@action != []} scope="col" class="obpt-data-table__header">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr :if={@state != :ready}>
-            <td colspan={state_colspan(assigns)}>
+          <tr :if={@state != :ready} class="obpt-data-table__state-row">
+            <td class="obpt-data-table__state-cell" colspan={state_colspan(assigns)}>
               <.state_message state={@state} resource={@state_resource}>{render_slot(@state_detail)}</.state_message>
             </td>
           </tr>
-          <tr :for={row <- @rows} id={row_dom_id(@id, row, @row_id)}>
-            <td :if={@selection != []} data-obpt-mobile-label="Selection">{render_slot(@selection, row)}</td>
-            <td :for={col <- @col} data-obpt-mobile-label={col.label}>{render_slot(col, row)}</td>
-            <td :if={@action != []} data-obpt-mobile-label="Actions">{render_slot(@action, row)}</td>
+          <tr
+            :for={row <- @rows}
+            :if={@state == :ready}
+            id={row_dom_id(@id, row_key(row, @row_id))}
+            class="obpt-data-table__row"
+          >
+            <td :if={@selection != []} class="obpt-data-table__cell" data-obpt-mobile-label="Selection">
+              <span class="obpt-data-table__mobile-label" aria-hidden="true">Selection</span>
+              <div class="obpt-data-table__cell-value">{render_slot(@selection, row)}</div>
+            </td>
+            <td
+              :for={col <- @col}
+              class="obpt-data-table__cell"
+              data-obpt-mobile-label={col.label}
+              data-obpt-value-kind={Map.get(col, :value_kind)}
+            >
+              <span class="obpt-data-table__mobile-label" aria-hidden="true">{col.label}</span>
+              <div class="obpt-data-table__cell-value">{render_slot(col, row)}</div>
+            </td>
+            <td :if={@action != []} class="obpt-data-table__cell" data-obpt-mobile-label="Actions">
+              <span class="obpt-data-table__mobile-label" aria-hidden="true">Actions</span>
+              <div class="obpt-data-table__cell-value">{render_slot(@action, row)}</div>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -111,12 +135,16 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   slot(:inner_block)
 
   def state_message(assigns) do
-    assigns = assign(assigns, :copy, state_copy(assigns.state, assigns.resource))
+    assigns =
+      assigns
+      |> assign(:copy, state_copy(assigns.state, assigns.resource))
+      |> assign(:role, if(assigns.state == :error, do: "alert", else: "status"))
 
     ~H"""
-    <div class="obpt-data-state" data-obpt-data-state={data_state(@state)} role="status">
+    <div class="obpt-data-state" data-obpt-data-state={data_state(@state)} role={@role}>
       <p>{@copy.heading}</p>
       <p>{@copy.body}</p>
+      <Primitives.skeleton :if={@state == :loading} label={@copy.heading} lines={3} />
       {render_slot(@inner_block)}
     </div>
     """
@@ -445,21 +473,18 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
       case direction do
         :asc -> "ascending"
         :desc -> "descending"
-        _ -> "none"
+        _ -> nil
       end
     end
   end
 
-  defp row_dom_id(prefix, row, row_id) do
-    key =
-      cond do
-        is_function(row_id, 1) -> row_id.(row)
-        is_map(row) -> Map.get(row, :id) || Map.get(row, "id")
-        true -> nil
-      end
-
+  defp row_dom_id(prefix, key) do
     "#{prefix}-row-#{key || :unknown}"
   end
+
+  defp row_key(row, row_id) when is_function(row_id, 1), do: row_id.(row)
+  defp row_key(row, _row_id) when is_map(row), do: Map.get(row, :id) || Map.get(row, "id")
+  defp row_key(_row, _row_id), do: nil
 
   defp row_count_text(assigns) do
     count = assigns.row_count || length(assigns.rows)

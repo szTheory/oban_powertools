@@ -135,8 +135,8 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
       assert html =~ ~s(id="jobs-once-row-#{row.id}")
     end
 
-    assert count(html, ">Worker</span>") == 2
-    assert count(html, ">Job ID</span>") == 2
+    assert count(html, ">Worker</span>") == 3
+    assert count(html, ">Job ID</span>") == 3
     assert count(html, ">Selection</span>") == 2
     assert count(html, ">Actions</span>") == 2
   end
@@ -175,7 +175,13 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
           permission_denied: "Permission denied"
         ] do
       html =
-        render_data(:data_table, id: "state-#{state}", caption: "Jobs", rows: [], state: state)
+        render_data(:data_table,
+          id: "state-#{state}",
+          caption: "Jobs",
+          rows: [],
+          row_id: & &1.id,
+          state: state
+        )
 
       assert html =~ copy
       assert html =~ ~s(data-obpt-data-state="#{state}")
@@ -231,7 +237,7 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
 
     assert html =~ ~s(aria-describedby="table-help")
     assert html =~ ~s(data-testid="safe-table")
-    assert count(html, "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;") == 4
+    assert count(html, "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;") == 5
     refute html =~ @hostile
     refute html =~ @secret
     refute html =~ "host-table"
