@@ -41,10 +41,10 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 
 ### Navigation & App Shell (NAV)
 
-- [ ] **NAV-01**: A Powertools app-shell component owns the header, primary nav across the 9 surfaces, theme toggle, and actor/context display.
-- [ ] **NAV-02**: The shell is mobile-first responsive (320px → wide), collapsible at small widths, with no horizontal scroll and no unusable nested scrolling.
-- [ ] **NAV-03**: Active-route, breadcrumb, and deep-link affordances follow principle-of-least-surprise; nav labels match domain language.
-- [ ] **NAV-04**: The shell is keyboard-navigable with a skip-to-content link and logical focus order.
+- [x] **NAV-01**: A Powertools app-shell component owns the header, primary nav across the 9 surfaces, theme toggle, and actor/context display.
+- [x] **NAV-02**: The shell is mobile-first responsive (320px → wide), collapsible at small widths, with no horizontal scroll and no unusable nested scrolling.
+- [x] **NAV-03**: Active-route, breadcrumb, and deep-link affordances follow principle-of-least-surprise; nav labels match domain language.
+- [x] **NAV-04**: The shell is keyboard-navigable with a skip-to-content link and logical focus order.
 
 ### Data Display & Operator Patterns (DATA)
 
