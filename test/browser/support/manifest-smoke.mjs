@@ -124,11 +124,7 @@ for (const [index, story] of primitiveStories.entries()) {
   equal(state.length > 0, true, `primitive_stories[${index}].state non-empty`);
   equal(actual.story, `obpt-primitive-story-${id}`, `primitive_stories[${index}].story`);
   equal(actual.snapshot, `showcase/${id}`, `primitive_stories[${index}].snapshot`);
-  equal(
-    actual.a11y,
-    `[data-obpt-primitive-story="${id}"]`,
-    `primitive_stories[${index}].a11y`
-  );
+  equal(actual.a11y, `[data-obpt-primitive-story="${id}"]`, `primitive_stories[${index}].a11y`);
 
   expectedTargets.push({ ...actual });
 }
@@ -263,30 +259,66 @@ for (const [index, target] of targets.entries()) {
 
   if (expected.kind === 'form') {
     equal(actual.component, expected.component, `targets[${index}].component`);
-    exactList(array(actual.components, `targets[${index}].components`), expected.components, `targets[${index}].components`);
+    exactList(
+      array(actual.components, `targets[${index}].components`),
+      expected.components,
+      `targets[${index}].components`
+    );
     equal(actual.name, expected.name, `targets[${index}].name`);
     equal(actual.description, expected.description, `targets[${index}].description`);
-    exactList(array(actual.variant, `targets[${index}].variant`), expected.variant, `targets[${index}].variant`);
-    exactList(array(actual.state, `targets[${index}].state`), expected.state, `targets[${index}].state`);
+    exactList(
+      array(actual.variant, `targets[${index}].variant`),
+      expected.variant,
+      `targets[${index}].variant`
+    );
+    exactList(
+      array(actual.state, `targets[${index}].state`),
+      expected.state,
+      `targets[${index}].state`
+    );
   }
 
   if (expected.kind === 'shell') {
     equal(actual.component, expected.component, `targets[${index}].component`);
-    exactList(array(actual.components, `targets[${index}].components`), expected.components, `targets[${index}].components`);
+    exactList(
+      array(actual.components, `targets[${index}].components`),
+      expected.components,
+      `targets[${index}].components`
+    );
     equal(actual.name, expected.name, `targets[${index}].name`);
     equal(actual.description, expected.description, `targets[${index}].description`);
-    exactList(array(actual.variant, `targets[${index}].variant`), expected.variant, `targets[${index}].variant`);
-    exactList(array(actual.state, `targets[${index}].state`), expected.state, `targets[${index}].state`);
+    exactList(
+      array(actual.variant, `targets[${index}].variant`),
+      expected.variant,
+      `targets[${index}].variant`
+    );
+    exactList(
+      array(actual.state, `targets[${index}].state`),
+      expected.state,
+      `targets[${index}].state`
+    );
     equal(actual.nav_state, expected.nav_state, `targets[${index}].nav_state`);
   }
 
   if (expected.kind === 'data') {
     equal(actual.component, expected.component, `targets[${index}].component`);
-    exactList(array(actual.components, `targets[${index}].components`), expected.components, `targets[${index}].components`);
+    exactList(
+      array(actual.components, `targets[${index}].components`),
+      expected.components,
+      `targets[${index}].components`
+    );
     equal(actual.name, expected.name, `targets[${index}].name`);
     equal(actual.description, expected.description, `targets[${index}].description`);
-    exactList(array(actual.variant, `targets[${index}].variant`), expected.variant, `targets[${index}].variant`);
-    exactList(array(actual.state, `targets[${index}].state`), expected.state, `targets[${index}].state`);
+    exactList(
+      array(actual.variant, `targets[${index}].variant`),
+      expected.variant,
+      `targets[${index}].variant`
+    );
+    exactList(
+      array(actual.state, `targets[${index}].state`),
+      expected.state,
+      `targets[${index}].state`
+    );
   }
 }
 

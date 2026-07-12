@@ -51,20 +51,26 @@ export type ShowcaseShellStory = Omit<ShowcasePrimitiveStory, 'kind'> & {
   nav_state: 'closed' | 'open';
 };
 
+export type ShowcaseDataStory = Omit<ShowcasePrimitiveStory, 'kind'> & {
+  kind: 'data';
+};
+
 export type ShowcaseTarget =
   | (ShowcaseScenario & { kind: 'scenario' })
   | ShowcasePrimitiveStory
   | ShowcaseFormStory
-  | ShowcaseShellStory;
+  | ShowcaseShellStory
+  | ShowcaseDataStory;
 
 export type ShowcaseManifest = {
-  schema_version: 4;
+  schema_version: 5;
   themes: ShowcaseTheme[];
   viewports: ShowcaseViewport[];
   scenarios: ShowcaseScenario[];
   primitive_stories: ShowcasePrimitiveStory[];
   form_stories: ShowcaseFormStory[];
   shell_stories: ShowcaseShellStory[];
+  data_stories: ShowcaseDataStory[];
   targets: ShowcaseTarget[];
 };
 
@@ -82,7 +88,7 @@ export function loadManifest(filePath = manifestPath): ShowcaseManifest {
 function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
   const manifest = assertRecord(value, filePath);
 
-  assertEqual(manifest.schema_version, 4, 'schema_version');
+  assertEqual(manifest.schema_version, 5, 'schema_version');
 
   const themes = assertStringArray(manifest.themes, 'themes') as ShowcaseTheme[];
   assertExactList(themes, [...allowedThemes], 'themes');
@@ -159,11 +165,7 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
 
       assertEqual(storyTarget, `obpt-primitive-story-${id}`, `primitive_stories[${index}].story`);
       assertEqual(snapshot, `showcase/${id}`, `primitive_stories[${index}].snapshot`);
-      assertEqual(
-        a11y,
-        `[data-obpt-primitive-story="${id}"]`,
-        `primitive_stories[${index}].a11y`
-      );
+      assertEqual(a11y, `[data-obpt-primitive-story="${id}"]`, `primitive_stories[${index}].a11y`);
 
       if (components.length === 0) {
         throw new Error(`primitive_stories[${index}].components must not be empty`);
@@ -195,26 +197,39 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
 
   assertEqual(primitiveStories.length, 7, 'primitive_stories.length');
 
-  const formStories = assertArray(manifest.form_stories, 'form_stories').map((story, index) =>
-    validateComponentStory(story, index, 'form_stories', 'form') as ShowcaseFormStory
+  const formStories = assertArray(manifest.form_stories, 'form_stories').map(
+    (story, index) =>
+      validateComponentStory(story, index, 'form_stories', 'form') as ShowcaseFormStory
   );
 
   assertEqual(formStories.length, 9, 'form_stories.length');
 
-  const shellStories = assertArray(manifest.shell_stories, 'shell_stories').map((story, index) =>
-    validateComponentStory(story, index, 'shell_stories', 'shell') as ShowcaseShellStory
+  const shellStories = assertArray(manifest.shell_stories, 'shell_stories').map(
+    (story, index) =>
+      validateComponentStory(story, index, 'shell_stories', 'shell') as ShowcaseShellStory
   );
 
   assertEqual(shellStories.length, 6, 'shell_stories.length');
+
+  const dataStories = assertArray(manifest.data_stories, 'data_stories').map(
+    (story, index) =>
+      validateComponentStory(story, index, 'data_stories', 'data') as ShowcaseDataStory
+  );
+
+  assertEqual(dataStories.length, 10, 'data_stories.length');
 
   const targets = assertArray(manifest.targets, 'targets').map((target, index) =>
     validateTarget(target, index)
   );
   const expectedTargets: ShowcaseTarget[] = [
-    ...scenarios.map((scenario) => ({ kind: 'scenario' as const, ...scenario })),
+    ...scenarios.map((scenario) => ({
+      kind: 'scenario' as const,
+      ...scenario
+    })),
     ...primitiveStories,
     ...formStories,
-    ...shellStories
+    ...shellStories,
+    ...dataStories
   ];
 
   assertEqual(targets.length, expectedTargets.length, 'targets.length');
@@ -237,7 +252,8 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
     if (
       (actualTarget.kind === 'primitive' ||
         actualTarget.kind === 'form' ||
-        actualTarget.kind === 'shell') &&
+        actualTarget.kind === 'shell' ||
+        actualTarget.kind === 'data') &&
       actualTarget.kind === expectedTarget.kind
     ) {
       assertEqual(actualTarget.component, expectedTarget.component, `targets[${index}].component`);
@@ -256,19 +272,24 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
       assertExactList(actualTarget.state, expectedTarget.state, `targets[${index}].state`);
 
       if (actualTarget.kind === 'shell' && expectedTarget.kind === 'shell') {
-        assertEqual(actualTarget.nav_state, expectedTarget.nav_state, `targets[${index}].nav_state`);
+        assertEqual(
+          actualTarget.nav_state,
+          expectedTarget.nav_state,
+          `targets[${index}].nav_state`
+        );
       }
     }
   }
 
   return {
-    schema_version: 4,
+    schema_version: 5,
     themes,
     viewports,
     scenarios,
     primitive_stories: primitiveStories,
     form_stories: formStories,
     shell_stories: shellStories,
+    data_stories: dataStories,
     targets
   };
 }
@@ -289,7 +310,7 @@ function validateTarget(value: unknown, index: number): ShowcaseTarget {
     return { kind, id, domain, persona, states, story, snapshot, a11y };
   }
 
-  if (kind === 'primitive' || kind === 'form' || kind === 'shell') {
+  if (kind === 'primitive' || kind === 'form' || kind === 'shell' || kind === 'data') {
     const component = assertString(actual.component, `targets[${index}].component`);
     const components = assertStringArray(actual.components, `targets[${index}].components`);
     const name = assertString(actual.name, `targets[${index}].name`);
@@ -320,15 +341,17 @@ function validateTarget(value: unknown, index: number): ShowcaseTarget {
     return target;
   }
 
-  throw new Error(`targets[${index}].kind must be "scenario", "primitive", "form", or "shell"`);
+  throw new Error(
+    `targets[${index}].kind must be "scenario", "primitive", "form", "shell", or "data"`
+  );
 }
 
 function validateComponentStory(
   value: unknown,
   index: number,
-  collection: 'primitive_stories' | 'form_stories' | 'shell_stories',
-  kind: 'primitive' | 'form' | 'shell'
-): ShowcasePrimitiveStory | ShowcaseFormStory | ShowcaseShellStory {
+  collection: 'primitive_stories' | 'form_stories' | 'shell_stories' | 'data_stories',
+  kind: 'primitive' | 'form' | 'shell' | 'data'
+): ShowcasePrimitiveStory | ShowcaseFormStory | ShowcaseShellStory | ShowcaseDataStory {
   const actual = assertRecord(value, `${collection}[${index}]`);
   const id = assertString(actual.id, `${collection}[${index}].id`);
   const prefix = kind;
@@ -356,7 +379,19 @@ function validateComponentStory(
     throw new Error(`${collection}[${index}] components, variant, and state must not be empty`);
   }
 
-  const result = { id, kind, component, components, name, description, variant, state, story, snapshot, a11y };
+  const result = {
+    id,
+    kind,
+    component,
+    components,
+    name,
+    description,
+    variant,
+    state,
+    story,
+    snapshot,
+    a11y
+  };
 
   if (kind === 'shell') {
     return {
@@ -433,4 +468,5 @@ export const scenarios = manifest.scenarios;
 export const primitiveStories = manifest.primitive_stories;
 export const formStories = manifest.form_stories;
 export const shellStories = manifest.shell_stories;
+export const dataStories = manifest.data_stories;
 export const targets = manifest.targets;

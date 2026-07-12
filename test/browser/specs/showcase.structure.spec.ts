@@ -4,7 +4,9 @@ import { viewportNameFromProject } from '../support/deterministic';
 import { assertShowcaseStructure, prepareShowcase, targetLocator } from '../support/showcase';
 
 for (const theme of themes) {
-  test(`showcase structure is stable for ${theme} across scenario primitive form shell and data data-* targets`, async ({ page }, testInfo) => {
+  test(`showcase structure is stable for ${theme} across scenario primitive form shell and data data-* targets`, async ({
+    page
+  }, testInfo) => {
     const viewportName = viewportNameFromProject(testInfo.project.name);
 
     await prepareShowcase(page, { theme, viewportName });

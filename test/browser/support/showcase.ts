@@ -49,7 +49,9 @@ export async function prepareShowcase(
 
   if (!themeApplied) {
     await page
-      .locator(`[data-obpt-showcase] [data-obpt-theme-controls] [data-obpt-theme-choice="${opts.theme}"]`)
+      .locator(
+        `[data-obpt-showcase] [data-obpt-theme-controls] [data-obpt-theme-choice="${opts.theme}"]`
+      )
       .click();
   }
 
@@ -97,7 +99,9 @@ export async function assertShowcaseStructure(page: Page): Promise<void> {
 
   for (const theme of themes) {
     await expect(
-      page.locator(`[data-obpt-showcase] [data-obpt-theme-controls] [data-obpt-theme-choice="${theme}"]`)
+      page.locator(
+        `[data-obpt-showcase] [data-obpt-theme-controls] [data-obpt-theme-choice="${theme}"]`
+      )
     ).toHaveCount(1);
   }
 
@@ -128,6 +132,12 @@ export async function assertShowcaseStructure(page: Page): Promise<void> {
       await expect(story).toHaveAttribute('data-obpt-a11y-target', target.a11y);
     } else if (target.kind === 'form') {
       await expect(story).toHaveAttribute('data-obpt-form-story', target.id);
+      await expect(story).toHaveAttribute('data-obpt-component', target.components.join(' '));
+      await expect(story).toHaveAttribute('data-obpt-variant', target.variant.join(' '));
+      await expect(story).toHaveAttribute('data-obpt-state', target.state.join(' '));
+      await expect(story).toHaveAttribute('data-obpt-a11y-target', target.a11y);
+    } else if (target.kind === 'data') {
+      await expect(story).toHaveAttribute('data-obpt-data-story', target.id);
       await expect(story).toHaveAttribute('data-obpt-component', target.components.join(' '));
       await expect(story).toHaveAttribute('data-obpt-variant', target.variant.join(' '));
       await expect(story).toHaveAttribute('data-obpt-state', target.state.join(' '));
