@@ -303,6 +303,203 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
     assert empty =~ "Clear filters"
   end
 
+  test "description_list and timeline render every explicit state in their owning region" do
+    for component <- [:description_list, :timeline],
+        state <- [:loading, :empty, :error, :unavailable, :permission_denied] do
+      html =
+        render_data(component,
+          id: "#{component}-#{state}",
+          resource: "job evidence",
+          state: state
+        )
+
+      assert html =~ ~s(data-obpt-data-state="#{state}")
+      assert html =~ state_copy(state)
+
+      if state == :loading do
+        assert html =~ ~s(aria-busy="true")
+        assert html =~ ~s(aria-label="Loading job evidence")
+      else
+        refute html =~ ~s(aria-busy="true")
+      end
+
+      if state == :empty do
+        assert html =~ ~s(class="obpt-empty-state")
+      else
+        refute html =~ ~s(class="obpt-empty-state")
+      end
+    end
+  end
+
+  test "timeline keeps ordered event semantics, taxonomy status, and escaped detail" do
+    html =
+      render_data(:timeline,
+        id: "audit-events",
+        event: [
+          slot(
+            :event,
+            %{
+              timestamp: "2026-07-12T12:00:00Z",
+              title: @hostile,
+              source: "Oban",
+              domain: :callback_outbox,
+              state: :delivered
+            },
+            fn -> @hostile end
+          )
+        ],
+        rest: %{"class" => "host-timeline", "role" => "feed", "phx-click" => "mutate"}
+      )
+
+    assert count(html, "<ol") == 1
+    assert count(html, "<li") == 1
+    assert html =~ ~s(datetime="2026-07-12T12:00:00Z")
+    assert html =~ "Callback outbox status"
+    assert html =~ "Delivered"
+    assert count(html, "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;") == 2
+    refute html =~ @hostile
+    refute html =~ "host-timeline"
+    refute html =~ ~s(role="feed")
+    refute html =~ ~s(phx-click="mutate")
+  end
+
+  test "progress_bar clamps native values and exposes count plus percentage without inline width" do
+    high =
+      render_data(:progress_bar,
+        id: "high-progress",
+        label: "Completed jobs",
+        value: 125,
+        max: 100
+      )
+
+    low =
+      render_data(:progress_bar, id: "low-progress", label: "Completed jobs", value: -5, max: 100)
+
+    assert high =~ ~s(<progress id="high-progress-progress")
+    assert high =~ ~s(value="100")
+    assert high =~ ~s(max="100")
+    assert high =~ ~s(aria-labelledby="high-progress-label")
+    assert high =~ "100/100"
+    assert high =~ "100%"
+    refute high =~ ~s(style=)
+
+    assert low =~ ~s(value="0")
+    assert low =~ "0/100"
+    assert low =~ "0%"
+
+    unavailable =
+      render_data(:progress_bar,
+        id: "unknown-progress",
+        label: "Completed jobs",
+        value: 72,
+        state: :unavailable
+      )
+
+    assert unavailable =~ "Progress unavailable"
+    refute unavailable =~ "<progress"
+    refute unavailable =~ ~s(value=)
+    refute unavailable =~ ~s(aria-valuenow=)
+  end
+
+  test "machine_value preserves useful ends and exposes full non-sensitive text only through expansion" do
+    long_id = "job_0123456789abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    long_module = "MyApp.Really.Long.Namespace.With.Many.Parts.Workers.SendEmail"
+
+    id_html =
+      render_data(:machine_value,
+        id: "job-id",
+        value: long_id,
+        kind: :id,
+        expand: true,
+        rest: %{"title" => long_id, "style" => "display:none"}
+      )
+
+    module_html =
+      render_data(:machine_value,
+        id: "worker-module",
+        value: long_module,
+        kind: :module,
+        expand: true
+      )
+
+    assert id_html =~ "<details"
+    assert id_html =~ "<summary>job_0123456789"
+    assert id_html =~ "OPQRSTUVWXYZ</summary>"
+    assert count(id_html, long_id) == 1
+    refute id_html =~ ~s(title=)
+    refute id_html =~ ~s(style=)
+
+    assert module_html =~ "<summary>..."
+    assert module_html =~ "Workers.SendEmail</summary>"
+    assert count(module_html, long_module) == 1
+  end
+
+  test "metric, empty, toast, and flash components keep explicit semantics and parent-owned actions" do
+    metric =
+      render_data(:metric_card,
+        id: "throughput",
+        label: "Completed jobs",
+        value: "1,024",
+        trend: "Up 12% over the prior hour",
+        tone: :success,
+        rest: %{"role" => "button", "phx-click" => "mutate", "class" => "host-metric"}
+      )
+
+    assert metric =~ ~s(class="obpt-metric-card")
+    assert metric =~ ~s(class="obpt-stat")
+    assert metric =~ "Up 12% over the prior hour"
+    refute metric =~ ~s(role="button")
+    refute metric =~ ~s(phx-click="mutate")
+    refute metric =~ "host-metric"
+
+    assert_raise ArgumentError, fn ->
+      render_data(:empty_state, id: "invalid-empty", heading: " ", body: "Recovery guidance")
+    end
+
+    polite_warning =
+      render_data(:toast,
+        id: "warning-polite",
+        tone: :warning,
+        urgency: :polite,
+        inner_block: [slot(:inner_block, %{}, fn -> "Retry delayed" end)]
+      )
+
+    immediate_warning =
+      render_data(:toast,
+        id: "warning-now",
+        tone: :warning,
+        urgency: :assertive,
+        dismiss_event: "dismiss-toast",
+        inner_block: [slot(:inner_block, %{}, fn -> @hostile end)],
+        rest: %{"role" => "button", "phx-click" => "steal", "title" => @secret}
+      )
+
+    assert polite_warning =~ ~s(role="status")
+    assert immediate_warning =~ ~s(role="alert")
+    assert immediate_warning =~ ~s(aria-label="Dismiss notification")
+    assert immediate_warning =~ ~s(phx-click="dismiss-toast")
+    assert immediate_warning =~ "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;"
+    refute immediate_warning =~ @hostile
+    refute immediate_warning =~ @secret
+    refute immediate_warning =~ ~s(phx-click="steal")
+    refute immediate_warning =~ ~s(role="button")
+
+    flash =
+      render_data(:flash_group,
+        id: "operator-flash",
+        flash: %{info: "Refresh complete", error: "Refresh failed"}
+      )
+
+    assert flash =~ ~s(id="operator-flash-info")
+    assert flash =~ ~s(id="operator-flash-danger")
+
+    assert flash =~
+             ~s(id="operator-flash-info" class="obpt-toast" data-obpt-tone="info" role="status")
+
+    assert flash =~
+             ~s(id="operator-flash-danger" class="obpt-toast" data-obpt-tone="danger" role="alert")
+  end
+
   test "code, args, and redaction render normalized displays without leaking original sentinels" do
     code =
       render_data(:code_block,
@@ -408,4 +605,10 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
 
   defp count(html, needle), do: length(String.split(html, needle)) - 1
   defp index_of(html, needle), do: :binary.match(html, needle) |> elem(0)
+
+  defp state_copy(:loading), do: "Loading job evidence"
+  defp state_copy(:empty), do: "No rows match the current filters"
+  defp state_copy(:error), do: "Data did not load"
+  defp state_copy(:unavailable), do: "Data unavailable"
+  defp state_copy(:permission_denied), do: "Permission denied"
 end
