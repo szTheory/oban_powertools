@@ -107,6 +107,65 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
     refute html =~ "obpt-data-table-card"
   end
 
+  test "data_table renders every row seam once and keeps visible mobile labels in the same cells" do
+    rows = [%{id: "job-1", worker: "Worker.One"}, %{id: "job-2", worker: "Worker.Two"}]
+
+    html =
+      render_data(:data_table,
+        id: "jobs-once",
+        caption: "Jobs",
+        rows: rows,
+        row_id: & &1.id,
+        col: [
+          slot(:col, %{label: "Worker", value_kind: :machine}, fn row -> row.worker end),
+          slot(:col, %{label: "Job ID", value_kind: :machine}, fn row -> row.id end)
+        ],
+        selection: [slot(:selection, %{}, fn row -> "Select #{row.id}" end)],
+        action: [slot(:action, %{}, fn row -> "Open #{row.id}" end)]
+      )
+
+    assert count(html, "<table") == 1
+    assert count(html, ~s(class="obpt-data-table__row")) == 2
+    assert count(html, ~s(class="obpt-data-table__mobile-label")) == 8
+
+    for row <- rows do
+      assert count(html, "Select #{row.id}") == 1
+      assert count(html, "Open #{row.id}") == 1
+      assert count(html, row.worker) == 1
+      assert html =~ ~s(id="jobs-once-row-#{row.id}")
+    end
+
+    assert count(html, ">Worker</span>") == 2
+    assert count(html, ">Job ID</span>") == 2
+    assert count(html, ">Selection</span>") == 2
+    assert count(html, ">Actions</span>") == 2
+  end
+
+  test "data_table exposes aria-sort only on the active sortable header and preserves row order" do
+    html =
+      render_data(:data_table,
+        id: "sorted-jobs",
+        caption: "Jobs",
+        rows: [%{id: "job-b", worker: "Beta"}, %{id: "job-a", worker: "Alpha"}],
+        row_id: & &1.id,
+        sort_key: "worker",
+        sort_direction: :desc,
+        sort_event: "sort-data-table",
+        col: [
+          slot(:col, %{label: "Job ID", sort_key: "id"}, fn row -> row.id end),
+          slot(:col, %{label: "Worker", sort_key: "worker"}, fn row -> row.worker end),
+          slot(:col, %{label: "State"}, fn _row -> "available" end)
+        ]
+      )
+
+    assert count(html, ~s(aria-sort="descending")) == 1
+    refute html =~ ~s(aria-sort="none")
+    assert count(html, ~s(phx-click="sort-data-table")) == 2
+    assert count(html, ~s(phx-value-sort-key="id")) == 1
+    assert count(html, ~s(phx-value-sort-key="worker")) == 1
+    assert index_of(html, "job-b") < index_of(html, "job-a")
+  end
+
   test "data states render honest copy and busy semantics" do
     for {state, copy} <- [
           loading: "Loading jobs",
@@ -123,10 +182,64 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
 
       if state == :loading do
         assert html =~ ~s(aria-busy="true")
+        assert html =~ ~s(class="obpt-skeleton")
+        assert html =~ ~s(aria-label="Loading jobs")
       else
         refute html =~ ~s(aria-busy="true")
       end
+
+      if state == :error do
+        assert html =~ ~s(role="alert")
+      else
+        refute html =~ ~s(role="alert")
+      end
     end
+
+    ready =
+      render_data(:data_table,
+        id: "state-ready",
+        caption: "Jobs",
+        rows: [%{id: "job-1"}],
+        row_id: & &1.id,
+        state: :ready,
+        col: [slot(:col, %{label: "Job ID"}, fn row -> row.id end)]
+      )
+
+    assert ready =~ ~s(data-obpt-data-state="ready")
+    refute ready =~ ~s(class="obpt-data-state")
+  end
+
+  test "data_table filters hostile wrapper overrides while retaining safe descriptive attrs" do
+    html =
+      render_data(:data_table,
+        id: "safe-table",
+        caption: @hostile,
+        rows: [%{id: "job-1", value: @hostile}],
+        row_id: & &1.id,
+        col: [slot(:col, %{label: @hostile}, fn row -> row.value end)],
+        rest: %{
+          "aria-describedby" => "table-help",
+          "class" => "host-table",
+          "data-testid" => "safe-table",
+          "onmouseover" => "steal()",
+          "phx-click" => "mutate",
+          "role" => "grid",
+          "style" => "overflow:auto",
+          "title" => @secret
+        }
+      )
+
+    assert html =~ ~s(aria-describedby="table-help")
+    assert html =~ ~s(data-testid="safe-table")
+    assert count(html, "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;") == 4
+    refute html =~ @hostile
+    refute html =~ @secret
+    refute html =~ "host-table"
+    refute html =~ "steal()"
+    refute html =~ ~s(phx-click="mutate")
+    refute html =~ ~s(role="grid")
+    refute html =~ ~s(style=)
+    refute html =~ ~s(title=)
   end
 
   test "secondary components use native semantics and closed state/value contracts" do
@@ -288,4 +401,5 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
   defp call_slot_fun(fun, value) when is_function(fun, 1), do: fun.(value)
 
   defp count(html, needle), do: length(String.split(html, needle)) - 1
+  defp index_of(html, needle), do: :binary.match(html, needle) |> elem(0)
 end
