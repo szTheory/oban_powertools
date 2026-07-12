@@ -78,6 +78,21 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     .obpt-shell-main
   ]
 
+  @data_classes ~w[
+    .obpt-data-table
+    .obpt-data-table__table
+    .obpt-data-table__toolbar
+    .obpt-data-table__summary
+    .obpt-data-table__header
+    .obpt-data-table__row
+    .obpt-data-table__cell
+    .obpt-data-table__cell-value
+    .obpt-data-table__mobile-label
+    .obpt-data-table__state-row
+    .obpt-data-table__state-cell
+    .obpt-data-state
+  ]
+
   @proof_seam_classes ~w[
     .obpt-tab
     .obpt-modal
@@ -291,6 +306,50 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     end
   end
 
+  test "data table selectors are root-scoped, token-backed, focusable, and reflow one DOM at 24rem" do
+    css = read_contract_file!(@tokens_path)
+    data_blocks = data_blocks(css)
+
+    for class <- @data_classes do
+      assert css =~ ".obpt-root #{class}", "missing root-scoped data selector #{class}"
+    end
+
+    assert css =~ "@media (max-width: 24rem)"
+    assert css =~ ".obpt-root .obpt-data-table__header button:focus-visible"
+    assert css =~ ".obpt-root .obpt-data-table__mobile-label"
+
+    assert css =~
+             ~s(.obpt-root .obpt-data-table__cell[data-obpt-mobile-label="Selection"] .obpt-choice)
+
+    assert css =~ "min-block-size: calc(var(--obpt-space-7) - var(--obpt-space-1))"
+    assert css =~ "display: table"
+    assert css =~ "display: grid"
+    assert css =~ "var(--obpt-motion-duration-fast)"
+    assert css =~ "var(--obpt-motion-duration-instant)"
+
+    assert data_blocks != [], "expected DataTable CSS blocks to be present"
+
+    for {selector, body} <- data_blocks do
+      for part <- selector_parts(selector) do
+        assert String.starts_with?(part, ".obpt-root"),
+               "data selector is not scoped below .obpt-root: #{part}"
+      end
+
+      refute body =~ ~r/#[0-9a-fA-F]{3,8}/,
+             "data selector #{selector} contains a raw color value"
+
+      refute body =~ ~r/overflow-x\s*:\s*(auto|scroll)/,
+             "ordinary data selector #{selector} introduces horizontal scrolling"
+
+      for {property, value} <- declarations(body),
+          data_visual_property?(property),
+          not allowed_literal_data_value?(value) do
+        assert String.contains?(value, "var(--obpt-"),
+               "data selector #{selector} property #{property} is not token-backed: #{value}"
+      end
+    end
+  end
+
   test "theme selector blocks only remap semantic color/focus variables" do
     css = read_contract_file!(@tokens_path)
     blocks = theme_blocks(css)
@@ -432,6 +491,14 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     end)
   end
 
+  defp data_blocks(css) do
+    Regex.scan(~r/([^{}]+)\{([^{}]+)\}/m, css, capture: :all_but_first)
+    |> Enum.map(fn [selector, body] -> {String.trim(selector), body} end)
+    |> Enum.filter(fn {selector, _body} ->
+      Enum.any?(@data_classes, &String.contains?(selector, &1))
+    end)
+  end
+
   defp selector_parts(selector) do
     selector
     |> String.split(",")
@@ -463,6 +530,19 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
 
   defp shell_visual_property?(property) do
     property in @token_backed_shell_properties or String.starts_with?(property, "--obpt-")
+  end
+
+  defp data_visual_property?(property) do
+    property in ~w[
+      background background-color border border-block-end border-block-start border-color
+      border-radius box-shadow color font-family font-size font-weight gap line-height
+      margin min-block-size min-inline-size outline outline-offset padding transition
+      transition-duration
+    ]
+  end
+
+  defp allowed_literal_data_value?(value) do
+    value in ~w[0 inherit none transparent] or String.starts_with?(value, "1px solid var(--obpt-")
   end
 
   defp allowed_literal_primitive_value?(value) do

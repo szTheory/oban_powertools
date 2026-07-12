@@ -63,7 +63,7 @@ defmodule ObanPowertools.Web.AssetsTest do
     assert second_build == first_build
   end
 
-  test "checked-in compiled assets include primitive and shell CSS plus scoped browser behavior" do
+  test "checked-in compiled assets include primitive, shell, and data CSS plus scoped browser behavior" do
     assert Code.ensure_loaded?(Mix.Tasks.ObanPowertools.Assets.Build),
            "expected mix oban_powertools.assets.build task to be loadable"
 
@@ -86,13 +86,19 @@ defmodule ObanPowertools.Web.AssetsTest do
           ".obpt-root .obpt-theme-choice[aria-pressed=\"true\"]",
           ".obpt-root .obpt-app-shell[data-obpt-nav-state=\"closed\"] > .obpt-app-shell__header > .obpt-primary-nav",
           ".obpt-root [data-obpt-section=\"app-shell\"] .obpt-showcase-story-grid",
-          ".obpt-root .obpt-breadcrumb [aria-current=\"page\"]"
+          ".obpt-root .obpt-breadcrumb [aria-current=\"page\"]",
+          ".obpt-root .obpt-data-table",
+          ".obpt-root .obpt-data-table__header button:focus-visible",
+          ".obpt-root .obpt-data-table__mobile-label",
+          ".obpt-root .obpt-data-table__cell[data-obpt-mobile-label=\"Selection\"] .obpt-choice",
+          ".obpt-root .obpt-data-state"
         ] do
       assert css =~ selector, "expected compiled CSS to include #{selector}"
     end
 
     assert css =~ "@keyframes obpt-spinner-spin"
     assert css =~ "@media (prefers-reduced-motion: reduce)"
+    assert css =~ "@media (max-width: 24rem)"
     assert js =~ "[data-obpt-tooltip-trigger]"
     assert js =~ "data-obpt-tooltip-open"
     assert js =~ "data-obpt-tooltip-dismissed"
