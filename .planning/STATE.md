@@ -5,15 +5,15 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 76
 current_phase_name: navigation-app-shell
 status: executing
-stopped_at: Completed 76-03-PLAN.md
-last_updated: "2026-07-12T14:47:35.788Z"
+stopped_at: Completed 76-04-PLAN.md
+last_updated: "2026-07-12T15:03:57.286Z"
 last_activity: 2026-07-12
 progress:
   total_phases: 15
   completed_phases: 6
   total_plans: 32
-  completed_plans: 30
-  percent: 40
+  completed_plans: 31
+  percent: 97
 ---
 
 # Project State
@@ -27,7 +27,7 @@ progress:
 ## Current Position
 
 Phase: 76 (navigation-app-shell) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-07-12
 
@@ -62,6 +62,7 @@ Last activity: 2026-07-12
 | Phase 76 P01 | 12min | 3 tasks | 5 files |
 | Phase 76 P02 | 8m11s | 2 tasks | 5 files |
 | Phase 76 P03 | 7m51s | 2 tasks | 6 files |
+| Phase 76 P04 | 10 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -89,13 +90,13 @@ Last activity: 2026-07-12
 
 ## Session Continuity
 
-**Last session:** 2026-07-12T14:47:35.784Z
-**Stopped at:** Completed 76-03-PLAN.md
+**Last session:** 2026-07-12T15:03:57.280Z
+**Stopped at:** Completed 76-04-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed `76-03-PLAN.md`; scoped AppShell CSS/JS and byte-stable assets are committed.
-- **Next Action:** Execute `76-04-PLAN.md` for shell story catalog, showcase rendering, and schema 4 manifest support.
-- **Active Context:** Phase 76 UI-SPEC is approved; spacing is limited to 4/8/16/24/32/48/64, shadcn is not applicable, and no third-party registries are used.
+- **Last Action:** Completed `76-04-PLAN.md`; shell story catalog, showcase rendering, and schema 4 manifest support are committed.
+- **Next Action:** Execute `76-05-PLAN.md` for shell behavior proof, VRT evidence, and baseline work.
+- **Active Context:** Phase 76 UI-SPEC is approved; shell stories are generated manifest targets, spacing is limited to 4/8/16/24/32/48/64, shadcn is not applicable, and no third-party registries are used.
 
 ## Decisions
 
@@ -113,6 +114,9 @@ Last activity: 2026-07-12
 - [Phase 76]: AppShell CSS remains fully scoped under .obpt-root and uses the existing semantic token system for visual values.
 - [Phase 76]: Mobile nav disclosure state is represented by data-obpt-nav-state on the owning shell and synchronized with the toggle aria-expanded value.
 - [Phase 76]: Theme-choice aria-pressed state is synchronized from the existing root-scoped theme controller so selected theme styling stays programmatic and visual.
+- [Phase 76]: Shell stories live in ObanPowertools.ShellStoryCatalog, separate from stress fixtures, primitive stories, and form stories.
+- [Phase 76]: Showcase AppShell story cells use story-scoped nav/main ids while production AppShell defaults remain obpt-primary-nav and obpt-main.
+- [Phase 76]: Manifest schema 4 appends generated shell_stories after form_stories and keeps shell ids Elixir-owned.
 
 ### Blockers
 
