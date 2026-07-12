@@ -92,6 +92,7 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 - ✓ Durable upstream output handoff — downstream chain steps fetch predecessor output through `JobRecord` with safe args builders and explicit unavailable/expired errors (`CHN-02`) — v1.9 Phase 61
 - ✓ v2.0 primitive component layer — token-driven documented `Phoenix.Component` primitives with primitive showcase stories, manifest/VRT/a11y integration, browser behavior checks, clean code review, and verified security register (`COMP-01..04`) — v2.0 Phase 74
 - ✓ v2.0 form component layer — accessible `Phoenix.Component`/`to_form` primitives with labels, hints, errors, native choices, switch state text, disabled/read-only contracts, deterministic form showcase stories, browser behavior/VRT/a11y evidence, clean code review, and verified security register (`FORM-01`, `FORM-02`, form-set `COMP-*`, component-scoped `A11Y-02`) — v2.0 Phase 75
+- ✓ v2.0 navigation app shell — responsive Powertools shell with closed nine-surface native nav, active-route breadcrumbs, skip-to-content, actor/context display, root-scoped theme controls, shell showcase stories, browser behavior proof, VRT/a11y evidence, and clean code review (`NAV-01..04`, shell-scoped `A11Y-02`, `COPY-*`) — v2.0 Phase 76
 
 ### Active
 
@@ -247,4 +248,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-07-11 — Phase 75 completed; form component layer validated (FORM-01, FORM-02, form-set COMP-*, component-scoped A11Y-02)*
+*Last updated: 2026-07-12 — Phase 76 completed; navigation app shell validated (NAV-01..04, shell-scoped A11Y-02, COPY-*)*
