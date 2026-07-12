@@ -5,15 +5,15 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 77
 current_phase_name: data-display-operator-patterns
 status: executing
-stopped_at: Completed 77-05-PLAN.md
-last_updated: "2026-07-12T23:38:25.124Z"
+stopped_at: Completed 77-06-PLAN.md
+last_updated: "2026-07-12T23:52:40.963Z"
 last_activity: 2026-07-12
 last_activity_desc: Phase 77 execution started
 progress:
   total_phases: 15
   completed_phases: 7
   total_plans: 39
-  completed_plans: 37
+  completed_plans: 38
   percent: 47
 ---
 
@@ -28,7 +28,7 @@ progress:
 ## Current Position
 
 Phase: 77 (data-display-operator-patterns) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-07-12 — Phase 77 execution started
 
@@ -70,6 +70,7 @@ Last activity: 2026-07-12 — Phase 77 execution started
 | Phase 77 P03 | 8 min | 2 tasks | 6 files |
 | Phase 77 P04 | 10 min | 2 tasks | 6 files |
 | Phase 77 P05 | 43 min | 2 tasks | 6 files |
+| Phase 77 P06 | 10 min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -97,8 +98,8 @@ Last activity: 2026-07-12 — Phase 77 execution started
 
 ## Session Continuity
 
-**Last session:** 2026-07-12T23:38:25.120Z
-**Stopped at:** Completed 77-05-PLAN.md
+**Last session:** 2026-07-12T23:52:26.460Z
+**Stopped at:** Completed 77-06-PLAN.md
 **Resume file:** None
 
 - **Last Action:** Verified Phase 76, recorded `76-VERIFICATION.md`, and transitioned planning state to Phase 77.
@@ -138,6 +139,9 @@ Last activity: 2026-07-12 — Phase 77 execution started
 - [Phase 77]: Read normalized map fields with fetch semantics and never project payloads for unavailable or redacted maps. — False availability is security-significant and must remain distinct from a missing key.
 - [Phase 77]: Constrain fallback redaction to exact visible [redacted] copy. — Caller-provided fallback text must not become a disclosure channel.
 - [Phase 77]: Limit new internal data-display scrolling to the labelled focusable CodeBlock region. — Machine content may scroll without making ordinary data surfaces or the page overflow.
+- [Phase 77]: Keep data-display evidence in a separate dev/test support catalog loaded through the compile-gated showcase. — Preserves production packaging and deterministic normalized-only fixture boundaries.
+- [Phase 77]: Keep DataTable stateless while ShowcaseLive owns the finite sort key and direction used for browser proof. — Keeps aria-sort truthful without moving presentation state into the shared component or packaged JavaScript.
+- [Phase 77]: Manifest schema 5 derives data stories from Elixir and appends them after shell targets. — Keeps one story-ID source while generic browser structure, axe, VRT, and behavior consumers use validated generated metadata.
 
 ### Blockers
 
