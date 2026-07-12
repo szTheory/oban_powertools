@@ -5,15 +5,15 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 77
 current_phase_name: data-display-operator-patterns
 status: executing
-stopped_at: Completed 77-04-PLAN.md
-last_updated: "2026-07-12T22:51:15.381Z"
+stopped_at: Completed 77-05-PLAN.md
+last_updated: "2026-07-12T23:38:25.124Z"
 last_activity: 2026-07-12
 last_activity_desc: Phase 77 execution started
 progress:
   total_phases: 15
   completed_phases: 7
   total_plans: 39
-  completed_plans: 36
+  completed_plans: 37
   percent: 47
 ---
 
@@ -28,7 +28,7 @@ progress:
 ## Current Position
 
 Phase: 77 (data-display-operator-patterns) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-07-12 — Phase 77 execution started
 
@@ -69,6 +69,7 @@ Last activity: 2026-07-12 — Phase 77 execution started
 | Phase 77 P02 | 7 min | 1 tasks | 4 files |
 | Phase 77 P03 | 8 min | 2 tasks | 6 files |
 | Phase 77 P04 | 10 min | 2 tasks | 6 files |
+| Phase 77 P05 | 43 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -96,8 +97,8 @@ Last activity: 2026-07-12 — Phase 77 execution started
 
 ## Session Continuity
 
-**Last session:** 2026-07-12T22:51:15.377Z
-**Stopped at:** Completed 77-04-PLAN.md
+**Last session:** 2026-07-12T23:38:25.120Z
+**Stopped at:** Completed 77-05-PLAN.md
 **Resume file:** None
 
 - **Last Action:** Verified Phase 76, recorded `76-VERIFICATION.md`, and transitioned planning state to Phase 77.
@@ -134,6 +135,9 @@ Last activity: 2026-07-12 — Phase 77 execution started
 - [Phase 77]: Compose the shared EmptyState only for the explicit empty data category. — Loading, error, unavailable, and permission boundaries require their own truthful status semantics.
 - [Phase 77]: Use native progress with visible count and percentage, without inline width or animated value styling. — Preserves native range semantics and the token-owned no-inline-style boundary.
 - [Phase 77]: Treat toast tone and urgency separately. — Warning and danger content becomes an alert only when the caller marks the message immediate.
+- [Phase 77]: Read normalized map fields with fetch semantics and never project payloads for unavailable or redacted maps. — False availability is security-significant and must remain distinct from a missing key.
+- [Phase 77]: Constrain fallback redaction to exact visible [redacted] copy. — Caller-provided fallback text must not become a disclosure channel.
+- [Phase 77]: Limit new internal data-display scrolling to the labelled focusable CodeBlock region. — Machine content may scroll without making ordinary data surfaces or the page overflow.
 
 ### Blockers
 
