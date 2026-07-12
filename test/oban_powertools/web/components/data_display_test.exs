@@ -1,5 +1,25 @@
+defmodule ObanPowertools.Web.Components.DataDisplayNilPolicy do
+  def display(:job_args, _value, _context), do: nil
+  def display(_kind, _value, _context), do: nil
+end
+
+defmodule ObanPowertools.Web.Components.DataDisplayStringPolicy do
+  def display(:job_args, _value, _context), do: "host string sibling"
+  def display(_kind, _value, _context), do: nil
+end
+
+defmodule ObanPowertools.Web.Components.DataDisplayMapPolicy do
+  def display(:job_args, _value, _context), do: %{"safe" => "host map sibling"}
+  def display(_kind, _value, _context), do: nil
+end
+
+defmodule ObanPowertools.Web.Components.DataDisplayRaisingPolicy do
+  def display(:job_args, _value, _context), do: raise("policy failed")
+  def display(_kind, _value, _context), do: nil
+end
+
 defmodule ObanPowertools.Web.Components.DataDisplayTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   @module ObanPowertools.Web.Components.DataDisplay
   @source_path "lib/oban_powertools/web/components/data_display.ex"
@@ -500,20 +520,54 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
              ~s(id="operator-flash-danger" class="obpt-toast" data-obpt-tone="danger" role="alert")
   end
 
-  test "code, args, and redaction render normalized displays without leaking original sentinels" do
+  test "code_block is visibly labelled, focusable, escaped, and filters disclosure attributes" do
     code =
       render_data(:code_block,
         id: "code",
         label: "Args",
         content: ~s({"safe": "<b>text</b>"}),
-        language: "json"
+        language: "json",
+        rest: %{
+          "aria-describedby" => "code-help",
+          "class" => "host-code",
+          "data-obpt-language" => "html",
+          "data-testid" => "args-code",
+          "onclick" => "copySecret()",
+          "phx-click" => "copy-secret",
+          "role" => "button",
+          "style" => "overflow:visible",
+          "title" => @secret
+        }
       )
+
+    assert code =~ ~s(<figure id="code" class="obpt-code-block" data-obpt-language="json")
+    assert code =~ ~s(aria-describedby="code-help")
+    assert code =~ ~s(data-testid="args-code")
+    assert code =~ "<figcaption>Args</figcaption>"
+    assert code =~ ~s(<pre class="obpt-code-block__region" tabindex="0")
+    assert code =~ ~s(<code class="obpt-code-block__code")
+    assert code =~ "&lt;b&gt;text&lt;/b&gt;"
+    refute code =~ @secret
+    refute code =~ "host-code"
+    refute code =~ "copySecret"
+    refute code =~ "copy-secret"
+    refute code =~ ~s(role="button")
+    refute code =~ ~s(style=)
+    refute code =~ ~s(title=)
+
+    assert_raise ArgumentError, fn ->
+      render_data(:code_block, id: "blank-code", label: " ", content: "safe")
+    end
+  end
+
+  test "args_viewer dispatches normalized tuple output without invoking policy callbacks" do
+    raw_json = ~s({"safe":"visible","markup":"<script>blocked</script>"})
 
     raw =
       render_data(:args_viewer,
         id: "raw",
         label: "Args",
-        display: {:raw_json, ~s({"safe":"visible"})}
+        display: {:raw_json, raw_json}
       )
 
     string =
@@ -524,31 +578,190 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
       )
 
     fallback =
-      render_data(:args_viewer, id: "fallback", label: "Args", display: {:fallback, "[redacted]"})
+      render_data(:args_viewer, id: "fallback", label: "Args", display: {:fallback, @secret})
 
-    map_redacted =
-      render_data(:args_viewer,
-        id: "recorded",
-        label: "Result",
-        display: %{available?: true, redacted?: true, value: @secret, sibling: "safe sibling"}
-      )
-
-    assert code =~ "<figure"
-    assert code =~ "<figcaption"
-    assert code =~ "<pre"
-    assert code =~ ~s(tabindex="0")
-    assert code =~ "&lt;b&gt;text&lt;/b&gt;"
+    assert raw =~ ~s(data-obpt-language="json")
     assert raw =~ "visible"
+    assert raw =~ "&lt;script&gt;blocked&lt;/script&gt;"
+    refute raw =~ "<script>"
+    assert string =~ ~s(data-obpt-language="text")
     assert string =~ "visible sibling"
     assert fallback =~ "[redacted]"
-    assert map_redacted =~ "Hidden by display policy"
-    assert map_redacted =~ "safe sibling"
+    assert_no_disclosure(fallback)
+  end
 
-    for html <- [fallback, map_redacted] do
-      refute html =~ @secret
-      refute html =~ ~s(title=)
-      refute html =~ ~s(data-secret)
-      refute html =~ "<details"
+  test "args_viewer renders available recorded and workflow maps without inspecting their envelope" do
+    recorded =
+      render_data(:args_viewer,
+        id: "recorded-available",
+        label: "Recorded output",
+        kind: :recorded_output,
+        display: %{
+          available?: true,
+          redacted?: false,
+          summary: "recorded safe summary",
+          status: "ok",
+          payload: "recorded exact payload <tag>"
+        }
+      )
+
+    workflow =
+      render_data(:args_viewer,
+        id: "workflow-available",
+        label: "Workflow result",
+        kind: :workflow_result,
+        display: %{
+          "available?" => true,
+          "redacted?" => false,
+          "summary" => "workflow safe summary",
+          "status" => "completed",
+          "payload" => "workflow exact payload"
+        }
+      )
+
+    assert recorded =~ ~s(data-obpt-kind="recorded_output")
+    assert recorded =~ ~s(class="obpt-args-viewer__summary")
+    assert recorded =~ "recorded safe summary"
+    assert recorded =~ ~s(class="obpt-args-viewer__status")
+    assert recorded =~ "ok"
+    assert recorded =~ "recorded exact payload &lt;tag&gt;"
+    refute recorded =~ "%{"
+    refute recorded =~ "available?:"
+
+    assert workflow =~ ~s(data-obpt-kind="workflow_result")
+    assert workflow =~ "workflow safe summary"
+    assert workflow =~ "completed"
+    assert workflow =~ "workflow exact payload"
+    refute workflow =~ "%{"
+  end
+
+  test "args_viewer renders unavailable and redacted maps without exposing payloads" do
+    unavailable =
+      render_data(:args_viewer,
+        id: "recorded-unavailable",
+        label: "Recorded output",
+        kind: :recorded_output,
+        display: %{
+          available?: false,
+          redacted?: false,
+          summary: "No recorded output found",
+          status: nil,
+          payload: @secret
+        }
+      )
+
+    recorded_redacted =
+      render_data(:args_viewer,
+        id: "recorded-redacted",
+        label: "Recorded output",
+        kind: :recorded_output,
+        display: %{
+          available?: true,
+          redacted?: true,
+          summary: "recorded safe sibling",
+          status: "redacted",
+          payload: %{"nested" => [@secret]}
+        }
+      )
+
+    workflow_redacted =
+      render_data(:args_viewer,
+        id: "workflow-redacted",
+        label: "Workflow result",
+        kind: :workflow_result,
+        display: %{
+          "available?" => true,
+          "redacted?" => true,
+          "summary" => "workflow safe sibling",
+          "status" => "redacted",
+          "payload" => @secret
+        }
+      )
+
+    assert unavailable =~ ~s(data-obpt-display-state="unavailable")
+    assert unavailable =~ "No recorded output found"
+    refute unavailable =~ "Hidden by display policy"
+
+    for {html, sibling} <- [
+          {recorded_redacted, "recorded safe sibling"},
+          {workflow_redacted, "workflow safe sibling"}
+        ] do
+      assert html =~ "Hidden by display policy"
+      assert html =~ sibling
+      assert html =~ "redacted"
+      assert_no_disclosure(html)
+    end
+
+    assert_no_disclosure(unavailable)
+  end
+
+  test "normalized DisplayPolicy fixtures preserve safe output and remove original secrets" do
+    original = Application.get_env(:oban_powertools, :display_policy)
+    on_exit(fn -> Application.put_env(:oban_powertools, :display_policy, original) end)
+
+    job = %Oban.Job{meta: %{"__redacted_fields__" => ["secret"]}}
+
+    fixtures = [
+      {ObanPowertools.Web.Components.DataDisplayNilPolicy, "nil-policy", "safe nil sibling",
+       "Redacted at enqueue"},
+      {ObanPowertools.Web.Components.DataDisplayStringPolicy, "string-policy", "safe nil sibling",
+       "host string sibling"},
+      {ObanPowertools.Web.Components.DataDisplayMapPolicy, "map-policy", "safe nil sibling",
+       "host map sibling"},
+      {ObanPowertools.Web.Components.DataDisplayRaisingPolicy, "raising-policy",
+       "safe nil sibling", "[redacted]"}
+    ]
+
+    for {policy, id, sibling, expected} <- fixtures do
+      Application.put_env(:oban_powertools, :display_policy, policy)
+
+      normalized =
+        ObanPowertools.DisplayPolicy.render_job_field(
+          :job_args,
+          %{"safe" => sibling},
+          %{job: job}
+        )
+
+      html = render_data(:args_viewer, id: id, label: "Args", display: normalized)
+
+      assert html =~ expected
+
+      assert html =~ sibling or
+               expected in ["host string sibling", "host map sibling", "[redacted]"]
+
+      assert_no_disclosure(html)
+    end
+  end
+
+  test "redacted_value uses closed exact copy and exposes no disclosure API" do
+    enqueue = render_data(:redacted_value, id: "enqueue", reason: :enqueue)
+    policy = render_data(:redacted_value, id: "policy", reason: :policy)
+    fallback = render_data(:redacted_value, id: "fallback", reason: :fallback, message: @secret)
+
+    assert enqueue =~ "Redacted at enqueue"
+    assert policy =~ "Hidden by display policy"
+    assert fallback =~ "[redacted]"
+
+    for html <- [enqueue, policy, fallback] do
+      assert html =~ ~s(class="obpt-redacted-value__icon")
+      assert_no_disclosure(html)
+    end
+  end
+
+  test "source keeps ArgsViewer normalized-only and RedactedValue disclosure-free" do
+    source = File.read!(@source_path)
+
+    assert source =~ "defp render_normalized_display"
+    refute source =~ "DisplayPolicy"
+
+    args_attrs = source |> source_between("attr(:display", "def args_viewer")
+    redacted_api = source |> source_between("attr(:reason", "def redacted_value")
+
+    refute args_attrs =~ "raw"
+    refute args_attrs =~ "original"
+
+    for forbidden <- ["slot(", "attr(:rest", "attr(:title", "attr(:tooltip", "attr(:value"] do
+      refute redacted_api =~ forbidden
     end
   end
 
@@ -605,6 +818,26 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
 
   defp count(html, needle), do: length(String.split(html, needle)) - 1
   defp index_of(html, needle), do: :binary.match(html, needle) |> elem(0)
+
+  defp assert_no_disclosure(html) do
+    refute html =~ @secret
+    refute html =~ ~s(title=)
+    refute html =~ "tooltip"
+    refute html =~ "clipboard"
+    refute html =~ "copy-buffer"
+    refute html =~ "<details"
+    refute html =~ "<summary"
+
+    for attribute <- Regex.scan(~r/\s(data-[^=\s]+)=(?:"[^"]*"|'[^']*')/, html) do
+      refute Enum.join(attribute, " ") =~ @secret
+    end
+  end
+
+  defp source_between(source, first, last) do
+    [_before, after_first] = String.split(source, first, parts: 2)
+    [between, _after] = String.split(after_first, last, parts: 2)
+    first <> between
+  end
 
   defp state_copy(:loading), do: "Loading job evidence"
   defp state_copy(:empty), do: "No rows match the current filters"
