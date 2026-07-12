@@ -5,15 +5,15 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 77
 current_phase_name: data-display-operator-patterns
 status: executing
-stopped_at: Completed 77-03-PLAN.md
-last_updated: "2026-07-12T22:33:04.243Z"
+stopped_at: Completed 77-04-PLAN.md
+last_updated: "2026-07-12T22:51:15.381Z"
 last_activity: 2026-07-12
 last_activity_desc: Phase 77 execution started
 progress:
   total_phases: 15
   completed_phases: 7
   total_plans: 39
-  completed_plans: 35
+  completed_plans: 36
   percent: 47
 ---
 
@@ -28,7 +28,7 @@ progress:
 ## Current Position
 
 Phase: 77 (data-display-operator-patterns) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-07-12 — Phase 77 execution started
 
@@ -68,6 +68,7 @@ Last activity: 2026-07-12 — Phase 77 execution started
 | Phase 77 P01 | 8 min | 4 tasks | 4 files |
 | Phase 77 P02 | 7 min | 1 tasks | 4 files |
 | Phase 77 P03 | 8 min | 2 tasks | 6 files |
+| Phase 77 P04 | 10 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -95,8 +96,8 @@ Last activity: 2026-07-12 — Phase 77 execution started
 
 ## Session Continuity
 
-**Last session:** 2026-07-12T22:33:04.239Z
-**Stopped at:** Completed 77-03-PLAN.md
+**Last session:** 2026-07-12T22:51:15.377Z
+**Stopped at:** Completed 77-04-PLAN.md
 **Resume file:** None
 
 - **Last Action:** Verified Phase 76, recorded `76-VERIFICATION.md`, and transitioned planning state to Phase 77.
@@ -130,6 +131,9 @@ Last activity: 2026-07-12 — Phase 77 execution started
 - [Phase 77]: Keep exactly one semantic table tree at every viewport and expose mobile labels inside each original data cell. — Avoids duplicate controls, ids, and sensitive values while preserving table semantics.
 - [Phase 77]: Keep DataTable sorting parent-owned and emit only the configured event plus opaque sort key. — Preserves stateless presentation and truthful parent-controlled aria-sort state.
 - [Phase 77]: Derive responsive selection and action targets from existing spacing tokens and leave packaged JavaScript unchanged. — Meets the 44px accessibility target without introducing table behavior or raw dimensions.
+- [Phase 77]: Compose the shared EmptyState only for the explicit empty data category. — Loading, error, unavailable, and permission boundaries require their own truthful status semantics.
+- [Phase 77]: Use native progress with visible count and percentage, without inline width or animated value styling. — Preserves native range semantics and the token-owned no-inline-style boundary.
+- [Phase 77]: Treat toast tone and urgency separately. — Warning and danger content becomes an alert only when the caller marks the message immediate.
 
 ### Blockers
 
