@@ -94,6 +94,18 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       %{id: "shell-theme-actor-context", state: "actor_context", nav_state: "closed"},
       %{id: "shell-long-context-wrapping", state: "long_context", nav_state: "closed"}
     ]
+    @data_story_ids ~w[
+      data-table-sort-states
+      data-table-320-stacked
+      data-table-explicit-states
+      data-status-taxonomy-all
+      data-description-list-long-values
+      data-timeline-event-log
+      data-progress-metric-cards
+      data-code-args-redaction
+      data-empty-toast-flash
+      data-table-thousands-row-stress
+    ]
 
     test "renders the showcase through the Powertools theme shell", %{conn: conn} do
       {:ok, _view, html} = mount_showcase!(conn)
@@ -255,6 +267,88 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       assert has_element?(view, "#obpt-form-story-form-switch-states input[type='checkbox']")
       assert html =~ "&lt;script&gt;alert(&#39;escaped&#39;)&lt;/script&gt;"
       refute html =~ "<script>alert('escaped')</script>"
+    end
+
+    test "data-display section renders ten metadata-complete real component stories", %{
+      conn: conn
+    } do
+      {:ok, view, html} = mount_showcase!(conn)
+
+      assert_attribute_values(html, "data-obpt-data-story", @data_story_ids)
+      refute has_element?(view, "[data-obpt-section='data-display'] .obpt-showcase-placeholder")
+
+      for id <- @data_story_ids do
+        assert has_element?(
+                 view,
+                 "#obpt-data-story-#{id}[data-obpt-data-story='#{id}'][data-obpt-component][data-obpt-variant][data-obpt-state][data-obpt-a11y-target]"
+               )
+      end
+
+      assert has_element?(view, "#obpt-data-story-data-table-sort-states table")
+      assert has_element?(view, "#obpt-data-story-data-description-list-long-values dl")
+      assert has_element?(view, "#obpt-data-story-data-timeline-event-log ol")
+      assert has_element?(view, "#obpt-data-story-data-progress-metric-cards progress")
+
+      assert has_element?(
+               view,
+               "#obpt-data-story-data-code-args-redaction pre[tabindex='0'] code"
+             )
+
+      assert has_element?(view, "#obpt-data-story-data-empty-toast-flash [role='alert']")
+
+      for copy <- [
+            "No rows match the current filters",
+            "Data did not load",
+            "Permission denied",
+            "Redacted at enqueue",
+            "Hidden by display policy",
+            "[redacted]",
+            "مرحبا",
+            "✅"
+          ] do
+        assert html =~ copy
+      end
+
+      assert html =~ "&lt;script&gt;alert(&#39;data&#39;)&lt;/script&gt;"
+      refute html =~ "<script>alert('data')</script>"
+      refute html =~ "PHASE77-SECRET-SENTINEL"
+
+      assert count(html, ~s(id="data-thousands-table-row-job-)) == 20
+      assert html =~ ~s(id="data-thousands-table-row-job-0001")
+      assert html =~ ~s(id="data-thousands-table-row-job-0020")
+      assert html =~ "2,500 jobs"
+    end
+
+    test "data sort story keeps sort state in ShowcaseLive and updates truthful aria-sort", %{
+      conn: conn
+    } do
+      {:ok, view, _html} = mount_showcase!(conn)
+      story = "#obpt-data-story-data-table-sort-states"
+
+      assert has_element?(
+               view,
+               "#{story} th[aria-sort='ascending'] button[phx-value-sort-key='worker']"
+             )
+
+      view
+      |> element("#{story} button[phx-click='sort-data-table'][phx-value-sort-key='id']")
+      |> render_click()
+
+      assert has_element?(
+               view,
+               "#{story} th[aria-sort='ascending'] button[phx-value-sort-key='id']"
+             )
+
+      refute has_element?(view, "#{story} th[aria-sort] button[phx-value-sort-key='worker']")
+
+      view
+      |> element("#{story} button[phx-click='sort-data-table'][phx-value-sort-key='id']")
+      |> render_click()
+
+      assert has_element?(
+               view,
+               "#{story} th[aria-sort='descending'] button[phx-value-sort-key='id']"
+             )
     end
 
     defp assert_attribute_values(html, attribute, expected_values) do

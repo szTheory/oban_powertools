@@ -33,6 +33,16 @@ defmodule ObanPowertools.DataDisplayStoryCatalogTest do
     assert ids == @ids
     assert ids == Enum.uniq(ids)
     assert Enum.all?(stories, &(&1.kind == :data))
+
+    for story <- stories do
+      assert is_atom(story.component)
+      assert is_list(story.components) and story.components != []
+      assert is_binary(story.name) and story.name != ""
+      assert is_binary(story.description) and story.description != ""
+      assert is_list(story.variant) and story.variant != []
+      assert is_list(story.state) and story.state != []
+      assert is_map(story.fixtures)
+    end
   end
 
   test "target helpers derive stable story, snapshot, and a11y names" do
@@ -73,6 +83,14 @@ defmodule ObanPowertools.DataDisplayStoryCatalogTest do
     end
 
     refute metadata =~ "PHASE77-SECRET-SENTINEL"
+
+    taxonomy = DataDisplayStoryCatalog.story!("data-status-taxonomy-all").fixtures.taxonomy
+    assert taxonomy == ObanPowertools.Web.StatusTaxonomy.all_specs()
+
+    explicit_states =
+      DataDisplayStoryCatalog.story!("data-table-explicit-states").fixtures.states
+
+    assert explicit_states == [:loading, :empty, :error, :unavailable, :permission_denied]
   end
 
   test "large-row story reports truthful totals while keeping a bounded stable window" do
@@ -81,7 +99,12 @@ defmodule ObanPowertools.DataDisplayStoryCatalogTest do
     window = DataDisplayStoryCatalog.large_row_window()
     assert length(window) <= 25
     assert hd(window).id == "job-0001"
-    assert List.last(window).id =~ ~r/^job-\d{4}$/
+    assert List.last(window).id == "job-0020"
+
+    stress = DataDisplayStoryCatalog.story!("data-table-thousands-row-stress").fixtures
+    assert stress.total == DataDisplayStoryCatalog.large_row_total()
+    assert stress.window == window
+    assert stress.pagination == %{page: 50, per_page: 20, total_pages: 125}
   end
 
   test "huge args and long-value fixtures are deterministic and normalized" do
