@@ -14,7 +14,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
     use Phoenix.LiveView
 
-    alias ObanPowertools.Web.Components.{Forms, Primitives}
+    alias ObanPowertools.Web.Components.{AppShell, Forms, Primitives}
 
     @catalog_module ObanPowertools.ShowcaseCatalog
     @catalog_path Path.expand("../../../../test/support/showcase_catalog.ex", __DIR__)
@@ -25,6 +25,8 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
                             )
     @form_catalog_module ObanPowertools.FormStoryCatalog
     @form_catalog_path Path.expand("../../../../test/support/form_story_catalog.ex", __DIR__)
+    @shell_catalog_module ObanPowertools.ShellStoryCatalog
+    @shell_catalog_path Path.expand("../../../../test/support/shell_story_catalog.ex", __DIR__)
 
     @theme_choices [
       %{value: "system", label: "System"},
@@ -40,6 +42,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
     ]
 
     @section_list [
+      %{id: "app-shell", title: "App shell"},
       %{id: "tokens", title: "Tokens"},
       %{id: "primitives", title: "Primitives"},
       %{id: "forms", title: "Forms"},
@@ -60,6 +63,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       catalog = load_catalog()
       primitive_catalog = load_primitive_catalog()
       form_catalog = load_form_catalog()
+      shell_catalog = load_shell_catalog()
 
       {:ok,
        socket
@@ -75,7 +79,9 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
        |> assign(:primitive_catalog_available?, primitive_catalog.available?)
        |> assign(:primitive_stories, primitive_catalog.stories)
        |> assign(:form_catalog_available?, form_catalog.available?)
-       |> assign(:form_stories, form_catalog.stories)}
+       |> assign(:form_stories, form_catalog.stories)
+       |> assign(:shell_catalog_available?, shell_catalog.available?)
+       |> assign(:shell_stories, shell_catalog.stories)}
     end
 
     @impl Phoenix.LiveView
@@ -161,6 +167,40 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
             </header>
 
             <%= case section.id do %>
+              <% "app-shell" -> %>
+                <%= if @shell_catalog_available? and @shell_stories != [] do %>
+                  <div class="obpt-showcase-story-grid">
+                    <article
+                      :for={story <- @shell_stories}
+                      id={target_value(story.test_targets, :story)}
+                      class="obpt-showcase-story"
+                      data-obpt-shell-story={story.id}
+                      data-obpt-component={component_value(story)}
+                      data-obpt-variant={state_value(story.variant)}
+                      data-obpt-state={state_value(story.state)}
+                      data-obpt-nav-state={state_value(story.nav_state)}
+                      data-obpt-a11y-target={target_value(story.test_targets, :a11y)}
+                    >
+                      <header><p>{component_value(story)}</p><h3>{story.name}</h3></header>
+                      <p>{story.description}</p>
+                      <.shell_story_body story={story} />
+                      <dl>
+                        <div>
+                          <dt>Snapshot</dt>
+                          <dd><code>{target_value(story.test_targets, :snapshot)}</code></dd>
+                        </div>
+                        <div>
+                          <dt>A11y target</dt>
+                          <dd><code>{target_value(story.test_targets, :a11y)}</code></dd>
+                        </div>
+                      </dl>
+                    </article>
+                  </div>
+                <% else %>
+                  <p class="obpt-showcase-placeholder" data-obpt-shell-index="empty">
+                    No shell stories registered. Add token-backed shell stories before updating visual baselines.
+                  </p>
+                <% end %>
               <% "tokens" -> %>
               <div class="obpt-showcase-token-grid">
                 <div class="obpt-showcase-token" data-obpt-tone="accent">
@@ -390,6 +430,15 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       end
     end
 
+    defp load_shell_catalog do
+      with {:ok, module} <- ensure_shell_catalog_module(),
+           true <- function_exported?(module, :stories, 0) do
+        %{available?: true, stories: apply(module, :stories, [])}
+      else
+        _ -> %{available?: false, stories: []}
+      end
+    end
+
     defp ensure_catalog_module do
       ensure_support_module(@catalog_module, @catalog_path)
     end
@@ -400,6 +449,10 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
     defp ensure_form_catalog_module do
       ensure_support_module(@form_catalog_module, @form_catalog_path)
+    end
+
+    defp ensure_shell_catalog_module do
+      ensure_support_module(@shell_catalog_module, @shell_catalog_path)
     end
 
     defp ensure_support_module(module, path) do
@@ -442,6 +495,55 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
     end
 
     defp target_value(_targets, _key), do: ""
+
+    attr(:story, :map, required: true)
+
+    defp shell_story_body(assigns) do
+      ~H"""
+      <AppShell.app_shell
+        current_path={@story.current_path}
+        current_actor={@story.actor}
+        context_label={@story.context_label}
+        nav_state={@story.nav_state}
+        id_scope={@story.id}
+      >
+        <section class="obpt-primitive-matrix" aria-label={"#{@story.name} representative content"}>
+          <h4>{@story.name}</h4>
+          <p>{shell_story_summary(@story.id)}</p>
+          <dl>
+            <div>
+              <dt>Current path</dt>
+              <dd><code>{@story.current_path}</code></dd>
+            </div>
+            <div>
+              <dt>Evidence state</dt>
+              <dd>{state_value(@story.state)}</dd>
+            </div>
+          </dl>
+        </section>
+      </AppShell.app_shell>
+      """
+    end
+
+    defp shell_story_summary("shell-nine-surface-nav"),
+      do: "All nine native Powertools surfaces remain visible and ordered."
+
+    defp shell_story_summary("shell-mobile-collapsed"),
+      do: "Collapsed mobile navigation keeps the disclosure source of truth closed."
+
+    defp shell_story_summary("shell-mobile-expanded"),
+      do: "Expanded mobile navigation keeps the disclosure source of truth open."
+
+    defp shell_story_summary("shell-active-breadcrumb"),
+      do: "The Jobs route and Job detail breadcrumb are active from server path context."
+
+    defp shell_story_summary("shell-theme-actor-context"),
+      do: "Theme choices render beside explicit test actor and context labels."
+
+    defp shell_story_summary("shell-long-context-wrapping"),
+      do: "Escaped long context text wraps without becoming markup or host state."
+
+    defp shell_story_summary(_id), do: "Representative AppShell evidence."
 
     attr(:story, :map, required: true)
 

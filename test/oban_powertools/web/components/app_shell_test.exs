@@ -94,6 +94,20 @@ defmodule ObanPowertools.Web.Components.AppShellTest do
       assert html =~ ~s(aria-expanded="true")
     end
 
+    test "keeps production ids by default and supports scoped ids for repeated showcase stories" do
+      default_html = render_shell()
+      scoped_html = render_shell(id_scope: "shell-nine-surface-nav")
+
+      assert default_html =~ ~s(aria-controls="obpt-primary-nav")
+      assert default_html =~ ~s(id="obpt-primary-nav")
+      assert default_html =~ ~s(id="obpt-main")
+
+      assert scoped_html =~ ~s(aria-controls="obpt-primary-nav-shell-nine-surface-nav")
+      assert scoped_html =~ ~s(id="obpt-primary-nav-shell-nine-surface-nav")
+      assert scoped_html =~ ~s(href="#obpt-main-shell-nine-surface-nav")
+      assert scoped_html =~ ~s(id="obpt-main-shell-nine-surface-nav")
+    end
+
     test "falls back when actor context is unavailable" do
       html = render_shell(current_actor: nil)
 

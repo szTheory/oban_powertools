@@ -48,6 +48,7 @@ defmodule ObanPowertools.Web.Components.AppShell do
   attr(:context_label, :string, default: nil)
   attr(:nav_state, :any, default: :closed)
   attr(:nav_items, :list, default: nil)
+  attr(:id_scope, :string, default: nil)
   attr(:rest, :global, default: %{})
   slot(:inner_block, required: true)
 
@@ -57,6 +58,8 @@ defmodule ObanPowertools.Web.Components.AppShell do
     nav_items = assigns.nav_items |> nav_items_for_render(current_path)
     breadcrumbs = breadcrumb_items(current_path)
     actor_label = present_text(assigns.actor_label) || actor_label(assigns.current_actor)
+    primary_nav_id = scoped_id("obpt-primary-nav", assigns.id_scope)
+    main_id = scoped_id("obpt-main", assigns.id_scope)
 
     assigns =
       assigns
@@ -65,6 +68,8 @@ defmodule ObanPowertools.Web.Components.AppShell do
       |> assign(:nav_expanded, nav_state == "open")
       |> assign(:nav_items, nav_items)
       |> assign(:breadcrumbs, breadcrumbs)
+      |> assign(:primary_nav_id, primary_nav_id)
+      |> assign(:main_id, main_id)
       |> assign(:theme_choices, theme_choices())
       |> assign(:actor_label, actor_label)
       |> assign(:context_label, present_text(assigns.context_label))
@@ -77,7 +82,7 @@ defmodule ObanPowertools.Web.Components.AppShell do
       data-obpt-nav-state={@nav_state}
       {@rest}
     >
-      <a class="obpt-app-shell__skip" href="#obpt-main">Skip to main content</a>
+      <a class="obpt-app-shell__skip" href={"##{@main_id}"}>Skip to main content</a>
 
       <header class="obpt-app-shell__header">
         <div class="obpt-app-shell__brand">Oban Powertools</div>
@@ -87,13 +92,13 @@ defmodule ObanPowertools.Web.Components.AppShell do
           class="obpt-app-shell__nav-toggle"
           data-obpt-nav-toggle
           aria-expanded={to_string(@nav_expanded)}
-          aria-controls="obpt-primary-nav"
+          aria-controls={@primary_nav_id}
         >
           Navigation
         </button>
 
         <nav
-          id="obpt-primary-nav"
+          id={@primary_nav_id}
           class="obpt-primary-nav"
           aria-label="Powertools surfaces"
           data-obpt-primary-nav
@@ -149,7 +154,7 @@ defmodule ObanPowertools.Web.Components.AppShell do
         </nav>
       </header>
 
-      <main id="obpt-main" class="obpt-shell-main" tabindex="-1">
+      <main id={@main_id} class="obpt-shell-main" tabindex="-1">
         {render_slot(@inner_block)}
       </main>
     </div>
@@ -278,6 +283,22 @@ defmodule ObanPowertools.Web.Components.AppShell do
 
   defp normalize_nav_state!(value) do
     raise ArgumentError, "unsupported nav_state: #{inspect(value)}"
+  end
+
+  defp scoped_id(base, nil), do: base
+
+  defp scoped_id(base, scope) do
+    case present_text(scope) do
+      nil ->
+        base
+
+      scope ->
+        if Regex.match?(~r/^[a-z0-9]+(?:-[a-z0-9]+)*$/, scope) do
+          "#{base}-#{scope}"
+        else
+          raise ArgumentError, "id_scope must be a stable slug"
+        end
+    end
   end
 
   defp path_from_uri(uri) do
