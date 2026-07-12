@@ -12,7 +12,7 @@
 - [x] **Phase 73: Visual-Regression & A11y Harness** — Playwright snapshots + axe gate in CI, established *before* any page changes. (completed 2026-06-19)
 - [x] **Phase 74: Primitives Library** — Token-driven `Phoenix.Component` primitives as showcase stories under VRT/a11y. (completed 2026-07-11)
 - [x] **Phase 75: Form Components** — Accessible form primitives on `to_form`. (completed 2026-07-11)
-- [ ] **Phase 76: Navigation & App Shell** — Responsive Powertools shell (header, nav, theme toggle, actor).
+- [x] **Phase 76: Navigation & App Shell** — Responsive Powertools shell (header, nav, theme toggle, actor). (completed 2026-07-12)
 - [ ] **Phase 77: Data-Display & Operator Patterns** — Shared data components + unified status taxonomy. *[split-risk]*
 - [ ] **Phase 78: Component Groups (Meta-Components)** — Operator meta-patterns encapsulating "explain, then act".
 - [ ] **Phase 79: Page Migration Wave 1** — Overview, Cron, Limiters, Audit.
@@ -192,7 +192,7 @@
   2. Active-route + breadcrumb + skip-to-content + logical focus order; a11y gate green.
   3. The shell has a showcase story across themes/viewports; VRT green.
 
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans complete
 **Wave 1**
 
 - [x] 76-01-PLAN.md — RED AppShell render, layout/current-path, catalog, and browser behavior contracts (wave 1)
@@ -211,7 +211,7 @@
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 76-05-PLAN.md — Shell browser behavior proof, VRT baselines, a11y evidence, and validation closeout (wave 5)
+- [x] 76-05-PLAN.md — Shell browser behavior proof, VRT baselines, a11y evidence, and validation closeout (wave 5)
 
 ### Phase 77: Data-Display & Operator Patterns
 
@@ -328,7 +328,7 @@
 | 73. Visual-Regression & A11y Harness | 5/5 | Complete   | 2026-06-19 |
 | 74. Primitives Library | 5/5 | Complete    | 2026-07-11 |
 | 75. Form Components | 6/6 | Complete    | 2026-07-11 |
-| 76. Navigation & App Shell | 4/5 | In Progress|  |
+| 76. Navigation & App Shell | 5/5 | Complete   | 2026-07-12 |
 | 77. Data-Display & Operator Patterns | 0/TBD | Not started | — |
 | 78. Component Groups (Meta-Components) | 0/TBD | Not started | — |
 | 79. Page Migration Wave 1 | 0/TBD | Not started | — |

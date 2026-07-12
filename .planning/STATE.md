@@ -4,16 +4,16 @@ milestone: v2.0
 milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 76
 current_phase_name: navigation-app-shell
-status: executing
-stopped_at: Completed 76-04-PLAN.md
-last_updated: "2026-07-12T15:03:57.286Z"
+status: verifying
+stopped_at: Completed 76-05-PLAN.md
+last_updated: "2026-07-12T15:36:20.535Z"
 last_activity: 2026-07-12
 progress:
   total_phases: 15
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 32
-  completed_plans: 31
-  percent: 97
+  completed_plans: 32
+  percent: 100
 ---
 
 # Project State
@@ -26,9 +26,9 @@ progress:
 
 ## Current Position
 
-Phase: 76 (navigation-app-shell) — EXECUTING
+Phase: 76 (navigation-app-shell) — VERIFYING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-12
 
 ## Performance Metrics
@@ -63,6 +63,7 @@ Last activity: 2026-07-12
 | Phase 76 P02 | 8m11s | 2 tasks | 5 files |
 | Phase 76 P03 | 7m51s | 2 tasks | 6 files |
 | Phase 76 P04 | 10 min | 2 tasks | 10 files |
+| Phase 76 P05 | 25m23s | 2 tasks | 79 files |
 
 ## Accumulated Context
 
@@ -90,13 +91,13 @@ Last activity: 2026-07-12
 
 ## Session Continuity
 
-**Last session:** 2026-07-12T15:03:57.280Z
-**Stopped at:** Completed 76-04-PLAN.md
+**Last session:** 2026-07-12T15:36:20.529Z
+**Stopped at:** Completed 76-05-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed `76-04-PLAN.md`; shell story catalog, showcase rendering, and schema 4 manifest support are committed.
-- **Next Action:** Execute `76-05-PLAN.md` for shell behavior proof, VRT evidence, and baseline work.
-- **Active Context:** Phase 76 UI-SPEC is approved; shell stories are generated manifest targets, spacing is limited to 4/8/16/24/32/48/64, shadcn is not applicable, and no third-party registries are used.
+- **Last Action:** Completed `76-05-PLAN.md`; shell behavior proof, shell VRT baselines, a11y evidence, and validation metadata are committed.
+- **Next Action:** Verify Phase 76 and proceed to the next roadmap phase after acceptance.
+- **Active Context:** Phase 76 UI-SPEC is approved; shell stories are generated manifest targets, Docker-backed Playwright is canonical for VRT baselines, and no third-party registries are used.
 
 ## Decisions
 
@@ -117,6 +118,8 @@ Last activity: 2026-07-12
 - [Phase 76]: Shell stories live in ObanPowertools.ShellStoryCatalog, separate from stress fixtures, primitive stories, and form stories.
 - [Phase 76]: Showcase AppShell story cells use story-scoped nav/main ids while production AppShell defaults remain obpt-primary-nav and obpt-main.
 - [Phase 76]: Manifest schema 4 appends generated shell_stories after form_stories and keeps shell ids Elixir-owned.
+- [Phase 76]: Phase 76 shell VRT baselines use the Docker-backed Playwright runner as canonical evidence because npm run vrt:update writes baselines through scripts/playwright-docker.sh.
+- [Phase 76]: Phase 76 shell structure proof uses target-kind-inclusive test titles so focused --grep shell commands select existing structure coverage.
 
 ### Blockers
 
