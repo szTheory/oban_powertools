@@ -61,6 +61,23 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     .obpt-sr-only
   ]
 
+  @shell_classes ~w[
+    .obpt-app-shell
+    .obpt-app-shell__skip
+    .obpt-app-shell__header
+    .obpt-app-shell__brand
+    .obpt-app-shell__nav-toggle
+    .obpt-primary-nav
+    .obpt-primary-nav__list
+    .obpt-primary-nav__link
+    .obpt-breadcrumb
+    .obpt-breadcrumb__list
+    .obpt-theme-choices
+    .obpt-theme-choice
+    .obpt-actor-context
+    .obpt-shell-main
+  ]
+
   @proof_seam_classes ~w[
     .obpt-tab
     .obpt-modal
@@ -96,6 +113,28 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     text-decoration-color
     text-decoration-thickness
     text-underline-offset
+    transition
+  ]
+
+  @token_backed_shell_properties ~w[
+    background
+    border
+    border-block-end
+    border-color
+    border-radius
+    box-shadow
+    color
+    font-family
+    font-size
+    font-weight
+    gap
+    line-height
+    margin
+    min-block-size
+    outline
+    outline-offset
+    padding
+    text-decoration-color
     transition
   ]
 
@@ -198,6 +237,51 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
           not allowed_literal_primitive_value?(value) do
         assert String.contains?(value, "var(--obpt-"),
                "primitive selector #{selector} property #{property} is not token-backed: #{value}"
+      end
+    end
+  end
+
+  test "app shell selectors are root-scoped, token-backed, responsive, and stateful" do
+    css = read_contract_file!(@tokens_path)
+    shell_blocks = shell_blocks(css)
+
+    for class <- @shell_classes do
+      assert css =~ ".obpt-root #{class}", "missing root-scoped shell selector #{class}"
+    end
+
+    assert css =~ ~s([data-obpt-nav-state="closed"])
+    assert css =~ ~s([data-obpt-nav-state="open"])
+    assert css =~ "@media (max-width: 48rem)"
+    assert css =~ "@media (min-width: 48rem)"
+
+    assert css =~ ~s(.obpt-primary-nav__link[aria-current="page"])
+    assert css =~ ~s(.obpt-theme-choice[aria-pressed="true"])
+    assert css =~ ~s(.obpt-breadcrumb [aria-current="page"])
+    assert css =~ ".obpt-app-shell__nav-toggle:focus-visible"
+    assert css =~ ".obpt-primary-nav__link:focus-visible"
+    assert css =~ ".obpt-theme-choice:focus-visible"
+    assert css =~ ".obpt-breadcrumb a:focus-visible"
+    assert css =~ "var(--obpt-color-focus)"
+    assert css =~ "var(--obpt-font-weight-semibold)"
+    assert css =~ "var(--obpt-color-accent-bg)"
+    assert css =~ "var(--obpt-color-accent-border)"
+
+    assert shell_blocks != [], "expected AppShell CSS blocks to be present"
+
+    for {selector, body} <- shell_blocks do
+      for part <- selector_parts(selector) do
+        assert String.starts_with?(part, ".obpt-root"),
+               "shell selector is not scoped below .obpt-root: #{part}"
+      end
+
+      refute body =~ ~r/#[0-9a-fA-F]{3,8}/,
+             "shell selector #{selector} contains a raw color value"
+
+      for {property, value} <- declarations(body),
+          shell_visual_property?(property),
+          not allowed_literal_shell_value?(value) do
+        assert String.contains?(value, "var(--obpt-"),
+               "shell selector #{selector} property #{property} is not token-backed: #{value}"
       end
     end
   end
@@ -330,6 +414,14 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     end)
   end
 
+  defp shell_blocks(css) do
+    Regex.scan(~r/([^{}]+)\{([^{}]+)\}/m, css, capture: :all_but_first)
+    |> Enum.map(fn [selector, body] -> {String.trim(selector), body} end)
+    |> Enum.filter(fn {selector, _body} ->
+      Enum.any?(@shell_classes, &String.contains?(selector, &1))
+    end)
+  end
+
   defp selector_parts(selector) do
     selector
     |> String.split(",")
@@ -359,8 +451,18 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     property in @token_backed_primitive_properties or String.starts_with?(property, "--obpt-")
   end
 
+  defp shell_visual_property?(property) do
+    property in @token_backed_shell_properties or String.starts_with?(property, "--obpt-")
+  end
+
   defp allowed_literal_primitive_value?(value) do
-    value in @allowed_literal_primitive_values or String.starts_with?(value, "1px solid var(--obpt-")
+    value in @allowed_literal_primitive_values or
+      String.starts_with?(value, "1px solid var(--obpt-")
+  end
+
+  defp allowed_literal_shell_value?(value) do
+    value in @allowed_literal_primitive_values or
+      String.starts_with?(value, "1px solid var(--obpt-")
   end
 
   defp contrast(vars, foreground, background) do
