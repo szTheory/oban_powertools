@@ -91,6 +91,47 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     .obpt-data-table__state-row
     .obpt-data-table__state-cell
     .obpt-data-state
+    .obpt-data-state__copy
+    .obpt-data-state__heading
+    .obpt-data-state__body
+    .obpt-description-list
+    .obpt-description-list__list
+    .obpt-description-list__item
+    .obpt-description-list__term
+    .obpt-description-list__value
+    .obpt-key-value
+    .obpt-key-value__term
+    .obpt-key-value__value
+    .obpt-machine-value
+    .obpt-machine-value__details
+    .obpt-machine-value__summary
+    .obpt-machine-value__full
+    .obpt-machine-value__display
+    .obpt-timeline
+    .obpt-timeline__list
+    .obpt-timeline__item
+    .obpt-timeline__time
+    .obpt-timeline__title
+    .obpt-timeline__source
+    .obpt-timeline__detail
+    .obpt-progress
+    .obpt-progress__label
+    .obpt-progress__value
+    .obpt-progress__count
+    .obpt-progress__percent
+    .obpt-progress__unavailable
+    .obpt-metric-card
+    .obpt-metric-card__status
+    .obpt-metric-card__action
+    .obpt-empty-state
+    .obpt-empty-state__heading
+    .obpt-empty-state__body
+    .obpt-empty-state__action
+    .obpt-toast
+    .obpt-toast__icon
+    .obpt-toast__content
+    .obpt-toast__dismiss
+    .obpt-flash-group
   ]
 
   @proof_seam_classes ~w[
@@ -347,6 +388,33 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
         assert String.contains?(value, "var(--obpt-"),
                "data selector #{selector} property #{property} is not token-backed: #{value}"
       end
+    end
+  end
+
+  test "secondary data selectors wrap, preserve native progress, expose focus, and reduce motion" do
+    css = read_contract_file!(@tokens_path)
+
+    assert css =~ ".obpt-root .obpt-machine-value__summary:focus-visible"
+    assert css =~ ".obpt-root .obpt-toast__dismiss:focus-visible"
+    assert css =~ ".obpt-root .obpt-progress progress"
+    assert css =~ "accent-color: var(--obpt-color-accent-solid)"
+    assert css =~ ".obpt-root .obpt-toast[data-obpt-tone=\"success\"]"
+    assert css =~ ".obpt-root .obpt-toast[data-obpt-tone=\"warning\"]"
+    assert css =~ ".obpt-root .obpt-toast[data-obpt-tone=\"danger\"]"
+    assert css =~ "min-inline-size: calc(var(--obpt-space-7) - var(--obpt-space-1))"
+    assert css =~ "min-block-size: calc(var(--obpt-space-7) - var(--obpt-space-1))"
+    assert css =~ "font-family: var(--obpt-font-mono)"
+    assert css =~ "font-variant-numeric: var(--obpt-numeric-tabular)"
+    assert css =~ "@media (max-width: 24rem)"
+    assert css =~ "@media (prefers-reduced-motion: reduce)"
+    assert css =~ ~s(.obpt-root[data-obpt-motion="reduce"] .obpt-toast__dismiss)
+
+    for {selector, body} <- blocks_for(css, ".obpt-progress") do
+      refute body =~ ~r/(animation|transition)\s*:/,
+             "progress selector #{selector} must not animate value or layout"
+
+      refute body =~ ~r/overflow-x\s*:\s*(auto|scroll)/,
+             "progress selector #{selector} must not introduce horizontal scrolling"
     end
   end
 

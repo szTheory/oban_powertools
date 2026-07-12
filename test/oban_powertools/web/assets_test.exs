@@ -91,7 +91,16 @@ defmodule ObanPowertools.Web.AssetsTest do
           ".obpt-root .obpt-data-table__header button:focus-visible",
           ".obpt-root .obpt-data-table__mobile-label",
           ".obpt-root .obpt-data-table__cell[data-obpt-mobile-label=\"Selection\"] .obpt-choice",
-          ".obpt-root .obpt-data-state"
+          ".obpt-root .obpt-data-state",
+          ".obpt-root .obpt-description-list",
+          ".obpt-root .obpt-machine-value__summary:focus-visible",
+          ".obpt-root .obpt-timeline__item",
+          ".obpt-root .obpt-progress progress",
+          ".obpt-root .obpt-metric-card",
+          ".obpt-root .obpt-empty-state",
+          ".obpt-root .obpt-toast[data-obpt-tone=\"danger\"]",
+          ".obpt-root .obpt-toast__dismiss:focus-visible",
+          ".obpt-root .obpt-flash-group"
         ] do
       assert css =~ selector, "expected compiled CSS to include #{selector}"
     end
