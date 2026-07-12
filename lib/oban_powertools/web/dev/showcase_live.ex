@@ -14,7 +14,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
     use Phoenix.LiveView
 
-    alias ObanPowertools.Web.Components.{AppShell, Forms, Primitives}
+    alias ObanPowertools.Web.Components.{AppShell, DataDisplay, Forms, Primitives}
 
     @catalog_module ObanPowertools.ShowcaseCatalog
     @catalog_path Path.expand("../../../../test/support/showcase_catalog.ex", __DIR__)
@@ -27,6 +27,11 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
     @form_catalog_path Path.expand("../../../../test/support/form_story_catalog.ex", __DIR__)
     @shell_catalog_module ObanPowertools.ShellStoryCatalog
     @shell_catalog_path Path.expand("../../../../test/support/shell_story_catalog.ex", __DIR__)
+    @data_catalog_module ObanPowertools.DataDisplayStoryCatalog
+    @data_catalog_path Path.expand(
+                         "../../../../test/support/data_display_story_catalog.ex",
+                         __DIR__
+                       )
 
     @theme_choices [
       %{value: "system", label: "System"},
@@ -64,6 +69,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       primitive_catalog = load_primitive_catalog()
       form_catalog = load_form_catalog()
       shell_catalog = load_shell_catalog()
+      data_catalog = load_data_catalog()
 
       {:ok,
        socket
@@ -81,7 +87,11 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
        |> assign(:form_catalog_available?, form_catalog.available?)
        |> assign(:form_stories, form_catalog.stories)
        |> assign(:shell_catalog_available?, shell_catalog.available?)
-       |> assign(:shell_stories, shell_catalog.stories)}
+       |> assign(:shell_stories, shell_catalog.stories)
+       |> assign(:data_catalog_available?, data_catalog.available?)
+       |> assign(:data_stories, data_catalog.stories)
+       |> assign(:data_sort_key, "worker")
+       |> assign(:data_sort_direction, :asc)}
     end
 
     @impl Phoenix.LiveView
@@ -91,6 +101,18 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       else
         {:noreply, socket}
       end
+    end
+
+    def handle_event("sort-data-table", %{"sort-key" => sort_key}, socket)
+        when sort_key in ["id", "worker", "state"] do
+      direction =
+        if socket.assigns.data_sort_key == sort_key do
+          toggle_sort_direction(socket.assigns.data_sort_direction)
+        else
+          :asc
+        end
+
+      {:noreply, assign(socket, data_sort_key: sort_key, data_sort_direction: direction)}
     end
 
     def handle_event(_event, _params, socket), do: {:noreply, socket}
@@ -283,6 +305,34 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
                     No form stories registered. Add token-backed form stories before updating visual baselines.
                   </p>
                 <% end %>
+              <% "data-display" -> %>
+                <%= if @data_catalog_available? and @data_stories != [] do %>
+                  <div class="obpt-showcase-story-grid">
+                    <article
+                      :for={story <- @data_stories}
+                      id={target_value(story.test_targets, :story)}
+                      class="obpt-showcase-story"
+                      data-obpt-data-story={story.id}
+                      data-obpt-component={component_value(story)}
+                      data-obpt-variant={state_value(story.variant)}
+                      data-obpt-state={state_value(story.state)}
+                      data-obpt-a11y-target={target_value(story.test_targets, :a11y)}
+                    >
+                      <header><p>{component_value(story)}</p><h3>{story.name}</h3></header>
+                      <p>{story.description}</p>
+                      <.data_story_body
+                        story={story}
+                        sort_key={@data_sort_key}
+                        sort_direction={@data_sort_direction}
+                      />
+                      <dl><div><dt>Snapshot</dt><dd><code>{target_value(story.test_targets, :snapshot)}</code></dd></div></dl>
+                    </article>
+                  </div>
+                <% else %>
+                  <p class="obpt-showcase-placeholder" data-obpt-data-index="empty">
+                    No data-display stories registered. Add deterministic data stories before updating visual baselines.
+                  </p>
+                <% end %>
               <% _ -> %>
                 <p class="obpt-showcase-placeholder">
                   Reserved for Phase-owned stories. The anchor and selector are stable now.
@@ -438,6 +488,15 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       end
     end
 
+    defp load_data_catalog do
+      with {:ok, module} <- ensure_data_catalog_module(),
+           true <- function_exported?(module, :stories, 0) do
+        %{available?: true, stories: apply(module, :stories, [])}
+      else
+        _ -> %{available?: false, stories: []}
+      end
+    end
+
     defp ensure_catalog_module do
       ensure_support_module(@catalog_module, @catalog_path)
     end
@@ -452,6 +511,10 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
     defp ensure_shell_catalog_module do
       ensure_support_module(@shell_catalog_module, @shell_catalog_path)
+    end
+
+    defp ensure_data_catalog_module do
+      ensure_support_module(@data_catalog_module, @data_catalog_path)
     end
 
     defp ensure_support_module(module, path) do
@@ -494,6 +557,188 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
     end
 
     defp target_value(_targets, _key), do: ""
+
+    defp toggle_sort_direction(:asc), do: :desc
+    defp toggle_sort_direction(_direction), do: :asc
+
+    attr(:story, :map, required: true)
+    attr(:sort_key, :string, required: true)
+    attr(:sort_direction, :atom, required: true)
+
+    defp data_story_body(assigns) do
+      rows = Map.get(assigns.story.fixtures, :rows, [])
+
+      assigns
+      |> assign(:sorted_rows, sort_data_rows(rows, assigns.sort_key, assigns.sort_direction))
+      |> assign(
+        :selection_form,
+        to_form(%{"selected" => "false"}, as: "showcase_data_selection")
+      )
+      |> render_data_story()
+    end
+
+    defp render_data_story(assigns) do
+      ~H"""
+      <div class="obpt-primitive-matrix">
+        <%= case @story.id do %>
+          <% "data-table-sort-states" -> %>
+            <DataDisplay.data_table
+              id="data-sort-table"
+              caption="Sortable jobs"
+              resource="jobs"
+              rows={@sorted_rows}
+              row_id={& &1.id}
+              sort_key={@sort_key}
+              sort_direction={@sort_direction}
+              sort_event="sort-data-table"
+            >
+              <:col :let={row} label="Job ID" sort_key="id" value_kind={:id}>
+                <DataDisplay.machine_value id={"data-sort-id-#{row.id}"} value={row.id} />
+              </:col>
+              <:col :let={row} label="Worker" sort_key="worker" value_kind={:module}>
+                <DataDisplay.machine_value id={"data-sort-worker-#{row.id}"} value={row.worker} kind={:module} />
+              </:col>
+              <:col :let={row} label="State" sort_key="state">
+                <DataDisplay.status_pill id={"data-sort-state-#{row.id}"} domain={:job} state={row.state} />
+              </:col>
+            </DataDisplay.data_table>
+          <% "data-table-320-stacked" -> %>
+            <DataDisplay.data_table
+              id="data-stacked-table"
+              caption="Selectable jobs at 320 pixels"
+              rows={@story.fixtures.rows}
+              row_id={& &1.id}
+              resource="jobs"
+            >
+              <:selection :let={row}>
+                <Forms.checkbox
+                  field={@selection_form[:selected]}
+                  id={"data-select-#{row.id}"}
+                  label={"Select job #{row.id}"}
+                  phx-click="select_data_row"
+                  phx-value-id={row.id}
+                />
+              </:selection>
+              <:col :let={row} label="Job ID" value_kind={:id}>
+                <DataDisplay.machine_value id={"data-stacked-id-#{row.id}"} value={row.id} />
+              </:col>
+              <:col :let={row} label="Worker" value_kind={:module}>
+                <DataDisplay.machine_value id={"data-stacked-worker-#{row.id}"} value={row.worker} kind={:module} />
+              </:col>
+            </DataDisplay.data_table>
+          <% "data-table-explicit-states" -> %>
+            <DataDisplay.data_table
+              :for={state <- @story.fixtures.states}
+              id={"data-state-table-#{state}"}
+              caption={"Jobs: #{String.replace(to_string(state), "_", " ")}"}
+              rows={[]}
+              row_id={& &1.id}
+              state={state}
+              resource="jobs"
+            >
+              <:col :let={row} label="Job ID">{row.id}</:col>
+            </DataDisplay.data_table>
+          <% "data-status-taxonomy-all" -> %>
+            <div class="obpt-primitive-row" aria-label="Complete status taxonomy">
+              <DataDisplay.status_pill
+                :for={entry <- @story.fixtures.taxonomy}
+                id={"data-taxonomy-#{entry.domain}-#{entry.state}"}
+                domain={entry.domain}
+                state={entry.state}
+              />
+            </div>
+          <% "data-description-list-long-values" -> %>
+            <DataDisplay.description_list id="data-long-description-list">
+              <:item label="Job ID" value_kind={:id}>
+                <DataDisplay.machine_value id="data-long-id" value={@story.fixtures.values.id} expand />
+              </:item>
+              <:item label="Worker" value_kind={:module}>
+                <DataDisplay.machine_value id="data-long-module" value={@story.fixtures.values.module} kind={:module} expand />
+              </:item>
+              <:item label="URL" value_kind={:url}>
+                <DataDisplay.machine_value id="data-long-url" value={@story.fixtures.values.url} kind={:url} expand />
+              </:item>
+              <:item label="Hostile ordinary text">{@story.fixtures.values.hostile}</:item>
+              <:item label="RTL and emoji">{@story.fixtures.values.unicode}</:item>
+            </DataDisplay.description_list>
+            <DataDisplay.key_value id="data-long-key-value" label="Attempt" value="20 of 20" value_kind={:literal} />
+          <% "data-timeline-event-log" -> %>
+            <DataDisplay.timeline id="data-event-timeline">
+              <:event
+                :for={event <- @story.fixtures.events}
+                timestamp={event.timestamp}
+                title={event.title}
+                source={event.source}
+                domain={event.domain}
+                state={event.state}
+              >
+                <DataDisplay.code_block
+                  id={"data-event-detail-#{event.timestamp}"}
+                  label={"#{event.title} detail"}
+                  content={event.detail}
+                />
+              </:event>
+            </DataDisplay.timeline>
+          <% "data-progress-metric-cards" -> %>
+            <DataDisplay.progress_bar
+              id="data-progress-ready"
+              label="Batch completion"
+              value={@story.fixtures.progress.value}
+              max={@story.fixtures.progress.max}
+            />
+            <DataDisplay.progress_bar id="data-progress-unavailable" label="Remote progress" state={:unavailable} />
+            <div class="obpt-primitive-row">
+              <DataDisplay.metric_card id="data-metric-retryable" label="Retryable jobs" value={to_string(@story.fixtures.metrics.retryable)} trend="3 blocked" tone={:warning} />
+              <DataDisplay.metric_card id="data-metric-completed" label="Completed jobs" value={to_string(@story.fixtures.metrics.completed)} trend="all queues healthy" tone={:success} />
+            </div>
+          <% "data-code-args-redaction" -> %>
+            <DataDisplay.args_viewer id="data-args-json" label="Normalized JSON arguments" display={@story.fixtures.args.raw_json} />
+            <DataDisplay.args_viewer id="data-args-policy" label="Policy-redacted arguments" display={@story.fixtures.args.policy} />
+            <DataDisplay.args_viewer id="data-args-fallback" label="Fallback-redacted arguments" display={@story.fixtures.args.fallback} />
+            <div class="obpt-primitive-row">
+              <DataDisplay.redacted_value id="data-redacted-enqueue" reason={:enqueue} />
+              <DataDisplay.redacted_value id="data-redacted-policy" reason={:policy} />
+              <DataDisplay.redacted_value id="data-redacted-fallback" reason={:fallback} message="[redacted]" />
+            </div>
+            <DataDisplay.code_block id="data-stacktrace" label="Representative stacktrace" content={@story.fixtures.values.stacktrace} language="stacktrace" />
+          <% "data-empty-toast-flash" -> %>
+            <DataDisplay.empty_state
+              id="data-empty-state"
+              heading="No rows match the current filters"
+              body="Clear filters or widen the time window."
+            />
+            <DataDisplay.toast id="data-warning-toast" tone={:warning} urgency={:assertive}>
+              Retryable jobs require operator review.
+            </DataDisplay.toast>
+            <DataDisplay.flash_group id="data-flash-group" flash={@story.fixtures.flash} />
+          <% "data-table-thousands-row-stress" -> %>
+            <DataDisplay.data_table
+              id="data-thousands-table"
+              caption="2,500 jobs"
+              resource="jobs"
+              rows={@story.fixtures.window}
+              row_id={& &1.id}
+              row_count={@story.fixtures.total}
+              pagination_summary="Page 50 of 125"
+            >
+              <:col :let={row} label="Job ID" value_kind={:id}>{row.id}</:col>
+              <:col :let={row} label="Worker" value_kind={:module}>{row.worker}</:col>
+              <:col :let={row} label="State">{row.state}</:col>
+            </DataDisplay.data_table>
+        <% end %>
+      </div>
+      """
+    end
+
+    defp sort_data_rows(rows, sort_key, direction) do
+      sorted = Enum.sort_by(rows, &sort_value(&1, sort_key))
+      if direction == :desc, do: Enum.reverse(sorted), else: sorted
+    end
+
+    defp sort_value(row, "id"), do: row.id
+    defp sort_value(row, "worker"), do: row.worker
+    defp sort_value(row, "state"), do: to_string(row.state)
+    defp sort_value(row, _key), do: row.id
 
     attr(:story, :map, required: true)
 
