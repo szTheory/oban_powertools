@@ -5,15 +5,15 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 77
 current_phase_name: data-display-operator-patterns
 status: executing
-stopped_at: Completed 77-02-PLAN.md
-last_updated: "2026-07-12T22:20:21.468Z"
+stopped_at: Completed 77-03-PLAN.md
+last_updated: "2026-07-12T22:33:04.243Z"
 last_activity: 2026-07-12
 last_activity_desc: Phase 77 execution started
 progress:
   total_phases: 15
   completed_phases: 7
   total_plans: 39
-  completed_plans: 34
+  completed_plans: 35
   percent: 47
 ---
 
@@ -28,7 +28,7 @@ progress:
 ## Current Position
 
 Phase: 77 (data-display-operator-patterns) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-07-12 — Phase 77 execution started
 
@@ -67,6 +67,7 @@ Last activity: 2026-07-12 — Phase 77 execution started
 | Phase 76 P05 | 25m23s | 2 tasks | 79 files |
 | Phase 77 P01 | 8 min | 4 tasks | 4 files |
 | Phase 77 P02 | 7 min | 1 tasks | 4 files |
+| Phase 77 P03 | 8 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -94,8 +95,8 @@ Last activity: 2026-07-12 — Phase 77 execution started
 
 ## Session Continuity
 
-**Last session:** 2026-07-12T22:19:59.816Z
-**Stopped at:** Completed 77-02-PLAN.md
+**Last session:** 2026-07-12T22:33:04.239Z
+**Stopped at:** Completed 77-03-PLAN.md
 **Resume file:** None
 
 - **Last Action:** Verified Phase 76, recorded `76-VERIFICATION.md`, and transitioned planning state to Phase 77.
@@ -126,6 +127,9 @@ Last activity: 2026-07-12 — Phase 77 execution started
 - [Phase 77]: Keep status lookup string-keyed while using only compile-time atom literals for all_specs/0 audit records. — Accepts external binary states without atom growth while retaining ergonomic deterministic audit records.
 - [Phase 77]: Require a closed status domain and render unknown states as deterministic neutral humanized values within that domain. — Colliding state names have domain-specific meaning, while known-domain unknowns still need truthful stable presentation.
 - [Phase 77]: Filter action, visual, title, and semantic override attributes before delegating StatusPill presentation to Primitives. — Keeps the wrapper non-interactive and prevents caller attributes from hiding or misrepresenting status semantics.
+- [Phase 77]: Keep exactly one semantic table tree at every viewport and expose mobile labels inside each original data cell. — Avoids duplicate controls, ids, and sensitive values while preserving table semantics.
+- [Phase 77]: Keep DataTable sorting parent-owned and emit only the configured event plus opaque sort key. — Preserves stateless presentation and truthful parent-controlled aria-sort state.
+- [Phase 77]: Derive responsive selection and action targets from existing spacing tokens and leave packaged JavaScript unchanged. — Meets the 44px accessibility target without introducing table behavior or raw dimensions.
 
 ### Blockers
 
