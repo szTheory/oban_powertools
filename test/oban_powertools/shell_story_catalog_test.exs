@@ -41,6 +41,13 @@ defmodule ObanPowertools.ShellStoryCatalogTest do
     assert Enum.all?(ids, &Regex.match?(~r/^shell-[a-z0-9]+(?:-[a-z0-9]+)*$/, &1))
     assert Enum.all?(stories, &(field(&1, :kind) == :shell))
     assert Enum.all?(stories, &(field(&1, :component) == :app_shell))
+    assert Enum.all?(stories, &(field(&1, :components) == [:app_shell]))
+    assert Enum.all?(stories, &(field(&1, :variant) not in [nil, []]))
+    assert Enum.all?(stories, &(field(&1, :state) not in [nil, []]))
+    assert Enum.all?(stories, &(field(&1, :name) not in [nil, ""]))
+    assert Enum.all?(stories, &(field(&1, :description) not in [nil, ""]))
+    assert Enum.all?(stories, &(field(&1, :current_path) =~ ~r|^/ops/jobs|))
+    assert Enum.all?(stories, &(field(&1, :context_label) not in [nil, ""]))
   end
 
   test "targets and lookup helpers derive only from stable story ids" do

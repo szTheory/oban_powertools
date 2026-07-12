@@ -8,6 +8,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
     @theme_choices ~w[system light dark high-contrast]
     @viewport_choices ~w[320 tablet wide]
     @section_ids ~w[
+      app-shell
       tokens
       primitives
       forms
@@ -85,6 +86,14 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       form-switch-states form-validation-wiring form-disabled-readonly
       form-filter-ready form-long-content
     ]
+    @shell_story_contracts [
+      %{id: "shell-nine-surface-nav", state: "default", nav_state: "closed"},
+      %{id: "shell-mobile-collapsed", state: "collapsed", nav_state: "closed"},
+      %{id: "shell-mobile-expanded", state: "expanded", nav_state: "open"},
+      %{id: "shell-active-breadcrumb", state: "detail", nav_state: "closed"},
+      %{id: "shell-theme-actor-context", state: "actor_context", nav_state: "closed"},
+      %{id: "shell-long-context-wrapping", state: "long_context", nav_state: "closed"}
+    ]
 
     test "renders the showcase through the Powertools theme shell", %{conn: conn} do
       {:ok, _view, html} = mount_showcase!(conn)
@@ -96,9 +105,14 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
     end
 
     test "theme controls expose the Phase 72 choices as stable attributes", %{conn: conn} do
-      {:ok, _view, html} = mount_showcase!(conn)
+      {:ok, view, _html} = mount_showcase!(conn)
 
-      assert_attribute_values(html, "data-obpt-theme-choice", @theme_choices)
+      for theme <- @theme_choices do
+        assert has_element?(
+                 view,
+                 "[data-obpt-showcase] [data-obpt-theme-controls] [data-obpt-theme-choice='#{theme}']"
+               )
+      end
     end
 
     test "viewport controls expose the stable audit widths", %{conn: conn} do
@@ -111,6 +125,56 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       {:ok, _view, html} = mount_showcase!(conn)
 
       assert_attribute_values(html, "data-obpt-section", @section_ids)
+    end
+
+    test "app shell section renders six real shell stories with deterministic nav state", %{
+      conn: conn
+    } do
+      {:ok, view, html} = mount_showcase!(conn)
+
+      assert_attribute_values(
+        html,
+        "data-obpt-shell-story",
+        Enum.map(@shell_story_contracts, & &1.id)
+      )
+
+      refute has_element?(view, "[data-obpt-section='app-shell'] .obpt-showcase-placeholder")
+
+      for %{id: id, state: state, nav_state: nav_state} <- @shell_story_contracts do
+        assert has_element?(
+                 view,
+                 "#obpt-shell-story-#{id}[data-obpt-shell-story='#{id}'][data-obpt-component='app_shell'][data-obpt-variant][data-obpt-state='#{state}'][data-obpt-nav-state='#{nav_state}'][data-obpt-a11y-target]"
+               )
+
+        assert has_element?(
+                 view,
+                 "#obpt-shell-story-#{id} [data-obpt-app-shell][data-obpt-nav-state='#{nav_state}']"
+               )
+      end
+
+      for required_copy <- [
+            "Oban Powertools",
+            "Navigation",
+            "Overview",
+            "Jobs",
+            "Batches",
+            "Workflows",
+            "Cron",
+            "Limiters",
+            "Lifeline",
+            "Audit",
+            "Forensics",
+            "Job detail",
+            "Actor: ops@example.test",
+            "Actor context unavailable",
+            "High contrast"
+          ] do
+        assert html =~ required_copy
+      end
+
+      assert html =~ "&lt;script&gt;alert(&#39;shell&#39;)&lt;/script&gt;"
+      refute html =~ "<script>alert('shell')</script>"
+      refute html =~ "/ops/jobs/oban"
     end
 
     test "story cells expose stable scenario metadata", %{conn: conn} do
