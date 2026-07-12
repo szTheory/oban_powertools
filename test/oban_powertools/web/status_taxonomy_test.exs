@@ -60,10 +60,84 @@ defmodule ObanPowertools.Web.StatusTaxonomyTest do
      }}
   ]
 
+  @source_audited_specs [
+    {:callback_outbox, :pending,
+     %{label: "Pending", tone: :neutral, icon: :dot, sr_prefix: "Callback outbox status"}},
+    {:callback_outbox, :claimed,
+     %{label: "Claimed", tone: :info, icon: :info, sr_prefix: "Callback outbox status"}},
+    {:callback_outbox, :failed,
+     %{label: "Failed", tone: :danger, icon: :alert, sr_prefix: "Callback outbox status"}},
+    {:callback_outbox, :delivered,
+     %{label: "Delivered", tone: :success, icon: :check, sr_prefix: "Callback outbox status"}},
+    {:lifeline_health, :healthy,
+     %{label: "Healthy", tone: :success, icon: :check, sr_prefix: "Lifeline health"}},
+    {:lifeline_health, :late,
+     %{label: "Heartbeat late", tone: :warning, icon: :alert, sr_prefix: "Lifeline health"}},
+    {:lifeline_health, :missing,
+     %{label: "Executor missing", tone: :danger, icon: :alert, sr_prefix: "Lifeline health"}},
+    {:cron, :claimed, %{label: "Claimed", tone: :info, icon: :info, sr_prefix: "Cron status"}},
+    {:cron, :cancelled,
+     %{label: "Cancelled", tone: :danger, icon: :alert, sr_prefix: "Cron status"}},
+    {:cron, :missed_fire,
+     %{label: "Missed fire", tone: :warning, icon: :alert, sr_prefix: "Cron status"}},
+    {:cron, :overlap_relevant,
+     %{label: "Overlap relevant", tone: :warning, icon: :alert, sr_prefix: "Cron status"}},
+    {:cron, :unknown, %{label: "Unknown", tone: :neutral, icon: :dot, sr_prefix: "Cron status"}},
+    {:forensics, :partial_evidence,
+     %{
+       label: "Partial evidence",
+       tone: :warning,
+       icon: :alert,
+       sr_prefix: "Forensics completeness"
+     }},
+    {:forensics, :history_unavailable,
+     %{
+       label: "History unavailable",
+       tone: :warning,
+       icon: :alert,
+       sr_prefix: "Forensics completeness"
+     }},
+    {:forensics, :unknown,
+     %{label: "Unknown", tone: :neutral, icon: :dot, sr_prefix: "Forensics completeness"}},
+    {:continuity, :previewed,
+     %{label: "Previewed", tone: :info, icon: :info, sr_prefix: "Continuity attempt"}},
+    {:continuity, :succeeded,
+     %{label: "Succeeded", tone: :success, icon: :check, sr_prefix: "Continuity attempt"}},
+    {:continuity, :drifted,
+     %{label: "Drifted", tone: :warning, icon: :alert, sr_prefix: "Continuity attempt"}},
+    {:continuity, :expired,
+     %{label: "Expired", tone: :danger, icon: :alert, sr_prefix: "Continuity attempt"}},
+    {:continuity, :consumed,
+     %{label: "Consumed", tone: :success, icon: :check, sr_prefix: "Continuity attempt"}},
+    {:host_follow_up, :host_owned_follow_up_unconfigured,
+     %{
+       label: "Host-owned follow-up unavailable",
+       tone: :warning,
+       icon: :alert,
+       sr_prefix: "Host follow-up status"
+     }},
+    {:host_follow_up, :host_owned_follow_up_callback_invoked,
+     %{
+       label: "Host-owned follow-up callback invoked",
+       tone: :success,
+       icon: :check,
+       sr_prefix: "Host follow-up status"
+     }},
+    {:host_follow_up, :host_owned_follow_up_callback_failed,
+     %{
+       label: "Host-owned follow-up callback failed",
+       tone: :danger,
+       icon: :alert,
+       sr_prefix: "Host follow-up status"
+     }}
+  ]
+
+  @all_expected_specs @known_specs ++ @source_audited_specs
+
   test "exports exact presentation specs for every locked domain/state" do
     assert Code.ensure_loaded?(StatusTaxonomy), "Phase 77 requires #{inspect(StatusTaxonomy)}"
 
-    for {domain, state, expected} <- @known_specs do
+    for {domain, state, expected} <- @all_expected_specs do
       assert StatusTaxonomy.spec(domain, state) == expected
       assert StatusTaxonomy.spec(to_string(domain), to_string(state)) == expected
     end
@@ -95,6 +169,13 @@ defmodule ObanPowertools.Web.StatusTaxonomyTest do
     assert_raise ArgumentError, ~r/unknown status domain/i, fn ->
       StatusTaxonomy.spec(:invented_domain, :available)
     end
+
+    assert_raise ArgumentError, ~r/accepted domains:.*job.*workflow/s, fn ->
+      StatusTaxonomy.spec(:invented_domain, :available)
+    end
+
+    huge_state = String.duplicate("worker_snoozed-", 1_000)
+    assert StatusTaxonomy.spec(:job, huge_state) == StatusTaxonomy.spec(:job, huge_state)
   end
 
   test "all_specs is deterministic, unique, ordered, and includes known mappings" do
@@ -104,9 +185,14 @@ defmodule ObanPowertools.Web.StatusTaxonomyTest do
     assert specs == Enum.sort_by(specs, &{to_string(&1.domain), to_string(&1.state)})
     assert Enum.uniq_by(specs, &{&1.domain, &1.state}) == specs
 
-    for {domain, state, expected} <- @known_specs do
+    for {domain, state, expected} <- @all_expected_specs do
       assert %{domain: ^domain, state: ^state, spec: ^expected} =
                Enum.find(specs, &(&1.domain == domain and &1.state == state))
+    end
+
+    for %{domain: domain, state: state, spec: expected} <- specs do
+      assert StatusTaxonomy.spec(domain, state) == expected
+      assert StatusTaxonomy.spec(to_string(domain), to_string(state)) == expected
     end
   end
 
@@ -116,5 +202,8 @@ defmodule ObanPowertools.Web.StatusTaxonomyTest do
 
     refute source =~ "String.to_atom"
     refute source =~ "String.to_existing_atom"
+    refute source =~ "List.to_atom"
+    refute source =~ "binary_to_atom"
+    refute source =~ "list_to_atom"
   end
 end

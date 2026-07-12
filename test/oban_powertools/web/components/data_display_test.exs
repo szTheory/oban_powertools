@@ -31,6 +31,45 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
     refute html =~ ~s(role="button")
   end
 
+  test "status_pill keeps semantic channels and rejects hostile presentation overrides" do
+    html =
+      render_data(:status_pill,
+        id: "hostile-pill",
+        domain: :job,
+        state: "<script>alert_status</script>",
+        rest: %{
+          "aria-describedby" => "status-help",
+          "aria-hidden" => "true",
+          "aria-label" => @secret,
+          "class" => "clickable",
+          "data-obpt-tone" => "success",
+          "data-testid" => "status-pill",
+          "href" => "/mutate",
+          "onmouseover" => "steal()",
+          "phx-click" => "mutate",
+          "role" => "button",
+          "style" => "display:none",
+          "title" => @secret
+        }
+      )
+
+    assert html =~ ~s(id="hostile-pill")
+    assert html =~ ~s(data-testid="status-pill")
+    assert html =~ ~s(aria-describedby="status-help")
+    assert html =~ "Job state"
+    assert html =~ ~s(data-obpt-icon="dot")
+    assert html =~ ~s(data-obpt-tone="neutral")
+    assert html =~ "&lt;script&gt;alert status&lt;/script&gt;"
+    root_tag = html |> String.split(">", parts: 2) |> hd()
+    refute html =~ @secret
+    refute html =~ "clickable"
+    refute html =~ "/mutate"
+    refute html =~ "steal()"
+    refute root_tag =~ ~s(aria-hidden="true")
+    refute root_tag =~ ~s(role="button")
+    refute root_tag =~ ~s(title=)
+  end
+
   test "data_table renders one semantic table with parent-owned sorting and stacked labels" do
     html =
       render_data(:data_table,
@@ -212,6 +251,8 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
           "phx-hook",
           "document.",
           "clipboard",
+          "Phoenix.LiveViewTest",
+          "ObanPowertools.TestEndpoint",
           "raw_value",
           "original_value"
         ] do
@@ -238,15 +279,13 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
   end
 
   defp slot(name, attrs, fun) do
-    [
-      %{__slot__: name, inner_block: fn _changed, argument -> call_slot_fun(fun, argument) end}
-      |> Map.merge(attrs)
-    ]
+    %{__slot__: name, inner_block: fn _changed, argument -> call_slot_fun(fun, argument) end}
+    |> Map.merge(attrs)
   end
 
   defp call_slot_fun(fun, [value]), do: fun.(value)
   defp call_slot_fun(fun, _argument) when is_function(fun, 0), do: fun.()
-  defp call_slot_fun(fun, _argument) when is_function(fun, 1), do: fun.(nil)
+  defp call_slot_fun(fun, value) when is_function(fun, 1), do: fun.(value)
 
   defp count(html, needle), do: length(String.split(html, needle)) - 1
 end
