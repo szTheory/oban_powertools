@@ -34,9 +34,8 @@ Data-display CSS and components must use existing Powertools spacing tokens or t
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--obpt-space-1` | 4px | StatusPill icon/text gap, table sort indicator gap, compact timeline rail offsets, code inline padding. |
-| `--obpt-space-2` | 8px | Dense table cell vertical rhythm, pill padding, toast icon gap, KeyValue row gap, compact EmptyState spacing. |
-| `--obpt-space-3` | 12px | Dense DataTable cell horizontal padding and timeline item internal gaps where 8px is too tight and 16px is too loose. |
-| `--obpt-space-4` | 16px | Default card/table wrapper padding, DataTable cell horizontal padding at tablet/wide, MetricCard padding, Toast/Flash padding. |
+| `--obpt-space-2` | 8px | Dense table cell vertical rhythm, dense DataTable cell horizontal padding, pill padding, toast icon gap, KeyValue row gap, compact EmptyState spacing. |
+| `--obpt-space-4` | 16px | Default card/table wrapper padding, DataTable cell horizontal padding at tablet/wide, timeline item internal gaps, MetricCard padding, Toast/Flash padding. |
 | `--obpt-space-5` | 24px | Section separation, EmptyState block padding, Timeline group spacing. |
 | `--obpt-space-6` | 32px | Wide data-story grouping and major layout gutters only. |
 | `--obpt-space-7` | 48px | Major showcase spacing and hit-target derivations; avoid inside dense tables. |
