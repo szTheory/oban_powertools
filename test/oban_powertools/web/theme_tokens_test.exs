@@ -371,6 +371,11 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     assert js =~ "[data-obpt-tooltip-trigger]"
     assert js =~ "data-obpt-tooltip-open"
     assert js =~ "data-obpt-tooltip-dismissed"
+    assert js =~ "[data-obpt-app-shell]"
+    assert js =~ "[data-obpt-nav-toggle]"
+    assert js =~ "[data-obpt-primary-nav]"
+    assert js =~ "data-obpt-nav-state"
+    assert js =~ "aria-expanded"
     assert js =~ "Escape"
 
     refute js =~ "document.documentElement"

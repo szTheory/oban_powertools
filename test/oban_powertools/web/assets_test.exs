@@ -60,7 +60,7 @@ defmodule ObanPowertools.Web.AssetsTest do
     assert first == second
   end
 
-  test "compiled assets include primitive CSS and scoped tooltip behavior" do
+  test "compiled assets include primitive and shell CSS plus scoped browser behavior" do
     assert Code.ensure_loaded?(Mix.Tasks.ObanPowertools.Assets.Build),
            "expected mix oban_powertools.assets.build task to be loadable"
 
@@ -78,7 +78,13 @@ defmodule ObanPowertools.Web.AssetsTest do
           ".obpt-root .obpt-tooltip",
           ".obpt-root .obpt-kbd",
           ".obpt-root .obpt-stat",
-          ".obpt-root .obpt-sr-only"
+          ".obpt-root .obpt-sr-only",
+          ".obpt-root .obpt-app-shell",
+          ".obpt-root .obpt-app-shell__nav-toggle",
+          ".obpt-root .obpt-primary-nav__link[aria-current=\"page\"]",
+          ".obpt-root .obpt-theme-choice[aria-pressed=\"true\"]",
+          ".obpt-root .obpt-app-shell[data-obpt-nav-state=\"closed\"] .obpt-primary-nav",
+          ".obpt-root .obpt-breadcrumb [aria-current=\"page\"]"
         ] do
       assert css =~ selector, "expected compiled CSS to include #{selector}"
     end
@@ -88,10 +94,18 @@ defmodule ObanPowertools.Web.AssetsTest do
     assert js =~ "[data-obpt-tooltip-trigger]"
     assert js =~ "data-obpt-tooltip-open"
     assert js =~ "data-obpt-tooltip-dismissed"
+    assert js =~ "[data-obpt-app-shell]"
+    assert js =~ "[data-obpt-nav-toggle]"
+    assert js =~ "[data-obpt-primary-nav]"
+    assert js =~ "data-obpt-nav-state"
+    assert js =~ "aria-expanded"
+    assert js =~ "focusInsideNavDisclosure"
     assert js =~ "Escape"
     assert js =~ "window.ObanPowertoolsTheme"
     refute js =~ "document.documentElement"
     refute js =~ ".classList"
+    refute js =~ "eval("
+    refute js =~ "new Function"
   end
 
   test "hex package contract includes priv static assets" do
