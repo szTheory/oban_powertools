@@ -61,7 +61,7 @@ function loadManifest() {
 
 const manifest = loadManifest();
 
-equal(manifest.schema_version, 4, 'schema_version');
+equal(manifest.schema_version, 5, 'schema_version');
 exactList(array(manifest.themes, 'themes'), expectedThemes, 'themes');
 
 const viewports = array(manifest.viewports, 'viewports');
@@ -190,6 +190,33 @@ for (const [index, story] of shellStories.entries()) {
   expectedTargets.push({ ...actual });
 }
 
+const dataStories = array(manifest.data_stories, 'data_stories');
+equal(dataStories.length, 10, 'data_stories.length');
+
+for (const [index, story] of dataStories.entries()) {
+  const actual = record(story, `data_stories[${index}]`);
+  const id = string(actual.id, `data_stories[${index}].id`);
+  const components = array(actual.components, `data_stories[${index}].components`);
+  const variant = array(actual.variant, `data_stories[${index}].variant`);
+  const state = array(actual.state, `data_stories[${index}].state`);
+
+  equal(actual.kind, 'data', `data_stories[${index}].kind`);
+  if (!/^data-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)) {
+    fail(`data_stories[${index}].id must be a slug-like data-* identifier`);
+  }
+  string(actual.component, `data_stories[${index}].component`);
+  string(actual.name, `data_stories[${index}].name`);
+  string(actual.description, `data_stories[${index}].description`);
+  equal(components.length > 0, true, `data_stories[${index}].components non-empty`);
+  equal(variant.length > 0, true, `data_stories[${index}].variant non-empty`);
+  equal(state.length > 0, true, `data_stories[${index}].state non-empty`);
+  equal(actual.story, `obpt-data-story-${id}`, `data_stories[${index}].story`);
+  equal(actual.snapshot, `showcase/${id}`, `data_stories[${index}].snapshot`);
+  equal(actual.a11y, `[data-obpt-data-story="${id}"]`, `data_stories[${index}].a11y`);
+
+  expectedTargets.push({ ...actual });
+}
+
 const targets = array(manifest.targets, 'targets');
 equal(targets.length, expectedTargets.length, 'targets.length');
 
@@ -252,8 +279,17 @@ for (const [index, target] of targets.entries()) {
     exactList(array(actual.state, `targets[${index}].state`), expected.state, `targets[${index}].state`);
     equal(actual.nav_state, expected.nav_state, `targets[${index}].nav_state`);
   }
+
+  if (expected.kind === 'data') {
+    equal(actual.component, expected.component, `targets[${index}].component`);
+    exactList(array(actual.components, `targets[${index}].components`), expected.components, `targets[${index}].components`);
+    equal(actual.name, expected.name, `targets[${index}].name`);
+    equal(actual.description, expected.description, `targets[${index}].description`);
+    exactList(array(actual.variant, `targets[${index}].variant`), expected.variant, `targets[${index}].variant`);
+    exactList(array(actual.state, `targets[${index}].state`), expected.state, `targets[${index}].state`);
+  }
 }
 
 console.log(
-  `showcase manifest ok: ${scenarios.length} scenarios, ${primitiveStories.length} primitive stories, ${formStories.length} form stories, ${shellStories.length} shell stories, ${targets.length} targets, ${expectedThemes.length} themes, ${expectedViewports.length} viewports`
+  `showcase manifest ok: ${scenarios.length} scenarios, ${primitiveStories.length} primitive stories, ${formStories.length} form stories, ${shellStories.length} shell stories, ${dataStories.length} data stories, ${targets.length} targets, ${expectedThemes.length} themes, ${expectedViewports.length} viewports`
 );
