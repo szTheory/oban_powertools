@@ -24,7 +24,7 @@ defmodule ObanPowertools.Web.ThemeShell do
       data-obpt-effective-theme="light"
       data-obpt-motion="safe"
     >
-      <script type="text/javascript" src={Assets.path(:js)}></script>
+      <script phx-track-static type="text/javascript" src={Assets.path(:js)}></script>
       <AppShell.app_shell
         current_path={@current_path}
         current_uri={@current_uri}

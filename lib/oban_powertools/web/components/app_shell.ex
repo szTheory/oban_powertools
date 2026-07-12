@@ -123,7 +123,7 @@ defmodule ObanPowertools.Web.Components.AppShell do
           <span :if={@context_label}>{@context_label}</span>
         </div>
 
-        <div class="obpt-theme-choices" aria-label="Theme choices">
+        <div class="obpt-theme-choices" role="group" aria-label="Theme choices">
           <button
             :for={choice <- @theme_choices}
             type="button"
@@ -357,7 +357,7 @@ defmodule ObanPowertools.Web.Components.AppShell do
       path == @bridge_path ->
         raise ArgumentError, "bridge path is not a primary nav surface"
 
-      not String.starts_with?(path, @root_path) ->
+      path != @root_path and not String.starts_with?(path, @root_path <> "/") ->
         raise ArgumentError, "nav path must stay under #{@root_path}"
 
       String.contains?(path, ["<", ">", " "]) ->

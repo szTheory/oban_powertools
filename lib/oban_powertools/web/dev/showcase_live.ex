@@ -323,7 +323,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
             <%= if @catalog_available? and @catalog_scenarios != [] do %>
               <div class="obpt-showcase-fixture-index">
-                <div class="obpt-showcase-fixture-index-head" role="row">
+                <div class="obpt-showcase-fixture-index-head">
                   <span>Scenario</span>
                   <span>Domain</span>
                   <span>Persona</span>
@@ -332,7 +332,6 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
                 <div
                   :for={scenario <- @catalog_scenarios}
                   class="obpt-showcase-fixture-index-row"
-                  role="row"
                   data-obpt-fixture-index={scenario.id}
                 >
                   <span>{scenario.name}</span>

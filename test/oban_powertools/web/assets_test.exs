@@ -51,20 +51,21 @@ defmodule ObanPowertools.Web.AssetsTest do
     assert Code.ensure_loaded?(Mix.Tasks.ObanPowertools.Assets.Build),
            "expected mix oban_powertools.assets.build task to be loadable"
 
-    Mix.Task.rerun("oban_powertools.assets.build", [])
-    first = static_sha256s()
+    checked_in = static_sha256s()
 
     Mix.Task.rerun("oban_powertools.assets.build", [])
-    second = static_sha256s()
+    first_build = static_sha256s()
 
-    assert first == second
+    Mix.Task.rerun("oban_powertools.assets.build", [])
+    second_build = static_sha256s()
+
+    assert first_build == checked_in
+    assert second_build == first_build
   end
 
-  test "compiled assets include primitive and shell CSS plus scoped browser behavior" do
+  test "checked-in compiled assets include primitive and shell CSS plus scoped browser behavior" do
     assert Code.ensure_loaded?(Mix.Tasks.ObanPowertools.Assets.Build),
            "expected mix oban_powertools.assets.build task to be loadable"
-
-    Mix.Task.rerun("oban_powertools.assets.build", [])
 
     css = File.read!(@css_static)
     js = File.read!(@js_static)
@@ -102,6 +103,7 @@ defmodule ObanPowertools.Web.AssetsTest do
     assert js =~ "aria-expanded"
     assert js =~ "focusInsideNavDisclosure"
     assert js =~ "Escape"
+    assert js =~ "DOMContentLoaded"
     assert js =~ "window.ObanPowertoolsTheme"
     refute js =~ "document.documentElement"
     refute js =~ ".classList"

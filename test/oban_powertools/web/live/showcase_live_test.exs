@@ -102,6 +102,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       assert html =~ ~r|/ops/jobs/_assets/oban_powertools-[a-f0-9]{32}\.css|
       assert html =~ ~r|/ops/jobs/_assets/oban_powertools-[a-f0-9]{32}\.js|
       assert html =~ "data-obpt-showcase"
+      refute html =~ ~s(role="row")
     end
 
     test "theme controls expose the Phase 72 choices as stable attributes", %{conn: conn} do

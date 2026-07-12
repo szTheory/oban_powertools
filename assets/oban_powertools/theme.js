@@ -217,6 +217,10 @@
 
   applyStoredTheme();
 
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", applyStoredTheme, { once: true });
+  }
+
   [colorPreference, contrastPreference, motionPreference].forEach((preference) => {
     preference.addEventListener("change", () => {
       roots().forEach((root) => {

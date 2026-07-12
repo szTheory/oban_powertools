@@ -68,6 +68,7 @@ defmodule ObanPowertools.Web.Components.AppShellTest do
         assert html =~ choice
       end
 
+      assert html =~ ~s(class="obpt-theme-choices" role="group" aria-label="Theme choices")
       assert html =~ "Actor: ops@example.test"
     end
 
@@ -145,6 +146,14 @@ defmodule ObanPowertools.Web.Components.AppShellTest do
 
       assert html =~ "&lt;script&gt;alert(&quot;shell&quot;)&lt;/script&gt;"
       refute html =~ @hostile
+    end
+
+    test "rejects nav paths outside the native root boundary" do
+      for path <- ["/ops/jobs-archive", "/ops/jobs_evil"] do
+        assert_raise ArgumentError, "nav path must stay under /ops/jobs", fn ->
+          render_shell(nav_items: [%{key: "bad", label: "Bad", path: path}])
+        end
+      end
     end
   end
 

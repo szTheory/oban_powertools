@@ -38,6 +38,10 @@ defmodule ObanPowertools.Web.Live.AppShellLayoutTest do
 
       assert html =~ ~r|/ops/jobs/_assets/oban_powertools-[a-f0-9]{32}\.css|
       assert html =~ ~r|/ops/jobs/_assets/oban_powertools-[a-f0-9]{32}\.js|
+
+      assert html =~
+               ~r/<script[^>]+phx-track-static[^>]+src="\/ops\/jobs\/_assets\/oban_powertools-[a-f0-9]{32}\.js"/
+
       assert count(html, ~s(class="obpt-root")) == 1
       assert count(html, ~s(data-obpt-app-shell)) == 1
       assert count(html, ~s(data-obpt-nav-toggle)) == 1
