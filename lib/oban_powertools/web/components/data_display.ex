@@ -15,6 +15,7 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   ]a
   @data_states ~w[ready loading empty error unavailable permission_denied]a
   @sort_directions ~w[asc desc none]a
+  @machine_kinds ~w[id module url literal]a
   @tones ~w[neutral info success warning danger]a
   @urgencies ~w[polite assertive]a
   @redaction_reasons ~w[enqueue policy fallback]a
@@ -97,7 +98,9 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
         <tbody>
           <tr :if={@state != :ready} class="obpt-data-table__state-row">
             <td class="obpt-data-table__state-cell" colspan={state_colspan(assigns)}>
-              <.state_message state={@state} resource={@state_resource}>{render_slot(@state_detail)}</.state_message>
+              <.state_message id={"#{@id}-state"} state={@state} resource={@state_resource}>
+                {render_slot(@state_detail)}
+              </.state_message>
             </td>
           </tr>
           <tr
@@ -130,6 +133,7 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
     """
   end
 
+  attr(:id, :string, required: true)
   attr(:state, :atom, required: true)
   attr(:resource, :string, required: true)
   slot(:inner_block)
@@ -141,9 +145,17 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
       |> assign(:role, if(assigns.state == :error, do: "alert", else: "status"))
 
     ~H"""
-    <div class="obpt-data-state" data-obpt-data-state={data_state(@state)} role={@role}>
-      <p>{@copy.heading}</p>
-      <p>{@copy.body}</p>
+    <div id={@id} class="obpt-data-state" data-obpt-data-state={data_state(@state)} role={@role}>
+      <.empty_state
+        :if={@state == :empty}
+        id={"#{@id}-empty"}
+        heading={@copy.heading}
+        body={@copy.body}
+      />
+      <div :if={@state != :empty} class="obpt-data-state__copy">
+        <p class="obpt-data-state__heading">{@copy.heading}</p>
+        <p class="obpt-data-state__body">{@copy.body}</p>
+      </div>
       <Primitives.skeleton :if={@state == :loading} label={@copy.heading} lines={3} />
       {render_slot(@inner_block)}
     </div>
@@ -161,15 +173,29 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   end
 
   def description_list(assigns) do
-    assigns = assign(assigns, :rest, visual_safe_rest(assigns.rest, suppress_actions?: true))
+    assigns =
+      assigns
+      |> assign(:rest, visual_safe_rest(assigns.rest, suppress_actions?: true))
+      |> assign(:aria_busy, if(assigns.state == :loading, do: "true"))
 
     ~H"""
-    <section id={@id} class="obpt-description-list" data-obpt-data-state={data_state(@state)} {@rest}>
-      <.state_message :if={@state != :ready} state={@state} resource={@resource} />
-      <dl :if={@state == :ready}>
+    <section
+      id={@id}
+      class="obpt-description-list"
+      data-obpt-data-state={data_state(@state)}
+      aria-busy={@aria_busy}
+      {@rest}
+    >
+      <.state_message
+        :if={@state != :ready}
+        id={"#{@id}-state"}
+        state={@state}
+        resource={@resource}
+      />
+      <dl :if={@state == :ready} class="obpt-description-list__list">
         <div :for={item <- @item} class="obpt-description-list__item" data-obpt-value-kind={Map.get(item, :value_kind)}>
-          <dt>{item.label}</dt>
-          <dd>{render_slot(item)}</dd>
+          <dt class="obpt-description-list__term">{item.label}</dt>
+          <dd class="obpt-description-list__value">{render_slot(item)}</dd>
         </div>
       </dl>
     </section>
@@ -187,21 +213,21 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
 
     ~H"""
     <dl id={@id} class="obpt-key-value" data-obpt-value-kind={@value_kind} {@rest}>
-      <dt>{@label}</dt>
-      <dd>{@value}</dd>
+      <dt class="obpt-key-value__term">{@label}</dt>
+      <dd class="obpt-key-value__value">{@value}</dd>
     </dl>
     """
   end
 
   attr(:id, :string, required: true)
   attr(:value, :string, required: true)
-  attr(:kind, :atom, default: :id)
+  attr(:kind, :atom, default: :id, values: @machine_kinds)
   attr(:truncate, :boolean, default: true)
   attr(:expand, :boolean, default: false)
   attr(:rest, :global, default: %{})
 
   def machine_value(assigns) do
-    display = if assigns.truncate, do: truncate_middle(assigns.value, 48), else: assigns.value
+    display = machine_display(assigns.value, assigns.kind, assigns.truncate)
 
     assigns =
       assign(assigns,
@@ -211,11 +237,11 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
 
     ~H"""
     <span id={@id} class="obpt-machine-value" data-obpt-kind={@kind} {@rest}>
-      <details :if={@expand}>
-        <summary>{@display}</summary>
-        <span>{@value}</span>
+      <details :if={@expand} class="obpt-machine-value__details">
+        <summary class="obpt-machine-value__summary">{@display}</summary>
+        <span class="obpt-machine-value__full">{@value}</span>
       </details>
-      <span :if={!@expand}>{@display}</span>
+      <span :if={!@expand} class="obpt-machine-value__display">{@display}</span>
     </span>
     """
   end
@@ -234,18 +260,37 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   end
 
   def timeline(assigns) do
-    assigns = assign(assigns, :rest, visual_safe_rest(assigns.rest, suppress_actions?: true))
+    assigns =
+      assigns
+      |> assign(:rest, visual_safe_rest(assigns.rest, suppress_actions?: true))
+      |> assign(:aria_busy, if(assigns.state == :loading, do: "true"))
 
     ~H"""
-    <section id={@id} class="obpt-timeline" data-obpt-data-state={data_state(@state)} {@rest}>
-      <.state_message :if={@state != :ready} state={@state} resource={@resource} />
-      <ol :if={@state == :ready}>
-        <li :for={event <- @event}>
-          <time datetime={event.timestamp}>{event.timestamp}</time>
-          <p>{event.title}</p>
-          <span :if={Map.get(event, :source)}>{event.source}</span>
-          <.status_pill :if={Map.get(event, :domain) && Map.get(event, :state)} id={"#{@id}-#{event.timestamp}-status"} domain={event.domain} state={event.state} />
-          <div>{render_slot(event)}</div>
+    <section
+      id={@id}
+      class="obpt-timeline"
+      data-obpt-data-state={data_state(@state)}
+      aria-busy={@aria_busy}
+      {@rest}
+    >
+      <.state_message
+        :if={@state != :ready}
+        id={"#{@id}-state"}
+        state={@state}
+        resource={@resource}
+      />
+      <ol :if={@state == :ready} class="obpt-timeline__list">
+        <li :for={{event, index} <- Enum.with_index(@event)} id={"#{@id}-event-#{index}"} class="obpt-timeline__item">
+          <time class="obpt-timeline__time" datetime={event.timestamp}>{event.timestamp}</time>
+          <p class="obpt-timeline__title">{event.title}</p>
+          <span :if={Map.get(event, :source)} class="obpt-timeline__source">{event.source}</span>
+          <.status_pill
+            :if={Map.get(event, :domain) && Map.get(event, :state)}
+            id={"#{@id}-event-#{index}-status"}
+            domain={event.domain}
+            state={event.state}
+          />
+          <div class="obpt-timeline__detail">{render_slot(event)}</div>
         </li>
       </ol>
     </section>
@@ -260,17 +305,32 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   attr(:rest, :global, default: %{})
 
   def progress_bar(assigns) do
+    max = positive_max(assigns.max)
+    clamped = clamp_progress(assigns.value, max)
+
     assigns =
       assigns
       |> assign(:rest, visual_safe_rest(assigns.rest, suppress_actions?: true))
-      |> assign(:clamped, clamp_progress(assigns.value, assigns.max))
+      |> assign(:clamped, clamped)
+      |> assign(:positive_max, max)
+      |> assign(:percent, progress_percent(clamped, max))
 
     ~H"""
     <div id={@id} class="obpt-progress" data-obpt-data-state={data_state(@state)} {@rest}>
-      <label for={"#{@id}-progress"}>{@label}</label>
-      <p :if={@state == :unavailable}>Progress unavailable</p>
-      <progress :if={@state != :unavailable} id={"#{@id}-progress"} value={@clamped} max={positive_max(@max)}>{@clamped}</progress>
-      <span :if={@state != :unavailable}>{@clamped}/{positive_max(@max)}</span>
+      <span id={"#{@id}-label"} class="obpt-progress__label">{@label}</span>
+      <p :if={@state == :unavailable} class="obpt-progress__unavailable">Progress unavailable</p>
+      <div :if={@state != :unavailable} class="obpt-progress__value">
+        <progress
+          id={"#{@id}-progress"}
+          value={@clamped}
+          max={@positive_max}
+          aria-labelledby={"#{@id}-label"}
+        >
+          {@clamped}
+        </progress>
+        <span class="obpt-progress__count">{@clamped}/{@positive_max}</span>
+        <span class="obpt-progress__percent">{@percent}%</span>
+      </div>
     </div>
     """
   end
@@ -285,16 +345,18 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   slot(:action)
 
   def metric_card(assigns) do
-    assigns = assign(assigns, :rest, visual_safe_rest(assigns.rest, suppress_actions?: true))
+    assigns =
+      assigns
+      |> assign(:label, require_text!(assigns.label, "metric label"))
+      |> assign(:value, require_text!(assigns.value, "metric value"))
+      |> assign(:rest, visual_safe_rest(assigns.rest, suppress_actions?: true))
 
     ~H"""
-    <section id={@id} class="obpt-metric-card" data-obpt-tone={@tone} {@rest}>
-      <p>{@label}</p>
-      <p>{@value}</p>
-      <p :if={@trend}>{@trend}</p>
-      <p :if={@status}>{@status}</p>
-      {render_slot(@action)}
-    </section>
+    <article id={@id} class="obpt-metric-card" data-obpt-tone={@tone} {@rest}>
+      <Primitives.stat label={@label} value={@value} trend={@trend} tone={@tone} />
+      <p :if={@status} class="obpt-metric-card__status">{@status}</p>
+      <div :if={@action != []} class="obpt-metric-card__action">{render_slot(@action)}</div>
+    </article>
     """
   end
 
@@ -373,13 +435,17 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   slot(:action)
 
   def empty_state(assigns) do
-    assigns = assign(assigns, :rest, visual_safe_rest(assigns.rest, suppress_actions?: true))
+    assigns =
+      assigns
+      |> assign(:heading, require_text!(assigns.heading, "empty state heading"))
+      |> assign(:body, require_text!(assigns.body, "empty state body"))
+      |> assign(:rest, visual_safe_rest(assigns.rest, suppress_actions?: true))
 
     ~H"""
     <section id={@id} class="obpt-empty-state" {@rest}>
-      <h2>{@heading}</h2>
-      <p>{@body}</p>
-      {render_slot(@action)}
+      <h2 class="obpt-empty-state__heading">{@heading}</h2>
+      <p class="obpt-empty-state__body">{@body}</p>
+      <div :if={@action != []} class="obpt-empty-state__action">{render_slot(@action)}</div>
     </section>
     """
   end
@@ -392,20 +458,25 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   slot(:inner_block, required: true)
 
   def toast(assigns) do
-    role =
-      if assigns.urgency == :assertive or assigns.tone in [:warning, :danger],
-        do: "alert",
-        else: "status"
-
     assigns =
       assigns
-      |> assign(:role, role)
+      |> assign(:role, toast_role(assigns.urgency, assigns.tone))
+      |> assign(:icon, toast_icon(assigns.tone))
       |> assign(:rest, visual_safe_rest(assigns.rest, suppress_actions?: true))
 
     ~H"""
     <div id={@id} class="obpt-toast" data-obpt-tone={@tone} role={@role} {@rest}>
-      <div>{render_slot(@inner_block)}</div>
-      <button :if={@dismiss_event} type="button" phx-click={@dismiss_event} aria-label="Dismiss notification">Dismiss</button>
+      <span class="obpt-toast__icon" aria-hidden="true">{@icon}</span>
+      <div class="obpt-toast__content">{render_slot(@inner_block)}</div>
+      <button
+        :if={@dismiss_event}
+        type="button"
+        class="obpt-toast__dismiss"
+        phx-click={@dismiss_event}
+        aria-label="Dismiss notification"
+      >
+        Dismiss
+      </button>
     </div>
     """
   end
@@ -423,7 +494,13 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
 
     ~H"""
     <div id={@id} class="obpt-flash-group" {@rest}>
-      <.toast :for={{tone, message} <- @items} id={"#{@id}-#{tone}"} tone={tone} dismiss_event={@dismiss_event}>
+      <.toast
+        :for={{tone, urgency, message} <- @items}
+        id={"#{@id}-#{tone}"}
+        tone={tone}
+        urgency={urgency}
+        dismiss_event={@dismiss_event}
+      >
         {message}
       </.toast>
     </div>
@@ -440,6 +517,7 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
         "aria-hidden",
         "aria-label",
         "aria-labelledby",
+        "aria-live",
         "class",
         "data-obpt-icon",
         "data-obpt-size",
@@ -515,17 +593,34 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
 
   defp state_copy(_state, resource), do: %{heading: "Showing #{resource}", body: ""}
 
-  defp truncate_middle(value, max) when byte_size(value) <= max, do: value
-
-  defp truncate_middle(value, max) do
-    keep = div(max - 1, 2)
-    binary_part(value, 0, keep) <> "..." <> binary_part(value, byte_size(value) - keep, keep)
+  defp truncate_middle(value, max) when is_binary(value) do
+    if String.length(value) <= max do
+      value
+    else
+      keep = div(max - 3, 2)
+      String.slice(value, 0, keep) <> "..." <> String.slice(value, -keep, keep)
+    end
   end
+
+  defp preserve_suffix(value, max) when is_binary(value) do
+    if String.length(value) <= max do
+      value
+    else
+      keep = max - 3
+      "..." <> String.slice(value, -keep, keep)
+    end
+  end
+
+  defp machine_display(value, _kind, false), do: value
+  defp machine_display(value, :module, true), do: preserve_suffix(value, 48)
+  defp machine_display(value, :url, true), do: truncate_middle(value, 64)
+  defp machine_display(value, _kind, true), do: truncate_middle(value, 48)
 
   defp clamp_progress(nil, _max), do: 0
   defp clamp_progress(value, max), do: value |> max(0) |> min(positive_max(max))
   defp positive_max(max) when is_integer(max) and max > 0, do: max
   defp positive_max(_max), do: 100
+  defp progress_percent(value, max), do: round(value / max * 100)
 
   defp render_normalized_display({:raw_json, json}),
     do: display_view(:code, %{content: json, language: "json"})
@@ -567,7 +662,8 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
 
   defp flash_items(flash) do
     for {kind, message} <- flash, message not in [nil, ""] do
-      {flash_tone(kind), message}
+      tone = flash_tone(kind)
+      {tone, flash_urgency(tone), message}
     end
   end
 
@@ -576,4 +672,30 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   defp flash_tone(:warning), do: :warning
   defp flash_tone(:success), do: :success
   defp flash_tone(_kind), do: :neutral
+
+  defp flash_urgency(tone) when tone in [:warning, :danger], do: :assertive
+  defp flash_urgency(_tone), do: :polite
+
+  defp toast_role(:assertive, tone) when tone in [:warning, :danger], do: "alert"
+  defp toast_role(_urgency, _tone), do: "status"
+
+  defp toast_icon(:success), do: "+"
+  defp toast_icon(:warning), do: "!"
+  defp toast_icon(:danger), do: "!"
+  defp toast_icon(:info), do: "i"
+  defp toast_icon(:neutral), do: "•"
+
+  defp require_text!(value, name) do
+    present_text(value) || raise ArgumentError, "#{name} must be non-empty"
+  end
+
+  defp present_text(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      text -> text
+    end
+  end
+
+  defp present_text(value) when is_atom(value), do: value |> to_string() |> present_text()
+  defp present_text(_value), do: nil
 end

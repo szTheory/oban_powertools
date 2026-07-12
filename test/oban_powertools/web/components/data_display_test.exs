@@ -423,13 +423,13 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
       )
 
     assert id_html =~ "<details"
-    assert id_html =~ "<summary>job_0123456789"
+    assert id_html =~ ">job_0123456789"
     assert id_html =~ "OPQRSTUVWXYZ</summary>"
     assert count(id_html, long_id) == 1
     refute id_html =~ ~s(title=)
     refute id_html =~ ~s(style=)
 
-    assert module_html =~ "<summary>..."
+    assert module_html =~ ">..."
     assert module_html =~ "Workers.SendEmail</summary>"
     assert count(module_html, long_module) == 1
   end
