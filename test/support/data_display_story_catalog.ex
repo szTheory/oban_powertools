@@ -182,7 +182,9 @@ defmodule ObanPowertools.DataDisplayStoryCatalog do
       description: "Recovery copy and polite or assertive notifications remain explicit.",
       variant: [:empty, :notification],
       state: [:empty, :warning, :error],
-      fixtures: %{flash: %{info: "Filters cleared.", error: "Job data did not load."}},
+      fixtures: %{
+        flash: %{"info" => "Filters cleared.", "error" => "Job data did not load."}
+      },
       test_targets: nil
     },
     %{

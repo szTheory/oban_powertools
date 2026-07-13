@@ -73,6 +73,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
       {:ok,
        socket
+       |> seed_data_flash(data_catalog.stories)
        |> assign(:page_title, "Powertools Showcase")
        |> assign(:theme_choices, @theme_choices)
        |> assign(:viewport_choices, @viewport_choices)
@@ -322,6 +323,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
                       <p>{story.description}</p>
                       <.data_story_body
                         story={story}
+                        flash={@flash}
                         sort_key={@data_sort_key}
                         sort_direction={@data_sort_direction}
                       />
@@ -562,6 +564,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
     defp toggle_sort_direction(_direction), do: :asc
 
     attr(:story, :map, required: true)
+    attr(:flash, :map, required: true)
     attr(:sort_key, :string, required: true)
     attr(:sort_direction, :atom, required: true)
 
@@ -710,7 +713,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
             <DataDisplay.toast id="data-warning-toast" tone={:warning} urgency={:assertive}>
               Retryable jobs require operator review.
             </DataDisplay.toast>
-            <DataDisplay.flash_group id="data-flash-group" flash={@story.fixtures.flash} />
+            <DataDisplay.flash_group id="data-flash-group" flash={@flash} />
           <% "data-table-thousands-row-stress" -> %>
             <DataDisplay.data_table
               id="data-thousands-table"
@@ -739,6 +742,17 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
     defp sort_value(row, "worker"), do: row.worker
     defp sort_value(row, "state"), do: to_string(row.state)
     defp sort_value(row, _key), do: row.id
+
+    defp seed_data_flash(socket, stories) do
+      flash =
+        stories
+        |> Enum.find(&(&1.id == "data-empty-toast-flash"))
+        |> then(&get_in(&1, [:fixtures, :flash]))
+
+      Enum.reduce(flash, socket, fn {key, message}, socket ->
+        put_flash(socket, key, message)
+      end)
+    end
 
     attr(:story, :map, required: true)
 

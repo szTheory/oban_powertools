@@ -503,7 +503,6 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
     refute immediate_warning =~ @secret
     refute immediate_warning =~ ~s(phx-click="steal")
     refute immediate_warning =~ ~s(role="button")
-
   end
 
   test "flash_group preserves canonical Phoenix keys, severity, identity, and dismiss payloads" do

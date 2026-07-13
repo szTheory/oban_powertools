@@ -486,6 +486,7 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   attr(:tone, :atom, default: :info, values: @tones)
   attr(:urgency, :atom, default: :polite, values: @urgencies)
   attr(:dismiss_event, :string, default: nil)
+  attr(:dismiss_key, :string, default: nil)
   attr(:rest, :global, default: %{})
   slot(:inner_block, required: true)
 
@@ -505,6 +506,7 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
         type="button"
         class="obpt-toast__dismiss"
         phx-click={@dismiss_event}
+        phx-value-key={@dismiss_key}
         aria-label="Dismiss notification"
       >
         Dismiss
@@ -521,19 +523,20 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   def flash_group(assigns) do
     assigns =
       assigns
-      |> assign(:items, flash_items(assigns.flash))
+      |> assign(:items, flash_items(assigns.id, assigns.flash))
       |> assign(:rest, visual_safe_rest(assigns.rest, suppress_actions?: true))
 
     ~H"""
     <div id={@id} class="obpt-flash-group" {@rest}>
       <.toast
-        :for={{tone, urgency, message} <- @items}
-        id={"#{@id}-#{tone}"}
-        tone={tone}
-        urgency={urgency}
+        :for={item <- @items}
+        id={item.id}
+        tone={item.tone}
+        urgency={item.urgency}
         dismiss_event={@dismiss_event}
+        dismiss_key={item.key}
       >
-        {message}
+        {item.message}
       </.toast>
     </div>
     """
@@ -751,17 +754,47 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   defp fallback_copy("[redacted]"), do: "[redacted]"
   defp fallback_copy(_message), do: "[redacted]"
 
-  defp flash_items(flash) do
-    for {kind, message} <- flash, message not in [nil, ""] do
-      tone = flash_tone(kind)
-      {tone, flash_urgency(tone), message}
-    end
+  defp flash_items(group_id, flash) do
+    flash
+    |> Enum.reduce(%{}, fn {source_key, message}, items ->
+      key = normalize_flash_key(source_key)
+
+      if is_binary(source_key) or not Map.has_key?(items, key) do
+        Map.put(items, key, message)
+      else
+        items
+      end
+    end)
+    |> Enum.reject(fn {_key, message} -> message in [nil, ""] end)
+    |> Enum.sort_by(&elem(&1, 0))
+    |> Enum.map(fn {key, message} ->
+      tone = flash_tone(key)
+
+      %{
+        id: flash_item_id(group_id, key),
+        key: key,
+        message: message,
+        tone: tone,
+        urgency: flash_urgency(tone)
+      }
+    end)
   end
 
-  defp flash_tone(:info), do: :info
-  defp flash_tone(:error), do: :danger
-  defp flash_tone(:warning), do: :warning
-  defp flash_tone(:success), do: :success
+  defp normalize_flash_key(key) when is_binary(key), do: key
+  defp normalize_flash_key(key) when is_atom(key), do: Atom.to_string(key)
+
+  defp normalize_flash_key(key) do
+    raise ArgumentError, "unsupported flash key: #{inspect(key)}"
+  end
+
+  defp flash_item_id(group_id, key) do
+    "#{group_id}-#{Base.url_encode64(key, padding: false)}"
+  end
+
+  defp flash_tone("info"), do: :info
+  defp flash_tone("error"), do: :danger
+  defp flash_tone("warning"), do: :warning
+  defp flash_tone("success"), do: :success
   defp flash_tone(_kind), do: :neutral
 
   defp flash_urgency(tone) when tone in [:warning, :danger], do: :assertive
