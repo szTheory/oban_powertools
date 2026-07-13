@@ -98,7 +98,6 @@ defmodule Mix.Tasks.ObanPowertools.InstallTest do
     assert source =~
              "unique_index(:oban_powertools_job_records, [:oban_job_id, :attempt], concurrently: true)"
 
-
     assert source =~
              "index(:oban_powertools_job_records, [:expires_at], concurrently: true)"
 
