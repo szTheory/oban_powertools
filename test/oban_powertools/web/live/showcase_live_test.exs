@@ -351,6 +351,36 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
              )
     end
 
+    test "default flash dismissal removes only the selected canonical Phoenix key", %{
+      conn: conn
+    } do
+      {:ok, view, _html} = mount_showcase!(conn)
+      story = "#obpt-data-story-data-empty-toast-flash"
+
+      assert has_element?(
+               view,
+               "#{story} #data-flash-group-ZXJyb3I[data-obpt-tone='danger'][role='alert'] button[phx-click='lv:clear-flash'][phx-value-key='error']"
+             )
+
+      assert has_element?(
+               view,
+               "#{story} #data-flash-group-aW5mbw[data-obpt-tone='info'][role='status'] button[phx-click='lv:clear-flash'][phx-value-key='info']"
+             )
+
+      view
+      |> element("#{story} button[phx-click='lv:clear-flash'][phx-value-key='error']")
+      |> render_click()
+
+      refute has_element?(view, "#{story} #data-flash-group-ZXJyb3I")
+      assert has_element?(view, "#{story} #data-flash-group-aW5mbw")
+
+      view
+      |> element("#{story} button[phx-click='lv:clear-flash'][phx-value-key='info']")
+      |> render_click()
+
+      refute has_element?(view, "#{story} #data-flash-group-aW5mbw")
+    end
+
     defp assert_attribute_values(html, attribute, expected_values) do
       assert Enum.sort(attribute_values(html, attribute)) == Enum.sort(expected_values)
     end

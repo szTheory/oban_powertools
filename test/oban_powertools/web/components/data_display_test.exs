@@ -504,20 +504,83 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
     refute immediate_warning =~ ~s(phx-click="steal")
     refute immediate_warning =~ ~s(role="button")
 
-    flash =
+  end
+
+  test "flash_group preserves canonical Phoenix keys, severity, identity, and dismiss payloads" do
+    html =
       render_data(:flash_group,
         id: "operator-flash",
-        flash: %{info: "Refresh complete", error: "Refresh failed"}
+        flash: %{
+          "info" => "Refresh complete",
+          "error" => "Refresh failed",
+          "alpha" => "First neutral",
+          "beta" => @hostile
+        }
       )
 
-    assert flash =~ ~s(id="operator-flash-info")
-    assert flash =~ ~s(id="operator-flash-danger")
+    assert html =~
+             ~s(id="operator-flash-aW5mbw" class="obpt-toast" data-obpt-tone="info" role="status")
 
-    assert flash =~
-             ~s(id="operator-flash-info" class="obpt-toast" data-obpt-tone="info" role="status")
+    assert html =~
+             ~s(id="operator-flash-ZXJyb3I" class="obpt-toast" data-obpt-tone="danger" role="alert")
 
-    assert flash =~
-             ~s(id="operator-flash-danger" class="obpt-toast" data-obpt-tone="danger" role="alert")
+    assert html =~ ~s(id="operator-flash-YWxwaGE")
+    assert html =~ ~s(id="operator-flash-YmV0YQ")
+    assert count(html, ~s(data-obpt-tone="neutral")) == 2
+    assert count(html, ~s(phx-click="lv:clear-flash")) == 4
+
+    for key <- ~w[info error alpha beta] do
+      assert count(html, ~s(phx-value-key="#{key}")) == 1
+    end
+
+    assert html =~ "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;"
+    refute html =~ @hostile
+  end
+
+  test "flash_group normalizes atom aliases without atom creation and prefers binary entries" do
+    atom_html =
+      render_data(:flash_group,
+        id: "atom-flash",
+        flash: %{info: "Atom info", error: "Atom error"}
+      )
+
+    assert atom_html =~ ~s(id="atom-flash-aW5mbw")
+    assert atom_html =~ ~s(data-obpt-tone="info")
+    assert atom_html =~ ~s(phx-value-key="info")
+    assert atom_html =~ ~s(id="atom-flash-ZXJyb3I")
+    assert atom_html =~ ~s(data-obpt-tone="danger")
+    assert atom_html =~ ~s(phx-value-key="error")
+
+    duplicate_html =
+      render_data(:flash_group,
+        id: "duplicate-flash",
+        flash: %{:info => "Atom loses", "info" => "Binary wins"}
+      )
+
+    assert count(duplicate_html, ~s(id="duplicate-flash-aW5mbw")) == 1
+    assert count(duplicate_html, ~s(phx-value-key="info")) == 1
+    assert duplicate_html =~ "Binary wins"
+    refute duplicate_html =~ "Atom loses"
+
+    assert_raise ArgumentError, ~r/unsupported flash key/, fn ->
+      render_data(:flash_group, id: "invalid-flash", flash: %{7 => "Unsupported"})
+    end
+
+    source = File.read!(@source_path)
+    refute source =~ "String.to_atom"
+    refute source =~ "String.to_existing_atom"
+  end
+
+  test "standalone toast omits a flash key when none is supplied" do
+    html =
+      render_data(:toast,
+        id: "standalone-toast",
+        dismiss_event: "dismiss-toast",
+        inner_block: [slot(:inner_block, %{}, fn -> "Standalone" end)]
+      )
+
+    assert html =~ ~s(phx-click="dismiss-toast")
+    refute html =~ "phx-value-key"
   end
 
   test "code_block is visibly labelled, focusable, escaped, and filters disclosure attributes" do
