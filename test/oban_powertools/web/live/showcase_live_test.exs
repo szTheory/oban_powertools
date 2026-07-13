@@ -106,6 +106,63 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       data-empty-toast-flash
       data-table-thousands-row-stress
     ]
+    @optional_catalog_modules [
+      ObanPowertools.ShowcaseCatalog,
+      ObanPowertools.PrimitiveStoryCatalog,
+      ObanPowertools.FormStoryCatalog,
+      ObanPowertools.ShellStoryCatalog,
+      ObanPowertools.DataDisplayStoryCatalog
+    ]
+    @isolated_data_catalog_cases [
+      %{
+        id: "absent",
+        stub: nil,
+        expected_available?: false,
+        expected_stories: [],
+        render_placeholder?: true
+      },
+      %{
+        id: "non-list",
+        stub: :non_list,
+        expected_available?: false,
+        expected_stories: [],
+        render_placeholder?: true
+      },
+      %{
+        id: "empty-list",
+        stub: :empty_list,
+        expected_available?: true,
+        expected_stories: [],
+        render_placeholder?: true
+      },
+      %{
+        id: "missing-flash",
+        stub: :missing_flash,
+        expected_available?: true,
+        expected_stories: [%{id: "data-empty-toast-flash", fixtures: %{}}],
+        render_placeholder?: false
+      },
+      %{
+        id: "non-map-flash",
+        stub: :non_map_flash,
+        expected_available?: true,
+        expected_stories: [
+          %{
+            id: "data-empty-toast-flash",
+            fixtures: %{flash: [{"info", "must not be seeded"}]}
+          }
+        ],
+        render_placeholder?: false
+      }
+    ]
+
+    for package_case <- @isolated_data_catalog_cases do
+      @package_case package_case
+
+      test "isolated package boundary fails closed for #{@package_case.id} data catalog" do
+        assert_isolated_data_catalog_case!(@package_case)
+      end
+    end
 
     test "renders the showcase through the Powertools theme shell", %{conn: conn} do
       {:ok, _view, html} = mount_showcase!(conn)
@@ -388,6 +445,139 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       |> render_click()
 
       refute has_element?(view, "#{story} #data-flash-group-aW5mbw")
+    end
+
+    defp assert_isolated_data_catalog_case!(package_case) do
+      temp_dir =
+        Path.join(
+          System.tmp_dir!(),
+          "oban-powertools-showcase-package-#{package_case.id}-#{System.unique_integer([:positive])}"
+        )
+
+      File.mkdir_p!(temp_dir)
+
+      try do
+        source = isolated_data_catalog_source(package_case, temp_dir)
+
+        {output, status} =
+          System.cmd(
+            "mix",
+            ["run", "--no-start", "--no-compile", "-e", source],
+            cd: File.cwd!(),
+            env: [{"MIX_ENV", "test"}],
+            stderr_to_stdout: true
+          )
+
+        assert status == 0,
+               "isolated package case #{package_case.id} failed with status #{status}:\n#{output}"
+
+        assert output =~ "PACKAGE_CASE_OK #{package_case.id}",
+               "isolated package case #{package_case.id} omitted its success marker:\n#{output}"
+      after
+        File.rm_rf!(temp_dir)
+      end
+    end
+
+    defp isolated_data_catalog_source(package_case, temp_dir) do
+      excluded_beams =
+        Enum.map(@optional_catalog_modules, fn module ->
+          "#{Atom.to_string(module)}.beam"
+        end)
+
+      stub_source = isolated_data_catalog_stub(package_case.stub)
+
+      """
+      original_ebin = :oban_powertools |> :code.lib_dir(:ebin) |> List.to_string()
+      isolated_ebin = Path.join(#{inspect(temp_dir)}, "ebin")
+      File.mkdir_p!(isolated_ebin)
+      excluded_beams = MapSet.new(#{inspect(excluded_beams)})
+
+      original_ebin
+      |> Path.join("*.beam")
+      |> Path.wildcard()
+      |> Enum.reject(&MapSet.member?(excluded_beams, Path.basename(&1)))
+      |> Enum.each(fn source ->
+        File.cp!(source, Path.join(isolated_ebin, Path.basename(source)))
+      end)
+
+      true = :code.del_path(String.to_charlist(original_ebin))
+      true = :code.add_patha(String.to_charlist(isolated_ebin))
+
+      for module <- #{inspect(@optional_catalog_modules)} do
+        :code.purge(module)
+        :code.delete(module)
+      end
+
+      #{stub_source}
+
+      socket = %Phoenix.LiveView.Socket{
+        assigns: %{__changed__: %{}, flash: %{}},
+        private: %{live_temp: %{}}
+      }
+
+      {:ok, mounted_socket} =
+        ObanPowertools.Web.Dev.ShowcaseLive.mount(%{}, %{}, socket)
+
+      assigns = mounted_socket.assigns
+
+      unless assigns.data_catalog_available? == #{inspect(package_case.expected_available?)} do
+        raise "#{package_case.id}: unexpected availability: \#{inspect(assigns.data_catalog_available?)}"
+      end
+
+      unless assigns.data_stories == #{inspect(package_case.expected_stories)} do
+        raise "#{package_case.id}: unexpected stories: \#{inspect(assigns.data_stories)}"
+      end
+
+      unless assigns.flash == %{} do
+        raise "#{package_case.id}: expected empty flash, got: \#{inspect(assigns.flash)}"
+      end
+
+      if #{inspect(package_case.render_placeholder?)} do
+        html =
+          assigns
+          |> ObanPowertools.Web.Dev.ShowcaseLive.render()
+          |> Phoenix.HTML.Safe.to_iodata()
+          |> IO.iodata_to_binary()
+
+        unless html =~ ~s(data-obpt-data-index="empty") do
+          raise "#{package_case.id}: existing data-display unavailable marker was not rendered"
+        end
+      end
+
+      IO.puts("PACKAGE_CASE_OK #{package_case.id}")
+      """
+    end
+
+    defp isolated_data_catalog_stub(nil), do: ""
+
+    defp isolated_data_catalog_stub(stub) do
+      stories =
+        case stub do
+          :non_list ->
+            :invalid_catalog_shape
+
+          :empty_list ->
+            []
+
+          :missing_flash ->
+            [%{id: "data-empty-toast-flash", fixtures: %{}}]
+
+          :non_map_flash ->
+            [
+              %{
+                id: "data-empty-toast-flash",
+                fixtures: %{flash: [{"info", "must not be seeded"}]}
+              }
+            ]
+        end
+
+      """
+      Code.compile_string(\"\"\"
+      defmodule ObanPowertools.DataDisplayStoryCatalog do
+        def stories, do: #{inspect(stories)}
+      end
+      \"\"\")
+      """
     end
 
     defp assert_attribute_values(html, attribute, expected_values) do
