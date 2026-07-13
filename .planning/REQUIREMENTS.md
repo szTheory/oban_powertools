@@ -48,7 +48,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 
 ### Data Display & Operator Patterns (DATA)
 
-- [x] **DATA-01**: Shared data-display components exist (DataTable with sort/empty/loading/error states, KeyValue/DescriptionList, Timeline/event log, ProgressBar, MetricCard, CodeBlock/args-viewer with redaction overlay, EmptyState, Toast/Flash).
+- [ ] **DATA-01**: Shared data-display components exist (DataTable with sort/empty/loading/error states, KeyValue/DescriptionList, Timeline/event log, ProgressBar, MetricCard, CodeBlock/args-viewer with redaction overlay, EmptyState, Toast/Flash).
 - [x] **DATA-02**: The status taxonomy is unified across all 9 pages — one StatusPill maps every Oban/Powertools state consistently.
 - [x] **DATA-03**: Tables/lists degrade gracefully at 320px (stacked/card fallback); all show explicit empty vs loading vs unavailable vs permission-denied states; long IDs/module names/URLs/stacktraces are handled (truncation + expansion/tooltip).
 - [x] **DATA-04**: Redaction/DisplayPolicy presentation is rendered through one shared component (no per-page reinvention).
