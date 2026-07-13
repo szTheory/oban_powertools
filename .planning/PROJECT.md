@@ -93,6 +93,7 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 - ✓ v2.0 primitive component layer — token-driven documented `Phoenix.Component` primitives with primitive showcase stories, manifest/VRT/a11y integration, browser behavior checks, clean code review, and verified security register (`COMP-01..04`) — v2.0 Phase 74
 - ✓ v2.0 form component layer — accessible `Phoenix.Component`/`to_form` primitives with labels, hints, errors, native choices, switch state text, disabled/read-only contracts, deterministic form showcase stories, browser behavior/VRT/a11y evidence, clean code review, and verified security register (`FORM-01`, `FORM-02`, form-set `COMP-*`, component-scoped `A11Y-02`) — v2.0 Phase 75
 - ✓ v2.0 navigation app shell — responsive Powertools shell with closed nine-surface native nav, active-route breadcrumbs, skip-to-content, actor/context display, root-scoped theme controls, shell showcase stories, browser behavior proof, VRT/a11y evidence, and clean code review (`NAV-01..04`, shell-scoped `A11Y-02`, `COPY-*`) — v2.0 Phase 76
+- ✓ v2.0 data-display and operator patterns — unified status taxonomy plus semantic responsive tables, data states, progress/metric/timeline surfaces, confidentiality-safe args/code/redaction rendering, deterministic showcase stories, package-boundary-safe optional catalog loading, and focused VRT/a11y evidence (`DATA-01..04`, data-display-scoped `A11Y-02`) — v2.0 Phase 77
 
 ### Active
 
@@ -162,7 +163,7 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 `1.0.0` shipped and published to hex.pm (v1.11 Stability & 1.0 Release Prep). The library is functionally complete for its intended *feature* scope: typed worker contracts, durable idempotency, limiter/cron control planes, durable workflow DAGs + signaling, batches/chains with callback outbox, a native `/ops/jobs` operator shell (browse/detail/retry/cancel/discard single+bulk through the Lifeline preview→reason→execute→audit pipeline, plus the typed `ObanPowertools.Operator` API), `mix oban_powertools.doctor` / `.limiter.explain` / `.simulate`, opt-in telemetry, worker lifecycle hooks, output recording, and at-rest redaction.
 
-**v2.0 Powertools Identity (active).** A coherence/quality milestone, not new operator capability. Phases 70–75 are complete: brand book, isolated token/theme foundation, stress fixtures/showcase skeleton, visual-regression/a11y harness, the token-driven primitive component layer, and accessible form components. The remaining phases build the app shell, data-display components, operator groups, page migrations, and the final global accessibility/motion/copy/docs sweep.
+**v2.0 Powertools Identity (active).** A coherence/quality milestone, not new operator capability. Phases 70–77 are complete: brand book, isolated token/theme foundation, stress fixtures/showcase skeleton, visual-regression/a11y harness, token-driven primitive and form component layers, the responsive app shell, and shared data-display/operator patterns. The remaining phases build operator meta-component groups, migrate the nine operator pages, and finish the global accessibility/motion/copy/docs sweep.
 
 (Earlier: `v1.9` shipped batches & composition; `v1.7` worker lifecycle & safety; `v1.4` operator forensics and SRE runbooks; `v1.3` unified the native control plane and explainability story.)
 
@@ -248,4 +249,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-07-12 — Phase 76 completed; navigation app shell validated (NAV-01..04, shell-scoped A11Y-02, COPY-*)*
+*Last updated: 2026-07-13 — Phase 77 completed; data-display/operator patterns validated (DATA-01..04, data-display-scoped A11Y-02)*
