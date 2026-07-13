@@ -291,6 +291,15 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
       assert has_element?(
                view,
+               "#data-progress-unavailable[data-obpt-data-state='unavailable']"
+             )
+
+      refute has_element?(view, "#data-progress-unavailable progress")
+      refute has_element?(view, "#data-progress-unavailable .obpt-progress__count")
+      refute has_element?(view, "#data-progress-unavailable .obpt-progress__percent")
+
+      assert has_element?(
+               view,
                "#obpt-data-story-data-code-args-redaction pre[tabindex='0'] code"
              )
 

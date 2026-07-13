@@ -421,6 +421,29 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
     refute unavailable =~ ~s(aria-valuenow=)
   end
 
+  test "progress_bar routes omitted and explicit nil measurements to unavailable output" do
+    omitted = render_data(:progress_bar, id: "omitted-progress", label: "Remote progress")
+
+    explicit_nil =
+      render_data(:progress_bar,
+        id: "nil-progress",
+        label: "Remote progress",
+        value: nil
+      )
+
+    for html <- [omitted, explicit_nil] do
+      assert html =~ ~s(data-obpt-data-state="unavailable")
+      assert count(html, "Progress unavailable") == 1
+      refute html =~ "<progress"
+      refute html =~ "obpt-progress__count"
+      refute html =~ "obpt-progress__percent"
+      refute html =~ ~r/>\s*\d+\s*\/\s*\d+\s*</
+      refute html =~ ~r/>\s*\d+%\s*</
+      refute html =~ ~s(value=)
+      refute html =~ ~s(aria-valuenow=)
+    end
+  end
+
   test "machine_value preserves useful ends and exposes full non-sensitive text only through expansion" do
     long_id = "job_0123456789abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     long_module = "MyApp.Really.Long.Namespace.With.Many.Parts.Workers.SendEmail"

@@ -344,9 +344,15 @@ test.describe('data data-display behavior contracts', () => {
     );
     await expect(progress.getByText('100/100', { exact: true })).toBeVisible();
     await expect(progress.getByText('100%', { exact: true })).toBeVisible();
-    await expect(progress.locator('#data-progress-unavailable progress')).toHaveCount(0);
-    await expect(progress.locator('#data-progress-unavailable [aria-valuenow]')).toHaveCount(0);
-    await expect(progress.getByText('Progress unavailable', { exact: true })).toBeVisible();
+    const unavailable = progress.locator('#data-progress-unavailable');
+    await expect(unavailable).toHaveAttribute('data-obpt-data-state', 'unavailable');
+    await expect(unavailable.locator('progress')).toHaveCount(0);
+    await expect(unavailable.locator('[aria-valuenow]')).toHaveCount(0);
+    await expect(unavailable.locator('.obpt-progress__count')).toHaveCount(0);
+    await expect(unavailable.locator('.obpt-progress__percent')).toHaveCount(0);
+    await expect(unavailable).not.toContainText(/\b\d+\s*\/\s*\d+\b/);
+    await expect(unavailable).not.toContainText(/\b\d+%/);
+    await expect(unavailable.getByText('Progress unavailable', { exact: true })).toBeVisible();
 
     const largeRows = targetLocator(page, dataStory('data-table-thousands-row-stress'));
     const rows = largeRows.locator('#data-thousands-table tbody tr');
