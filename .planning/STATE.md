@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 77
-current_phase_name: data-display-operator-patterns
-status: executing
-stopped_at: Completed 77-06-PLAN.md
-last_updated: "2026-07-12T23:52:40.963Z"
-last_activity: 2026-07-12
-last_activity_desc: Phase 77 execution started
+status: completed
+stopped_at: Completed 77-07-PLAN.md
+last_updated: "2026-07-13T00:26:16.680Z"
+last_activity: 2026-07-13
+last_activity_desc: Phase 77 marked complete
 progress:
   total_phases: 15
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 39
-  completed_plans: 38
-  percent: 47
+  completed_plans: 39
+  percent: 53
+current_phase_name: data-display-operator-patterns
 ---
 
 # Project State
@@ -27,10 +27,10 @@ progress:
 
 ## Current Position
 
-Phase: 77 (data-display-operator-patterns) — EXECUTING
-Plan: 6 of 7
-Status: Ready to execute
-Last activity: 2026-07-12 — Phase 77 execution started
+Phase: 77 — COMPLETE
+Plan: 7 of 7
+Status: Phase 77 complete
+Last activity: 2026-07-13 — Phase 77 marked complete
 
 ## Performance Metrics
 
@@ -71,6 +71,7 @@ Last activity: 2026-07-12 — Phase 77 execution started
 | Phase 77 P04 | 10 min | 2 tasks | 6 files |
 | Phase 77 P05 | 43 min | 2 tasks | 6 files |
 | Phase 77 P06 | 10 min | 2 tasks | 9 files |
+| Phase 77 P07 | 31min | 2 tasks | 129 files |
 
 ## Accumulated Context
 
@@ -98,8 +99,8 @@ Last activity: 2026-07-12 — Phase 77 execution started
 
 ## Session Continuity
 
-**Last session:** 2026-07-12T23:52:26.460Z
-**Stopped at:** Completed 77-06-PLAN.md
+**Last session:** 2026-07-13T00:25:44.513Z
+**Stopped at:** Completed 77-07-PLAN.md
 **Resume file:** None
 
 - **Last Action:** Verified Phase 76, recorded `76-VERIFICATION.md`, and transitioned planning state to Phase 77.
@@ -142,6 +143,9 @@ Last activity: 2026-07-12 — Phase 77 execution started
 - [Phase 77]: Keep data-display evidence in a separate dev/test support catalog loaded through the compile-gated showcase. — Preserves production packaging and deterministic normalized-only fixture boundaries.
 - [Phase 77]: Keep DataTable stateless while ShowcaseLive owns the finite sort key and direction used for browser proof. — Keeps aria-sort truthful without moving presentation state into the shared component or packaged JavaScript.
 - [Phase 77]: Manifest schema 5 derives data stories from Elixir and appends them after shell targets. — Keeps one story-ID source while generic browser structure, axe, VRT, and behavior consumers use validated generated metadata.
+- [Phase 77]: Require LiveView connection readiness before browser interaction evidence. — Rendered controls are not truthful behavior proof until server-owned events can reach ShowcaseLive.
+- [Phase 77]: Derive canonical data baseline equality and change scope independently from schema-5 manifest metadata. — Separating set equality from Git scope prevents discovery-only and aggregate-green false claims.
+- [Phase 77]: Keep Phase 77 visual completion limited to exactly 120 data baselines. — The 108 scenario-only residual remains outside this phase and continues to block a global aggregate-green claim.
 
 ### Blockers
 
