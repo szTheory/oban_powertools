@@ -1,6 +1,6 @@
 ---
 phase: 77-data-display-operator-patterns
-reviewed: 2026-07-13T01:25:03Z
+reviewed: 2026-07-13T18:17:00Z
 depth: standard
 files_reviewed: 20
 files_reviewed_list:
@@ -26,42 +26,34 @@ files_reviewed_list:
   - test/support/data_display_story_catalog.ex
 findings:
   critical: 0
-  warning: 1
+  warning: 0
   info: 0
-  total: 1
-status: issues_found
+  total: 0
+status: clean
 ---
 
 # Phase 77: Code Review Report
 
-**Reviewed:** 2026-07-13T01:25:03Z
-**Depth:** standard
-**Files Reviewed:** 20
-**Status:** issues_found
+**Reviewed:** 2026-07-13T18:17:00Z  
+**Depth:** standard  
+**Files Reviewed:** 20  
+**Status:** clean
 
 ## Summary
 
-Plan 77-08 correctly closes the previously reported shared-component defects. Real string-keyed Phoenix flash maps now preserve tone, urgency, unique key-derived identity, and exact per-item `lv:clear-flash` payloads; atom aliases do not create atoms and binary entries take deterministic precedence. Omitted and explicit `nil` progress now fail closed to `Progress unavailable` without a native progress element, count, value, or percentage.
+No critical, warning, or informational findings remain in the requested Phase 77 scope.
 
-One adjacent showcase regression remains. The new mount-time flash seeding assumes the data story catalog is always available, even though the loader, render branch, module documentation, and package boundary intentionally support an unavailable catalog. This makes the packaged dev showcase crash instead of rendering its existing placeholder.
+The shared data-display surface, status taxonomy, scoped token/asset layer, deterministic story and manifest plumbing, and browser evidence contracts remain coherent. The two earlier shared-component findings are closed: string-keyed Phoenix flash entries preserve severity, stable identity, and exact per-item dismissal, while omitted or explicit `nil` progress values render the non-numeric unavailable state.
 
-The focused 65-test ExUnit suite, warnings-as-errors compile, schema-5 manifest smoke, exact 120-baseline gate, source/package CSS equality, and `git diff --check` all passed.
+Plan 77-09 also closes the previous optional-catalog package-boundary defect. `load_data_catalog/0` accepts only list-valued `stories/0` results, and `seed_data_flash/2` enumerates only a verified map. Absent and non-list catalogs fail closed to unavailable assigns and the existing placeholder; empty lists remain valid catalogs with no stories; missing or non-map flash fixtures retain catalog availability without seeding flash.
 
 ## Findings
 
+### Critical
+
+None.
+
 ### Warnings
-
-#### WR-01: Showcase mount crashes when the optional data story catalog is unavailable
-
-**File:** `lib/oban_powertools/web/dev/showcase_live.ex:67-76,493-499,746-754`
-
-**Issue:** `load_data_catalog/0` explicitly returns `%{available?: false, stories: []}` when the dev/test catalog module or support file cannot be loaded, and the render path has a `data-obpt-data-index="empty"` placeholder for that state. Plan 77-08 now calls `seed_data_flash(data_catalog.stories)` unconditionally during mount. With `stories == []`, `Enum.find/2` returns `nil`, `get_in(nil, [:fixtures, :flash])` returns `nil`, and `Enum.reduce(nil, socket, ...)` raises `Protocol.UndefinedError` before the placeholder can render.
-
-This path is reachable in the published package: `mix.exs` packages `lib` but excludes `test/support`, while `ShowcaseLive` documents that the catalogs intentionally stay out of Hex packages and should be optional. The current LiveView tests compile `test/support`, so they never exercise the unavailable-catalog branch.
-
-**Fix:** Make `seed_data_flash/2` default to an empty map when the story or `fixtures.flash` is absent or invalid, then reduce only a verified map. Add a dev-route/package-style regression that mounts the showcase without `ObanPowertools.DataDisplayStoryCatalog` and asserts the existing data-display placeholder renders instead of crashing.
-
-### Critical Issues
 
 None.
 
@@ -69,18 +61,31 @@ None.
 
 None.
 
+## Package-Boundary Evidence
+
+- The five Plan 77-09 cases run in fresh OS child processes under `MIX_ENV=test` with the active application ebin copied to an isolated directory and all five optional support-catalog beams excluded.
+- Each child removes the original application ebin from its code path before loading `ShowcaseLive`, purges optional catalog modules, and optionally compiles only the case-specific `DataDisplayStoryCatalog` stub.
+- The absent, non-list, and empty-list cases assert exact availability/story/flash assigns and render `data-obpt-data-index="empty"`.
+- The missing-flash and non-map-flash cases assert that list-valued catalogs remain available while flash stays `%{}`.
+- The normal source-checkout path still renders all ten data stories and connected `lv:clear-flash` dismissal for the canonical `info` and `error` keys.
+
 ## Verification Evidence
 
-- `mix test` for the six Phase 77 ExUnit files: 65 tests, 0 failures.
+- `mix format --check-formatted`: passed.
 - `mix compile --warnings-as-errors`: passed.
-- `npm run showcase:manifest` plus manifest smoke: schema 5, 10 data stories, 41 targets.
+- Focused Phase 77 plus Hex package contract suite: 106 tests, 0 failures.
+- `npm run showcase:manifest` and `node test/browser/support/manifest-smoke.mjs`: schema 5, 10 data stories, 41 total targets.
 - `node test/browser/support/verify-data-baselines.mjs`: exactly 120 data baselines.
-- `cmp` between source and packaged CSS: byte-identical.
+- Source and packaged CSS are byte-identical.
+- `git diff --exit-code -- test/browser/__screenshots__`: passed; no screenshot changes.
 - `git diff --check` across the requested 20-file scope: passed.
-- Direct fallback probe: `get_in(nil, [:fixtures, :flash])` returns `nil`; reducing that value raises `Protocol.UndefinedError`.
+
+## Unrelated Existing Boundary
+
+The previously documented 108 scenario-only visual-regression residual was not introduced by Plan 77-09 and is not a code-review finding in this scope. This review does not reinterpret that broad aggregate visual gate as green; the focused component/showcase, package-boundary, manifest, and exact data-baseline evidence above is green.
 
 ---
 
-_Reviewed: 2026-07-13T01:25:03Z_
-_Reviewer: the agent (gsd-code-reviewer)_
+_Reviewed: 2026-07-13T18:17:00Z_  
+_Reviewer: gsd-code-reviewer_  
 _Depth: standard_
