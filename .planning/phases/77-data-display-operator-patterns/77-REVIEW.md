@@ -1,6 +1,6 @@
 ---
 phase: 77-data-display-operator-patterns
-reviewed: 2026-07-13T00:34:35Z
+reviewed: 2026-07-13T01:25:03Z
 depth: standard
 files_reviewed: 20
 files_reviewed_list:
@@ -26,42 +26,40 @@ files_reviewed_list:
   - test/support/data_display_story_catalog.ex
 findings:
   critical: 0
-  warning: 2
+  warning: 1
   info: 0
-  total: 2
+  total: 1
 status: issues_found
 ---
 
 # Phase 77: Code Review Report
 
-**Reviewed:** 2026-07-13T00:34:35Z
+**Reviewed:** 2026-07-13T01:25:03Z
 **Depth:** standard
 **Files Reviewed:** 20
 **Status:** issues_found
 
 ## Summary
 
-The data-display components, taxonomy, scoped assets, showcase catalog, manifest plumbing, and browser evidence are generally coherent. The focused 60-test ExUnit suite, manifest smoke gate, exact 120-baseline gate, asset byte comparison, and `git diff --check` all passed. Two runtime edge cases remain in the shared component API: normal Phoenix flash maps are rendered with incorrect semantics, and an omitted progress value is presented as a real zero measurement.
+Plan 77-08 correctly closes the previously reported shared-component defects. Real string-keyed Phoenix flash maps now preserve tone, urgency, unique key-derived identity, and exact per-item `lv:clear-flash` payloads; atom aliases do not create atoms and binary entries take deterministic precedence. Omitted and explicit `nil` progress now fail closed to `Progress unavailable` without a native progress element, count, value, or percentage.
 
-## Narrative Findings (AI reviewer)
+One adjacent showcase regression remains. The new mount-time flash seeding assumes the data story catalog is always available, even though the loader, render branch, module documentation, and package boundary intentionally support an unavailable catalog. This makes the packaged dev showcase crash instead of rendering its existing placeholder.
+
+The focused 65-test ExUnit suite, warnings-as-errors compile, schema-5 manifest smoke, exact 120-baseline gate, source/package CSS equality, and `git diff --check` all passed.
+
+## Findings
 
 ### Warnings
 
-#### WR-01: `flash_group/1` does not support the string-keyed shape of Phoenix `@flash`
+#### WR-01: Showcase mount crashes when the optional data story catalog is unavailable
 
-**File:** `lib/oban_powertools/web/components/data_display.ex:529-535,754-768`
+**File:** `lib/oban_powertools/web/dev/showcase_live.ex:67-76,493-499,746-754`
 
-**Issue:** Phoenix LiveView normalizes flash keys to strings, but `flash_tone/1` recognizes only atom keys. Passing a real `%{"info" => "...", "error" => "..."}` `@flash` therefore renders both messages as neutral polite statuses with the same DOM id (`<group>-neutral`) instead of info/danger notifications. In addition, the original key is discarded and the default `lv:clear-flash` buttons omit `phx-value-key`, so dismissing one notification clears the entire flash map rather than that item. The current component/story tests use atom-keyed fixture maps and do not exercise this framework contract.
+**Issue:** `load_data_catalog/0` explicitly returns `%{available?: false, stories: []}` when the dev/test catalog module or support file cannot be loaded, and the render path has a `data-obpt-data-index="empty"` placeholder for that state. Plan 77-08 now calls `seed_data_flash(data_catalog.stories)` unconditionally during mount. With `stories == []`, `Enum.find/2` returns `nil`, `get_in(nil, [:fixtures, :flash])` returns `nil`, and `Enum.reduce(nil, socket, ...)` raises `Protocol.UndefinedError` before the placeholder can render.
 
-**Fix:** Normalize atom and binary keys to the canonical string form, retain the source key in each rendered item, derive tone/urgency from that normalized key, generate ids from the key (or a collision-safe index), and pass `phx-value-key={key}` when the dismiss event is `lv:clear-flash`. Add coverage using `%{"info" => ..., "error" => ...}` and verify per-item dismissal through a connected LiveView.
+This path is reachable in the published package: `mix.exs` packages `lib` but excludes `test/support`, while `ShowcaseLive` documents that the catalogs intentionally stay out of Hex packages and should be optional. The current LiveView tests compile `test/support`, so they never exercise the unavailable-catalog branch.
 
-#### WR-02: The default `nil` progress value is rendered as a measured 0%
-
-**File:** `lib/oban_powertools/web/components/data_display.ex:304-320,323-337,652-656`
-
-**Issue:** `progress_bar/1` declares `value` optional with a `nil` default, but `clamp_progress(nil, max)` converts that unknown value to `0`. A caller that omits the value receives a determinate native progress bar announcing `0/100` and `0%`, even though no measurement exists. This violates the Phase 77 contract that unavailable/unknown progress must use `Progress unavailable` and must not expose a fake numeric value.
-
-**Fix:** Either make `value` required for `state: :ready`, or treat `nil` as unavailable and render the non-numeric unavailable branch automatically. Add a regression test for the default/`nil` value that asserts there is no `<progress>`, `value`, percentage, or count.
+**Fix:** Make `seed_data_flash/2` default to an empty map when the story or `fixtures.flash` is absent or invalid, then reduce only a verified map. Add a dev-route/package-style regression that mounts the showcase without `ObanPowertools.DataDisplayStoryCatalog` and asserts the existing data-display placeholder renders instead of crashing.
 
 ### Critical Issues
 
@@ -71,8 +69,18 @@ None.
 
 None.
 
+## Verification Evidence
+
+- `mix test` for the six Phase 77 ExUnit files: 65 tests, 0 failures.
+- `mix compile --warnings-as-errors`: passed.
+- `npm run showcase:manifest` plus manifest smoke: schema 5, 10 data stories, 41 targets.
+- `node test/browser/support/verify-data-baselines.mjs`: exactly 120 data baselines.
+- `cmp` between source and packaged CSS: byte-identical.
+- `git diff --check` across the requested 20-file scope: passed.
+- Direct fallback probe: `get_in(nil, [:fixtures, :flash])` returns `nil`; reducing that value raises `Protocol.UndefinedError`.
+
 ---
 
-_Reviewed: 2026-07-13T00:34:35Z_
+_Reviewed: 2026-07-13T01:25:03Z_
 _Reviewer: the agent (gsd-code-reviewer)_
 _Depth: standard_
