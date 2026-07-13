@@ -224,7 +224,7 @@
   2. One StatusPill maps every Oban/Powertools state; tables degrade to stacked/card at 320px; explicit empty/loading/unavailable/permission-denied everywhere; long IDs/module names/stacktraces handled.
   3. Redaction is rendered through one shared component; stories + VRT + a11y green over stress fixtures (huge args, thousands of rows).
 
-**Plans**: 7/7 plans complete
+**Plans**: 7/8 plans complete
 **Wave 1**
 
 - [x] 77-01-PLAN.md
@@ -252,6 +252,10 @@
 **Wave 7** *(blocked on Wave 6 completion)*
 
 - [x] 77-07-PLAN.md
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 77-08-PLAN.md — Close Phoenix flash per-item dismissal/severity and nil-progress semantics gaps (wave 8)
 
 ### Phase 78: Component Groups (Meta-Components)
 
