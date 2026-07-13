@@ -10,6 +10,17 @@
 // into your javascript bundle:
 // * deps/phoenix_live_view/priv/static/phoenix_live_view.js
 
+const csrfToken = document.querySelector("meta[name='csrf-token']")?.getAttribute("content");
+
+if (csrfToken && window.Phoenix && window.LiveView) {
+  const liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket, {
+    params: { _csrf_token: csrfToken },
+  });
+
+  liveSocket.connect();
+  window.liveSocket = liveSocket;
+}
+
 // Handle flash close
 // (you can safely remove this if you don't use the default flash component)
 document.querySelectorAll("[role=alert][data-flash]").forEach((el) => {

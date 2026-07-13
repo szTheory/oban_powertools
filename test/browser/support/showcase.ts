@@ -38,6 +38,11 @@ export async function prepareShowcase(
   const root = page.locator('.obpt-root');
   await expect(root).toHaveCount(1);
 
+  const viewportControl = page.locator(`[data-obpt-viewport="${opts.viewportName}"]`);
+  await expect(viewportControl).toHaveCount(1);
+  await viewportControl.click();
+  await expect(viewportControl).toHaveClass(/obpt-button--primary/);
+
   const themeApplied = await page.evaluate((theme) => {
     if (window.ObanPowertoolsTheme?.setTheme) {
       window.ObanPowertoolsTheme.setTheme(theme);
@@ -60,10 +65,6 @@ export async function prepareShowcase(
     'data-obpt-effective-theme',
     opts.theme === 'system' ? 'light' : opts.theme
   );
-
-  const viewportControl = page.locator(`[data-obpt-viewport="${opts.viewportName}"]`);
-  await expect(viewportControl).toHaveCount(1);
-  await viewportControl.click();
 
   const expectedViewport = viewports.find((viewport) => viewport.name === opts.viewportName);
   const actualViewport = page.viewportSize();
