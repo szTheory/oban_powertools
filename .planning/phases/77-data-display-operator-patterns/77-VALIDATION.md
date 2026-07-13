@@ -135,3 +135,16 @@ The baseline matrix is derived independently from schema-5 `data_stories[].snaps
 - [x] Execution evidence preserves the unrelated aggregate residual without an aggregate-green claim.
 
 **Approval:** execution-complete; Nyquist compliant
+
+## Validation Audit 2026-07-13
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+Fresh audit evidence: the focused format/compile/test/manifest/baseline gate passed with
+106 ExUnit tests, schema 5 with 10 data stories and 41 targets, and exactly 120 data
+baselines. Playwright discovery listed all 21 data-display behavior cases and 252
+focused structure, axe, and VRT cases.
