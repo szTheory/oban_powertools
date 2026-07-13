@@ -492,8 +492,9 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
     defp load_data_catalog do
       with {:ok, module} <- ensure_data_catalog_module(),
-           true <- function_exported?(module, :stories, 0) do
-        %{available?: true, stories: apply(module, :stories, [])}
+           true <- function_exported?(module, :stories, 0),
+           stories when is_list(stories) <- apply(module, :stories, []) do
+        %{available?: true, stories: stories}
       else
         _ -> %{available?: false, stories: []}
       end
@@ -745,9 +746,13 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
     defp seed_data_flash(socket, stories) do
       flash =
-        stories
-        |> Enum.find(&(&1.id == "data-empty-toast-flash"))
-        |> then(&get_in(&1, [:fixtures, :flash]))
+        Enum.find_value(stories, %{}, fn
+          %{id: "data-empty-toast-flash", fixtures: %{flash: flash}} when is_map(flash) ->
+            flash
+
+          _story ->
+            nil
+        end)
 
       Enum.reduce(flash, socket, fn {key, message}, socket ->
         put_flash(socket, key, message)
