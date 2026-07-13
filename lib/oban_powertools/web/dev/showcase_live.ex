@@ -689,7 +689,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
               value={@story.fixtures.progress.value}
               max={@story.fixtures.progress.max}
             />
-            <DataDisplay.progress_bar id="data-progress-unavailable" label="Remote progress" state={:unavailable} />
+            <DataDisplay.progress_bar id="data-progress-unavailable" label="Remote progress" />
             <div class="obpt-primitive-row">
               <DataDisplay.metric_card id="data-metric-retryable" label="Retryable jobs" value={to_string(@story.fixtures.metrics.retryable)} trend="3 blocked" tone={:warning} />
               <DataDisplay.metric_card id="data-metric-completed" label="Completed jobs" value={to_string(@story.fixtures.metrics.completed)} trend="all queues healthy" tone={:success} />

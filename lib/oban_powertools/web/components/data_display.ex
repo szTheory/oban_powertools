@@ -310,30 +310,30 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
 
   def progress_bar(assigns) do
     max = positive_max(assigns.max)
-    clamped = clamp_progress(assigns.value, max)
+    measurement = progress_measurement(assigns.value, max)
+    effective_state = if measurement, do: assigns.state, else: :unavailable
 
     assigns =
       assigns
       |> assign(:rest, visual_safe_rest(assigns.rest, suppress_actions?: true))
-      |> assign(:clamped, clamped)
-      |> assign(:positive_max, max)
-      |> assign(:percent, progress_percent(clamped, max))
+      |> assign(:measurement, measurement)
+      |> assign(:effective_state, effective_state)
 
     ~H"""
-    <div id={@id} class="obpt-progress" data-obpt-data-state={data_state(@state)} {@rest}>
+    <div id={@id} class="obpt-progress" data-obpt-data-state={data_state(@effective_state)} {@rest}>
       <span id={"#{@id}-label"} class="obpt-progress__label">{@label}</span>
-      <p :if={@state == :unavailable} class="obpt-progress__unavailable">Progress unavailable</p>
-      <div :if={@state != :unavailable} class="obpt-progress__value">
+      <p :if={@effective_state == :unavailable} class="obpt-progress__unavailable">Progress unavailable</p>
+      <div :if={@effective_state != :unavailable} class="obpt-progress__value">
         <progress
           id={"#{@id}-progress"}
-          value={@clamped}
-          max={@positive_max}
+          value={@measurement.value}
+          max={@measurement.max}
           aria-labelledby={"#{@id}-label"}
         >
-          {@clamped}
+          {@measurement.value}
         </progress>
-        <span class="obpt-progress__count">{@clamped}/{@positive_max}</span>
-        <span class="obpt-progress__percent">{@percent}%</span>
+        <span class="obpt-progress__count">{@measurement.value}/{@measurement.max}</span>
+        <span class="obpt-progress__percent">{@measurement.percent}%</span>
       </div>
     </div>
     """
@@ -652,8 +652,14 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   defp machine_display(value, :url, true), do: truncate_middle(value, 64)
   defp machine_display(value, _kind, true), do: truncate_middle(value, 48)
 
-  defp clamp_progress(nil, _max), do: 0
-  defp clamp_progress(value, max), do: value |> max(0) |> min(positive_max(max))
+  defp progress_measurement(nil, _max), do: nil
+
+  defp progress_measurement(value, max) when is_integer(value) do
+    clamped = clamp_progress(value, max)
+    %{value: clamped, max: max, percent: progress_percent(clamped, max)}
+  end
+
+  defp clamp_progress(value, max) when is_integer(value), do: value |> max(0) |> min(max)
   defp positive_max(max) when is_integer(max) and max > 0, do: max
   defp positive_max(_max), do: 100
   defp progress_percent(value, max), do: round(value / max * 100)
