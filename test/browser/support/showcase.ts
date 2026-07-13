@@ -37,6 +37,7 @@ export async function prepareShowcase(
 
   const root = page.locator('.obpt-root');
   await expect(root).toHaveCount(1);
+  await expect(page.locator('[data-phx-main].phx-connected')).toHaveCount(1);
 
   const viewportControl = page.locator(`[data-obpt-viewport="${opts.viewportName}"]`);
   await expect(viewportControl).toHaveCount(1);
