@@ -3,34 +3,28 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 77
-status: ready
-stopped_at: Phase 77 gap-closure plan 77-08 ready to execute
-last_updated: "2026-07-13T01:01:59.000Z"
+current_phase_name: data-display-operator-patterns
+status: complete
+stopped_at: Completed 77-08-PLAN.md
+last_updated: "2026-07-13T01:18:15.403Z"
 last_activity: 2026-07-13
-last_activity_desc: Planned Phase 77 gap closure in plan 77-08
+last_activity_desc: Completed Phase 77 gap closure plan 77-08
 progress:
   total_phases: 15
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 40
-  completed_plans: 39
-  percent: 47
-current_phase_name: data-display-operator-patterns
+  completed_plans: 40
+  percent: 53
 ---
 
 # Project State
 
-## Project Reference
-
-**Core Value:** Ecto-native operational safety with explicit, inspectable behavior for developers and operators, delivered through a native `/ops/jobs` shell with honest host-ownership and support-truth boundaries.
-
-**Current Focus:** Phase 77 — data-display-operator-patterns
-
 ## Current Position
 
-Phase: 77 — GAP CLOSURE PLANNED
-Plan: 7 of 8
-Status: Ready to execute gap-closure plan 77-08
-Last activity: 2026-07-13 — Planned Phase 77 gap closure in plan 77-08
+Phase: 77 (data-display-operator-patterns) — COMPLETE
+Plan: 8 of 8
+Status: Complete — ready for re-verification and Phase 78
+Last activity: 2026-07-13 — Completed Phase 77 gap closure plan 77-08
 
 ## Performance Metrics
 
@@ -72,6 +66,7 @@ Last activity: 2026-07-13 — Planned Phase 77 gap closure in plan 77-08
 | Phase 77 P05 | 43 min | 2 tasks | 6 files |
 | Phase 77 P06 | 10 min | 2 tasks | 9 files |
 | Phase 77 P07 | 31min | 2 tasks | 129 files |
+| Phase 77 P08 | 11 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -99,13 +94,12 @@ Last activity: 2026-07-13 — Planned Phase 77 gap closure in plan 77-08
 
 ## Session Continuity
 
-**Last session:** 2026-07-13T01:01:59.000Z
-**Stopped at:** Phase 77 gap-closure plan 77-08 ready to execute
+**Last session:** 2026-07-13T01:17:58.751Z
+**Stopped at:** Completed 77-08-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Planned and verified focused Phase 77 gap closure in `77-08-PLAN.md`.
-- **Next Action:** Execute `77-08-PLAN.md`, then re-run Phase 77 verification.
-- **Active Context:** FlashGroup must normalize string-keyed Phoenix flash maps with per-item dismissal; nil progress must render unavailable rather than determinate zero.
+- **Last Action:** Closed WR-01/WR-02 with keyed Phoenix flash dismissal, nonnumeric nil progress, and focused browser/a11y/VRT evidence.
+- **Next Action:** Re-verify Phase 77, then begin Phase 78 component-group planning.
 
 ## Decisions
 
@@ -146,6 +140,8 @@ Last activity: 2026-07-13 — Planned Phase 77 gap closure in plan 77-08
 - [Phase 77]: Require LiveView connection readiness before browser interaction evidence. — Rendered controls are not truthful behavior proof until server-owned events can reach ShowcaseLive.
 - [Phase 77]: Derive canonical data baseline equality and change scope independently from schema-5 manifest metadata. — Separating set equality from Git scope prevents discovery-only and aggregate-green false claims.
 - [Phase 77]: Keep Phase 77 visual completion limited to exactly 120 data baselines. — The 108 scenario-only residual remains outside this phase and continues to block a global aggregate-green claim.
+- [Phase 77]: Canonicalize flash atom/binary aliases to strings, prefer binary aliases, and derive stable DOM ids from URL-safe Base64 keys. — Preserves Phoenix-native per-item dismissal without runtime atom creation or identity collisions.
+- [Phase 77]: Treat omitted or nil progress as no measurement and render only the unavailable branch. — Prevents fabricated zero counts and percentages while retaining optional API compatibility.
 
 ### Blockers
 
