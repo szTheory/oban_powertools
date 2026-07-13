@@ -322,18 +322,36 @@ test.describe('data data-display behavior contracts', () => {
     await prepareDataStory(page, testInfo.project.name, dataStory('data-empty-toast-flash'));
 
     const feedback = targetLocator(page, dataStory('data-empty-toast-flash'));
-    const dismiss = feedback.getByRole('button', { name: 'Dismiss notification' }).first();
+    const infoToast = feedback.locator(
+      '#data-flash-group-aW5mbw[data-obpt-tone="info"][role="status"]'
+    );
+    const errorToast = feedback.locator(
+      '#data-flash-group-ZXJyb3I[data-obpt-tone="danger"][role="alert"]'
+    );
+    const infoDismiss = infoToast.locator(
+      'button[phx-click="lv:clear-flash"][phx-value-key="info"]'
+    );
+    const errorDismiss = errorToast.locator(
+      'button[phx-click="lv:clear-flash"][phx-value-key="error"]'
+    );
     const stableFocus = targetLocator(page, dataStory('data-table-sort-states')).locator(
       'button[phx-value-sort-key="worker"]'
     );
 
     await expect(feedback.getByRole('status')).toHaveCount(1);
     await expect(feedback.getByRole('alert')).toHaveCount(2);
-    await expectVisibleKeyboardFocus(page, dismiss, 'toast dismiss button');
+    await expect(infoToast).toContainText('Filters cleared.');
+    await expect(errorToast).toContainText('Job data did not load.');
+    await expect(infoDismiss).toHaveCount(1);
+    await expect(errorDismiss).toHaveCount(1);
+    await expectVisibleKeyboardFocus(page, errorDismiss, 'toast dismiss button');
     await stableFocus.focus();
     await expect(stableFocus).toBeFocused();
-    await dismiss.dispatchEvent('click');
+    await errorDismiss.dispatchEvent('click');
     await expect(stableFocus).toBeFocused();
+    await expect(errorToast).toHaveCount(0);
+    await expect(infoToast).toBeVisible();
+    await expect(infoDismiss).toHaveCount(1);
 
     const progress = targetLocator(page, dataStory('data-progress-metric-cards'));
     const determinate = progress.getByRole('progressbar', { name: 'Batch completion' });

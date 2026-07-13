@@ -5,13 +5,13 @@ status: complete
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-07-12
-reconciled: 2026-07-12
-completed: 2026-07-12
+reconciled: 2026-07-13
+completed: 2026-07-13
 ---
 
 # Phase 77 — Validation Record
 
-> Execution-complete evidence for the data-display operator patterns. Every final task ID has an existing contract and executed green evidence.
+> Execution-complete evidence for the data-display operator patterns, including the 77-08 flash/progress gap closure. Every final task ID has an existing contract and executed green evidence.
 
 ## Test Infrastructure
 
@@ -20,7 +20,7 @@ completed: 2026-07-12
 | **Framework** | ExUnit + Phoenix LiveViewTest; Playwright 1.61.0 + axe-core 4.11.3 |
 | **Config file** | `mix.exs`, `playwright.config.ts` |
 | **Focused full command** | `mix format --check-formatted && mix compile --warnings-as-errors && mix test test/oban_powertools/web/status_taxonomy_test.exs test/oban_powertools/web/components/data_display_test.exs test/oban_powertools/data_display_story_catalog_test.exs test/oban_powertools/web/live/showcase_live_test.exs test/oban_powertools/web/theme_tokens_test.exs test/oban_powertools/web/assets_test.exs --seed 0 && npm run showcase:manifest && node test/browser/support/manifest-smoke.mjs` |
-| **Focused full result** | ✅ 60 ExUnit tests, 0 failures; formatting and warnings-as-errors compile green; schema 5 manifest smoke green with 10 data stories and 41 targets |
+| **Focused full result** | ✅ 65 ExUnit tests, 0 failures; formatting and warnings-as-errors compile green; schema 5 manifest smoke green with 10 data stories and 41 targets |
 
 ## Per-Task Verification Map
 
@@ -41,6 +41,9 @@ completed: 2026-07-12
 | 77-06-02 | 06 | 6 | DATA-01, DATA-02, DATA-03, DATA-04, A11Y-02 | T-77-06-ATTR, T-77-06-XSS | Schema 5 validates generated data targets without hardcoded TypeScript IDs | Manifest smoke: 10 data stories, 41 targets, 4 themes, 3 viewports | ✅ yes | ✅ green |
 | 77-07-01 | 07 | 7 | DATA-01, DATA-02, DATA-03, DATA-04, A11Y-02 | T-77-07-LEAK, T-77-07-ATTR, T-77-07-DOS | Live 320/wide behavior proves semantics, focus, reflow, secret absence, and bounded rows | Canonical Docker behavior: 14 passed across `chromium-320` and `chromium-wide` | ✅ yes | ✅ green |
 | 77-07-02 | 07 | 7 | DATA-01, DATA-02, DATA-03, DATA-04, A11Y-02 | T-77-07-LEAK, T-77-07-DOS | Live structure/axe/VRT and exact data-only screenshot gates provide closeout evidence | Browser and baseline evidence below | ✅ yes | ✅ green |
+| 77-08-01 | 08 | 8 | DATA-01, DATA-03, A11Y-02 | T-77-08-FLASH, T-77-08-ID, T-77-08-EVENT, T-77-08-XSS | Phoenix atom/binary flash keys normalize without atom creation, preserve severity and injective identity, and dismiss one exact key | Meaningful RED at 3 failures; final component/catalog/connected suite green; Docker 320/wide dismissal green | ✅ yes | ✅ green |
+| 77-08-02 | 08 | 8 | DATA-01, DATA-03, A11Y-02 | T-77-08-PROGRESS | Omitted/nil measurement renders only unavailable copy while integer values remain native and clamped | Meaningful RED on fabricated `0/100`; final component/showcase/browser evidence green | ✅ yes | ✅ green |
+| 77-08-03 | 08 | 8 | DATA-01, DATA-03, A11Y-02 | T-77-08-EVENT, T-77-08-PROGRESS | Focused connected, axe, compare-only VRT, compile, manifest, and exact-baseline gates close WR-01/WR-02 without screenshot drift | Gap-closure evidence below | ✅ yes | ✅ green |
 
 Status: ✅ green
 
@@ -50,6 +53,8 @@ Status: ✅ green
 - [x] `test/oban_powertools/web/components/data_display_test.exs` reached meaningful RED on missing components and contracts before Plans 02–05 implementation.
 - [x] `test/oban_powertools/data_display_story_catalog_test.exs` reached meaningful RED on the missing catalog before Plan 06 implementation.
 - [x] `test/browser/specs/data-display.behavior.spec.ts` reached meaningful RED through the schema-5 generated-target guard and then live behavior failures before Plan 07 completion.
+- [x] Plan 77-08 FlashGroup regressions reached meaningful RED with three failures for binary severity/identity, atom parity, and connected exact-key dismissal before implementation.
+- [x] Plan 77-08 omitted/nil ProgressBar regression reached meaningful RED on the fabricated ready `value="0"`, `0/100`, and `0%` branch before implementation.
 - [x] Existing ExUnit, manifest, example-host, Playwright, axe, and Docker VRT infrastructure was used without installing a new framework.
 
 ## Browser and VRT Evidence
@@ -66,13 +71,28 @@ Status: ✅ green
 | `node test/browser/support/verify-data-baselines.mjs` | ✅ `data baselines ok: 120`; no missing or extra data path |
 | `node test/browser/support/verify-data-baselines.mjs --changed-scope` | ✅ 120 changed paths, all within the exact manifest-derived matrix |
 
+### Plan 77-08 Gap-Closure Evidence
+
+| Gate | Executed result |
+|------|-----------------|
+| Focused component/catalog/connected suite | ✅ 43 tests, 0 failures; binary/atom alias normalization, exact key metadata, sibling-preserving LiveView dismissal, omitted/nil unavailable output, and integer clamping pass |
+| Focused full Phase 77 format/compile/ExUnit/manifest smoke command | ✅ 65 tests, 0 failures; warnings-as-errors compile green; schema 5 manifest smoke reports 10 data stories and 41 targets |
+| Canonical Docker `data-display.behavior.spec.ts --grep "toast urgency" --project chromium-320 --project chromium-wide` | ✅ 2 passed; exact string-key role/tone/id/event metadata, connected one-item dismissal, omitted-progress nonnumeric output, and bounded-row checks pass |
+| Canonical Docker focused axe `--grep "data data-(empty-toast-flash\|progress-metric-cards)"` | ✅ 24 passed across four themes and three Chromium projects |
+| Canonical Docker compare-only VRT with the same focused grep | ✅ 24 passed; no snapshot update flag used |
+| `node test/browser/support/verify-data-baselines.mjs` | ✅ `data baselines ok: 120` |
+| `node test/browser/support/verify-data-baselines.mjs --changed-scope` | ✅ 0 changed screenshot paths |
+| `git diff --exit-code -- test/browser/__screenshots__` | ✅ no screenshot diff |
+
+WR-01 and WR-02 are closed at the shared component/showcase boundary. FlashGroup now uses canonical string keys for severity, URL-safe key-derived IDs, and exact default `lv:clear-flash` payloads; omitted/nil progress never creates a measurement or numeric subtree. No CSS, packaged asset, dependency, manifest schema, screenshot, or production page LiveView changed.
+
 The baseline matrix is derived independently from schema-5 `data_stories[].snapshot` × four manifest themes × the three manifest viewport/project mappings. Representative 320/high-contrast, tablet/dark, and wide/light outputs were visually inspected after generation. No scenario, primitive, form, or shell screenshot changed.
 
 ## Focused Full and Source Audit Evidence
 
 - `mix format --check-formatted` — ✅ passed repository-wide after removing one pre-existing extra blank line in `test/mix/tasks/oban_powertools.install_test.exs`.
 - `mix compile --warnings-as-errors` — ✅ passed.
-- Focused six-file ExUnit command — ✅ 60 tests, 0 failures.
+- Focused six-file ExUnit command — ✅ 65 tests, 0 failures.
 - `npm run showcase:manifest && node test/browser/support/manifest-smoke.mjs` — ✅ schema 5; 9 scenarios, 7 primitive stories, 9 form stories, 6 shell stories, 10 data stories, 41 targets, 4 themes, 3 viewports.
 - Source audit — ✅ no dynamic atom conversion, raw HTML rendering, inline style/width injection, grid role, table JS hook, or raw/redacted dual-secret assign. Redaction-name matches are limited to the intentional safe component/story metadata.
 - `git diff --check` — ✅ passed.
@@ -85,10 +105,11 @@ The baseline matrix is derived independently from schema-5 `data_stories[].snaps
 
 ## Validation Sign-Off
 
-- [x] Every final plan task ID (`77-01-01` through `77-07-02`) maps to requirements, threats, an existing contract, and green evidence.
+- [x] Every final plan task ID (`77-01-01` through `77-08-03`) maps to requirements, threats, an existing contract, and green evidence.
 - [x] Wave 0 contract files exist and reached meaningful RED before implementation.
 - [x] Focused live behavior, complete live structure, focused axe, no-update Docker VRT compare, exact 120-path equality, and changed-screenshot scope all executed green.
 - [x] Focused full ExUnit/format/compile/manifest gate executed green.
+- [x] WR-01 and WR-02 are closed with connected exact-key dismissal, nonnumeric omitted progress, focused axe, compare-only VRT, and unchanged exact-120 baselines.
 - [x] Execution evidence preserves the unrelated aggregate residual without an aggregate-green claim.
 
 **Approval:** execution-complete; Nyquist compliant
