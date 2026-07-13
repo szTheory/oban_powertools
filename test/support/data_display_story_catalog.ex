@@ -157,7 +157,7 @@ defmodule ObanPowertools.DataDisplayStoryCatalog do
       description: "Bounded progress, unavailable progress, and dense operational metrics.",
       variant: [:determinate, :metric],
       state: [:ready, :unavailable],
-      fixtures: %{progress: %{value: 62, max: 100}, metrics: %{retryable: 12, completed: 248}},
+      fixtures: %{progress: %{value: 162, max: 100}, metrics: %{retryable: 12, completed: 248}},
       test_targets: nil
     },
     %{
