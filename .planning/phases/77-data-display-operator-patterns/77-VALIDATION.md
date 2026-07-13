@@ -11,7 +11,7 @@ completed: 2026-07-13
 
 # Phase 77 — Validation Record
 
-> Execution-complete evidence for the data-display operator patterns, including the 77-08 flash/progress gap closure. Every final task ID has an existing contract and executed green evidence.
+> Execution-complete evidence for the data-display operator patterns, including the 77-08 flash/progress and 77-09 package-boundary gap closures. Every final task ID has an existing contract and executed green evidence.
 
 ## Test Infrastructure
 
@@ -19,8 +19,8 @@ completed: 2026-07-13
 |----------|-------|
 | **Framework** | ExUnit + Phoenix LiveViewTest; Playwright 1.61.0 + axe-core 4.11.3 |
 | **Config file** | `mix.exs`, `playwright.config.ts` |
-| **Focused full command** | `mix format --check-formatted && mix compile --warnings-as-errors && mix test test/oban_powertools/web/status_taxonomy_test.exs test/oban_powertools/web/components/data_display_test.exs test/oban_powertools/data_display_story_catalog_test.exs test/oban_powertools/web/live/showcase_live_test.exs test/oban_powertools/web/theme_tokens_test.exs test/oban_powertools/web/assets_test.exs --seed 0 && npm run showcase:manifest && node test/browser/support/manifest-smoke.mjs` |
-| **Focused full result** | ✅ 65 ExUnit tests, 0 failures; formatting and warnings-as-errors compile green; schema 5 manifest smoke green with 10 data stories and 41 targets |
+| **Focused full command** | `mix format --check-formatted && mix compile --warnings-as-errors && mix test test/oban_powertools/web/status_taxonomy_test.exs test/oban_powertools/web/components/data_display_test.exs test/oban_powertools/data_display_story_catalog_test.exs test/oban_powertools/web/live/showcase_live_test.exs test/oban_powertools/web/theme_tokens_test.exs test/oban_powertools/web/assets_test.exs test/oban_powertools/hex_release_test.exs --seed 0 && npm run showcase:manifest && node test/browser/support/manifest-smoke.mjs && node test/browser/support/verify-data-baselines.mjs` |
+| **Focused full result** | ✅ 106 ExUnit tests, 0 failures; formatting and warnings-as-errors compile green; schema 5 manifest smoke green with 10 data stories and 41 targets; exact baseline verifier reports 120 data PNGs |
 
 ## Per-Task Verification Map
 
@@ -44,6 +44,8 @@ completed: 2026-07-13
 | 77-08-01 | 08 | 8 | DATA-01, DATA-03, A11Y-02 | T-77-08-FLASH, T-77-08-ID, T-77-08-EVENT, T-77-08-XSS | Phoenix atom/binary flash keys normalize without atom creation, preserve severity and injective identity, and dismiss one exact key | Meaningful RED at 3 failures; final component/catalog/connected suite green; Docker 320/wide dismissal green | ✅ yes | ✅ green |
 | 77-08-02 | 08 | 8 | DATA-01, DATA-03, A11Y-02 | T-77-08-PROGRESS | Omitted/nil measurement renders only unavailable copy while integer values remain native and clamped | Meaningful RED on fabricated `0/100`; final component/showcase/browser evidence green | ✅ yes | ✅ green |
 | 77-08-03 | 08 | 8 | DATA-01, DATA-03, A11Y-02 | T-77-08-EVENT, T-77-08-PROGRESS | Focused connected, axe, compare-only VRT, compile, manifest, and exact-baseline gates close WR-01/WR-02 without screenshot drift | Gap-closure evidence below | ✅ yes | ✅ green |
+| 77-09-01 | 09 | 9 | DATA-01, DATA-03, A11Y-02 | T-77-09-AVAIL, T-77-09-FIXTURE | Optional package-excluded catalogs and invalid fixture shapes fail closed before enumeration or flash seeding | Five isolated child-process cases reached meaningful RED; focused LiveView/package suite and final Phase 77 gate green | ✅ yes | ✅ green |
+| 77-09-02 | 09 | 9 | DATA-01, DATA-03, A11Y-02 | T-77-09-AVAIL, T-77-09-FIXTURE, T-77-09-SUPPLY | Package, manifest, and exact-baseline boundaries remain intact after private mount hardening | 106 focused tests; schema 5/41-target smoke; exact 120 baselines; zero screenshot or verifier-owned diff | ✅ yes | ✅ green |
 
 Status: ✅ green
 
@@ -55,6 +57,7 @@ Status: ✅ green
 - [x] `test/browser/specs/data-display.behavior.spec.ts` reached meaningful RED through the schema-5 generated-target guard and then live behavior failures before Plan 07 completion.
 - [x] Plan 77-08 FlashGroup regressions reached meaningful RED with three failures for binary severity/identity, atom parity, and connected exact-key dismissal before implementation.
 - [x] Plan 77-08 omitted/nil ProgressBar regression reached meaningful RED on the fabricated ready `value="0"`, `0/100`, and `0%` branch before implementation.
+- [x] Plan 77-09 ran five independent fresh-VM package-boundary regressions: absent, non-list, empty-list, and missing-flash cases failed only at the intended enumeration seam; non-map flash failed by exposing the incorrectly seeded tuple entry.
 - [x] Existing ExUnit, manifest, example-host, Playwright, axe, and Docker VRT infrastructure was used without installing a new framework.
 
 ## Browser and VRT Evidence
@@ -86,14 +89,32 @@ Status: ✅ green
 
 WR-01 and WR-02 are closed at the shared component/showcase boundary. FlashGroup now uses canonical string keys for severity, URL-safe key-derived IDs, and exact default `lv:clear-flash` payloads; omitted/nil progress never creates a measurement or numeric subtree. No CSS, packaged asset, dependency, manifest schema, screenshot, or production page LiveView changed.
 
+### Plan 77-09 Package-Boundary Gap-Closure Evidence
+
+| Gate | Executed result |
+|------|-----------------|
+| RED — absent optional catalogs | ✅ Fresh `mix run --no-start --no-compile` child excluded all five support-catalog beams and reproduced `Enum.reduce/3` on `nil` before mount completion |
+| RED — non-list data catalog | ✅ Temporary `stories/0` sentinel reproduced `Enum.find/3` enumeration failure before the loader shape guard |
+| RED — empty list | ✅ List-valid empty catalog reproduced `Enum.reduce/3` on missing flash while preserving the intended available-catalog branch |
+| RED — missing `fixtures.flash` | ✅ Retained notification story reproduced `Enum.reduce/3` on `nil` |
+| RED — non-map `fixtures.flash` | ✅ Tuple-list fixture incorrectly produced `%{"info" => "must not be seeded"}` in socket flash |
+| GREEN — five isolated child cases | ✅ Absent and non-list catalogs return `false`, `[]`, `%{}` and render `data-obpt-data-index="empty"`; empty/malformed list catalogs remain available and seed `%{}` |
+| Focused ShowcaseLive + Hex package suite | ✅ 53 tests, 0 failures; source-checkout ten-story rendering, binary-key flash metadata, connected sibling-preserving dismissal, and package exclusions remain green |
+| Focused Phase 77 format/compile/ExUnit gate | ✅ 106 tests, 0 failures; repository formatting and warnings-as-errors compile green |
+| Manifest and baseline boundary | ✅ Schema 5 reports 10 data stories and 41 targets; independent verifier reports `data baselines ok: 120`; screenshot diff is empty |
+| Verifier-owned report boundary | ✅ `77-VERIFICATION.md` is unchanged and remains ready for post-execution re-verification |
+
+VR-01 is closed in execution evidence: the packaged dev showcase now reaches its existing unavailable Data Display placeholder when test-support catalogs are absent or invalid. No catalog was added to the package, and no broad aggregate visual/a11y claim is made.
+
 The baseline matrix is derived independently from schema-5 `data_stories[].snapshot` × four manifest themes × the three manifest viewport/project mappings. Representative 320/high-contrast, tablet/dark, and wide/light outputs were visually inspected after generation. No scenario, primitive, form, or shell screenshot changed.
 
 ## Focused Full and Source Audit Evidence
 
 - `mix format --check-formatted` — ✅ passed repository-wide after removing one pre-existing extra blank line in `test/mix/tasks/oban_powertools.install_test.exs`.
 - `mix compile --warnings-as-errors` — ✅ passed.
-- Focused six-file ExUnit command — ✅ 65 tests, 0 failures.
+- Focused seven-file Phase 77 plus Hex package command — ✅ 106 tests, 0 failures.
 - `npm run showcase:manifest && node test/browser/support/manifest-smoke.mjs` — ✅ schema 5; 9 scenarios, 7 primitive stories, 9 form stories, 6 shell stories, 10 data stories, 41 targets, 4 themes, 3 viewports.
+- `node test/browser/support/verify-data-baselines.mjs` — ✅ `data baselines ok: 120`; `git diff --exit-code -- test/browser/__screenshots__` passed.
 - Source audit — ✅ no dynamic atom conversion, raw HTML rendering, inline style/width injection, grid role, table JS hook, or raw/redacted dual-secret assign. Redaction-name matches are limited to the intentional safe component/story metadata.
 - `git diff --check` — ✅ passed.
 
@@ -105,11 +126,12 @@ The baseline matrix is derived independently from schema-5 `data_stories[].snaps
 
 ## Validation Sign-Off
 
-- [x] Every final plan task ID (`77-01-01` through `77-08-03`) maps to requirements, threats, an existing contract, and green evidence.
+- [x] Every final plan task ID (`77-01-01` through `77-09-02`) maps to requirements, threats, an existing contract, and green evidence.
 - [x] Wave 0 contract files exist and reached meaningful RED before implementation.
 - [x] Focused live behavior, complete live structure, focused axe, no-update Docker VRT compare, exact 120-path equality, and changed-screenshot scope all executed green.
 - [x] Focused full ExUnit/format/compile/manifest gate executed green.
 - [x] WR-01 and WR-02 are closed with connected exact-key dismissal, nonnumeric omitted progress, focused axe, compare-only VRT, and unchanged exact-120 baselines.
+- [x] VR-01 is closed with five package-faithful child cases, fail-closed optional-catalog handling, package exclusion proof, and unchanged manifest/baseline boundaries.
 - [x] Execution evidence preserves the unrelated aggregate residual without an aggregate-green claim.
 
 **Approval:** execution-complete; Nyquist compliant
