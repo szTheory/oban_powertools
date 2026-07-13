@@ -3,6 +3,8 @@ import { dataStories, themes, type ShowcaseDataStory } from '../support/manifest
 import { viewportNameFromProject } from '../support/deterministic';
 import { prepareShowcase, targetLocator } from '../support/showcase';
 
+const secretSentinel = 'PHASE77-SECRET-SENTINEL';
+
 if (!Array.isArray(dataStories) || dataStories.length === 0) {
   throw new Error('Phase 77 requires schema-5 generated dataStories in the showcase manifest');
 }
@@ -27,6 +29,7 @@ async function prepareDataStory(
     theme,
     viewportName: viewportNameFromProject(projectName)
   });
+  await expect(page.locator('[data-phx-main].phx-connected')).toHaveCount(1);
 
   const locator = targetLocator(page, story);
   await expect(locator).toBeVisible();
@@ -35,17 +38,35 @@ async function prepareDataStory(
 
 async function expectNoHorizontalOverflow(locator: Locator): Promise<void> {
   const overflow = await locator.evaluate((element) => ({
-    elementDelta: Math.ceil(element.scrollWidth - element.clientWidth),
-    bodyDelta: Math.ceil(document.body.scrollWidth - document.documentElement.clientWidth)
+    story: Math.ceil(element.scrollWidth - element.clientWidth),
+    body: Math.ceil(document.body.scrollWidth - document.body.clientWidth),
+    document: Math.ceil(document.documentElement.scrollWidth - document.documentElement.clientWidth)
   }));
 
-  expect(overflow.elementDelta).toBeLessThanOrEqual(1);
-  expect(overflow.bodyDelta).toBeLessThanOrEqual(1);
+  expect(overflow.story).toBeLessThanOrEqual(1);
+  expect(overflow.body).toBeLessThanOrEqual(1);
+  expect(overflow.document).toBeLessThanOrEqual(1);
 }
 
-async function expectVisibleFocus(locator: Locator): Promise<void> {
-  await locator.focus();
-  await expect(locator).toBeFocused();
+async function expectVisibleKeyboardFocus(
+  page: Page,
+  locator: Locator,
+  label: string
+): Promise<void> {
+  await expect(locator, `${label} should be visible before keyboard focus`).toBeVisible();
+
+  await locator.evaluate((element, sentinelLabel) => {
+    const sentinel = document.createElement('button');
+    const anchor = element.closest('details') ?? element;
+    sentinel.type = 'button';
+    sentinel.textContent = sentinelLabel;
+    sentinel.setAttribute('data-obpt-data-focus-sentinel', sentinelLabel);
+    anchor.parentElement?.insertBefore(sentinel, anchor);
+    sentinel.focus();
+  }, label);
+
+  await page.keyboard.press('Tab');
+  await expect(locator, `${label} should receive keyboard focus`).toBeFocused();
 
   const outline = await locator.evaluate((element) => {
     const style = window.getComputedStyle(element);
@@ -56,99 +77,283 @@ async function expectVisibleFocus(locator: Locator): Promise<void> {
     };
   });
 
-  expect(outline.style).not.toBe('none');
-  expect(outline.width).toBeGreaterThan(0);
-  expect(outline.color).not.toBe('rgba(0, 0, 0, 0)');
+  expect(outline.style, `${label} should use a visible outline style`).not.toBe('none');
+  expect(outline.width, `${label} should use a non-zero outline width`).toBeGreaterThan(0);
+  expect(outline.color, `${label} should use a visible outline color`).not.toBe('rgba(0, 0, 0, 0)');
+
+  await locator.evaluate(() => {
+    document.querySelector('[data-obpt-data-focus-sentinel]')?.remove();
+  });
 }
 
 test.describe('data data-display behavior contracts', () => {
-  test('data data-table sorting is parent-owned and exposes one aria-sort', async ({
+  test('data data-table sorting is parent-owned for click, Enter, and Space with one aria-sort', async ({
     page
   }, testInfo) => {
-    const story = await prepareDataStory(page, testInfo.project.name, dataStory('data-table-sort-states'));
-    const worker = story.getByRole('button', { name: /Worker/ });
-    const state = story.getByRole('button', { name: /State/ });
+    const story = await prepareDataStory(
+      page,
+      testInfo.project.name,
+      dataStory('data-table-sort-states')
+    );
+    const worker = story.locator('button[phx-value-sort-key="worker"]');
+    const state = story.locator('button[phx-value-sort-key="state"]');
 
     await expect(story.locator('table')).toHaveCount(1);
+    await expect(story.locator('[role="grid"]')).toHaveCount(0);
     await expect(story.locator('th[aria-sort]')).toHaveCount(1);
+    await expect(worker.locator('xpath=ancestor::th')).toHaveAttribute('aria-sort', 'ascending');
+
     await worker.click();
     await expect(story.locator('th[aria-sort]')).toHaveCount(1);
-    await expect(worker.locator('xpath=ancestor::th')).toHaveAttribute('aria-sort', /ascending|descending/);
-    await state.focus();
+    await expect(worker.locator('xpath=ancestor::th')).toHaveAttribute('aria-sort', 'descending');
+
+    await expectVisibleKeyboardFocus(page, state, 'State sort button');
     await page.keyboard.press('Enter');
-    await expect(state.locator('xpath=ancestor::th')).toHaveAttribute('aria-sort', /ascending|descending/);
+    await expect(story.locator('th[aria-sort]')).toHaveCount(1);
+    await expect(state.locator('xpath=ancestor::th')).toHaveAttribute('aria-sort', 'ascending');
+    await expect(worker.locator('xpath=ancestor::th')).not.toHaveAttribute('aria-sort', /.+/);
+
+    await expectVisibleKeyboardFocus(page, state, 'State sort button');
     await page.keyboard.press('Space');
     await expect(story.locator('th[aria-sort]')).toHaveCount(1);
+    await expect(state.locator('xpath=ancestor::th')).toHaveAttribute('aria-sort', 'descending');
   });
 
-  test('data 320 stacked table keeps one semantic DOM, labels, hit targets, and no overflow', async ({
+  test('data 320 stacked rows keep one semantic DOM, one labelled selection per row, 44px targets, and no overflow', async ({
     page
   }, testInfo) => {
-    const story = await prepareDataStory(page, testInfo.project.name, dataStory('data-table-320-stacked'));
+    const story = await prepareDataStory(
+      page,
+      testInfo.project.name,
+      dataStory('data-table-320-stacked')
+    );
+    const table = story.locator('table');
+    const rows = table.locator('tbody tr');
+    const mobileLabels = story.locator('.obpt-data-table__mobile-label');
+    const mobileProject = viewportNameFromProject(testInfo.project.name) === '320';
 
-    await expect(story.locator('table')).toHaveCount(1);
-    await expect(story.locator('[data-obpt-mobile-label="Worker"]')).toBeVisible();
-    await expect(story.getByRole('checkbox', { name: /Select job/ })).toHaveCount(1);
+    await expect(table).toHaveCount(1);
+    await expect(story.locator('[role="grid"]')).toHaveCount(0);
+    await expect(rows).toHaveCount(3);
+    await expect(story.getByRole('checkbox', { name: /Select job job-/ })).toHaveCount(3);
     await expectNoHorizontalOverflow(story);
 
-    const checkboxBox = await story.getByRole('checkbox', { name: /Select job/ }).boundingBox();
-    expect(Math.max(checkboxBox?.width ?? 0, checkboxBox?.height ?? 0)).toBeGreaterThanOrEqual(24);
-  });
+    for (let index = 0; index < 3; index += 1) {
+      const row = rows.nth(index);
+      const checkbox = row.getByRole('checkbox', { name: `Select job job-000${index + 1}` });
+      const choice = checkbox.locator('xpath=ancestor::label[contains(@class, "obpt-choice")]');
 
-  test('data focus remains visible for data controls in all themes', async ({ page }, testInfo) => {
-    for (const theme of themes) {
-      const story = await prepareDataStory(page, testInfo.project.name, dataStory('data-code-args-redaction'), theme);
-      await expectVisibleFocus(story.locator('pre[tabindex="0"]').first());
+      await expect(checkbox).toHaveCount(1);
+      await expect(
+        row.locator('.obpt-data-table__mobile-label', { hasText: 'Worker' })
+      ).toHaveCount(1);
+
+      if (mobileProject) {
+        await expect(row).toHaveCSS('display', 'grid');
+        await expect(
+          row.locator('.obpt-data-table__mobile-label', { hasText: 'Worker' })
+        ).toBeVisible();
+        const box = await choice.boundingBox();
+        expect(
+          box?.height ?? 0,
+          `selection target ${index + 1} should be at least 44px`
+        ).toBeGreaterThanOrEqual(44);
+      }
+    }
+
+    if (mobileProject) {
+      await expect(table).toHaveCSS('display', 'block');
+      await expect(mobileLabels.first()).toBeVisible();
+    } else {
+      await expect(table).toHaveCSS('display', 'table');
+      await expect(rows.first()).toHaveCSS('display', 'table-row');
+      await expect(mobileLabels.first()).toBeHidden();
     }
   });
 
-  test('data redaction hides sentinels from text, title, data, details, and copy channels', async ({
+  test('data sort, selection, expansion, code, and dismiss controls expose keyboard focus in all themes', async ({
     page
   }, testInfo) => {
-    const story = await prepareDataStory(page, testInfo.project.name, dataStory('data-code-args-redaction'));
+    for (const theme of themes) {
+      await prepareDataStory(
+        page,
+        testInfo.project.name,
+        dataStory('data-description-list-long-values'),
+        theme
+      );
 
-    await expect(story.getByText('Redacted at enqueue')).toBeVisible();
-    await expect(story.getByText('Hidden by display policy')).toBeVisible();
-    await expect(story).not.toContainText('PHASE77-SECRET-SENTINEL');
+      const sort = targetLocator(page, dataStory('data-table-sort-states')).locator(
+        'button[phx-value-sort-key="worker"]'
+      );
+      const selection = targetLocator(page, dataStory('data-table-320-stacked'))
+        .getByRole('checkbox', { name: 'Select job job-0001' })
+        .first();
+      const expansion = targetLocator(page, dataStory('data-description-list-long-values'))
+        .locator('summary')
+        .first();
+      const code = targetLocator(page, dataStory('data-code-args-redaction'))
+        .locator('pre[tabindex="0"]')
+        .first();
+      const dismiss = targetLocator(page, dataStory('data-empty-toast-flash'))
+        .getByRole('button', { name: 'Dismiss notification' })
+        .first();
 
-    const leaked = await story.evaluate((element) => {
-      const haystacks = [element.textContent ?? ''];
-      for (const candidate of element.querySelectorAll<HTMLElement>('*')) {
-        haystacks.push(candidate.getAttribute('title') ?? '');
-        haystacks.push(candidate.getAttribute('data-secret') ?? '');
-        haystacks.push(candidate.getAttribute('data-value') ?? '');
-        haystacks.push(candidate.getAttribute('aria-label') ?? '');
-        haystacks.push(candidate.getAttribute('data-clipboard-text') ?? '');
-      }
-      return haystacks.some((value) => value.includes('PHASE77-SECRET-SENTINEL'));
+      await expectVisibleKeyboardFocus(page, sort, `sort button in ${theme}`);
+      await expectVisibleKeyboardFocus(page, selection, `selection checkbox in ${theme}`);
+      await expectVisibleKeyboardFocus(page, expansion, `machine value expansion in ${theme}`);
+      await expectVisibleKeyboardFocus(page, code, `code region in ${theme}`);
+      await expectVisibleKeyboardFocus(page, dismiss, `toast dismiss button in ${theme}`);
+    }
+  });
+
+  test('data long machine values preserve useful ends and expose native expansion', async ({
+    page
+  }, testInfo) => {
+    const story = await prepareDataStory(
+      page,
+      testInfo.project.name,
+      dataStory('data-description-list-long-values')
+    );
+    const details = story.locator('details');
+    const moduleDetails = story.locator('#data-long-module details');
+    const urlDetails = story.locator('#data-long-url details');
+
+    await expect(details).toHaveCount(3);
+    await expect(story.locator('#data-long-id summary')).toContainText(
+      '01JZ8M5P999999999999999999'
+    );
+    await expect(moduleDetails.locator('summary')).toContainText('IntentionallyLongIdentifier');
+    await expect(urlDetails.locator('summary')).toContainText('https://operator.example.test');
+    await expect(urlDetails.locator('summary')).toContainText('attempt=20');
+
+    await moduleDetails.locator('summary').click();
+    await expect(moduleDetails).toHaveAttribute('open', '');
+    await expect(moduleDetails.locator('.obpt-machine-value__full')).toHaveText(
+      'MyApp.Workers.ReconcileAccountNotificationDeliveryWithAnIntentionallyLongIdentifier'
+    );
+    await expectNoHorizontalOverflow(story);
+  });
+
+  test('data code regions are focusable, internally scrollable, bounded, and do not move page overflow', async ({
+    page
+  }, testInfo) => {
+    const story = await prepareDataStory(
+      page,
+      testInfo.project.name,
+      dataStory('data-code-args-redaction')
+    );
+    const pre = story.locator('.obpt-code-block__region').first();
+
+    await expect(pre).toHaveAttribute('tabindex', '0');
+    await expectVisibleKeyboardFocus(page, pre, 'normalized args code region');
+
+    const metrics = await pre.evaluate((element) => {
+      const style = getComputedStyle(element);
+      element.scrollLeft = element.scrollWidth;
+      return {
+        overflowX: style.overflowX,
+        overflowY: style.overflowY,
+        maxBlockSize: Number.parseFloat(style.maxBlockSize),
+        blockSize: element.getBoundingClientRect().height,
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
+        scrollLeft: element.scrollLeft
+      };
     });
+
+    expect(metrics.overflowX).toBe('auto');
+    expect(metrics.overflowY).toBe('auto');
+    expect(metrics.scrollWidth).toBeGreaterThan(metrics.clientWidth);
+    expect(metrics.scrollLeft).toBeGreaterThan(0);
+    expect(metrics.maxBlockSize).toBeGreaterThan(0);
+    expect(metrics.blockSize).toBeLessThanOrEqual(metrics.maxBlockSize + 2);
+    await expectNoHorizontalOverflow(story);
+  });
+
+  test('data redaction exposes exact safe copy and hides the sentinel from every disclosure channel', async ({
+    page
+  }, testInfo) => {
+    const story = await prepareDataStory(
+      page,
+      testInfo.project.name,
+      dataStory('data-code-args-redaction')
+    );
+
+    for (const copy of ['Redacted at enqueue', 'Hidden by display policy', '[redacted]']) {
+      await expect(
+        story.locator('.obpt-redacted-value__copy').getByText(copy, { exact: true }).first()
+      ).toBeVisible();
+    }
+
+    await expect(story).not.toContainText(secretSentinel);
+    await expect(story.getByRole('button', { name: /copy/i })).toHaveCount(0);
+    await expect(story.locator('[data-clipboard-text]')).toHaveCount(0);
+
+    const leaked = await story.evaluate((element, sentinel) => {
+      const channels = [element.textContent ?? ''];
+
+      for (const candidate of element.querySelectorAll<HTMLElement>('*')) {
+        for (const attribute of Array.from(candidate.attributes)) {
+          if (
+            attribute.name === 'title' ||
+            attribute.name.startsWith('data-') ||
+            attribute.name.startsWith('aria-') ||
+            attribute.name.includes('copy') ||
+            attribute.name.includes('clipboard')
+          ) {
+            channels.push(attribute.value);
+          }
+        }
+      }
+
+      for (const details of element.querySelectorAll('details')) {
+        channels.push(details.textContent ?? '');
+      }
+
+      return channels.some((value) => value.includes(sentinel));
+    }, secretSentinel);
 
     expect(leaked).toBe(false);
   });
 
-  test('data code regions, toast urgency, progress, and large rows stay bounded', async ({
+  test('data toast urgency and dismiss behavior preserve focus while progress and large rows stay truthful', async ({
     page
   }, testInfo) => {
-    const code = await prepareDataStory(page, testInfo.project.name, dataStory('data-code-args-redaction'));
-    const pre = code.locator('pre').first();
-    await expect(pre).toBeVisible();
-    await expectVisibleFocus(pre);
-    await expectNoHorizontalOverflow(code);
+    await prepareDataStory(page, testInfo.project.name, dataStory('data-empty-toast-flash'));
 
     const feedback = targetLocator(page, dataStory('data-empty-toast-flash'));
-    await expect(feedback.getByRole('status')).toBeVisible();
-    await expect(feedback.getByRole('alert')).toBeVisible();
-    const focusedBeforeDismiss = await page.evaluate(() => document.activeElement?.tagName ?? '');
-    await feedback.getByRole('button', { name: /Dismiss/ }).first().click();
-    expect(await page.evaluate(() => document.activeElement?.tagName ?? '')).toBe(focusedBeforeDismiss);
+    const dismiss = feedback.getByRole('button', { name: 'Dismiss notification' }).first();
+    const stableFocus = targetLocator(page, dataStory('data-table-sort-states')).locator(
+      'button[phx-value-sort-key="worker"]'
+    );
+
+    await expect(feedback.getByRole('status')).toHaveCount(1);
+    await expect(feedback.getByRole('alert')).toHaveCount(2);
+    await expectVisibleKeyboardFocus(page, dismiss, 'toast dismiss button');
+    await stableFocus.focus();
+    await expect(stableFocus).toBeFocused();
+    await dismiss.dispatchEvent('click');
+    await expect(stableFocus).toBeFocused();
 
     const progress = targetLocator(page, dataStory('data-progress-metric-cards'));
-    await expect(progress.locator('progress[value="100"]')).toBeVisible();
-    await expect(progress.getByText('Progress unavailable')).toBeVisible();
-    await expect(progress.locator('[aria-valuenow]')).toHaveCount(1);
+    const determinate = progress.getByRole('progressbar', { name: 'Batch completion' });
+    await expect(determinate).toHaveAttribute('max', '100');
+    await expect(determinate).toHaveAttribute('value', '100');
+    expect(await determinate.evaluate((element) => (element as HTMLProgressElement).value)).toBe(
+      100
+    );
+    await expect(progress.getByText('100/100', { exact: true })).toBeVisible();
+    await expect(progress.getByText('100%', { exact: true })).toBeVisible();
+    await expect(progress.locator('#data-progress-unavailable progress')).toHaveCount(0);
+    await expect(progress.locator('#data-progress-unavailable [aria-valuenow]')).toHaveCount(0);
+    await expect(progress.getByText('Progress unavailable', { exact: true })).toBeVisible();
 
     const largeRows = targetLocator(page, dataStory('data-table-thousands-row-stress'));
-    await expect(largeRows.getByText(/1,000/)).toBeVisible();
-    await expect(largeRows.locator('tbody tr')).toHaveCount(25);
+    const rows = largeRows.locator('#data-thousands-table tbody tr');
+    await expect(largeRows).toContainText('2,500 jobs');
+    await expect(rows).toHaveCount(20);
+    expect(await rows.count()).toBeLessThanOrEqual(25);
+    await expect(rows.first()).toHaveAttribute('id', 'data-thousands-table-row-job-0001');
+    await expect(rows.last()).toHaveAttribute('id', 'data-thousands-table-row-job-0020');
   });
 });
