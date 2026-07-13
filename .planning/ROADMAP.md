@@ -13,7 +13,7 @@
 - [x] **Phase 74: Primitives Library** — Token-driven `Phoenix.Component` primitives as showcase stories under VRT/a11y. (completed 2026-07-11)
 - [x] **Phase 75: Form Components** — Accessible form primitives on `to_form`. (completed 2026-07-11)
 - [x] **Phase 76: Navigation & App Shell** — Responsive Powertools shell (header, nav, theme toggle, actor). (completed 2026-07-12)
-- [ ] **Phase 77: Data-Display & Operator Patterns** — Shared data components + unified status taxonomy. *[split-risk]* — verification gap closure required
+- [x] **Phase 77: Data-Display & Operator Patterns** — Shared data components + unified status taxonomy. *[split-risk]* — verification gap closure required (completed 2026-07-13)
 - [ ] **Phase 78: Component Groups (Meta-Components)** — Operator meta-patterns encapsulating "explain, then act".
 - [ ] **Phase 79: Page Migration Wave 1** — Overview, Cron, Limiters, Audit.
 - [ ] **Phase 80: Page Migration Wave 2** — Jobs + Forensics. *[split-risk]*
@@ -224,7 +224,7 @@
   2. One StatusPill maps every Oban/Powertools state; tables degrade to stacked/card at 320px; explicit empty/loading/unavailable/permission-denied everywhere; long IDs/module names/stacktraces handled.
   3. Redaction is rendered through one shared component; stories + VRT + a11y green over stress fixtures (huge args, thousands of rows).
 
-**Plans**: 8/9 plans complete
+**Plans**: 9/9 plans complete
 **Wave 1**
 
 - [x] 77-01-PLAN.md
@@ -259,7 +259,7 @@
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
-- [ ] 77-09-PLAN.md — Make the optional data story catalog fail closed at the Hex package boundary (wave 9)
+- [x] 77-09-PLAN.md — Make the optional data story catalog fail closed at the Hex package boundary (wave 9)
 
 ### Phase 78: Component Groups (Meta-Components)
 
@@ -364,7 +364,7 @@
 | 74. Primitives Library | 5/5 | Complete    | 2026-07-11 |
 | 75. Form Components | 6/6 | Complete    | 2026-07-11 |
 | 76. Navigation & App Shell | 5/5 | Complete    | 2026-07-12 |
-| 77. Data-Display & Operator Patterns | 8/9 | Verification gaps | — |
+| 77. Data-Display & Operator Patterns | 9/9 | Complete   | 2026-07-13 |
 | 78. Component Groups (Meta-Components) | 0/TBD | Not started | — |
 | 79. Page Migration Wave 1 | 0/TBD | Not started | — |
 | 80. Page Migration Wave 2 | 0/TBD | Not started | — |
