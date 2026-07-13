@@ -364,7 +364,7 @@
 | 74. Primitives Library | 5/5 | Complete    | 2026-07-11 |
 | 75. Form Components | 6/6 | Complete    | 2026-07-11 |
 | 76. Navigation & App Shell | 5/5 | Complete    | 2026-07-12 |
-| 77. Data-Display & Operator Patterns | 9/9 | Complete   | 2026-07-13 |
+| 77. Data-Display & Operator Patterns | 9/9 | Complete    | 2026-07-13 |
 | 78. Component Groups (Meta-Components) | 0/TBD | Not started | — |
 | 79. Page Migration Wave 1 | 0/TBD | Not started | — |
 | 80. Page Migration Wave 2 | 0/TBD | Not started | — |
