@@ -352,9 +352,10 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
       "Completion remains host-owned.",
       "Reason",
       "Type 12 to confirm",
-      "Keep current state",
-      "Retry 12 jobs"
+      "Keep current state"
     ])
+
+    assert last_index_of(html, "Retry 12 jobs") > index_of(html, "Keep current state")
 
     for generic <- ["Are you sure?", ">Confirm<", ">Cancel<", "Something went wrong", "N/A"] do
       refute html =~ generic
@@ -396,6 +397,35 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
       assert html =~ copy
       assert html =~ "Create new preview"
       refute html =~ "Something went wrong"
+    end
+  end
+
+  @tag phase78_slice: "confirmation"
+  test "ConfirmActionDialog source stays presentation-only and excludes disclosure channels" do
+    source = read_source!()
+    confirmation_source = function_source(source, :confirm_action_dialog)
+
+    assert confirmation_source =~ "<.focus_wrap"
+    assert confirmation_source =~ "Forms.textarea"
+    assert confirmation_source =~ "Forms.input"
+    assert confirmation_source =~ ~s(role="dialog")
+    assert confirmation_source =~ "aria-busy"
+    assert confirmation_source =~ "data-obpt-focus-fallback"
+    assert source =~ "JS.pop_focus"
+
+    for forbidden <- [
+          "phx-click-away",
+          "alertdialog",
+          "preview_token",
+          "plan_hash",
+          "raw_error",
+          "action_atom",
+          "Lifeline",
+          "Repo.",
+          "Ecto.Query",
+          "Phoenix.HTML.raw"
+        ] do
+      refute confirmation_source =~ forbidden
     end
   end
 
@@ -623,4 +653,5 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
 
   defp count(text, needle), do: length(String.split(text, needle)) - 1
   defp index_of(text, needle), do: :binary.match(text, needle) |> elem(0)
+  defp last_index_of(text, needle), do: :binary.matches(text, needle) |> List.last() |> elem(0)
 end

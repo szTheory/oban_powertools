@@ -176,6 +176,19 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     .obpt-filter-bar__active-filter
     .obpt-filter-bar__active-value
     .obpt-filter-bar__result-summary
+    .obpt-confirm-action
+    .obpt-confirm-action__dialog
+    .obpt-confirm-action__preview
+    .obpt-confirm-action__form
+    .obpt-confirm-action__scope
+    .obpt-confirm-action__consequence
+    .obpt-confirm-action__actions
+    .obpt-confirm-action__busy
+    .obpt-confirm-action__result
+    .obpt-confirm-action__result-heading
+    .obpt-confirm-action__result-list
+    .obpt-confirm-action__result-row
+    .obpt-confirm-action__recovery
   ]
 
   @proof_seam_classes ~w[
@@ -579,6 +592,41 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     end
   end
 
+  test "ConfirmActionDialog keeps focus, outcome, busy, motion, and 320px styles token-owned" do
+    css = read_contract_file!(@tokens_path)
+
+    assert css =~ ".obpt-root .obpt-confirm-action__title:focus-visible"
+    assert css =~ ".obpt-root .obpt-confirm-action__result-heading:focus-visible"
+    assert css =~ ~s(.obpt-confirm-action__consequence[data-obpt-intent="danger"])
+    assert css =~ ~s(.obpt-confirm-action__result-row[data-obpt-result="failed"])
+    assert css =~ ~s(.obpt-confirm-action__result-row[data-obpt-result="skipped"])
+    assert css =~ ".obpt-root .obpt-confirm-action__busy"
+    assert css =~ "min-block-size: calc(var(--obpt-space-7) - var(--obpt-space-1))"
+    assert css =~ "@media (max-width: 24rem)"
+    assert css =~ "min-block-size: 100dvh"
+    assert css =~ "overflow-wrap: anywhere"
+    assert css =~ "@media (prefers-reduced-motion: reduce)"
+
+    assert css =~
+             ~s(.obpt-root[data-obpt-motion="reduce"] .obpt-confirm-action__dialog)
+
+    assert css =~
+             ~s(.obpt-root[data-obpt-effective-theme="high-contrast"] .obpt-confirm-action__dialog)
+
+    for {selector, body} <- blocks_for(css, ".obpt-confirm-action") do
+      for part <- selector_parts(selector) do
+        assert String.starts_with?(part, ".obpt-root"),
+               "ConfirmActionDialog selector is not scoped below .obpt-root: #{part}"
+      end
+
+      refute body =~ ~r/overflow-x\s*:\s*(auto|scroll)/,
+             "ConfirmActionDialog selector #{selector} introduces horizontal scrolling"
+
+      refute body =~ ~r/#[0-9a-fA-F]{3,8}/,
+             "ConfirmActionDialog selector #{selector} contains a raw color value"
+    end
+  end
+
   test "theme selector blocks only remap semantic color/focus variables" do
     css = read_contract_file!(@tokens_path)
     blocks = theme_blocks(css)
@@ -787,7 +835,8 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
   end
 
   defp allowed_literal_group_value?(value) do
-    value in ~w[0 auto none transparent] or String.starts_with?(value, "1px solid var(--obpt-")
+    value in ~w[0 100dvh auto none transparent] or
+      String.starts_with?(value, "1px solid var(--obpt-")
   end
 
   defp allowed_literal_data_value?(value) do

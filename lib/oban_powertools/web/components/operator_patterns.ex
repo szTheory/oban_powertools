@@ -9,14 +9,309 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
 
   use Phoenix.Component
 
-  alias ObanPowertools.Web.Components.{DataDisplay, Primitives}
+  alias ObanPowertools.Web.Components.{DataDisplay, Forms, Primitives}
   alias ObanPowertools.Web.ControlPlanePresenter
+  alias Phoenix.LiveView.JS
 
   @severities ~w[neutral info warning danger]a
   @completeness_values ~w[complete partial unknown unavailable]a
   @live_values ~w[off polite assertive]a
   @evidence_states ~w[current stale unavailable permission_denied]a
   @filter_modes ~w[submit instant]a
+  @confirmation_intents ~w[warning danger]a
+  @confirmation_states ~w[preview submitting partial failed expired drifted consumed]a
+
+  attr(:id, :string, required: true)
+  attr(:intent, :atom, required: true, values: @confirmation_intents)
+  attr(:state, :atom, required: true, values: @confirmation_states)
+  attr(:title, :string, required: true)
+  attr(:object_label, :string, required: true)
+  attr(:scope, :string, required: true)
+  attr(:consequence, :string, required: true)
+  attr(:reversibility, :string, required: true)
+  attr(:support_boundary, :string, required: true)
+  attr(:form, Phoenix.HTML.Form, required: true)
+  attr(:bulk_count, :integer, default: nil)
+  attr(:bulk_scope, :string, default: nil)
+  attr(:confirm_label, :string, required: true)
+  attr(:dismiss_label, :string, required: true)
+  attr(:pending_copy, :string, required: true)
+  attr(:logical_fallback_id, :string, required: true)
+  attr(:submit_event, :string, required: true)
+  attr(:dismiss_event, :string, required: true)
+  attr(:dismissible, :boolean, default: true)
+  attr(:progress, :map, default: nil)
+  attr(:results, :list, default: [])
+
+  slot(:recovery)
+  slot(:audit)
+  slot(:support_details)
+
+  @doc """
+  Renders consequence-first confirmation from parent-owned preview, form, and result truth.
+
+  The component never authorizes or executes an action. Parents create the preview,
+  revalidate submitted fields and frozen scope, normalize results, and remove the dialog
+  after an authoritative clean success.
+  """
+  def confirm_action_dialog(assigns) do
+    state = confirmation_state(assigns.state)
+    intent = confirmation_intent(assigns.intent)
+    id = require_text!(assigns.id, "confirmation id")
+    dismissible = confirmation_dismissible?(state, assigns.dismissible)
+
+    assigns =
+      assigns
+      |> assign(:id, id)
+      |> assign(:state, state)
+      |> assign(:intent, intent)
+      |> assign(:title, require_text!(assigns.title, "confirmation title"))
+      |> assign(:object_label, require_text!(assigns.object_label, "confirmation object"))
+      |> assign(:scope, require_text!(assigns.scope, "confirmation scope"))
+      |> assign(
+        :consequence,
+        require_text!(assigns.consequence, "confirmation consequence")
+      )
+      |> assign(
+        :reversibility,
+        require_text!(assigns.reversibility, "confirmation reversibility")
+      )
+      |> assign(
+        :support_boundary,
+        require_text!(assigns.support_boundary, "confirmation support boundary")
+      )
+      |> assign(:bulk_scope, confirmation_bulk_scope(assigns.bulk_count, assigns.bulk_scope))
+      |> assign(
+        :confirm_label,
+        require_action_label!(assigns.confirm_label, "confirmation action")
+      )
+      |> assign(
+        :dismiss_label,
+        require_action_label!(assigns.dismiss_label, "safe dismiss action")
+      )
+      |> assign(:pending_copy, require_text!(assigns.pending_copy, "confirmation pending copy"))
+      |> assign(
+        :logical_fallback_id,
+        require_text!(assigns.logical_fallback_id, "confirmation focus fallback")
+      )
+      |> assign(:submit_event, require_text!(assigns.submit_event, "confirmation submit event"))
+      |> assign(
+        :dismiss_event,
+        require_text!(assigns.dismiss_event, "confirmation dismiss event")
+      )
+      |> assign(:dismissible, dismissible)
+      |> assign(:dismiss_command, dismiss_confirmation(assigns.dismiss_event, dismissible))
+      |> assign(:aria_busy, if(state == :submitting, do: "true"))
+      |> assign(:form_visible, state in [:preview, :submitting])
+      |> assign(:fields_disabled, state == :submitting)
+      |> assign(:progress_measurement, confirmation_progress(assigns.progress))
+      |> assign(:results, ControlPlanePresenter.normalize_operator_results(assigns.results))
+      |> assign(:result_copy, confirmation_result_copy(state))
+      |> assign(:stale_copy, confirmation_stale_copy(state))
+
+    ~H"""
+    <.focus_wrap id={"#{@id}-focus-wrap"}>
+      <section
+        id={"#{@id}-dialog"}
+        class="obpt-confirm-action"
+        data-obpt-confirm-state={@state}
+        data-obpt-confirm-intent={@intent}
+        data-obpt-focus-fallback={@logical_fallback_id}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={"#{@id}-title"}
+        aria-busy={@aria_busy}
+        phx-window-keydown={@dismiss_command}
+        phx-key={if(@dismissible, do: "Escape")}
+      >
+        <div class="obpt-confirm-action__overlay" aria-hidden="true"></div>
+        <div class="obpt-confirm-action__dialog">
+          <header class="obpt-confirm-action__header">
+            <p class="obpt-confirm-action__object">{@object_label}</p>
+            <h2
+              id={"#{@id}-title"}
+              class="obpt-confirm-action__title"
+              tabindex="-1"
+              phx-mounted={focus_confirmation_title(@id)}
+            >
+              {@title}
+            </h2>
+          </header>
+
+          <div class="obpt-confirm-action__preview">
+            <section class="obpt-confirm-action__scope" aria-labelledby={"#{@id}-scope-title"}>
+              <h3 id={"#{@id}-scope-title"}>Scope</h3>
+              <p>{@scope}</p>
+              <p :if={@bulk_scope} class="obpt-confirm-action__bulk-scope">{@bulk_scope}</p>
+            </section>
+
+            <section
+              class="obpt-confirm-action__consequence"
+              data-obpt-intent={@intent}
+              aria-labelledby={"#{@id}-consequence-title"}
+            >
+              <h3 id={"#{@id}-consequence-title"}>Consequence</h3>
+              <p>{@consequence}</p>
+            </section>
+
+            <section
+              class="obpt-confirm-action__reversibility"
+              aria-labelledby={"#{@id}-reversibility-title"}
+            >
+              <h3 id={"#{@id}-reversibility-title"}>Reversibility</h3>
+              <p>{@reversibility}</p>
+            </section>
+
+            <section
+              class="obpt-confirm-action__support"
+              aria-labelledby={"#{@id}-support-title"}
+            >
+              <h3 id={"#{@id}-support-title"}>Support boundary</h3>
+              <p>{@support_boundary}</p>
+              <div :if={@support_details != []} class="obpt-confirm-action__support-details">
+                {render_slot(@support_details)}
+              </div>
+            </section>
+          </div>
+
+          <.form
+            :if={@form_visible}
+            for={@form}
+            id={"#{@id}-form"}
+            class="obpt-confirm-action__form"
+            phx-submit={@submit_event}
+          >
+            <Forms.textarea
+              field={@form[:reason]}
+              label="Reason"
+              hint="Explain why this action is needed. Do not enter secrets."
+              required
+              disabled={@fields_disabled}
+            />
+            <Forms.input
+              :if={@bulk_count}
+              field={@form[:confirmation_count]}
+              label={"Type #{@bulk_count} to confirm"}
+              required
+              disabled={@fields_disabled}
+            />
+
+            <div :if={@state == :submitting} class="obpt-confirm-action__busy" role="status">
+              <div :if={@progress_measurement} class="obpt-confirm-action__progress">
+                <DataDisplay.progress_bar
+                  id={"#{@id}-progress"}
+                  label={@pending_copy}
+                  value={@progress_measurement.value}
+                  max={@progress_measurement.max}
+                />
+              </div>
+              <div :if={!@progress_measurement} class="obpt-confirm-action__spinner">
+                <Primitives.spinner label={@pending_copy} />
+                <p>{@pending_copy}</p>
+              </div>
+              <p :if={!@dismissible} class="obpt-confirm-action__accepted-copy">
+                This action has been accepted and can no longer be canceled.
+              </p>
+            </div>
+
+            <div class="obpt-confirm-action__actions">
+              <Primitives.button
+                :if={@dismissible}
+                type="button"
+                variant={:neutral}
+                phx-click={@dismiss_command}
+              >
+                {@dismiss_label}
+              </Primitives.button>
+              <Primitives.button
+                type="submit"
+                variant={@intent}
+                disabled={@fields_disabled}
+                phx-disable-with={@pending_copy}
+              >
+                {@confirm_label}
+              </Primitives.button>
+            </div>
+          </.form>
+
+          <section
+            :if={@result_copy}
+            class="obpt-confirm-action__result"
+            aria-labelledby={"#{@id}-result-heading"}
+          >
+            <h3
+              id={"#{@id}-result-heading"}
+              class="obpt-confirm-action__result-heading"
+              tabindex="-1"
+              phx-mounted={focus_confirmation_result(@id)}
+            >
+              {@result_copy}
+            </h3>
+
+            <ol class="obpt-confirm-action__result-list">
+              <li
+                :for={result <- @results}
+                id={"#{@id}-#{result.id}"}
+                class="obpt-confirm-action__result-row"
+                data-obpt-result={result.outcome}
+              >
+                <div class="obpt-confirm-action__result-status">
+                  <DataDisplay.status_pill domain={:operator_result} state={result.outcome} />
+                </div>
+                <p class="obpt-confirm-action__result-object">{result.object_label}</p>
+                <p class="obpt-confirm-action__result-message">{result.message}</p>
+                <p :if={result.recovery} class="obpt-confirm-action__result-recovery">
+                  {result.recovery}
+                </p>
+                <Primitives.link :if={result.audit_href} href={result.audit_href}>
+                  Open audit evidence
+                </Primitives.link>
+              </li>
+            </ol>
+
+            <div :if={@recovery != []} class="obpt-confirm-action__recovery">
+              {render_slot(@recovery)}
+            </div>
+            <div :if={@audit != []} class="obpt-confirm-action__audit">
+              {render_slot(@audit)}
+            </div>
+            <div :if={@dismissible} class="obpt-confirm-action__actions">
+              <Primitives.button type="button" variant={:neutral} phx-click={@dismiss_command}>
+                {@dismiss_label}
+              </Primitives.button>
+            </div>
+          </section>
+
+          <section
+            :if={@stale_copy}
+            class="obpt-confirm-action__recovery obpt-confirm-action__recovery--stale"
+            aria-labelledby={"#{@id}-result-heading"}
+          >
+            <h3
+              id={"#{@id}-result-heading"}
+              class="obpt-confirm-action__result-heading"
+              tabindex="-1"
+              phx-mounted={focus_confirmation_result(@id)}
+            >
+              {@stale_copy}
+            </h3>
+            <div :if={@recovery != []} class="obpt-confirm-action__recovery-action">
+              {render_slot(@recovery)}
+            </div>
+            <div :if={@audit != []} class="obpt-confirm-action__audit">
+              {render_slot(@audit)}
+            </div>
+            <div :if={@dismissible} class="obpt-confirm-action__actions">
+              <Primitives.button type="button" variant={:neutral} phx-click={@dismiss_command}>
+                {@dismiss_label}
+              </Primitives.button>
+            </div>
+          </section>
+        </div>
+      </section>
+    </.focus_wrap>
+    """
+  end
 
   attr(:id, :string, required: true)
   attr(:form, Phoenix.HTML.Form, required: true)
@@ -376,6 +671,92 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
   defp live_role(:off), do: nil
   defp live_role(:polite), do: "status"
   defp live_role(:assertive), do: "alert"
+
+  defp confirmation_state(state) when state in @confirmation_states, do: state
+  defp confirmation_state(_state), do: raise(ArgumentError, "unsupported confirmation state")
+
+  defp confirmation_intent(intent) when intent in @confirmation_intents, do: intent
+  defp confirmation_intent(_intent), do: raise(ArgumentError, "unsupported confirmation intent")
+
+  defp confirmation_dismissible?(_state, dismissible) when is_boolean(dismissible),
+    do: dismissible
+
+  defp confirmation_dismissible?(_state, _dismissible),
+    do: raise(ArgumentError, "confirmation dismissible must be boolean")
+
+  defp confirmation_bulk_scope(nil, nil), do: nil
+
+  defp confirmation_bulk_scope(count, scope) when is_integer(count) and count > 0,
+    do: require_text!(scope, "confirmation bulk scope")
+
+  defp confirmation_bulk_scope(_count, _scope),
+    do: raise(ArgumentError, "confirmation bulk count must be a positive integer")
+
+  defp confirmation_progress(nil), do: nil
+
+  defp confirmation_progress(progress) when is_map(progress) do
+    value = presentation_map_value(progress, :value)
+    max = presentation_map_value(progress, :max)
+
+    if is_integer(value) and is_integer(max) and max > 0 and value >= 0 and value <= max do
+      %{value: value, max: max}
+    else
+      raise ArgumentError, "confirmation progress must contain a real processed value and total"
+    end
+  end
+
+  defp confirmation_progress(_progress),
+    do: raise(ArgumentError, "confirmation progress must be a presentation map")
+
+  defp presentation_map_value(map, key) do
+    case Map.fetch(map, key) do
+      {:ok, value} -> value
+      :error -> Map.get(map, Atom.to_string(key))
+    end
+  end
+
+  defp confirmation_result_copy(:partial),
+    do:
+      "Retry requests finished with mixed results. Review failed and skipped jobs before trying again."
+
+  defp confirmation_result_copy(:failed),
+    do: "The requested action failed. Review each result and recovery step before trying again."
+
+  defp confirmation_result_copy(_state), do: nil
+
+  defp confirmation_stale_copy(:expired),
+    do: "This preview expired. Create a new preview before continuing."
+
+  defp confirmation_stale_copy(:drifted),
+    do:
+      "This preview is out of date because the job changed. Create a new preview before retrying."
+
+  defp confirmation_stale_copy(:consumed),
+    do: "This preview was already used. Create a new preview to run the action again."
+
+  defp confirmation_stale_copy(_state), do: nil
+
+  defp focus_confirmation_title(id), do: JS.focus(to: "##{id}-title")
+  defp focus_confirmation_result(id), do: JS.focus(to: "##{id}-result-heading")
+
+  defp dismiss_confirmation(_event, false), do: nil
+
+  defp dismiss_confirmation(event, true) do
+    event
+    |> require_text!("confirmation dismiss event")
+    |> JS.push()
+    |> JS.pop_focus()
+  end
+
+  defp require_action_label!(value, field) do
+    label = require_text!(value, field)
+
+    if String.downcase(label) in ["confirm", "cancel"] do
+      raise ArgumentError, "#{field} must name the action or retained safe state"
+    else
+      label
+    end
+  end
 
   defp filter_mode(mode) when mode in @filter_modes, do: mode
   defp filter_mode(_mode), do: raise(ArgumentError, "unsupported filter mode")
