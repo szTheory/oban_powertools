@@ -6,25 +6,35 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessLive do
   @allowed_queues ~w[critical default]
   @allowed_states ~w[available retryable]
   @frozen_count 12
+  @permission_copy "Execution requires operator role."
+  @secret_sentinel "PHASE78-HARNESS-SECRET-SENTINEL"
 
   @impl true
   def mount(_params, session, socket) do
     slice = Map.get(session, "slice", "all")
+    authorized? = Map.get(session, "authorized?", true)
+    confirmation_slice? = slice in ["confirmation", "all"]
 
     {:ok,
      socket
      |> assign(:slice, slice)
-     |> assign(:authorized?, Map.get(session, "authorized?", true))
+     |> assign(:authorized?, authorized?)
+     |> assign(:scope_fresh?, Map.get(session, "scope_fresh?", true))
      |> assign(:preview_freshness, :ready)
-     |> assign(:confirmation_state, :preview)
+     |> assign(:confirmation_state, if(authorized?, do: :preview, else: :failed))
      |> assign(:confirmation_open?, slice == "confirmation")
      |> assign(:confirmation_form, confirmation_form())
      |> assign(:confirmation_errors, %{})
      |> assign(:frozen_count, @frozen_count)
+     |> assign(:preview_count, if(confirmation_slice? and authorized?, do: 1, else: 0))
      |> assign(:mutation_count, 0)
      |> assign(:receipt_count, 0)
      |> assign(:receipt, nil)
-     |> assign(:confirmation_results, partial_results())
+     |> assign(
+       :confirmation_results,
+       if(authorized?, do: partial_results(), else: permission_denied_results())
+     )
+     |> assign(:sensitive_preview_state, @secret_sentinel)
      |> assign(:draft_filters, %{"queue" => "", "state" => ""})
      |> assign(:applied_filters, %{"queue" => "", "state" => ""})
      |> assign(:filter_form, filter_form())
@@ -53,6 +63,7 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessLive do
     error =
       cond do
         not socket.assigns.authorized? -> :permission_denied
+        not socket.assigns.scope_fresh? -> :drifted
         socket.assigns.preview_freshness != :ready -> socket.assigns.preview_freshness
         errors != %{} -> :invalid
         socket.assigns.mutation_count > 0 -> :duplicate
@@ -85,7 +96,8 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessLive do
         {:noreply,
          assign(socket,
            confirmation_state: :failed,
-           confirmation_errors: %{authorization: "Execution requires operator role."}
+           confirmation_errors: %{authorization: @permission_copy},
+           confirmation_results: permission_denied_results()
          )}
 
       freshness when freshness in [:expired, :drifted, :consumed] ->
@@ -100,14 +112,26 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessLive do
   end
 
   def handle_event("set-preview-freshness", %{"state" => state}, socket) do
-    freshness = normalize_preview_freshness(state)
+    if socket.assigns.authorized? do
+      freshness = normalize_preview_freshness(state)
+      confirmation_state = if freshness == :ready, do: :preview, else: freshness
+      preview_count = socket.assigns.preview_count + if(freshness == :ready, do: 1, else: 0)
 
-    {:noreply,
-     assign(socket,
-       preview_freshness: freshness,
-       confirmation_state: freshness,
-       confirmation_open?: true
-     )}
+      {:noreply,
+       assign(socket,
+         preview_freshness: freshness,
+         confirmation_state: confirmation_state,
+         preview_count: preview_count,
+         confirmation_open?: true
+       )}
+    else
+      {:noreply,
+       assign(socket,
+         confirmation_state: :failed,
+         confirmation_results: permission_denied_results(),
+         confirmation_open?: true
+       )}
+    end
   end
 
   def handle_event("show-partial-results", _params, socket) do
@@ -280,6 +304,7 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessLive do
       data-slice={@slice}
       data-canonical-url={@canonical_url}
       data-page={@page}
+      data-preview-count={@preview_count}
       data-mutation-count={@mutation_count}
       data-receipt-count={@receipt_count}
       data-history-ops={encode_history(@history_ops)}
@@ -456,6 +481,7 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessLive do
   defp validate_confirmation(params, frozen_count) do
     reason = params |> Map.get("reason", "") |> String.trim()
     count = params |> Map.get("confirmation_count", "") |> String.trim()
+    normalized_params = Map.merge(params, %{"reason" => reason, "confirmation_count" => count})
 
     errors =
       %{}
@@ -471,7 +497,7 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessLive do
         "Type #{frozen_count} to confirm."
       )
 
-    {confirmation_form(params, errors), errors}
+    {confirmation_form(normalized_params, errors), errors}
   end
 
   defp validate_filters(params) do
@@ -545,6 +571,19 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessLive do
         outcome: :skipped,
         message: "Retry skipped because the job changed.",
         recovery: "Refresh the job before acting.",
+        audit_href: nil
+      }
+    ]
+  end
+
+  defp permission_denied_results do
+    [
+      %{
+        id: "permission-denied",
+        object_label: "Retry 12 jobs",
+        outcome: :failed,
+        message: @permission_copy,
+        recovery: "Ask an administrator to grant operator access before creating a preview.",
         audit_href: nil
       }
     ]
@@ -636,7 +675,7 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessTest do
 
     assert html =~ "Reason must be at least 8 characters."
     assert html =~ "Type 12 to confirm."
-    assert has_element?(view, "#harness-confirmation[role='dialog']")
+    assert has_element?(view, "#harness-confirmation-dialog[role='dialog']")
     assert has_element?(view, "#operator-patterns-harness[data-mutation-count='0']")
     refute has_element?(view, "#operator-receipt")
   end
@@ -671,7 +710,13 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessTest do
   test "permission, stale preview, and duplicate UI state are separate server checks", %{
     conn: conn
   } do
-    {:ok, unauthorized, _html} = mount_harness(conn, "confirmation", %{"authorized?" => false})
+    {:ok, unauthorized, unauthorized_html} =
+      mount_harness(conn, "confirmation", %{"authorized?" => false})
+
+    assert unauthorized_html =~ "Execution requires operator role."
+    assert has_element?(unauthorized, "[data-preview-count='0'][data-mutation-count='0']")
+    refute has_element?(unauthorized, "#harness-confirmation-form")
+    refute unauthorized_html =~ @secret
 
     render_hook(unauthorized, "submit-confirmation", %{
       "confirmation" => %{
@@ -685,12 +730,39 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessTest do
 
     for state <- ~w[expired drifted consumed] do
       {:ok, view, _html} = mount_harness(conn, "confirmation")
+
+      render_hook(view, "validate-confirmation", %{
+        "confirmation" => %{
+          "reason" => "  Safe incident response reason  ",
+          "confirmation_count" => "12"
+        }
+      })
+
       render_hook(view, "set-preview-freshness", %{"state" => state})
       html = render(view)
       assert html =~ fresh_preview_copy(state)
       assert html =~ "Create new preview"
       refute html =~ @secret
+
+      render_hook(view, "set-preview-freshness", %{"state" => "ready"})
+      refreshed_html = render(view)
+      assert refreshed_html =~ "Safe incident response reason"
+      assert has_element?(view, "[data-preview-count='2'][data-mutation-count='0']")
+      refute refreshed_html =~ @secret
     end
+
+    {:ok, changed_scope, _html} =
+      mount_harness(conn, "confirmation", %{"scope_fresh?" => false})
+
+    render_hook(changed_scope, "submit-confirmation", %{
+      "confirmation" => %{
+        "reason" => "Authoritative scope changed",
+        "confirmation_count" => "12"
+      }
+    })
+
+    assert render(changed_scope) =~ fresh_preview_copy("drifted")
+    assert has_element?(changed_scope, "[data-mutation-count='0']")
   end
 
   @tag phase78_slice: "confirmation"
@@ -699,9 +771,34 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessTest do
     render_hook(view, "show-partial-results", %{})
     html = render(view)
 
-    assert_in_order(html, ["Job 101", "Success", "Job 202", "Failed", "Job 303", "Skipped"])
+    assert_in_order(html, [
+      ~s(id="harness-confirmation-job-101"),
+      ~s(id="harness-confirmation-job-202"),
+      ~s(id="harness-confirmation-job-303")
+    ])
+
+    assert has_element?(
+             view,
+             "#harness-confirmation-job-101[data-obpt-result='success']",
+             "Job 101"
+           )
+
+    assert has_element?(
+             view,
+             "#harness-confirmation-job-202[data-obpt-result='failed']",
+             "Job 202"
+           )
+
+    assert has_element?(
+             view,
+             "#harness-confirmation-job-303[data-obpt-result='skipped']",
+             "Job 303"
+           )
+
+    assert_in_order(html, ["Success", "Failed", "Skipped"])
     assert html =~ "Create a fresh preview."
     assert html =~ "Refresh the job before acting."
+    assert html =~ ~s(href="/ops/jobs/audit?resource_id=101")
     assert html =~ ~s(id="harness-confirmation-result-heading")
     assert html =~ ~s(tabindex="-1")
   end
