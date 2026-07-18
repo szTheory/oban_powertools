@@ -109,7 +109,11 @@ defmodule ObanPowertools.Web.AssetsTest do
           ".obpt-root .obpt-audit-entry",
           ".obpt-root .obpt-filter-bar",
           ".obpt-root .obpt-filter-bar__toggle[aria-expanded=\"true\"]",
-          ".obpt-root .obpt-filter-bar__active-filter .obpt-link"
+          ".obpt-root .obpt-filter-bar__active-filter .obpt-link",
+          ".obpt-root .obpt-confirm-action",
+          ".obpt-root .obpt-confirm-action__busy",
+          ".obpt-root .obpt-confirm-action__result-row[data-obpt-result=\"failed\"]",
+          ".obpt-root[data-obpt-motion=\"reduce\"] .obpt-confirm-action__dialog"
         ] do
       assert css =~ selector, "expected compiled CSS to include #{selector}"
     end

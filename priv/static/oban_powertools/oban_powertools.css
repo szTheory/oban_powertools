@@ -2894,6 +2894,281 @@
   transition-duration: var(--obpt-motion-duration-instant);
 }
 
+.obpt-root .obpt-confirm-action,
+.obpt-root .obpt-confirm-action__dialog,
+.obpt-root .obpt-confirm-action__preview,
+.obpt-root .obpt-confirm-action__form,
+.obpt-root .obpt-confirm-action__scope,
+.obpt-root .obpt-confirm-action__consequence,
+.obpt-root .obpt-confirm-action__reversibility,
+.obpt-root .obpt-confirm-action__support,
+.obpt-root .obpt-confirm-action__busy,
+.obpt-root .obpt-confirm-action__result,
+.obpt-root .obpt-confirm-action__result-list,
+.obpt-root .obpt-confirm-action__result-row,
+.obpt-root .obpt-confirm-action__recovery {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.obpt-root .obpt-confirm-action {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--obpt-space-5);
+  color: var(--obpt-color-text);
+}
+
+.obpt-root .obpt-confirm-action__overlay {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--obpt-color-backdrop) 58%, transparent);
+}
+
+.obpt-root .obpt-confirm-action__dialog {
+  --obpt-color-confirm-border: var(--obpt-color-border-strong);
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: var(--obpt-space-5);
+  width: min(100%, 42rem);
+  max-block-size: calc(100dvh - (var(--obpt-space-6) * 2));
+  overflow-y: auto;
+  border: 1px solid var(--obpt-color-confirm-border);
+  border-radius: var(--obpt-radius-lg);
+  background: var(--obpt-color-overlay);
+  color: var(--obpt-color-text);
+  padding: var(--obpt-space-5);
+  box-shadow: var(--obpt-shadow-lg);
+  overflow-wrap: anywhere;
+}
+
+.obpt-root .obpt-confirm-action__header,
+.obpt-root .obpt-confirm-action__preview,
+.obpt-root .obpt-confirm-action__form,
+.obpt-root .obpt-confirm-action__busy,
+.obpt-root .obpt-confirm-action__result,
+.obpt-root .obpt-confirm-action__recovery {
+  display: grid;
+  gap: var(--obpt-space-4);
+}
+
+.obpt-root .obpt-confirm-action__object,
+.obpt-root .obpt-confirm-action__title,
+.obpt-root .obpt-confirm-action__preview h3,
+.obpt-root .obpt-confirm-action__preview p,
+.obpt-root .obpt-confirm-action__accepted-copy,
+.obpt-root .obpt-confirm-action__result-heading,
+.obpt-root .obpt-confirm-action__result-row p {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.obpt-root .obpt-confirm-action__object {
+  color: var(--obpt-color-muted);
+  font-size: var(--obpt-font-size-sm);
+  font-weight: var(--obpt-font-weight-semibold);
+  line-height: var(--obpt-line-height-base);
+}
+
+.obpt-root .obpt-confirm-action__title {
+  color: var(--obpt-color-text);
+  font-size: calc(var(--obpt-font-size-xl) + (var(--obpt-space-1) / 2));
+  font-weight: var(--obpt-font-weight-semibold);
+  line-height: var(--obpt-line-height-tight);
+}
+
+.obpt-root .obpt-confirm-action__title:focus-visible,
+.obpt-root .obpt-confirm-action__result-heading:focus-visible {
+  border-radius: var(--obpt-radius-sm);
+  outline: calc(var(--obpt-space-1) / 2) solid var(--obpt-color-focus);
+  outline-offset: calc(var(--obpt-space-1) / 2);
+}
+
+.obpt-root .obpt-confirm-action__scope,
+.obpt-root .obpt-confirm-action__consequence,
+.obpt-root .obpt-confirm-action__reversibility,
+.obpt-root .obpt-confirm-action__support {
+  display: grid;
+  gap: var(--obpt-space-2);
+  border-block-start: 1px solid var(--obpt-color-border);
+  padding-block-start: var(--obpt-space-4);
+}
+
+.obpt-root .obpt-confirm-action__preview h3 {
+  color: var(--obpt-color-text);
+  font-size: var(--obpt-font-size-md);
+  font-weight: var(--obpt-font-weight-semibold);
+  line-height: var(--obpt-line-height-tight);
+}
+
+.obpt-root .obpt-confirm-action__preview p,
+.obpt-root .obpt-confirm-action__accepted-copy,
+.obpt-root .obpt-confirm-action__result-row p {
+  color: var(--obpt-color-text);
+  font-size: var(--obpt-font-size-md);
+  font-weight: var(--obpt-font-weight-regular);
+  line-height: var(--obpt-line-height-base);
+}
+
+.obpt-root .obpt-confirm-action__consequence {
+  border-inline-start: var(--obpt-space-1) solid var(--obpt-color-warning-border);
+  padding-inline-start: var(--obpt-space-4);
+}
+
+.obpt-root .obpt-confirm-action__consequence[data-obpt-intent="danger"] {
+  border-inline-start-color: var(--obpt-color-danger-border);
+}
+
+.obpt-root .obpt-confirm-action__bulk-scope,
+.obpt-root .obpt-confirm-action__support-details,
+.obpt-root .obpt-confirm-action__result-recovery {
+  color: var(--obpt-color-muted);
+  font-size: var(--obpt-font-size-sm);
+}
+
+.obpt-root .obpt-confirm-action__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--obpt-space-2);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.obpt-root .obpt-confirm-action__actions .obpt-button {
+  min-block-size: calc(var(--obpt-space-7) - var(--obpt-space-1));
+}
+
+.obpt-root .obpt-confirm-action__busy {
+  border: 1px solid var(--obpt-color-info-border);
+  border-radius: var(--obpt-radius-md);
+  background: var(--obpt-color-info-bg);
+  color: var(--obpt-color-info-fg);
+  padding: var(--obpt-space-4);
+}
+
+.obpt-root .obpt-confirm-action__spinner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--obpt-space-2);
+}
+
+.obpt-root .obpt-confirm-action__spinner p {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.obpt-root .obpt-confirm-action__progress .obpt-progress {
+  max-width: 100%;
+}
+
+.obpt-root .obpt-confirm-action__result-heading {
+  color: var(--obpt-color-text);
+  font-size: var(--obpt-font-size-xl);
+  font-weight: var(--obpt-font-weight-semibold);
+  line-height: var(--obpt-line-height-tight);
+}
+
+.obpt-root .obpt-confirm-action__result-list {
+  display: grid;
+  gap: var(--obpt-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.obpt-root .obpt-confirm-action__result-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--obpt-space-2) var(--obpt-space-4);
+  border-inline-start: var(--obpt-space-1) solid var(--obpt-color-success-border);
+  border-radius: var(--obpt-radius-md);
+  background: var(--obpt-color-elevated);
+  padding: var(--obpt-space-4);
+}
+
+.obpt-root .obpt-confirm-action__result-row[data-obpt-result="failed"] {
+  border-inline-start-color: var(--obpt-color-danger-border);
+}
+
+.obpt-root .obpt-confirm-action__result-row[data-obpt-result="skipped"] {
+  border-inline-start-color: var(--obpt-color-warning-border);
+}
+
+.obpt-root .obpt-confirm-action__result-status {
+  grid-row: 1 / span 3;
+}
+
+.obpt-root .obpt-confirm-action__result-object {
+  font-weight: var(--obpt-font-weight-semibold);
+}
+
+.obpt-root .obpt-confirm-action__recovery,
+.obpt-root .obpt-confirm-action__audit {
+  border-block-start: 1px solid var(--obpt-color-border);
+  padding-block-start: var(--obpt-space-4);
+}
+
+.obpt-root[data-obpt-effective-theme="high-contrast"] .obpt-confirm-action__dialog,
+.obpt-root[data-obpt-theme="high-contrast"] .obpt-confirm-action__dialog {
+  --obpt-color-confirm-border: var(--obpt-color-text);
+}
+
+@media (max-width: 24rem) {
+  .obpt-root .obpt-confirm-action {
+    place-items: stretch;
+    padding: 0;
+  }
+
+  .obpt-root .obpt-confirm-action__dialog {
+    gap: var(--obpt-space-4);
+    width: 100%;
+    max-block-size: 100dvh;
+    min-block-size: 100dvh;
+    border-radius: 0;
+    padding: var(--obpt-space-4);
+  }
+
+  .obpt-root .obpt-confirm-action__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .obpt-root .obpt-confirm-action__actions .obpt-button {
+    width: 100%;
+  }
+
+  .obpt-root .obpt-confirm-action__result-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .obpt-root .obpt-confirm-action__result-status {
+    grid-row: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .obpt-root .obpt-confirm-action__dialog,
+  .obpt-root .obpt-confirm-action__busy,
+  .obpt-root .obpt-confirm-action__result-row {
+    transition-duration: var(--obpt-motion-duration-instant);
+  }
+}
+
+.obpt-root[data-obpt-motion="reduce"] .obpt-confirm-action__dialog,
+.obpt-root[data-obpt-motion="reduce"] .obpt-confirm-action__busy,
+.obpt-root[data-obpt-motion="reduce"] .obpt-confirm-action__result-row {
+  transition-duration: var(--obpt-motion-duration-instant);
+}
+
 .obpt-root .obpt-showcase {
   display: flex;
   flex-direction: column;
