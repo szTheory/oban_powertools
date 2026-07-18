@@ -7,6 +7,7 @@
   const ATTR_TOOLTIP_OPEN = "data-obpt-tooltip-open";
   const ATTR_TOOLTIP_DISMISSED = "data-obpt-tooltip-dismissed";
   const ATTR_NAV_STATE = "data-obpt-nav-state";
+  const ATTR_FILTER_STATE = "data-obpt-filter-state";
   const ROOT_SELECTOR = ".obpt-root";
   const THEME_CHOICE_SELECTOR = "[data-obpt-theme-choice]";
   const TOOLTIP_SELECTOR = "[data-obpt-tooltip]";
@@ -14,10 +15,14 @@
   const APP_SHELL_SELECTOR = "[data-obpt-app-shell]";
   const NAV_TOGGLE_SELECTOR = "[data-obpt-nav-toggle]";
   const PRIMARY_NAV_SELECTOR = "[data-obpt-primary-nav]";
+  const FILTER_BAR_SELECTOR = "[data-obpt-filter-bar]";
+  const FILTER_TOGGLE_SELECTOR = "[data-obpt-filter-toggle]";
+  const FILTER_FIELDS_SELECTOR = "[data-obpt-filter-fields]";
 
   const colorPreference = window.matchMedia("(prefers-color-scheme: dark)");
   const contrastPreference = window.matchMedia("(prefers-contrast: more)");
   const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const narrowFilterPresentation = window.matchMedia("(max-width: 47.999rem)");
 
   function normalizeTheme(theme) {
     return THEMES.has(theme) ? theme : "system";
@@ -56,6 +61,7 @@
     root.setAttribute(ATTR_MOTION, motionPreference.matches ? "reduce" : "safe");
     syncThemeControls(root, requestedTheme);
     syncNavDisclosures(root);
+    syncFilterDisclosures(root);
   }
 
   function roots() {
@@ -158,6 +164,79 @@
     return Boolean((toggle && toggle.contains(target)) || (nav && nav.contains(target)));
   }
 
+  function filterBarForElement(element) {
+    if (!element || !element.closest) {
+      return null;
+    }
+
+    const root = rootForElement(element);
+    const filterBar = element.closest(FILTER_BAR_SELECTOR);
+
+    if (!root || !filterBar || !root.contains(filterBar)) {
+      return null;
+    }
+
+    return filterBar;
+  }
+
+  function filterToggle(filterBar) {
+    return filterBar ? filterBar.querySelector(FILTER_TOGGLE_SELECTOR) : null;
+  }
+
+  function filterFields(filterBar) {
+    return filterBar ? filterBar.querySelector(FILTER_FIELDS_SELECTOR) : null;
+  }
+
+  function normalizeFilterState(state) {
+    return state === "open" ? "open" : "closed";
+  }
+
+  function setFilterState(filterBar, state) {
+    const root = rootForElement(filterBar);
+
+    if (
+      !root ||
+      !filterBar ||
+      !filterBar.matches ||
+      !filterBar.matches(FILTER_BAR_SELECTOR) ||
+      !root.contains(filterBar)
+    ) {
+      return;
+    }
+
+    const nextState = normalizeFilterState(state);
+    const expanded = nextState === "open";
+    const collapsedAtNarrowWidth = narrowFilterPresentation.matches && !expanded;
+    const toggle = filterToggle(filterBar);
+    const fields = filterFields(filterBar);
+
+    filterBar.setAttribute(ATTR_FILTER_STATE, nextState);
+
+    if (toggle) {
+      toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+    }
+
+    if (fields) {
+      fields.toggleAttribute("hidden", collapsedAtNarrowWidth);
+      fields.toggleAttribute("inert", collapsedAtNarrowWidth);
+    }
+  }
+
+  function toggleFilterState(filterBar) {
+    const currentState = filterBar ? filterBar.getAttribute(ATTR_FILTER_STATE) : "closed";
+    setFilterState(filterBar, currentState === "open" ? "closed" : "open");
+  }
+
+  function syncFilterDisclosures(root) {
+    if (!root || !root.matches || !root.matches(ROOT_SELECTOR)) {
+      return;
+    }
+
+    Array.from(root.querySelectorAll(FILTER_BAR_SELECTOR)).forEach((filterBar) => {
+      setFilterState(filterBar, filterBar.getAttribute(ATTR_FILTER_STATE));
+    });
+  }
+
   function syncThemeControls(root, requestedTheme) {
     Array.from(root.querySelectorAll(THEME_CHOICE_SELECTOR)).forEach((control) => {
       const selected = control.getAttribute("data-obpt-theme-choice") === requestedTheme;
@@ -206,6 +285,46 @@
     return !nextTarget || !tooltip.contains(nextTarget);
   }
 
+  function rootsFromMutations(mutations) {
+    const changedRoots = new Set();
+
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (!node || node.nodeType !== 1) {
+          return;
+        }
+
+        if (node.matches(ROOT_SELECTOR)) {
+          changedRoots.add(node);
+        }
+
+        const containingRoot = node.closest(ROOT_SELECTOR);
+
+        if (containingRoot) {
+          changedRoots.add(containingRoot);
+        }
+
+        Array.from(node.querySelectorAll(ROOT_SELECTOR)).forEach((root) => changedRoots.add(root));
+      });
+    });
+
+    return changedRoots;
+  }
+
+  function observeScopedPatches() {
+    if (!document.body || typeof window.MutationObserver !== "function") {
+      return;
+    }
+
+    const observer = new window.MutationObserver((mutations) => {
+      rootsFromMutations(mutations).forEach((root) => {
+        apply(root, root.getAttribute(ATTR_THEME) || storedTheme());
+      });
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
   const currentRoot =
     document.currentScript && document.currentScript.closest
       ? document.currentScript.closest(ROOT_SELECTOR)
@@ -218,7 +337,16 @@
   applyStoredTheme();
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", applyStoredTheme, { once: true });
+    document.addEventListener(
+      "DOMContentLoaded",
+      () => {
+        applyStoredTheme();
+        observeScopedPatches();
+      },
+      { once: true }
+    );
+  } else {
+    observeScopedPatches();
   }
 
   [colorPreference, contrastPreference, motionPreference].forEach((preference) => {
@@ -233,7 +361,23 @@
     });
   });
 
+  narrowFilterPresentation.addEventListener("change", () => {
+    roots().forEach((root) => syncFilterDisclosures(root));
+  });
+
   document.addEventListener("click", (event) => {
+    const filterControl = closestElement(event, FILTER_TOGGLE_SELECTOR);
+
+    if (filterControl) {
+      const filterBar = filterBarForElement(filterControl);
+
+      if (filterBar) {
+        event.preventDefault();
+        toggleFilterState(filterBar);
+        return;
+      }
+    }
+
     const navControl = closestElement(event, NAV_TOGGLE_SELECTOR);
 
     if (navControl) {
@@ -320,6 +464,8 @@
     apply,
     setTheme,
     storedTheme,
-    effectiveTheme
+    effectiveTheme,
+    setFilterState,
+    syncFilterDisclosures
   };
 })();

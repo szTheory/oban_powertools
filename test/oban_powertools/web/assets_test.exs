@@ -106,7 +106,10 @@ defmodule ObanPowertools.Web.AssetsTest do
           ".obpt-root .obpt-flash-group",
           ".obpt-root .obpt-attention-card",
           ".obpt-root .obpt-why-blocked",
-          ".obpt-root .obpt-audit-entry"
+          ".obpt-root .obpt-audit-entry",
+          ".obpt-root .obpt-filter-bar",
+          ".obpt-root .obpt-filter-bar__toggle[aria-expanded=\"true\"]",
+          ".obpt-root .obpt-filter-bar__active-filter .obpt-link"
         ] do
       assert css =~ selector, "expected compiled CSS to include #{selector}"
     end
@@ -123,6 +126,18 @@ defmodule ObanPowertools.Web.AssetsTest do
     assert js =~ "data-obpt-nav-state"
     assert js =~ "aria-expanded"
     assert js =~ "focusInsideNavDisclosure"
+    assert js =~ "[data-obpt-filter-bar]"
+    assert js =~ "[data-obpt-filter-toggle]"
+    assert js =~ "[data-obpt-filter-fields]"
+    assert js =~ "data-obpt-filter-state"
+    assert js =~ "setFilterState"
+    assert js =~ "syncFilterDisclosures"
+    assert js =~ "toggleAttribute(\"hidden\", collapsedAtNarrowWidth)"
+    assert js =~ "toggleAttribute(\"inert\", collapsedAtNarrowWidth)"
+    assert js =~ "filterBarForElement"
+    assert js =~ "root.contains(filterBar)"
+    assert js =~ "MutationObserver"
+    assert js =~ "addedNodes"
     assert js =~ "Escape"
     assert js =~ "DOMContentLoaded"
     assert js =~ "window.ObanPowertoolsTheme"
@@ -130,6 +145,19 @@ defmodule ObanPowertools.Web.AssetsTest do
     refute js =~ ".classList"
     refute js =~ "eval("
     refute js =~ "new Function"
+    refute js =~ "phx-hook"
+    refute js =~ "LiveSocket"
+    refute js =~ "sessionStorage"
+    refute js =~ "console."
+    refute js =~ "oban_powertools:filters"
+    refute js =~ "filter_values"
+    refute js =~ "result_data"
+    refute js =~ "preview_data"
+  end
+
+  test "checked-in CSS and JavaScript are byte-equal to their normalized sources" do
+    assert File.read!(@css_static) == normalized_source("assets/oban_powertools/tokens.css")
+    assert File.read!(@js_static) == normalized_source("assets/oban_powertools/theme.js")
   end
 
   test "hex package contract includes priv static assets" do
@@ -149,5 +177,14 @@ defmodule ObanPowertools.Web.AssetsTest do
       assert File.exists?(path), "expected #{path} to exist after asset build"
       {path, :crypto.hash(:sha256, File.read!(path)) |> Base.encode16(case: :lower)}
     end
+  end
+
+  defp normalized_source(path) do
+    path
+    |> File.read!()
+    |> String.replace("\r\n", "\n")
+    |> String.replace("\r", "\n")
+    |> String.trim_trailing()
+    |> Kernel.<>("\n")
   end
 end
