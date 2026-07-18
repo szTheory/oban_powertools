@@ -51,6 +51,21 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
     refute html =~ ~s(role="button")
   end
 
+  test "status_pill delegates the closed operator-result specs" do
+    for {state, label, tone, icon} <- [
+          {:success, "Success", "success", "check"},
+          {:failed, "Failed", "danger", "alert"},
+          {:skipped, "Skipped", "warning", "alert"}
+        ] do
+      html = render_data(:status_pill, domain: :operator_result, state: state)
+
+      assert html =~ "Operator result"
+      assert html =~ label
+      assert html =~ ~s(data-obpt-tone="#{tone}")
+      assert html =~ ~s(data-obpt-icon="#{icon}")
+    end
+  end
+
   test "status_pill keeps semantic channels and rejects hostile presentation overrides" do
     html =
       render_data(:status_pill,

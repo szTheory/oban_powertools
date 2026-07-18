@@ -11,7 +11,7 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   @status_domains ~w[
     batch batch_member callback_outbox continuity cron data_availability forensics
     host_follow_up job lifeline_health lifeline_incident lifeline_preview limiter output
-    workflow workflow_await workflow_result workflow_signal workflow_step
+    operator_result workflow workflow_await workflow_result workflow_signal workflow_step
   ]a
   @data_states ~w[ready loading empty error unavailable permission_denied]a
   @sort_directions ~w[asc desc none]a

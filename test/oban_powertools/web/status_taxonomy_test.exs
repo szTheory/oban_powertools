@@ -57,7 +57,13 @@ defmodule ObanPowertools.Web.StatusTaxonomyTest do
        tone: :warning,
        icon: :alert,
        sr_prefix: "Output availability"
-     }}
+     }},
+    {:operator_result, :success,
+     %{label: "Success", tone: :success, icon: :check, sr_prefix: "Operator result"}},
+    {:operator_result, :failed,
+     %{label: "Failed", tone: :danger, icon: :alert, sr_prefix: "Operator result"}},
+    {:operator_result, :skipped,
+     %{label: "Skipped", tone: :warning, icon: :alert, sr_prefix: "Operator result"}}
   ]
 
   @source_audited_specs [

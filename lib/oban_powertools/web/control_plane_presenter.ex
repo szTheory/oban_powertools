@@ -15,6 +15,187 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     bridge_only: "Bridge-only Follow-up"
   }
 
+  @operator_result_states %{
+    "success" => :success,
+    "failed" => :failed,
+    "skipped" => :skipped
+  }
+  @blocker_evidence_kinds %{
+    "current" => :current,
+    "block_start_snapshot" => :block_start_snapshot
+  }
+  @evidence_completeness %{
+    "complete" => :complete,
+    "partial" => :partial,
+    "unknown" => :unknown,
+    "unavailable" => :unavailable
+  }
+
+  @doc """
+  Normalizes ordered active-filter presentation maps through a finite key contract.
+  """
+  def normalize_active_filters(filters) when is_list(filters) do
+    filters
+    |> Enum.map(fn filter ->
+      ensure_presentation_map!(filter, "active filter")
+
+      %{
+        id: normalize_presentation_id!(presentation_value(filter, :id), "active filter id"),
+        label: required_presentation_text!(presentation_value(filter, :label), "filter label"),
+        value: required_presentation_text!(presentation_value(filter, :value), "filter value"),
+        remove_href:
+          required_presentation_text!(
+            presentation_value(filter, :remove_href),
+            "filter removal destination"
+          ),
+        remove_label:
+          required_presentation_text!(
+            presentation_value(filter, :remove_label),
+            "filter removal label"
+          )
+      }
+    end)
+    |> ensure_unique_presentation_ids!("active filters")
+  end
+
+  def normalize_active_filters(_filters),
+    do: raise(ArgumentError, "active filters must be a list of presentation maps")
+
+  @doc """
+  Normalizes ordered per-object operator results without merging failed and skipped outcomes.
+  """
+  def normalize_operator_results(results) when is_list(results) do
+    results
+    |> Enum.map(fn result ->
+      ensure_presentation_map!(result, "operator result")
+
+      %{
+        id: normalize_presentation_id!(presentation_value(result, :id), "operator result id"),
+        object_label:
+          required_presentation_text!(
+            presentation_value(result, :object_label),
+            "operator result object label"
+          ),
+        outcome:
+          normalize_closed_value!(
+            presentation_value(result, :outcome),
+            @operator_result_states,
+            "operator result outcome"
+          ),
+        message:
+          required_presentation_text!(
+            presentation_value(result, :message),
+            "operator result message"
+          ),
+        recovery:
+          optional_presentation_text(
+            presentation_value(result, :recovery),
+            "operator result recovery"
+          ),
+        audit_href:
+          optional_presentation_text(
+            presentation_value(result, :audit_href),
+            "operator result audit destination"
+          )
+      }
+    end)
+    |> ensure_unique_presentation_ids!("operator results")
+  end
+
+  def normalize_operator_results(_results),
+    do: raise(ArgumentError, "operator results must be a list of presentation maps")
+
+  @doc """
+  Normalizes every supplied blocker while preserving live versus block-start evidence.
+  """
+  def normalize_blockers(blockers) when is_list(blockers) do
+    blockers
+    |> Enum.map(fn blocker ->
+      ensure_presentation_map!(blocker, "blocker")
+
+      %{
+        id: normalize_presentation_id!(presentation_value(blocker, :id), "blocker id"),
+        evidence_kind:
+          normalize_closed_value!(
+            presentation_value(blocker, :evidence_kind),
+            @blocker_evidence_kinds,
+            "blocker evidence kind"
+          ),
+        label: required_presentation_text!(presentation_value(blocker, :label), "blocker label"),
+        summary:
+          required_presentation_text!(presentation_value(blocker, :summary), "blocker summary"),
+        clearing_condition:
+          required_presentation_text!(
+            presentation_value(blocker, :clearing_condition),
+            "blocker clearing condition"
+          ),
+        evidence_source:
+          required_presentation_text!(
+            presentation_value(blocker, :evidence_source),
+            "blocker evidence source"
+          ),
+        technical_code:
+          optional_presentation_text(
+            presentation_value(blocker, :technical_code),
+            "blocker technical code"
+          )
+      }
+    end)
+    |> ensure_unique_presentation_ids!("blockers")
+  end
+
+  def normalize_blockers(_blockers),
+    do: raise(ArgumentError, "blockers must be a list of presentation maps")
+
+  @doc """
+  Normalizes one immutable audit entry with explicit missing reason and outcome copy.
+  """
+  def normalize_audit_entry(entry) do
+    ensure_presentation_map!(entry, "audit entry")
+
+    changes = presentation_value(entry, :changes)
+    evidence = presentation_value(entry, :evidence)
+    ensure_safe_presentation_data!(changes, "audit changes")
+    ensure_safe_presentation_data!(evidence, "audit evidence")
+
+    %{
+      sentence:
+        required_presentation_text!(presentation_value(entry, :sentence), "audit sentence"),
+      outcome:
+        optional_presentation_text(presentation_value(entry, :outcome), "audit outcome") ||
+          "Outcome not recorded",
+      actor: required_presentation_text!(presentation_value(entry, :actor), "audit actor"),
+      action: required_presentation_text!(presentation_value(entry, :action), "audit action"),
+      target: required_presentation_text!(presentation_value(entry, :target), "audit target"),
+      reason:
+        optional_presentation_text(presentation_value(entry, :reason), "audit reason") ||
+          "No operator reason recorded",
+      source: required_presentation_text!(presentation_value(entry, :source), "audit source"),
+      correlation:
+        required_presentation_text!(
+          presentation_value(entry, :correlation),
+          "audit correlation"
+        ),
+      occurred_at:
+        required_presentation_text!(
+          presentation_value(entry, :occurred_at),
+          "audit absolute time"
+        ),
+      occurred_datetime:
+        normalize_datetime!(presentation_value(entry, :occurred_datetime), "audit datetime"),
+      changes: changes,
+      evidence: evidence
+    }
+  end
+
+  @doc """
+  Closes evidence completeness over complete, partial, unknown, and unavailable.
+  """
+  def normalize_evidence_completeness(value) do
+    key = if is_atom(value), do: Atom.to_string(value), else: value
+    Map.get(@evidence_completeness, key, :unknown)
+  end
+
   def status_label(status) when is_binary(status) do
     String.to_existing_atom(status) |> status_label()
   rescue
@@ -219,6 +400,107 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
 
   defp refusal_reason_label(nil), do: "This action is not available right now."
   defp refusal_reason_label(code), do: humanize(code)
+
+  defp presentation_value(map, key) do
+    case Map.fetch(map, key) do
+      {:ok, value} -> value
+      :error -> Map.get(map, Atom.to_string(key))
+    end
+  end
+
+  defp required_presentation_text!(value, field) do
+    optional_presentation_text(value, field) ||
+      raise ArgumentError, "#{field} must be non-empty text"
+  end
+
+  defp optional_presentation_text(nil, _field), do: nil
+
+  defp optional_presentation_text(value, field) when is_atom(value),
+    do: value |> Atom.to_string() |> optional_presentation_text(field)
+
+  defp optional_presentation_text(value, _field) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      text -> text
+    end
+  end
+
+  defp optional_presentation_text(_value, field),
+    do: raise(ArgumentError, "#{field} must be text")
+
+  defp normalize_presentation_id!(value, field) do
+    id = required_presentation_text!(value, field)
+
+    if Regex.match?(~r/\A[A-Za-z][A-Za-z0-9_.:-]*\z/, id) do
+      id
+    else
+      raise ArgumentError, "#{field} must be a stable identifier"
+    end
+  end
+
+  defp normalize_closed_value!(value, values, field) do
+    key = if is_atom(value), do: Atom.to_string(value), else: value
+
+    case Map.fetch(values, key) do
+      {:ok, normalized} -> normalized
+      :error -> raise ArgumentError, "unsupported #{field}"
+    end
+  end
+
+  defp normalize_datetime!(value, field) do
+    datetime = required_presentation_text!(value, field)
+
+    case DateTime.from_iso8601(datetime) do
+      {:ok, _parsed, _offset} -> datetime
+      {:error, _reason} -> raise ArgumentError, "#{field} must be a valid ISO 8601 datetime"
+    end
+  end
+
+  defp ensure_unique_presentation_ids!(items, collection) do
+    ids = Enum.map(items, & &1.id)
+
+    if Enum.uniq(ids) == ids do
+      items
+    else
+      raise ArgumentError, "#{collection} require unique ids"
+    end
+  end
+
+  defp ensure_presentation_map!(value, name) when is_map(value) do
+    if is_struct(value) do
+      raise ArgumentError, "#{name} must be a plain presentation map"
+    end
+
+    ensure_safe_presentation_data!(value, name)
+  end
+
+  defp ensure_presentation_map!(_value, name),
+    do: raise(ArgumentError, "#{name} must be a plain presentation map")
+
+  defp ensure_safe_presentation_data!(nil, _name), do: :ok
+
+  defp ensure_safe_presentation_data!(value, name) when is_struct(value),
+    do: raise(ArgumentError, "#{name} must not contain structs")
+
+  defp ensure_safe_presentation_data!(value, name) when is_map(value) do
+    Enum.each(value, fn {key, nested} ->
+      normalized_key = to_string(key)
+
+      if not is_nil(nested) and
+           (String.ends_with?(normalized_key, "_token") or
+              String.ends_with?(normalized_key, "_hash") or
+              String.ends_with?(normalized_key, "_error")) do
+        raise ArgumentError, "#{name} contains a prohibited source field"
+      end
+
+      ensure_safe_presentation_data!(nested, name)
+    end)
+  end
+
+  defp ensure_safe_presentation_data!(value, name) when is_list(value),
+    do: Enum.each(value, &ensure_safe_presentation_data!(&1, name))
+
+  defp ensure_safe_presentation_data!(_value, _name), do: :ok
 
   def humanize(atom) when is_atom(atom), do: humanize(Atom.to_string(atom))
 

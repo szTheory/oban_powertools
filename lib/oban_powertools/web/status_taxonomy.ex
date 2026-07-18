@@ -25,6 +25,7 @@ defmodule ObanPowertools.Web.StatusTaxonomy do
     "lifeline_incident" => %{domain: :lifeline_incident, sr_prefix: "Lifeline incident status"},
     "lifeline_preview" => %{domain: :lifeline_preview, sr_prefix: "Lifeline preview status"},
     "output" => %{domain: :output, sr_prefix: "Output availability"},
+    "operator_result" => %{domain: :operator_result, sr_prefix: "Operator result"},
     "workflow" => %{domain: :workflow, sr_prefix: "Workflow state"},
     "workflow_await" => %{domain: :workflow_await, sr_prefix: "Workflow await status"},
     "workflow_result" => %{domain: :workflow_result, sr_prefix: "Workflow result status"},
@@ -192,6 +193,11 @@ defmodule ObanPowertools.Web.StatusTaxonomy do
         "available" => spec("Output available", :success, :check, "Output availability"),
         "expired" => spec("Output expired", :warning, :alert, "Output availability"),
         "unavailable" => spec("Output unavailable", :warning, :alert, "Output availability")
+      },
+      "operator_result" => %{
+        "failed" => spec("Failed", :danger, :alert, "Operator result"),
+        "skipped" => spec("Skipped", :warning, :alert, "Operator result"),
+        "success" => spec("Success", :success, :check, "Operator result")
       },
       "workflow" => %{
         "available" => spec("Available", :neutral, :dot, "Workflow state"),
