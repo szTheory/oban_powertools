@@ -20,6 +20,8 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
   @filter_modes ~w[submit instant]a
   @confirmation_intents ~w[warning danger]a
   @confirmation_states ~w[preview submitting partial failed expired drifted consumed]a
+  @detail_variants ~w[adaptive inline drawer]a
+  @detail_states ~w[loading empty ready unavailable permission_denied error]a
 
   attr(:id, :string, required: true)
   attr(:intent, :atom, required: true, values: @confirmation_intents)
@@ -314,6 +316,125 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
   end
 
   attr(:id, :string, required: true)
+  attr(:title, :string, required: true)
+  attr(:close_label, :string, required: true)
+  attr(:open, :boolean, required: true)
+  attr(:variant, :atom, default: :adaptive, values: @detail_variants)
+  attr(:state, :atom, required: true, values: @detail_states)
+  attr(:resource, :string, required: true)
+  attr(:logical_fallback_id, :string, required: true)
+  attr(:close_event, :string, required: true)
+  attr(:loaded_announcement, :string, default: nil)
+  attr(:full_details_href, :string, default: nil)
+
+  slot(:body, required: true)
+  slot(:actions)
+  slot(:evidence)
+
+  @doc """
+  Renders one adaptive native-dialog tree from parent-owned selection and content truth.
+
+  Callers must close or leave modal detail before opening a confirmation dialog. The
+  component never fetches, authorizes, changes URL state, or renders nested dialogs.
+  """
+  def detail_surface(assigns) do
+    id = require_text!(assigns.id, "detail surface id")
+    state = detail_state(assigns.state)
+
+    assigns =
+      assigns
+      |> assign(:id, id)
+      |> assign(:title, require_text!(assigns.title, "detail surface title"))
+      |> assign(
+        :close_label,
+        require_action_label!(assigns.close_label, "detail surface close action")
+      )
+      |> assign(:variant, detail_variant(assigns.variant))
+      |> assign(:state, state)
+      |> assign(:resource, require_text!(assigns.resource, "detail surface resource"))
+      |> assign(
+        :logical_fallback_id,
+        require_text!(assigns.logical_fallback_id, "detail surface focus fallback")
+      )
+      |> assign(:close_event, require_text!(assigns.close_event, "detail surface close event"))
+      |> assign(:loaded_announcement, optional_text(assigns.loaded_announcement))
+      |> assign(:full_details_href, optional_text(assigns.full_details_href))
+      |> assign(:requested, if(assigns.open, do: "open", else: "closed"))
+
+    ~H"""
+    <dialog
+      id={@id}
+      class="obpt-detail-surface"
+      open={@open}
+      aria-labelledby={"#{@id}-title"}
+      data-obpt-detail-surface
+      data-obpt-detail-variant={@variant}
+      data-obpt-detail-requested={@requested}
+      data-obpt-detail-mode
+      data-obpt-detail-state={@state}
+      data-obpt-detail-fallback={@logical_fallback_id}
+      data-obpt-focus-fallback={@logical_fallback_id}
+      phx-mounted={JS.ignore_attributes("open")}
+    >
+      <header class="obpt-detail-surface__header">
+        <h2 id={"#{@id}-title"} class="obpt-detail-surface__title" tabindex="-1">
+          {@title}
+        </h2>
+        <Primitives.icon_button
+          label={@close_label}
+          phx-click={@close_event}
+          data-obpt-detail-close
+        >
+          <span aria-hidden="true">×</span>
+        </Primitives.icon_button>
+      </header>
+
+      <div id={"#{@id}-body"} class="obpt-detail-surface__body">
+        <div :if={@state == :ready} class="obpt-detail-surface__content">
+          {render_slot(@body)}
+        </div>
+        <DataDisplay.state_message
+          :if={@state != :ready}
+          id={"#{@id}-state"}
+          state={@state}
+          resource={@resource}
+        />
+        <p
+          :if={@state == :ready && @loaded_announcement}
+          id={"#{@id}-status"}
+          class="obpt-detail-surface__status"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {@loaded_announcement}
+        </p>
+        <span
+          :if={@state != :ready || !@loaded_announcement}
+          id={"#{@id}-status"}
+          class="obpt-detail-surface__status obpt-sr-only"
+        >
+          {humanize(@state)}
+        </span>
+      </div>
+
+      <section :if={@evidence != []} class="obpt-detail-surface__evidence" aria-label="Technical evidence">
+        {render_slot(@evidence)}
+      </section>
+
+      <footer :if={@actions != [] || @full_details_href} class="obpt-detail-surface__footer">
+        <div :if={@actions != []} class="obpt-detail-surface__actions">
+          {render_slot(@actions)}
+        </div>
+        <Primitives.link :if={@full_details_href} href={@full_details_href}>
+          Open full details
+        </Primitives.link>
+      </footer>
+    </dialog>
+    """
+  end
+
+  attr(:id, :string, required: true)
   attr(:form, Phoenix.HTML.Form, required: true)
   attr(:mode, :atom, default: :submit, values: @filter_modes)
   attr(:result_summary, :string, required: true)
@@ -329,7 +450,8 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
   slot(:advanced_fields)
 
   @doc """
-  Renders one stateless filter form while the parent retains draft, applied, and URL truth.
+  Renders one stateless filter form while the parent retains valid or invalid draft,
+  applied, and URL truth.
   """
   def filter_bar(assigns) do
     active_filters = ControlPlanePresenter.normalize_active_filters(assigns.active_filters)
@@ -678,6 +800,12 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
   defp confirmation_intent(intent) when intent in @confirmation_intents, do: intent
   defp confirmation_intent(_intent), do: raise(ArgumentError, "unsupported confirmation intent")
 
+  defp detail_variant(variant) when variant in @detail_variants, do: variant
+  defp detail_variant(_variant), do: raise(ArgumentError, "unsupported detail surface variant")
+
+  defp detail_state(state) when state in @detail_states, do: state
+  defp detail_state(_state), do: raise(ArgumentError, "unsupported detail surface state")
+
   defp confirmation_dismissible?(_state, dismissible) when is_boolean(dismissible),
     do: dismissible
 
@@ -855,6 +983,9 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
 
   defp require_text!(_value, field),
     do: raise(ArgumentError, "#{field} must be non-empty text")
+
+  defp optional_text(nil), do: nil
+  defp optional_text(value), do: require_text!(value, "optional detail surface text")
 
   defp humanize(value) do
     value

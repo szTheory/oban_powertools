@@ -189,6 +189,15 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     .obpt-confirm-action__result-list
     .obpt-confirm-action__result-row
     .obpt-confirm-action__recovery
+    .obpt-detail-surface
+    .obpt-detail-surface__header
+    .obpt-detail-surface__title
+    .obpt-detail-surface__body
+    .obpt-detail-surface__content
+    .obpt-detail-surface__status
+    .obpt-detail-surface__evidence
+    .obpt-detail-surface__footer
+    .obpt-detail-surface__actions
   ]
 
   @proof_seam_classes ~w[
@@ -556,8 +565,11 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
       refute body =~ ~r/#[0-9a-fA-F]{3,8}/,
              "group selector #{selector} contains a raw color value"
 
-      refute body =~ ~r/overflow-x\s*:\s*(auto|scroll)/,
-             "ordinary group selector #{selector} introduces horizontal scrolling"
+      if body =~ ~r/overflow-x\s*:\s*(auto|scroll)/ do
+        assert String.contains?(selector, ".obpt-detail-surface__evidence") and
+                 String.contains?(selector, ".obpt-code-block__region"),
+               "only bounded detail machine evidence may scroll horizontally: #{selector}"
+      end
 
       for {property, value} <- declarations(body),
           group_visual_property?(property),
@@ -565,6 +577,37 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
         assert String.contains?(value, "var(--obpt-"),
                "group selector #{selector} property #{property} is not token-backed: #{value}"
       end
+    end
+  end
+
+  test "DetailSurface has one responsive scroll owner and both reduced-motion paths" do
+    css = read_contract_file!(@tokens_path)
+    detail_blocks = blocks_for(css, ".obpt-detail-surface")
+
+    assert css =~ ~s(.obpt-detail-surface[data-obpt-detail-mode="drawer"]::backdrop)
+    assert css =~ ~s(.obpt-detail-surface[data-obpt-detail-mode="inline"])
+    assert css =~ "@media (min-width: 64rem)"
+    assert css =~ "@media (max-width: 24rem)"
+    assert css =~ "height: 100dvh"
+    assert css =~ "padding: var(--obpt-space-4)"
+    assert css =~ ~s(.obpt-detail-surface [data-obpt-detail-close]:focus-visible)
+    assert css =~ ~s(.obpt-root[data-obpt-motion="reduce"] .obpt-detail-surface)
+    assert css =~ "@media (prefers-reduced-motion: reduce)"
+    assert css =~ ".obpt-root .obpt-code-block__region"
+    assert css =~ "overflow: auto"
+
+    scroll_owners =
+      Enum.filter(detail_blocks, fn {_selector, body} ->
+        body =~ ~r/overflow-y\s*:\s*auto/
+      end)
+
+    assert [{selector, _body}] = scroll_owners
+    assert selector =~ ~s([data-obpt-detail-mode="drawer"] .obpt-detail-surface__body)
+
+    for {selector, body} <- detail_blocks,
+        body =~ ~r/overflow-x\s*:\s*(auto|scroll)/ do
+      assert selector =~ ".obpt-detail-surface__evidence"
+      assert selector =~ ".obpt-code-block__region"
     end
   end
 

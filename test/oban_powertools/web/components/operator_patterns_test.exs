@@ -460,9 +460,13 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
       assert html =~ ~s(data-obpt-detail-variant="#{variant}")
       assert html =~ ~s(data-obpt-detail-requested="open")
       assert html =~ ~s(aria-labelledby="job-detail-#{variant}-#{state}-title")
+      assert html =~ ~s(id="job-detail-#{variant}-#{state}-body")
+      assert html =~ ~s(id="job-detail-#{variant}-#{state}-status")
       assert html =~ ~s(aria-label="Close job details")
       assert html =~ ~s(data-obpt-detail-fallback="job-results-heading")
       assert html =~ ~s(data-obpt-detail-state="#{state}")
+      assert html =~ ~s(data-obpt-focus-fallback="job-results-heading")
+      assert html =~ "Open full details"
       refute html =~ "Phoenix.FocusWrap"
       refute html =~ ~s(aria-modal="true")
       assert_escaped(html)
@@ -477,6 +481,9 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
     assert count(detail_source, "<dialog") == 1
     assert count(detail_source, "render_slot(@body)") == 1
     assert detail_source =~ "JS.ignore_attributes"
+    assert detail_source =~ "DataDisplay.state_message"
+    assert detail_source =~ "data-obpt-detail-mode"
+    assert detail_source =~ "data-obpt-detail-close"
     refute detail_source =~ "focus_wrap"
     refute detail_source =~ ~s(aria-modal="true")
 
@@ -509,7 +516,7 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
         severity: :neutral,
         completeness: :unknown,
         live: :off,
-        secondary_actions: [slot(:secondary_actions, %{}, fn -> @secret end)]
+        secondary_actions: [slot(:secondary_actions, %{}, fn -> @hostile end)]
       )
 
     assert_escaped(html)
