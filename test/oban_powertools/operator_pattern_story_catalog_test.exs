@@ -29,7 +29,16 @@ defmodule ObanPowertools.OperatorPatternStoryCatalogTest do
     group-explain-audit-narrow-layout
   ]
 
-  @overlay_ids Enum.take(@ids, 6) ++ [Enum.at(@ids, 11)]
+  @overlay_ids Enum.take(@ids, 6) ++ Enum.slice(@ids, 10, 4)
+
+  @story_fields ~w[
+    id kind name description components variant state fixtures activation test_targets
+  ]a
+
+  @components ~w[
+    confirm_action_dialog filter_bar detail_surface attention_card audit_entry why_blocked
+    status_pill empty_state code_block
+  ]a
 
   test "keeps exactly 23 deterministic operator-pattern stories in binding order" do
     stories = stories!()
@@ -42,7 +51,7 @@ defmodule ObanPowertools.OperatorPatternStoryCatalogTest do
     assert Enum.all?(stories, &(&1.kind == :group))
 
     for story <- stories do
-      assert is_atom(story.component)
+      assert story |> Map.keys() |> Enum.sort() == Enum.sort(@story_fields)
       assert is_list(story.components) and story.components != []
       assert is_binary(story.name) and story.name != ""
       assert is_binary(story.description) and story.description != ""
@@ -85,8 +94,11 @@ defmodule ObanPowertools.OperatorPatternStoryCatalogTest do
     assert Enum.all?(stories, fn story ->
              story.activation == :none or
                String.starts_with?(story.id, "group-confirm-") or
-               story.id == "group-detail-modal"
+               String.starts_with?(story.id, "group-detail-")
            end)
+
+    assert Enum.count(stories, &(&1.activation == :overlay)) == 10
+    assert Enum.count(stories, &(&1.activation == :none)) == 13
 
     refute Enum.any?(stories, fn story ->
              story.fixtures[:open] == true or story.fixtures[:initially_open] == true
@@ -96,6 +108,9 @@ defmodule ObanPowertools.OperatorPatternStoryCatalogTest do
   test "fixtures cover explicit truth states and deterministic adversarial content" do
     stories = stories!()
     metadata = inspect(stories, limit: :infinity, printable_limit: :infinity)
+    covered_components = stories |> Enum.flat_map(& &1.components) |> Enum.uniq() |> Enum.sort()
+
+    assert covered_components == Enum.sort(@components)
 
     for required <- [
           "loading",
@@ -137,6 +152,7 @@ defmodule ObanPowertools.OperatorPatternStoryCatalogTest do
 
     assert fixtures == Enum.map(OperatorPatternStoryCatalog.stories(), & &1.fixtures)
     refute Enum.any?(fixtures, &contains_struct?/1)
+    assert Enum.all?(fixtures, &normalized_fixture?/1)
 
     for forbidden <- [
           "PHASE78-GROUP-SECRET-SENTINEL",
@@ -182,4 +198,19 @@ defmodule ObanPowertools.OperatorPatternStoryCatalogTest do
   end
 
   defp contains_struct?(_value), do: false
+
+  defp normalized_fixture?(value) when is_map(value) do
+    Enum.all?(value, fn {key, nested} ->
+      (is_atom(key) or is_binary(key)) and normalized_fixture?(nested)
+    end)
+  end
+
+  defp normalized_fixture?(value) when is_list(value),
+    do: Enum.all?(value, &normalized_fixture?/1)
+
+  defp normalized_fixture?(value) when is_atom(value), do: true
+  defp normalized_fixture?(value) when is_binary(value), do: true
+  defp normalized_fixture?(value) when is_integer(value), do: true
+  defp normalized_fixture?(nil), do: true
+  defp normalized_fixture?(_value), do: false
 end
