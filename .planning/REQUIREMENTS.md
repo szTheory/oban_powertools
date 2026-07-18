@@ -37,7 +37,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 - [x] **FORM-01**: Form primitives (Input, Textarea, Select, Checkbox, Radio, Switch, Combobox/filter, FieldGroup, Label, Hint, Error) are built on `Phoenix.Component`/`to_form`, tokens-only.
 - [x] **FORM-02**: Every field has a programmatic label, error association (`aria-describedby`), visible focus, and validation that does not rely on color alone; disabled vs read-only are visually distinct.
 - [ ] **FORM-03**: Filter/search controls (jobs/forensics) are rebuilt on form primitives with URL-serialized filter state preserved.
-- [ ] **FORM-04**: Destructive-action forms (reason + confirm) use the shared danger pattern with required-reason validation and consequence/scope copy.
+- [x] **FORM-04**: Destructive-action forms (reason + confirm) use the shared danger pattern with required-reason validation and consequence/scope copy.
 
 ### Navigation & App Shell (NAV)
 
@@ -144,7 +144,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 | NAV-01..04 | Phase 76 | Pending |
 | DATA-01..04 | Phase 77 | Complete |
 | GROUP-01..02 | Phase 78 | Pending |
-| FORM-04 | Phase 78 | Pending |
+| FORM-04 | Phase 78 | Complete |
 | PAGE-01, PAGE-05, PAGE-06, PAGE-08 | Phase 79 | Pending |
 | PAGE-02, PAGE-09 | Phase 80 | Pending |
 | FORM-03 | Phase 80 | Pending |
