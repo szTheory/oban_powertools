@@ -113,7 +113,10 @@ defmodule ObanPowertools.Web.AssetsTest do
           ".obpt-root .obpt-confirm-action",
           ".obpt-root .obpt-confirm-action__busy",
           ".obpt-root .obpt-confirm-action__result-row[data-obpt-result=\"failed\"]",
-          ".obpt-root[data-obpt-motion=\"reduce\"] .obpt-confirm-action__dialog"
+          ".obpt-root[data-obpt-motion=\"reduce\"] .obpt-confirm-action__dialog",
+          ".obpt-root .obpt-detail-surface",
+          ".obpt-root .obpt-detail-surface[data-obpt-detail-mode=\"drawer\"]::backdrop",
+          ".obpt-root[data-obpt-motion=\"reduce\"] .obpt-detail-surface"
         ] do
       assert css =~ selector, "expected compiled CSS to include #{selector}"
     end
@@ -140,6 +143,28 @@ defmodule ObanPowertools.Web.AssetsTest do
     assert js =~ "toggleAttribute(\"inert\", collapsedAtNarrowWidth)"
     assert js =~ "filterBarForElement"
     assert js =~ "root.contains(filterBar)"
+    assert js =~ "[data-obpt-detail-surface]"
+    assert js =~ "[data-obpt-detail-close]"
+    assert js =~ "[data-obpt-focus-fallback]"
+    assert js =~ "(min-width: 64rem)"
+    assert js =~ "DETAIL_WIDE_QUERY"
+    assert js =~ "effectiveDetailMode"
+    assert js =~ "syncDetailSurface"
+    assert js =~ "syncDetailSurfaces"
+    assert js =~ "restoreOwnedFocus"
+    assert js =~ "pendingControlledInvokers"
+    assert js =~ "ownedInvokers"
+    assert js =~ "new WeakMap()"
+    assert js =~ "surface.close()"
+    assert js =~ "surface.show()"
+    assert js =~ "surface.showModal()"
+    assert js =~ "surface.setAttribute(\"aria-modal\", \"true\")"
+    assert js =~ "surface.removeAttribute(\"aria-modal\")"
+    assert js =~ "surface.addEventListener(\"cancel\""
+    assert js =~ "surface.addEventListener(\"close\""
+    assert js =~ "requestParentDetailClose"
+    assert js =~ "restoreRemovedOwners"
+    assert js =~ "attributeFilter"
     assert js =~ "MutationObserver"
     assert js =~ "addedNodes"
     assert js =~ "Escape"
@@ -157,6 +182,11 @@ defmodule ObanPowertools.Web.AssetsTest do
     refute js =~ "filter_values"
     refute js =~ "result_data"
     refute js =~ "preview_data"
+    refute js =~ "dialogPolyfill"
+    refute js =~ "oban_powertools:detail"
+    refute js =~ "detail_reason"
+    refute js =~ "detail_token"
+    refute js =~ "detail_result"
   end
 
   test "checked-in CSS and JavaScript are byte-equal to their normalized sources" do

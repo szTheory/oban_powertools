@@ -18,11 +18,21 @@
   const FILTER_BAR_SELECTOR = "[data-obpt-filter-bar]";
   const FILTER_TOGGLE_SELECTOR = "[data-obpt-filter-toggle]";
   const FILTER_FIELDS_SELECTOR = "[data-obpt-filter-fields]";
+  const DETAIL_SURFACE_SELECTOR = "[data-obpt-detail-surface]";
+  const DETAIL_CLOSE_SELECTOR = "[data-obpt-detail-close]";
+  const FOCUS_OWNER_SELECTOR = "[data-obpt-focus-fallback]";
+  const CONTROLLED_TRIGGER_SELECTOR = "[aria-controls]";
 
   const colorPreference = window.matchMedia("(prefers-color-scheme: dark)");
   const contrastPreference = window.matchMedia("(prefers-contrast: more)");
   const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
   const narrowFilterPresentation = window.matchMedia("(max-width: 47.999rem)");
+  const DETAIL_WIDE_QUERY = window.matchMedia("(min-width: 64rem)");
+  const pendingControlledInvokers = new WeakMap();
+  const ownedInvokers = new WeakMap();
+  const ownerRoots = new WeakMap();
+  const preparedDetailSurfaces = new WeakSet();
+  const programmaticDetailClosures = new WeakSet();
 
   function normalizeTheme(theme) {
     return THEMES.has(theme) ? theme : "system";
@@ -62,6 +72,8 @@
     syncThemeControls(root, requestedTheme);
     syncNavDisclosures(root);
     syncFilterDisclosures(root);
+    syncOwnedInvokers(root);
+    syncDetailSurfaces(root);
   }
 
   function roots() {
@@ -237,6 +249,284 @@
     });
   }
 
+  function ownedElementWithId(root, id) {
+    if (!root || !id) {
+      return null;
+    }
+
+    return (
+      Array.from(root.querySelectorAll(FOCUS_OWNER_SELECTOR)).find(
+        (owner) => owner.id === id
+      ) || null
+    );
+  }
+
+  function elementWithId(root, id) {
+    if (!root || !id) {
+      return null;
+    }
+
+    if (root.id === id) {
+      return root;
+    }
+
+    return Array.from(root.querySelectorAll("[id]")).find((element) => element.id === id) || null;
+  }
+
+  function focusableInRoot(element, root) {
+    return Boolean(
+      element &&
+        root &&
+        element.isConnected &&
+        root.contains(element) &&
+        typeof element.focus === "function" &&
+        !element.hasAttribute("disabled") &&
+        !element.closest("[hidden], [inert]")
+    );
+  }
+
+  function rememberControlledInvoker(control) {
+    const root = rootForElement(control);
+    const controlledId = control ? control.getAttribute("aria-controls") : null;
+
+    if (
+      !root ||
+      !controlledId ||
+      control.matches(FILTER_TOGGLE_SELECTOR) ||
+      control.matches(NAV_TOGGLE_SELECTOR)
+    ) {
+      return;
+    }
+
+    const owner = ownedElementWithId(root, controlledId);
+
+    if (owner) {
+      ownedInvokers.set(owner, control);
+      ownerRoots.set(owner, root);
+      pendingControlledInvokers.delete(root);
+    } else {
+      pendingControlledInvokers.set(root, { controlledId, invoker: control });
+    }
+  }
+
+  function syncOwnedInvokers(root) {
+    if (!root || !root.matches || !root.matches(ROOT_SELECTOR)) {
+      return;
+    }
+
+    const pending = pendingControlledInvokers.get(root);
+
+    Array.from(root.querySelectorAll(FOCUS_OWNER_SELECTOR)).forEach((owner) => {
+      ownerRoots.set(owner, root);
+
+      if (pending && pending.controlledId === owner.id) {
+        ownedInvokers.set(owner, pending.invoker);
+        pendingControlledInvokers.delete(root);
+      }
+    });
+  }
+
+  function restoreOwnedFocus(owner) {
+    if (!owner) {
+      return;
+    }
+
+    const root = ownerRoots.get(owner) || rootForElement(owner);
+    const invoker = ownedInvokers.get(owner);
+    const fallbackId = owner.getAttribute("data-obpt-focus-fallback");
+    const fallback = elementWithId(root, fallbackId);
+
+    ownedInvokers.delete(owner);
+    ownerRoots.delete(owner);
+
+    if (root && owner.id) {
+      const pending = pendingControlledInvokers.get(root);
+
+      if (pending && pending.controlledId === owner.id) {
+        pendingControlledInvokers.delete(root);
+      }
+    }
+
+    if (focusableInRoot(invoker, root)) {
+      invoker.focus({ preventScroll: true });
+    } else if (focusableInRoot(fallback, root)) {
+      fallback.focus({ preventScroll: true });
+    }
+  }
+
+  function transferOrRestoreRemovedOwner(owner) {
+    const root = ownerRoots.get(owner) || rootForElement(owner);
+    const replacement = root && ownedElementWithId(root, owner.id);
+
+    if (replacement && replacement !== owner) {
+      const invoker = ownedInvokers.get(owner);
+
+      if (invoker) {
+        ownedInvokers.set(replacement, invoker);
+      }
+
+      ownerRoots.set(replacement, root);
+      ownedInvokers.delete(owner);
+      ownerRoots.delete(owner);
+    } else {
+      restoreOwnedFocus(owner);
+    }
+  }
+
+  function restoreRemovedOwners(mutations) {
+    const removedOwners = new Set();
+
+    mutations.forEach((mutation) => {
+      mutation.removedNodes.forEach((node) => {
+        if (!node || node.nodeType !== 1) {
+          return;
+        }
+
+        if (node.matches(FOCUS_OWNER_SELECTOR)) {
+          removedOwners.add(node);
+        }
+
+        Array.from(node.querySelectorAll(FOCUS_OWNER_SELECTOR)).forEach((owner) =>
+          removedOwners.add(owner)
+        );
+      });
+    });
+
+    removedOwners.forEach((owner) => transferOrRestoreRemovedOwner(owner));
+  }
+
+  function effectiveDetailMode(surface) {
+    const variant = surface ? surface.getAttribute("data-obpt-detail-variant") : "adaptive";
+
+    if (variant === "inline" || variant === "drawer") {
+      return variant;
+    }
+
+    return DETAIL_WIDE_QUERY.matches ? "inline" : "drawer";
+  }
+
+  function detailIsModal(surface) {
+    if (!surface || !surface.open || !surface.matches) {
+      return false;
+    }
+
+    try {
+      return surface.matches(":modal");
+    } catch (_error) {
+      return surface.getAttribute("aria-modal") === "true";
+    }
+  }
+
+  function closeDetailSurface(surface) {
+    if (surface && surface.open && typeof surface.close === "function") {
+      programmaticDetailClosures.add(surface);
+      surface.close();
+    }
+  }
+
+  function requestParentDetailClose(surface) {
+    const root = rootForElement(surface);
+    const closeControl = surface ? surface.querySelector(DETAIL_CLOSE_SELECTOR) : null;
+
+    if (root && closeControl && root.contains(closeControl) && typeof closeControl.click === "function") {
+      closeControl.click();
+    }
+  }
+
+  function prepareDetailSurface(surface) {
+    if (preparedDetailSurfaces.has(surface)) {
+      return;
+    }
+
+    preparedDetailSurfaces.add(surface);
+
+    surface.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      requestParentDetailClose(surface);
+    });
+
+    surface.addEventListener("close", () => {
+      if (programmaticDetailClosures.has(surface)) {
+        programmaticDetailClosures.delete(surface);
+        return;
+      }
+
+      if (surface.getAttribute("data-obpt-detail-requested") === "open") {
+        requestParentDetailClose(surface);
+      }
+
+      restoreOwnedFocus(surface);
+    });
+  }
+
+  function syncDetailSurface(surface) {
+    const root = rootForElement(surface);
+
+    if (
+      !root ||
+      !surface ||
+      !surface.matches ||
+      !surface.matches(DETAIL_SURFACE_SELECTOR) ||
+      surface.tagName !== "DIALOG" ||
+      !root.contains(surface)
+    ) {
+      return;
+    }
+
+    ownerRoots.set(surface, root);
+    prepareDetailSurface(surface);
+
+    const requestedOpen = surface.getAttribute("data-obpt-detail-requested") === "open";
+    const previousMode = surface.getAttribute("data-obpt-detail-mode");
+    const nextMode = effectiveDetailMode(surface);
+    const shouldBeModal = nextMode === "drawer";
+    const activeElement = root.ownerDocument ? root.ownerDocument.activeElement : null;
+    const retainedFocus = surface.contains(activeElement) ? activeElement : null;
+    const nativeModeMismatch =
+      surface.open && (detailIsModal(surface) ? "drawer" : "inline") !== nextMode;
+
+    if (!requestedOpen) {
+      closeDetailSurface(surface);
+      surface.setAttribute("data-obpt-detail-mode", nextMode);
+      surface.removeAttribute("aria-modal");
+      restoreOwnedFocus(surface);
+      return;
+    }
+
+    if (surface.open && (previousMode !== nextMode || nativeModeMismatch)) {
+      closeDetailSurface(surface);
+    }
+
+    surface.setAttribute("data-obpt-detail-mode", nextMode);
+
+    if (shouldBeModal) {
+      surface.setAttribute("aria-modal", "true");
+
+      if (!surface.open && typeof surface.showModal === "function") {
+        surface.showModal();
+      }
+    } else {
+      surface.removeAttribute("aria-modal");
+
+      if (!surface.open && typeof surface.show === "function") {
+        surface.show();
+      }
+    }
+
+    if (retainedFocus && focusableInRoot(retainedFocus, root) && surface.contains(retainedFocus)) {
+      retainedFocus.focus({ preventScroll: true });
+    }
+  }
+
+  function syncDetailSurfaces(root) {
+    if (!root || !root.matches || !root.matches(ROOT_SELECTOR)) {
+      return;
+    }
+
+    syncOwnedInvokers(root);
+    Array.from(root.querySelectorAll(DETAIL_SURFACE_SELECTOR)).forEach(syncDetailSurface);
+  }
+
   function syncThemeControls(root, requestedTheme) {
     Array.from(root.querySelectorAll(THEME_CHOICE_SELECTOR)).forEach((control) => {
       const selected = control.getAttribute("data-obpt-theme-choice") === requestedTheme;
@@ -289,6 +579,12 @@
     const changedRoots = new Set();
 
     mutations.forEach((mutation) => {
+      const targetRoot = rootForElement(mutation.target);
+
+      if (targetRoot) {
+        changedRoots.add(targetRoot);
+      }
+
       mutation.addedNodes.forEach((node) => {
         if (!node || node.nodeType !== 1) {
           return;
@@ -317,12 +613,24 @@
     }
 
     const observer = new window.MutationObserver((mutations) => {
+      restoreRemovedOwners(mutations);
+
       rootsFromMutations(mutations).forEach((root) => {
         apply(root, root.getAttribute(ATTR_THEME) || storedTheme());
       });
     });
 
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: [
+        "aria-controls",
+        "data-obpt-detail-requested",
+        "data-obpt-detail-variant",
+        "data-obpt-focus-fallback"
+      ]
+    });
   }
 
   const currentRoot =
@@ -365,7 +673,28 @@
     roots().forEach((root) => syncFilterDisclosures(root));
   });
 
+  DETAIL_WIDE_QUERY.addEventListener("change", () => {
+    roots().forEach((root) => syncDetailSurfaces(root));
+  });
+
   document.addEventListener("click", (event) => {
+    const controlledTrigger = closestElement(event, CONTROLLED_TRIGGER_SELECTOR);
+
+    if (controlledTrigger) {
+      rememberControlledInvoker(controlledTrigger);
+    }
+
+    const detailCloseControl = closestElement(event, DETAIL_CLOSE_SELECTOR);
+
+    if (detailCloseControl) {
+      const detailSurface = detailCloseControl.closest(DETAIL_SURFACE_SELECTOR);
+      const root = rootForElement(detailCloseControl);
+
+      if (detailSurface && root && root.contains(detailSurface)) {
+        return;
+      }
+    }
+
     const filterControl = closestElement(event, FILTER_TOGGLE_SELECTOR);
 
     if (filterControl) {
@@ -466,6 +795,10 @@
     storedTheme,
     effectiveTheme,
     setFilterState,
-    syncFilterDisclosures
+    syncFilterDisclosures,
+    effectiveDetailMode,
+    syncDetailSurface,
+    syncDetailSurfaces,
+    restoreOwnedFocus
   };
 })();
