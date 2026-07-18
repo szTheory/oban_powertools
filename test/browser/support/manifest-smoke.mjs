@@ -61,7 +61,7 @@ function loadManifest() {
 
 const manifest = loadManifest();
 
-equal(manifest.schema_version, 5, 'schema_version');
+equal(manifest.schema_version, 6, 'schema_version');
 exactList(array(manifest.themes, 'themes'), expectedThemes, 'themes');
 
 const viewports = array(manifest.viewports, 'viewports');
@@ -213,7 +213,42 @@ for (const [index, story] of dataStories.entries()) {
   expectedTargets.push({ ...actual });
 }
 
+const groupStories = array(manifest.group_stories, 'group_stories');
+equal(groupStories.length, 23, 'group_stories.length');
+
+const groupIds = new Set();
+
+for (const [index, story] of groupStories.entries()) {
+  const actual = record(story, `group_stories[${index}]`);
+  const id = string(actual.id, `group_stories[${index}].id`);
+  const components = array(actual.components, `group_stories[${index}].components`);
+  const variant = array(actual.variant, `group_stories[${index}].variant`);
+  const state = array(actual.state, `group_stories[${index}].state`);
+
+  equal(actual.kind, 'group', `group_stories[${index}].kind`);
+  if (!/^group-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)) {
+    fail(`group_stories[${index}].id must be a slug-like group-* identifier`);
+  }
+  equal(groupIds.has(id), false, `group_stories[${index}].id unique`);
+  groupIds.add(id);
+  string(actual.component, `group_stories[${index}].component`);
+  string(actual.name, `group_stories[${index}].name`);
+  string(actual.description, `group_stories[${index}].description`);
+  equal(components.length > 0, true, `group_stories[${index}].components non-empty`);
+  equal(variant.length > 0, true, `group_stories[${index}].variant non-empty`);
+  equal(state.length > 0, true, `group_stories[${index}].state non-empty`);
+  if (actual.activation !== 'none' && actual.activation !== 'overlay') {
+    fail(`group_stories[${index}].activation must be "none" or "overlay"`);
+  }
+  equal(actual.story, `obpt-group-story-${id}`, `group_stories[${index}].story`);
+  equal(actual.snapshot, `showcase/${id}`, `group_stories[${index}].snapshot`);
+  equal(actual.a11y, `[data-obpt-group-story="${id}"]`, `group_stories[${index}].a11y`);
+
+  expectedTargets.push({ ...actual });
+}
+
 const targets = array(manifest.targets, 'targets');
+equal(expectedTargets.length, 64, 'expected targets.length');
 equal(targets.length, expectedTargets.length, 'targets.length');
 
 for (const [index, target] of targets.entries()) {
@@ -320,8 +355,30 @@ for (const [index, target] of targets.entries()) {
       `targets[${index}].state`
     );
   }
+
+  if (expected.kind === 'group') {
+    equal(actual.component, expected.component, `targets[${index}].component`);
+    exactList(
+      array(actual.components, `targets[${index}].components`),
+      expected.components,
+      `targets[${index}].components`
+    );
+    equal(actual.name, expected.name, `targets[${index}].name`);
+    equal(actual.description, expected.description, `targets[${index}].description`);
+    exactList(
+      array(actual.variant, `targets[${index}].variant`),
+      expected.variant,
+      `targets[${index}].variant`
+    );
+    exactList(
+      array(actual.state, `targets[${index}].state`),
+      expected.state,
+      `targets[${index}].state`
+    );
+    equal(actual.activation, expected.activation, `targets[${index}].activation`);
+  }
 }
 
 console.log(
-  `showcase manifest ok: ${scenarios.length} scenarios, ${primitiveStories.length} primitive stories, ${formStories.length} form stories, ${shellStories.length} shell stories, ${dataStories.length} data stories, ${targets.length} targets, ${expectedThemes.length} themes, ${expectedViewports.length} viewports`
+  `showcase manifest ok: ${scenarios.length} scenarios, ${primitiveStories.length} primitive stories, ${formStories.length} form stories, ${shellStories.length} shell stories, ${dataStories.length} data stories, ${groupStories.length} group stories, ${targets.length} targets, ${expectedThemes.length} themes, ${expectedViewports.length} viewports`
 );

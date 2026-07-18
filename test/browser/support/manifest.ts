@@ -55,15 +55,21 @@ export type ShowcaseDataStory = Omit<ShowcasePrimitiveStory, 'kind'> & {
   kind: 'data';
 };
 
+export type ShowcaseGroupStory = Omit<ShowcasePrimitiveStory, 'kind'> & {
+  kind: 'group';
+  activation: 'none' | 'overlay';
+};
+
 export type ShowcaseTarget =
   | (ShowcaseScenario & { kind: 'scenario' })
   | ShowcasePrimitiveStory
   | ShowcaseFormStory
   | ShowcaseShellStory
-  | ShowcaseDataStory;
+  | ShowcaseDataStory
+  | ShowcaseGroupStory;
 
 export type ShowcaseManifest = {
-  schema_version: 5;
+  schema_version: 6;
   themes: ShowcaseTheme[];
   viewports: ShowcaseViewport[];
   scenarios: ShowcaseScenario[];
@@ -71,6 +77,7 @@ export type ShowcaseManifest = {
   form_stories: ShowcaseFormStory[];
   shell_stories: ShowcaseShellStory[];
   data_stories: ShowcaseDataStory[];
+  group_stories: ShowcaseGroupStory[];
   targets: ShowcaseTarget[];
 };
 
@@ -88,7 +95,7 @@ export function loadManifest(filePath = manifestPath): ShowcaseManifest {
 function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
   const manifest = assertRecord(value, filePath);
 
-  assertEqual(manifest.schema_version, 5, 'schema_version');
+  assertEqual(manifest.schema_version, 6, 'schema_version');
 
   const themes = assertStringArray(manifest.themes, 'themes') as ShowcaseTheme[];
   assertExactList(themes, [...allowedThemes], 'themes');
@@ -218,6 +225,17 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
 
   assertEqual(dataStories.length, 10, 'data_stories.length');
 
+  const groupStories = assertArray(manifest.group_stories, 'group_stories').map(
+    (story, index) =>
+      validateComponentStory(story, index, 'group_stories', 'group') as ShowcaseGroupStory
+  );
+
+  assertEqual(groupStories.length, 23, 'group_stories.length');
+  assertUniqueList(
+    groupStories.map((story) => story.id),
+    'group_stories ids'
+  );
+
   const targets = assertArray(manifest.targets, 'targets').map((target, index) =>
     validateTarget(target, index)
   );
@@ -229,9 +247,11 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
     ...primitiveStories,
     ...formStories,
     ...shellStories,
-    ...dataStories
+    ...dataStories,
+    ...groupStories
   ];
 
+  assertEqual(expectedTargets.length, 64, 'expected targets.length');
   assertEqual(targets.length, expectedTargets.length, 'targets.length');
 
   for (const [index, expectedTarget] of expectedTargets.entries()) {
@@ -253,7 +273,8 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
       (actualTarget.kind === 'primitive' ||
         actualTarget.kind === 'form' ||
         actualTarget.kind === 'shell' ||
-        actualTarget.kind === 'data') &&
+        actualTarget.kind === 'data' ||
+        actualTarget.kind === 'group') &&
       actualTarget.kind === expectedTarget.kind
     ) {
       assertEqual(actualTarget.component, expectedTarget.component, `targets[${index}].component`);
@@ -278,11 +299,19 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
           `targets[${index}].nav_state`
         );
       }
+
+      if (actualTarget.kind === 'group' && expectedTarget.kind === 'group') {
+        assertEqual(
+          actualTarget.activation,
+          expectedTarget.activation,
+          `targets[${index}].activation`
+        );
+      }
     }
   }
 
   return {
-    schema_version: 5,
+    schema_version: 6,
     themes,
     viewports,
     scenarios,
@@ -290,6 +319,7 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
     form_stories: formStories,
     shell_stories: shellStories,
     data_stories: dataStories,
+    group_stories: groupStories,
     targets
   };
 }
@@ -310,7 +340,13 @@ function validateTarget(value: unknown, index: number): ShowcaseTarget {
     return { kind, id, domain, persona, states, story, snapshot, a11y };
   }
 
-  if (kind === 'primitive' || kind === 'form' || kind === 'shell' || kind === 'data') {
+  if (
+    kind === 'primitive' ||
+    kind === 'form' ||
+    kind === 'shell' ||
+    kind === 'data' ||
+    kind === 'group'
+  ) {
     const component = assertString(actual.component, `targets[${index}].component`);
     const components = assertStringArray(actual.components, `targets[${index}].components`);
     const name = assertString(actual.name, `targets[${index}].name`);
@@ -338,20 +374,33 @@ function validateTarget(value: unknown, index: number): ShowcaseTarget {
       };
     }
 
+    if (kind === 'group') {
+      return {
+        ...target,
+        activation: assertActivation(actual.activation, `targets[${index}].activation`)
+      };
+    }
+
     return target;
   }
 
   throw new Error(
-    `targets[${index}].kind must be "scenario", "primitive", "form", "shell", or "data"`
+    `targets[${index}].kind must be "scenario", "primitive", "form", "shell", "data", or "group"`
   );
 }
 
 function validateComponentStory(
   value: unknown,
   index: number,
-  collection: 'primitive_stories' | 'form_stories' | 'shell_stories' | 'data_stories',
-  kind: 'primitive' | 'form' | 'shell' | 'data'
-): ShowcasePrimitiveStory | ShowcaseFormStory | ShowcaseShellStory | ShowcaseDataStory {
+  collection:
+    'primitive_stories' | 'form_stories' | 'shell_stories' | 'data_stories' | 'group_stories',
+  kind: 'primitive' | 'form' | 'shell' | 'data' | 'group'
+):
+  | ShowcasePrimitiveStory
+  | ShowcaseFormStory
+  | ShowcaseShellStory
+  | ShowcaseDataStory
+  | ShowcaseGroupStory {
   const actual = assertRecord(value, `${collection}[${index}]`);
   const id = assertString(actual.id, `${collection}[${index}].id`);
   const prefix = kind;
@@ -400,7 +449,24 @@ function validateComponentStory(
     };
   }
 
+  if (kind === 'group') {
+    return {
+      ...result,
+      activation: assertActivation(actual.activation, `${collection}[${index}].activation`)
+    };
+  }
+
   return result;
+}
+
+function assertActivation(value: unknown, label: string): 'none' | 'overlay' {
+  const activation = assertString(value, label);
+
+  if (activation !== 'none' && activation !== 'overlay') {
+    throw new Error(`${label} must be "none" or "overlay"`);
+  }
+
+  return activation;
 }
 
 function assertNavState(value: unknown, label: string): 'closed' | 'open' {
@@ -461,6 +527,10 @@ function assertExactList(actual: string[], expected: string[], label: string): v
   }
 }
 
+function assertUniqueList(actual: string[], label: string): void {
+  assertEqual(new Set(actual).size, actual.length, `${label} unique length`);
+}
+
 export const manifest = loadManifest();
 export const themes = manifest.themes;
 export const viewports = manifest.viewports;
@@ -469,4 +539,5 @@ export const primitiveStories = manifest.primitive_stories;
 export const formStories = manifest.form_stories;
 export const shellStories = manifest.shell_stories;
 export const dataStories = manifest.data_stories;
+export const groupStories = manifest.group_stories;
 export const targets = manifest.targets;

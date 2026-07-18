@@ -3,6 +3,7 @@ alias ObanPowertools.PrimitiveStoryCatalog
 alias ObanPowertools.FormStoryCatalog
 alias ObanPowertools.ShellStoryCatalog
 alias ObanPowertools.DataDisplayStoryCatalog
+alias ObanPowertools.OperatorPatternStoryCatalog
 
 themes = ["system", "light", "dark", "high-contrast"]
 
@@ -125,12 +126,34 @@ data_stories =
     }
   end)
 
+group_stories =
+  OperatorPatternStoryCatalog.stories()
+  |> Enum.map(fn story ->
+    id = Map.fetch!(story, :id)
+    test_targets = Map.fetch!(story, :test_targets)
+
+    %{
+      id: id,
+      kind: story.kind |> Atom.to_string(),
+      component: story.components |> List.first() |> Atom.to_string(),
+      components: Enum.map(story.components, &Atom.to_string/1),
+      name: Map.fetch!(story, :name),
+      description: Map.fetch!(story, :description),
+      variant: stringify_list.(Map.fetch!(story, :variant)),
+      state: stringify_list.(Map.fetch!(story, :state)),
+      activation: stringify.(Map.fetch!(story, :activation)),
+      story: Map.fetch!(test_targets, :story),
+      snapshot: OperatorPatternStoryCatalog.snapshot_name(id),
+      a11y: OperatorPatternStoryCatalog.a11y_target(id)
+    }
+  end)
+
 targets =
   Enum.map(scenarios, &Map.put(&1, :kind, "scenario")) ++
-    primitive_stories ++ form_stories ++ shell_stories ++ data_stories
+    primitive_stories ++ form_stories ++ shell_stories ++ data_stories ++ group_stories
 
 manifest = %{
-  schema_version: 5,
+  schema_version: 6,
   themes: themes,
   viewports: viewports,
   scenarios: scenarios,
@@ -138,6 +161,7 @@ manifest = %{
   form_stories: form_stories,
   shell_stories: shell_stories,
   data_stories: data_stories,
+  group_stories: group_stories,
   targets: targets
 }
 
