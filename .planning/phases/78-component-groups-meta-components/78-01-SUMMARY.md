@@ -56,7 +56,7 @@ status: complete
 - Added a test-only connected LiveView parent that owns reason/count validation, authorization/freshness/duplicate checks, filter draft-versus-applied truth, URL history, detail selection, focus fallback, and real Lifeline stale-preview rejection.
 - Locked the exact ordered 23-story catalog, safe deterministic fixture rules, closed overlay activation, and stable story/snapshot/a11y targets.
 - Added connected Playwright contracts including five Chromium 200% zoom proofs plus an independent schema-6 verifier deriving exactly `23 * 4 * 3 = 276` group baselines.
-- Captured the immutable full pre-execution commit in `78-START-SHA`; the cumulative diff contains only the seven planned artifacts.
+- Captured the immutable full pre-execution commit in `78-START-SHA`; before closeout metadata, the cumulative task diff contained only the seven planned artifacts.
 
 ## Task Commits
 
@@ -110,7 +110,7 @@ None - no external service configuration required.
 
 ## Self-Check: PASSED
 
-- All seven planned artifacts exist and are present in the cumulative start-SHA diff.
+- All seven planned artifacts exist in the cumulative start-SHA diff; closeout adds only this summary plus `STATE.md` and `ROADMAP.md` tracking.
 - All four task commits are present in order.
 - Elixir and Prettier formatting plus JavaScript syntax checks pass.
 - RED failures name only missing `OperatorPatterns`, presenter, catalog, schema-6 `groupStories`, or schema-6 baseline support.
