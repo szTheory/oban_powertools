@@ -5,15 +5,15 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 78
 current_phase_name: component-groups-meta-components
 status: executing
-stopped_at: Completed 78-04-PLAN.md
-last_updated: "2026-07-18T23:06:20.912Z"
+stopped_at: Completed 78-05-PLAN.md
+last_updated: "2026-07-18T23:28:55.797Z"
 last_activity: 2026-07-18
-last_activity_desc: Phase 78 Plan 04 ConfirmActionDialog and server-authoritative confirmation complete
+last_activity_desc: Phase 78 Plan 05 adaptive native DetailSurface and parent-owned history complete
 progress:
   total_phases: 15
   completed_phases: 8
   total_plans: 49
-  completed_plans: 45
+  completed_plans: 46
   percent: 53
 ---
 
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 78 (component-groups-meta-components) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Ready to execute
-Last activity: 2026-07-18 — Phase 78 Plan 04 ConfirmActionDialog and server-authoritative confirmation complete
+Last activity: 2026-07-18 — Phase 78 Plan 05 adaptive native DetailSurface and parent-owned history complete
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Last activity: 2026-07-18 — Phase 78 Plan 04 ConfirmActionDialog and server-au
 | Phase 78 P02 | 12 min | 3 tasks | 10 files |
 | Phase 78 P03 | 27 min | 3 tasks | 9 files |
 | Phase 78 P04 | 15 min | 3 tasks | 7 files |
+| Phase 78 P05 | 16 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -84,12 +85,12 @@ Last activity: 2026-07-18 — Phase 78 Plan 04 ConfirmActionDialog and server-au
 
 ## Session Continuity
 
-**Last session:** 2026-07-18T23:05:06.647Z
-**Stopped at:** Completed 78-04-PLAN.md
+**Last session:** 2026-07-18T23:28:22.217Z
+**Stopped at:** Completed 78-05-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed the stateless ConfirmActionDialog, connected authority and replay proof, and deterministic packaged CSS for Plan 78-04.
-- **Next Action:** Execute Plan 78-05 against the preserved DetailSurface RED contracts.
+- **Last Action:** Completed the one-tree adaptive native DetailSurface, scoped modality/focus controller, deterministic assets, and connected parent history/transition proof for Plan 78-05.
+- **Next Action:** Execute Plan 78-06 for group story catalogs, showcase activation, and schema-6 manifest integration.
 
 ## Decisions
 
@@ -144,6 +145,9 @@ Last activity: 2026-07-18 — Phase 78 Plan 04 ConfirmActionDialog and server-au
 - [Phase 78]: Keep ConfirmActionDialog presentation-only while parents own preview, authorization, mutations, recovery, and receipts. — Prevents rendered previews and disabled controls from becoming authority.
 - [Phase 78]: Represent clean confirmation success by removing the dialog; keep partial and stale outcomes visible and focused. — Preserves truthful result and recovery state without overstating host completion.
 - [Phase 78]: Use pinned LiveView focus and loading primitives with no new confirmation client controller. — Keeps packaged JavaScript unchanged and avoids a host hook requirement.
+- [Phase 78]: Keep DetailSurface presentation-only while parents own selection, authorization, redaction, explicit content states, URLs, history, and confirmation transitions. — Prevents a shared adaptive surface from becoming a data, authority, or navigation boundary.
+- [Phase 78]: Use one native dialog tree with show() inline, showModal() in drawer mode, and close-before-reopen modality switching. — Preserves comparison and outside focus wide while retaining native inertness and focus containment constrained.
+- [Phase 78]: Track detail focus ownership only in root-scoped ephemeral invoker state and owner-element WeakMaps. — Restores a connected invoker or logical fallback without persisting resource, filter, reason, token, or result payloads.
 
 ### Blockers
 
