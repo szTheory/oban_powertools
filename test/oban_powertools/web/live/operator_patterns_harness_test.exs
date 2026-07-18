@@ -14,6 +14,7 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessLive do
     slice = Map.get(session, "slice", "all")
     authorized? = Map.get(session, "authorized?", true)
     confirmation_slice? = slice in ["confirmation", "all"]
+    detail_variant = normalize_detail_variant(Map.get(session, "detail_variant", "adaptive"))
 
     {:ok,
      socket
@@ -46,6 +47,7 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessLive do
      |> assign(:canonical_url, "/operator-patterns-harness?page=4")
      |> assign(:history_ops, [])
      |> assign(:selected_detail, nil)
+     |> assign(:detail_variant, detail_variant)
      |> assign(:detail_state, :ready)
      |> assign(:detail_loaded_announcement, nil)
      |> assign(:detail_fallback_id, "operator-results-heading")}
@@ -268,7 +270,12 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessLive do
   end
 
   def handle_event("browser-back", _params, socket) do
-    {:noreply, assign(socket, selected_detail: nil, detail_loaded_announcement: nil)}
+    {:noreply,
+     assign(socket,
+       selected_detail: nil,
+       canonical_url: filter_url(socket.assigns.applied_filters),
+       detail_loaded_announcement: nil
+     )}
   end
 
   def handle_event("direct-detail", %{"id" => id}, socket) do
@@ -288,12 +295,18 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessLive do
   end
 
   def handle_event("confirm-from-detail", _params, socket) do
+    url = filter_url(socket.assigns.applied_filters)
+
     {:noreply,
-     assign(socket,
+     socket
+     |> assign(
        selected_detail: nil,
+       detail_loaded_announcement: nil,
        confirmation_open?: true,
-       confirmation_state: :preview
-     )}
+       confirmation_state: :preview,
+       canonical_url: url
+     )
+     |> record_history(:replace, url)}
   end
 
   @impl true
@@ -378,11 +391,13 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessLive do
           type="button"
           phx-click="open-detail"
           phx-value-id={id}
-          aria-expanded={@selected_detail == id}
+          aria-expanded={to_string(@selected_detail == id)}
           aria-controls="harness-detail"
-          data-selected={@selected_detail == id}
+          data-selected={to_string(@selected_detail == id)}
         >
-          <span aria-hidden="true">›</span> Job {id} details
+          <span aria-hidden="true">{if(@selected_detail == id, do: "✓", else: "›")}</span>
+          <span>Job {id} details</span>
+          <span :if={@selected_detail == id}>Selected</span>
         </button>
       </section>
 
@@ -392,15 +407,22 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessLive do
         title={"Job #{@selected_detail} details"}
         close_label="Close job details"
         open={true}
-        variant={:adaptive}
+        variant={@detail_variant}
         state={@detail_state}
         resource="job details"
         logical_fallback_id={@detail_fallback_id}
         close_event="close-detail"
         loaded_announcement={@detail_loaded_announcement}
-        full_details_href={"/ops/jobs/jobs/#{@selected_detail}"}
+        full_details_href={full_details_url(@applied_filters, @selected_detail)}
       >
-        <:body>One parent-owned detail body for job {@selected_detail}.</:body>
+        <:body>
+          <p>One parent-owned detail body for job {@selected_detail}.</p>
+          <p id="harness-detail-long-content">
+            Long operator-safe content wraps without creating another tree:
+            job-101-attempt-0000000000000000000000000000000000000000000000000000000000000001.
+          </p>
+          <DataDisplay.redacted_value id="harness-detail-redacted" reason={:policy} />
+        </:body>
         <:actions>
           <Primitives.button phx-click="confirm-from-detail">Preview retry</Primitives.button>
         </:actions>
@@ -625,6 +647,13 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessLive do
     |> then(&"/operator-patterns-harness?#{&1}")
   end
 
+  defp full_details_url(filters, id) do
+    case filter_url(filters) do
+      "/operator-patterns-harness" -> "/ops/jobs/jobs/#{id}"
+      "/operator-patterns-harness?" <> query -> "/ops/jobs/jobs/#{id}?#{query}"
+    end
+  end
+
   defp result_summary(%{"queue" => "", "state" => ""}),
     do: "64 jobs match the applied filters."
 
@@ -649,6 +678,10 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessLive do
   defp normalize_detail_state("permission_denied"), do: :permission_denied
   defp normalize_detail_state("error"), do: :error
   defp normalize_detail_state(_state), do: :ready
+
+  defp normalize_detail_variant("inline"), do: :inline
+  defp normalize_detail_variant("drawer"), do: :drawer
+  defp normalize_detail_variant(_variant), do: :adaptive
 end
 
 defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessTest do
@@ -961,34 +994,67 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessTest do
     render_hook(view, "load-direct-url", %{"queue" => "critical", "state" => "retryable"})
     render_hook(view, "open-detail", %{"id" => "101"})
 
-    assert render(view) =~
-             "push:/operator-patterns-harness?detail=101&queue=critical&state=retryable"
+    first_url = "/operator-patterns-harness?detail=101&queue=critical&state=retryable"
 
-    assert has_element?(view, "#open-detail-101[aria-expanded='true'][data-selected='true']")
+    assert has_element?(view, "[data-canonical-url='#{first_url}']")
+    assert has_element?(view, "[data-history-ops='push:#{first_url}']")
+
+    assert has_element?(
+             view,
+             "#open-detail-101[aria-expanded='true'][aria-controls='harness-detail'][data-selected='true']",
+             "Selected"
+           )
+
+    assert has_element?(
+             view,
+             "#open-detail-202[aria-expanded='false'][aria-controls='harness-detail'][data-selected='false']"
+           )
 
     render_hook(view, "open-detail", %{"id" => "202"})
 
-    assert render(view) =~
-             "replace:/operator-patterns-harness?detail=202&queue=critical&state=retryable"
+    second_url = "/operator-patterns-harness?detail=202&queue=critical&state=retryable"
+
+    assert has_element?(
+             view,
+             "[data-history-ops='push:#{first_url}|replace:#{second_url}']"
+           )
+
+    assert has_element?(view, "#open-detail-202[aria-expanded='true']", "Selected")
 
     render_hook(view, "close-detail", %{})
+
+    list_url = "/operator-patterns-harness?queue=critical&state=retryable"
+
+    assert has_element?(view, "[data-canonical-url='#{list_url}']")
+
+    assert has_element?(
+             view,
+             "[data-history-ops='push:#{first_url}|replace:#{second_url}|replace:#{list_url}']"
+           )
+
+    refute has_element?(view, "#harness-detail")
+  end
+
+  @tag phase78_slice: "detail"
+  test "Back closes first-open detail and direct URLs use logical fallback", %{conn: conn} do
+    {:ok, view, _html} = mount_harness(conn, "detail")
+    render_hook(view, "load-direct-url", %{"queue" => "critical", "state" => "retryable"})
+    render_hook(view, "open-detail", %{"id" => "101"})
+    render_hook(view, "browser-back", %{})
+    refute has_element?(view, "#harness-detail")
 
     assert has_element?(
              view,
              "[data-canonical-url='/operator-patterns-harness?queue=critical&state=retryable']"
            )
 
-    assert render(view) =~ "replace:/operator-patterns-harness?queue=critical&state=retryable"
-  end
-
-  @tag phase78_slice: "detail"
-  test "Back closes first-open detail and direct URLs use logical fallback", %{conn: conn} do
-    {:ok, view, _html} = mount_harness(conn, "detail")
-    render_hook(view, "open-detail", %{"id" => "101"})
-    render_hook(view, "browser-back", %{})
-    refute has_element?(view, "#harness-detail")
+    assert has_element?(
+             view,
+             "[data-history-ops='push:/operator-patterns-harness?detail=101&queue=critical&state=retryable']"
+           )
 
     {:ok, direct, _html} = mount_harness(conn, "detail")
+    render_hook(direct, "load-direct-url", %{"queue" => "critical", "state" => "retryable"})
     render_hook(direct, "direct-detail", %{"id" => "202"})
 
     assert has_element?(
@@ -997,6 +1063,14 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessTest do
            )
 
     assert render(direct) =~ "Job 202 details loaded"
+
+    assert has_element?(
+             direct,
+             "#harness-detail .obpt-detail-surface__footer > .obpt-link[href='/ops/jobs/jobs/202?queue=critical&state=retryable']",
+             "Open full details"
+           )
+
+    assert has_element?(direct, "[data-history-ops='']")
   end
 
   @tag phase78_slice: "detail"
@@ -1011,20 +1085,41 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessTest do
       assert count(html, "One parent-owned detail body") <= 1
       assert html =~ ~s(data-obpt-detail-state="#{state}")
       refute html =~ @secret
+
+      if state == "ready" do
+        assert count(html, "Job 101 details loaded") == 1
+
+        assert html =~
+                 "job-101-attempt-0000000000000000000000000000000000000000000000000000000000000001"
+
+        assert html =~ "Hidden by display policy"
+        assert has_element?(view, "#harness-detail-redacted[data-obpt-redaction-reason='policy']")
+      else
+        refute html =~ "Job 101 details loaded"
+      end
     end
   end
 
+  @tag phase78_slice: "detail"
   test "drawer-to-confirmation transition never nests or stacks dialogs", %{conn: conn} do
-    {:ok, view, _html} = mount_harness(conn, "all")
+    {:ok, view, _html} = mount_harness(conn, "all", %{"detail_variant" => "drawer"})
     render_hook(view, "open-detail", %{"id" => "101"})
     assert count(render(view), "<dialog") == 1
+    assert has_element?(view, "#harness-detail[data-obpt-detail-variant='drawer']")
 
     render_hook(view, "confirm-from-detail", %{})
     html = render(view)
 
-    assert count(html, "<dialog") == 1
+    assert count(html, "<dialog") == 0
+    assert count(html, ~s(role="dialog")) == 1
     assert html =~ ~s(id="harness-confirmation-dialog")
     refute html =~ ~r/<dialog[^>]+id="harness-detail".*harness-confirmation/s
+    assert has_element?(view, "[data-canonical-url='/operator-patterns-harness']")
+
+    assert has_element?(
+             view,
+             "[data-history-ops='push:/operator-patterns-harness?detail=101|replace:/operator-patterns-harness']"
+           )
   end
 
   test "harness source does not edit or impersonate production authority boundaries" do
