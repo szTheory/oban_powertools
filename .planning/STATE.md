@@ -3,28 +3,28 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 78
-current_phase_name: Meta-Components
+current_phase_name: component-groups-meta-components
 status: executing
-stopped_at: Phase 78 UI-SPEC approved
-last_updated: "2026-07-18T21:19:23.907Z"
-last_activity: 2026-07-13
-last_activity_desc: Phase 77 complete, transitioned to Phase 78
+stopped_at: Completed Phase 78 Plan 01 Wave 0 RED contracts; ready for Plan 78-02
+last_updated: "2026-07-18T21:57:22.431Z"
+last_activity: 2026-07-18
+last_activity_desc: Phase 78 Plan 01 Wave 0 RED contracts complete
 progress:
   total_phases: 15
   completed_phases: 8
-  total_plans: 41
-  completed_plans: 41
-  percent: 53
+  total_plans: 49
+  completed_plans: 42
+  percent: 86
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 78 — Component Groups (Meta-Components)
-Plan: Not started
+Phase: 78 (component-groups-meta-components) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-07-13 — Phase 77 complete, transitioned to Phase 78
+Last activity: 2026-07-18 — Phase 78 Plan 01 Wave 0 RED contracts complete
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Last activity: 2026-07-13 — Phase 77 complete, transitioned to Phase 78
 | Phase 77 P07 | 31min | 2 tasks | 129 files |
 | Phase 77 P08 | 11 min | 3 tasks | 7 files |
 | Phase 77 P09 | 6 min | 2 tasks | 3 files |
+| Phase 78 P01 | 22 min | 4 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -95,12 +96,12 @@ Last activity: 2026-07-13 — Phase 77 complete, transitioned to Phase 78
 
 ## Session Continuity
 
-**Last session:** 2026-07-18T18:39:21.952Z
-**Stopped at:** Phase 78 UI-SPEC approved
-**Resume file:** .planning/phases/78-component-groups-meta-components/78-UI-SPEC.md
+**Last session:** 2026-07-18T21:57:22.426Z
+**Stopped at:** Completed Phase 78 Plan 01 Wave 0 RED contracts; ready for Plan 78-02
+**Resume file:** .planning/phases/78-component-groups-meta-components/78-02-PLAN.md
 
-- **Last Action:** Closed VR-01 with fail-closed optional catalog loading, five package-faithful regressions, and unchanged manifest/baseline boundaries.
-- **Next Action:** Re-verify Phase 77, then begin Phase 78 component-group planning.
+- **Last Action:** Committed the Phase 78 Wave 0 component, presenter, connected harness, story catalog, browser behavior, and baseline-scope RED contracts.
+- **Next Action:** Execute Plan 78-02 against the explanation slice while preserving the unfiltered post-78-05 gates.
 
 ## Decisions
 
@@ -144,6 +145,9 @@ Last activity: 2026-07-13 — Phase 77 complete, transitioned to Phase 78
 - [Phase 77]: Canonicalize flash atom/binary aliases to strings, prefer binary aliases, and derive stable DOM ids from URL-safe Base64 keys. — Preserves Phoenix-native per-item dismissal without runtime atom creation or identity collisions.
 - [Phase 77]: Treat omitted or nil progress as no measurement and render only the unavailable branch. — Prevents fabricated zero counts and percentages while retaining optional API compatibility.
 - [Phase 77]: Classify only list-valued optional data story catalogs as available, seed only map-valued flash fixtures, and test the package boundary in fresh child VMs with catalog-free application ebins. — Preserves the deliberate test-support boundary, prevents malformed enumeration/injection, and avoids async module-purge races.
+- [Phase 78]: Keep Wave 0 strictly RED-only; later Phase 78 waves own all production components, presenter symbols, catalog, manifest support, browser helpers, and baselines. — Preserves test-first seams and makes every failure attributable to a missing phase-owned artifact.
+- [Phase 78]: Use exact string-valued phase78_slice tags for incremental component and connected-harness waves, with unfiltered gates deferred until Plan 78-05. — Lets each implementation wave prove only its owned state machine without weakening the complete six-component contract.
+- [Phase 78]: Derive group browser behavior and exactly 276 baseline paths from future schema-6 groupStories rather than duplicating the 23 Elixir-owned story IDs in TypeScript. — Maintains one story-ID source and independently checks missing, extra, tracked, untracked, and renamed screenshot scope.
 
 ### Blockers
 
