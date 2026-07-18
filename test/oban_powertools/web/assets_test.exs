@@ -103,7 +103,10 @@ defmodule ObanPowertools.Web.AssetsTest do
           ".obpt-root .obpt-empty-state",
           ".obpt-root .obpt-toast[data-obpt-tone=\"danger\"]",
           ".obpt-root .obpt-toast__dismiss:focus-visible",
-          ".obpt-root .obpt-flash-group"
+          ".obpt-root .obpt-flash-group",
+          ".obpt-root .obpt-attention-card",
+          ".obpt-root .obpt-why-blocked",
+          ".obpt-root .obpt-audit-entry"
         ] do
       assert css =~ selector, "expected compiled CSS to include #{selector}"
     end
