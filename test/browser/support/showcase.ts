@@ -85,6 +85,45 @@ export function targetLocator(page: Page, target: ShowcaseTarget): Locator {
   return page.locator(target.a11y);
 }
 
+export async function activateTarget(page: Page, target: ShowcaseTarget): Promise<Locator> {
+  await expect(page.locator('[data-phx-main].phx-connected')).toHaveCount(1);
+
+  const story = targetLocator(page, target);
+
+  if (target.kind !== 'group' || target.activation === 'none') {
+    return story;
+  }
+
+  const stage = story.locator(`[data-obpt-group-story-stage="${target.id}"]`);
+  const trigger = story.locator(`[phx-click="activate-group-story"][phx-value-id="${target.id}"]`);
+
+  await expect(trigger).toHaveCount(1);
+  await trigger.dispatchEvent('click');
+  await expect(story).toHaveAttribute('data-obpt-overlay-active', 'true');
+  await expect(stage).toHaveAttribute('data-obpt-overlay-active', 'true');
+  await expect(stage).toHaveCount(1);
+
+  const storyDialog = story.locator('[role="dialog"], dialog[open]');
+  if ((await storyDialog.count()) > 0) {
+    await expect(storyDialog.first()).toBeVisible();
+  } else {
+    await expect(stage).toBeVisible();
+  }
+
+  await expect(
+    page.locator('[data-obpt-group-story][data-obpt-overlay-active="true"]')
+  ).toHaveCount(1);
+
+  const modalCount = await page
+    .locator(
+      '[data-obpt-group-story] [role="dialog"][aria-modal="true"], [data-obpt-group-story] dialog[open]'
+    )
+    .count();
+  expect(modalCount).toBeLessThanOrEqual(1);
+
+  return story;
+}
+
 export async function assertShowcaseStructure(page: Page): Promise<void> {
   await expect(page.locator('.obpt-root')).toHaveCount(1);
   await expect(page.locator('[data-obpt-showcase]')).toHaveCount(1);
@@ -116,10 +155,20 @@ export async function assertShowcaseStructure(page: Page): Promise<void> {
     await expect(page.locator(`a[href="#${sectionId}"]`)).toHaveCount(1);
   }
 
+  const groupTargets = targets.filter((target) => target.kind === 'group');
+  const targetIds = targets.map((target) => target.story);
+
+  expect(new Set(targetIds).size).toBe(targetIds.length);
+  await expect(page.locator('[data-obpt-group-story]')).toHaveCount(groupTargets.length);
+  await expect(
+    page.locator('[data-obpt-group-story][data-obpt-overlay-active="true"]')
+  ).toHaveCount(0);
+
   for (const target of targets) {
-    const story = targetLocator(page, target);
+    const story = await activateTarget(page, target);
 
     await expect(story).toHaveCount(1);
+    await expect(story).toBeVisible();
     await expect(story).toHaveAttribute('id', target.story);
 
     if (target.kind === 'scenario') {
@@ -144,6 +193,22 @@ export async function assertShowcaseStructure(page: Page): Promise<void> {
       await expect(story).toHaveAttribute('data-obpt-variant', target.variant.join(' '));
       await expect(story).toHaveAttribute('data-obpt-state', target.state.join(' '));
       await expect(story).toHaveAttribute('data-obpt-a11y-target', target.a11y);
+    } else if (target.kind === 'group') {
+      const active = target.activation === 'overlay' ? 'true' : 'false';
+      const stage = story.locator(`[data-obpt-group-story-stage="${target.id}"]`);
+
+      await expect(story).toHaveAttribute('data-obpt-group-story', target.id);
+      await expect(story).toHaveAttribute('data-obpt-component', target.components.join(' '));
+      await expect(story).toHaveAttribute('data-obpt-variant', target.variant.join(' '));
+      await expect(story).toHaveAttribute('data-obpt-state', target.state.join(' '));
+      await expect(story).toHaveAttribute('data-obpt-activation', target.activation);
+      await expect(story).toHaveAttribute('data-obpt-overlay-active', active);
+      await expect(story).toHaveAttribute('data-obpt-a11y-target', target.a11y);
+      await expect(stage).toHaveCount(1);
+      await expect(stage).toHaveAttribute('data-obpt-overlay-active', active);
+      await expect(story.locator('[data-obpt-mobile-copy], [data-obpt-desktop-copy]')).toHaveCount(
+        0
+      );
     } else {
       await expect(story).toHaveAttribute('data-obpt-shell-story', target.id);
       await expect(story).toHaveAttribute('data-obpt-component', target.components.join(' '));
