@@ -1,5 +1,5 @@
 defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessLive do
-  use Phoenix.LiveView
+  use Phoenix.LiveView, log: false
 
   alias ObanPowertools.Web.Components.{DataDisplay, Forms, OperatorPatterns, Primitives}
 
