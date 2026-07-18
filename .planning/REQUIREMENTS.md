@@ -55,8 +55,8 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 
 ### Component Groups / Meta-Components (GROUP)
 
-- [ ] **GROUP-01**: Operator meta-patterns are assembled from primitives + data components: ConfirmActionDialog (dry-run → reason → confirm → result), FilterBar, DetailDrawer/Panel, AttentionCard, AuditEntry, "Why blocked?" Explainer.
-- [ ] **GROUP-02**: Each meta-component encapsulates the "explain, then act" preview/reason/audit flow so pages compose rather than re-implement; spacing/hierarchy make the next action obvious and groups hold together at narrow/wide widths.
+- [x] **GROUP-01**: Operator meta-patterns are assembled from primitives + data components: ConfirmActionDialog (dry-run → reason → confirm → result), FilterBar, DetailDrawer/Panel, AttentionCard, AuditEntry, "Why blocked?" Explainer.
+- [x] **GROUP-02**: Each meta-component encapsulates the "explain, then act" preview/reason/audit flow so pages compose rather than re-implement; spacing/hierarchy make the next action obvious and groups hold together at narrow/wide widths.
 
 ### Pages & Flows (PAGE)
 
@@ -86,7 +86,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 ### Microcopy / Voice (COPY)
 
 - [ ] **COPY-01**: Empty/loading/error/confirmation copy across all surfaces follows the BRAND-04 voice and is centralized where avoidable (no scattered literals); the same term is used for the same concept everywhere.
-- [ ] **COPY-02**: Danger/confirmation language is consistent and unambiguous (names the object, states consequence + scope); error copy says how to recover.
+- [x] **COPY-02**: Danger/confirmation language is consistent and unambiguous (names the object, states consequence + scope); error copy says how to recover.
 
 ### Component Showcase (SHOW)
 
