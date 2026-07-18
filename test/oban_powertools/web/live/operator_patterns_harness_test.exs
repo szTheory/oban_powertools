@@ -331,16 +331,16 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessLive do
         clear_href={filter_url(%{"queue" => "", "state" => ""})}
       >
         <:fields>
-          <Forms.select
+          <Forms.input
             field={@filter_form[:queue]}
             label="Queue"
-            options={[{"Any queue", ""}, {"Critical", "critical"}, {"Default", "default"}]}
+            placeholder="Any queue"
             errors={Map.get(@filter_errors, :queue, [])}
           />
-          <Forms.select
+          <Forms.input
             field={@filter_form[:state]}
             label="State"
-            options={[{"Any state", ""}, {"Available", "available"}, {"Retryable", "retryable"}]}
+            placeholder="Any state"
             errors={Map.get(@filter_errors, :state, [])}
           />
         </:fields>
@@ -508,7 +508,11 @@ defmodule ObanPowertools.Web.Live.OperatorPatternsHarnessLive do
   end
 
   defp filter_form(params \\ %{"queue" => "", "state" => ""}, errors \\ %{}) do
-    Phoenix.Component.to_form(params, as: :filters, errors: form_errors(errors))
+    Phoenix.Component.to_form(params,
+      as: :filters,
+      id: "harness-filters-form",
+      errors: form_errors(errors)
+    )
   end
 
   defp form_errors(errors) do
