@@ -145,6 +145,26 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     .obpt-flash-group
   ]
 
+  @group_classes ~w[
+    .obpt-attention-card
+    .obpt-attention-card__header
+    .obpt-attention-card__states
+    .obpt-attention-card__primary-action
+    .obpt-attention-card__secondary-actions
+    .obpt-why-blocked
+    .obpt-why-blocked__list
+    .obpt-why-blocked__blocker
+    .obpt-why-blocked__facts
+    .obpt-why-blocked__next-action
+    .obpt-why-blocked__freshness
+    .obpt-why-blocked__evidence
+    .obpt-audit-entry
+    .obpt-audit-entry__header
+    .obpt-audit-entry__title
+    .obpt-audit-entry__time
+    .obpt-audit-entry__evidence
+  ]
+
   @proof_seam_classes ~w[
     .obpt-tab
     .obpt-modal
@@ -481,6 +501,47 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     assert css =~ "@media (prefers-reduced-motion: reduce)"
   end
 
+  test "operator explanation groups are root-scoped, token-backed, non-color, and 320-safe" do
+    css = read_contract_file!(@tokens_path)
+    group_blocks = group_blocks(css)
+
+    for class <- @group_classes do
+      assert css =~ ".obpt-root #{class}", "missing root-scoped group selector #{class}"
+    end
+
+    assert css =~ ~s(.obpt-attention-card[data-obpt-severity="info"])
+    assert css =~ ~s(.obpt-attention-card[data-obpt-severity="warning"])
+    assert css =~ ~s(.obpt-attention-card[data-obpt-severity="danger"])
+    assert css =~ ".obpt-why-blocked__kind"
+    assert css =~ ".obpt-why-blocked__evidence summary:focus-visible"
+    assert css =~ ".obpt-audit-entry__evidence summary:focus-visible"
+    assert css =~ "min-block-size: calc(var(--obpt-space-7) - var(--obpt-space-1))"
+    assert css =~ "@media (max-width: 24rem)"
+    assert css =~ ~s(.obpt-root[data-obpt-effective-theme="high-contrast"] .obpt-attention-card)
+
+    assert group_blocks != [], "expected operator group CSS blocks to be present"
+
+    for {selector, body} <- group_blocks do
+      for part <- selector_parts(selector) do
+        assert String.starts_with?(part, ".obpt-root"),
+               "group selector is not scoped below .obpt-root: #{part}"
+      end
+
+      refute body =~ ~r/#[0-9a-fA-F]{3,8}/,
+             "group selector #{selector} contains a raw color value"
+
+      refute body =~ ~r/overflow-x\s*:\s*(auto|scroll)/,
+             "ordinary group selector #{selector} introduces horizontal scrolling"
+
+      for {property, value} <- declarations(body),
+          group_visual_property?(property),
+          not allowed_literal_group_value?(value) do
+        assert String.contains?(value, "var(--obpt-"),
+               "group selector #{selector} property #{property} is not token-backed: #{value}"
+      end
+    end
+  end
+
   test "theme selector blocks only remap semantic color/focus variables" do
     css = read_contract_file!(@tokens_path)
     blocks = theme_blocks(css)
@@ -630,6 +691,14 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     end)
   end
 
+  defp group_blocks(css) do
+    Regex.scan(~r/([^{}]+)\{([^{}]+)\}/m, css, capture: :all_but_first)
+    |> Enum.map(fn [selector, body] -> {String.trim(selector), body} end)
+    |> Enum.filter(fn {selector, _body} ->
+      Enum.any?(@group_classes, &String.contains?(selector, &1))
+    end)
+  end
+
   defp selector_parts(selector) do
     selector
     |> String.split(",")
@@ -670,6 +739,18 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
       margin min-block-size min-inline-size outline outline-offset padding transition
       transition-duration
     ]
+  end
+
+  defp group_visual_property?(property) do
+    property in ~w[
+      background border border-block-start border-color border-inline-start border-radius color
+      font-family font-size font-weight gap line-height margin min-block-size outline
+      outline-offset padding padding-block-start
+    ] or String.starts_with?(property, "--obpt-")
+  end
+
+  defp allowed_literal_group_value?(value) do
+    value in ~w[0 auto none transparent] or String.starts_with?(value, "1px solid var(--obpt-")
   end
 
   defp allowed_literal_data_value?(value) do
