@@ -14,7 +14,13 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
     use Phoenix.LiveView
 
-    alias ObanPowertools.Web.Components.{AppShell, DataDisplay, Forms, Primitives}
+    alias ObanPowertools.Web.Components.{
+      AppShell,
+      DataDisplay,
+      Forms,
+      OperatorPatterns,
+      Primitives
+    }
 
     @catalog_module ObanPowertools.ShowcaseCatalog
     @catalog_path Path.expand("../../../../test/support/showcase_catalog.ex", __DIR__)
@@ -32,6 +38,11 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
                          "../../../../test/support/data_display_story_catalog.ex",
                          __DIR__
                        )
+    @group_catalog_module ObanPowertools.OperatorPatternStoryCatalog
+    @group_catalog_path Path.expand(
+                          "../../../../test/support/operator_pattern_story_catalog.ex",
+                          __DIR__
+                        )
 
     @theme_choices [
       %{value: "system", label: "System"},
@@ -70,6 +81,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       form_catalog = load_form_catalog()
       shell_catalog = load_shell_catalog()
       data_catalog = load_data_catalog()
+      group_catalog = load_group_catalog()
 
       {:ok,
        socket
@@ -92,7 +104,20 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
        |> assign(:data_catalog_available?, data_catalog.available?)
        |> assign(:data_stories, data_catalog.stories)
        |> assign(:data_sort_key, "worker")
-       |> assign(:data_sort_direction, :asc)}
+       |> assign(:data_sort_direction, :asc)
+       |> assign(:group_catalog_available?, group_catalog.available?)
+       |> assign(:group_stories, group_catalog.stories)
+       |> assign(:active_group_overlay, nil)
+       |> assign(:group_confirmation_story_id, nil)
+       |> assign(:group_confirmation_state, :preview)
+       |> assign(:group_confirmation_form, group_confirmation_form())
+       |> assign(:group_confirmation_errors, %{})
+       |> assign(:group_confirmation_results, [])
+       |> assign(:group_confirmation_mutation_count, 0)
+       |> assign(:group_confirmation_receipt_count, 0)
+       |> assign(:group_receipt, nil)
+       |> assign(:group_filter_states, initial_group_filter_states(group_catalog.stories))
+       |> assign(:group_detail_state, initial_group_detail_state())}
     end
 
     @impl Phoenix.LiveView
@@ -114,6 +139,132 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
         end
 
       {:noreply, assign(socket, data_sort_key: sort_key, data_sort_direction: direction)}
+    end
+
+    def handle_event("activate-group-story", %{"id" => id}, socket) do
+      {:noreply, activate_group_story(socket, id)}
+    end
+
+    def handle_event("validate-group-confirmation", %{"group_confirmation" => params}, socket) do
+      with %{fixtures: fixtures} <- active_group_story(socket),
+           true <- confirmation_story?(socket.assigns.active_group_overlay) do
+        {form, errors} = validate_group_confirmation(params, fixtures.frozen_count)
+
+        {:noreply,
+         assign(socket,
+           group_confirmation_form: form,
+           group_confirmation_errors: errors
+         )}
+      else
+        _ -> {:noreply, socket}
+      end
+    end
+
+    def handle_event("submit-group-confirmation", %{"group_confirmation" => params}, socket) do
+      with %{fixtures: fixtures} <- active_group_story(socket),
+           true <- confirmation_story?(socket.assigns.active_group_overlay) do
+        {form, errors} = validate_group_confirmation(params, fixtures.frozen_count)
+
+        cond do
+          errors != %{} ->
+            {:noreply,
+             assign(socket,
+               group_confirmation_form: form,
+               group_confirmation_errors: errors,
+               group_confirmation_state: :preview
+             )}
+
+          socket.assigns.group_confirmation_mutation_count > 0 ->
+            {:noreply, socket}
+
+          fixtures.lifecycle in [:expired, :drifted, :consumed] ->
+            {:noreply, assign(socket, :group_confirmation_state, fixtures.lifecycle)}
+
+          fixtures.lifecycle in [:partial, :failed] ->
+            {:noreply,
+             assign(socket,
+               group_confirmation_form: form,
+               group_confirmation_state: fixtures.lifecycle,
+               group_confirmation_results: fixtures.results
+             )}
+
+          fixtures.lifecycle == :submitting ->
+            {:noreply, assign(socket, :group_confirmation_state, :submitting)}
+
+          true ->
+            {:noreply,
+             socket
+             |> assign(:group_confirmation_form, form)
+             |> assign(:group_confirmation_errors, %{})
+             |> assign(:group_confirmation_mutation_count, 1)
+             |> assign(:group_confirmation_receipt_count, 1)
+             |> assign(:group_receipt, group_confirmation_receipt(fixtures))
+             |> assign(:active_group_overlay, nil)}
+        end
+      else
+        _ -> {:noreply, socket}
+      end
+    end
+
+    def handle_event("submit-group-confirmation", _params, socket), do: {:noreply, socket}
+
+    def handle_event("fresh-group-preview", _params, socket) do
+      if confirmation_story?(socket.assigns.active_group_overlay) do
+        {:noreply, assign(socket, :group_confirmation_state, :preview)}
+      else
+        {:noreply, socket}
+      end
+    end
+
+    def handle_event("validate-group-filters", %{"group_filters" => params}, socket) do
+      {:noreply, update_group_filter_state(socket, params, :validate)}
+    end
+
+    def handle_event("apply-group-filters", %{"group_filters" => params}, socket) do
+      {:noreply, update_group_filter_state(socket, params, :apply)}
+    end
+
+    def handle_event("remove-group-filter", %{"id" => id, "field" => field}, socket) do
+      {:noreply, remove_group_filter(socket, id, field)}
+    end
+
+    def handle_event("clear-group-filters", %{"id" => id}, socket) do
+      {:noreply, clear_group_filters(socket, id)}
+    end
+
+    def handle_event("open-group-detail", %{"id" => id}, socket) do
+      {:noreply, activate_group_story(socket, id)}
+    end
+
+    def handle_event("select-group-detail", %{"resource-id" => resource_id}, socket) do
+      detail_state = socket.assigns.group_detail_state
+      operation = if detail_state.selected_id, do: :replace, else: :push
+      url = "/ops/jobs/_showcase?detail=#{URI.encode_www_form(resource_id)}"
+
+      {:noreply,
+       assign(socket, :group_detail_state, %{
+         detail_state
+         | selected_id: resource_id,
+           canonical_url: url,
+           history: detail_state.history ++ [{operation, url}],
+           loaded_announcement: "Job #{resource_id} details loaded."
+       })}
+    end
+
+    def handle_event("close-group-detail", _params, socket) do
+      detail_state = socket.assigns.group_detail_state
+      url = "/ops/jobs/_showcase"
+
+      {:noreply,
+       socket
+       |> assign(:active_group_overlay, nil)
+       |> assign(:group_detail_state, %{
+         detail_state
+         | selected_id: nil,
+           canonical_url: url,
+           history: detail_state.history ++ [{:replace, url}],
+           loaded_announcement: nil
+       })}
     end
 
     def handle_event(_event, _params, socket), do: {:noreply, socket}
@@ -335,6 +486,67 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
                     No data-display stories registered. Add deterministic data stories before updating visual baselines.
                   </p>
                 <% end %>
+              <% "operator-groups" -> %>
+                <%= if @group_catalog_available? and @group_stories != [] do %>
+                  <p
+                    :if={@group_receipt}
+                    id="obpt-group-receipt"
+                    class="obpt-showcase-placeholder"
+                    role="status"
+                    data-obpt-group-receipt-count={@group_confirmation_receipt_count}
+                  >
+                    {@group_receipt}
+                  </p>
+                  <div class="obpt-showcase-story-grid">
+                    <article
+                      :for={story <- @group_stories}
+                      id={target_value(story.test_targets, :story)}
+                      class="obpt-showcase-story"
+                      data-obpt-group-story={story.id}
+                      data-obpt-component={component_value(story)}
+                      data-obpt-variant={state_value(story.variant)}
+                      data-obpt-state={state_value(story.state)}
+                      data-obpt-activation={story.activation}
+                      data-obpt-overlay-active={to_string(@active_group_overlay == story.id)}
+                      data-obpt-a11y-target={target_value(story.test_targets, :a11y)}
+                    >
+                      <header><p>{component_value(story)}</p><h3>{story.name}</h3></header>
+                      <p>{story.description}</p>
+                      <div
+                        class="obpt-primitive-matrix"
+                        data-obpt-group-story-stage={story.id}
+                        data-obpt-overlay-active={to_string(@active_group_overlay == story.id)}
+                      >
+                        <Primitives.button
+                          :if={story.activation == :overlay and @active_group_overlay != story.id}
+                          type="button"
+                          variant={:primary}
+                          phx-click="activate-group-story"
+                          phx-value-id={story.id}
+                        >
+                          Open {story.name}
+                        </Primitives.button>
+                        <.group_story_body
+                          :if={story.activation == :none or @active_group_overlay == story.id}
+                          story={story}
+                          confirmation_state={@group_confirmation_state}
+                          confirmation_form={@group_confirmation_form}
+                          confirmation_results={@group_confirmation_results}
+                          filter_states={@group_filter_states}
+                          detail_state={@group_detail_state}
+                        />
+                      </div>
+                      <dl>
+                        <div><dt>Snapshot</dt><dd><code>{target_value(story.test_targets, :snapshot)}</code></dd></div>
+                        <div><dt>Activation</dt><dd><code>{story.activation}</code></dd></div>
+                      </dl>
+                    </article>
+                  </div>
+                <% else %>
+                  <p class="obpt-showcase-placeholder" data-obpt-group-index="empty">
+                    No operator-pattern stories registered. Add deterministic group stories before updating visual baselines.
+                  </p>
+                <% end %>
               <% _ -> %>
                 <p class="obpt-showcase-placeholder">
                   Reserved for Phase-owned stories. The anchor and selector are stable now.
@@ -500,6 +712,16 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       end
     end
 
+    defp load_group_catalog do
+      with {:ok, module} <- ensure_group_catalog_module(),
+           true <- function_exported?(module, :stories, 0),
+           stories when is_list(stories) <- apply(module, :stories, []) do
+        %{available?: true, stories: stories}
+      else
+        _ -> %{available?: false, stories: []}
+      end
+    end
+
     defp ensure_catalog_module do
       ensure_support_module(@catalog_module, @catalog_path)
     end
@@ -518,6 +740,10 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
     defp ensure_data_catalog_module do
       ensure_support_module(@data_catalog_module, @data_catalog_path)
+    end
+
+    defp ensure_group_catalog_module do
+      ensure_support_module(@group_catalog_module, @group_catalog_path)
     end
 
     defp ensure_support_module(module, path) do
@@ -952,6 +1178,656 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
         <% end %>
       </div>
       """
+    end
+
+    attr(:story, :map, required: true)
+    attr(:confirmation_state, :atom, required: true)
+    attr(:confirmation_form, :any, required: true)
+    attr(:confirmation_results, :list, required: true)
+    attr(:filter_states, :map, required: true)
+    attr(:detail_state, :map, required: true)
+
+    defp group_story_body(assigns) do
+      assigns = assign(assigns, :category, group_story_category(assigns.story.id))
+
+      ~H"""
+      <%= case @category do %>
+        <% :confirmation -> %>
+          <.group_confirmation_story
+            story={@story}
+            state={@confirmation_state}
+            form={@confirmation_form}
+            results={@confirmation_results}
+          />
+        <% :filter -> %>
+          <.group_filter_story story={@story} state={Map.fetch!(@filter_states, @story.id)} />
+        <% :detail -> %>
+          <.group_detail_story story={@story} state={@detail_state} />
+        <% :attention -> %>
+          <.group_attention_story id={@story.id} fixture={@story.fixtures} />
+        <% :blocked -> %>
+          <.group_blocker_story id={@story.id} fixture={@story.fixtures} />
+        <% :audit -> %>
+          <.group_audit_story id={@story.id} fixture={@story.fixtures} />
+        <% :chain -> %>
+          <.group_attention_story id={"#{@story.id}-attention"} fixture={@story.fixtures.attention} />
+          <.group_blocker_story id={"#{@story.id}-blocked"} fixture={@story.fixtures.explanation} />
+          <Primitives.surface variant={:inset}>
+            <strong>{@story.fixtures.confirmation_summary.title}</strong>
+            <p>{@story.fixtures.confirmation_summary.consequence}</p>
+          </Primitives.surface>
+          <.group_audit_story id={"#{@story.id}-audit"} fixture={@story.fixtures.audit} />
+      <% end %>
+      """
+    end
+
+    attr(:story, :map, required: true)
+    attr(:state, :atom, required: true)
+    attr(:form, :any, required: true)
+    attr(:results, :list, required: true)
+
+    defp group_confirmation_story(assigns) do
+      fixture = assigns.story.fixtures
+
+      assigns =
+        assigns
+        |> assign(:fixture, fixture)
+        |> assign(:dismissible, assigns.state != :submitting)
+
+      ~H"""
+      <OperatorPatterns.confirm_action_dialog
+        id={"showcase-#{@story.id}"}
+        intent={@fixture.intent}
+        state={@state}
+        title={@fixture.title}
+        object_label={@fixture.object_label}
+        scope={@fixture.scope}
+        consequence={@fixture.consequence}
+        reversibility={@fixture.reversibility}
+        support_boundary={@fixture.support_boundary}
+        form={@form}
+        bulk_count={@fixture.frozen_count}
+        bulk_scope={@fixture.bulk_scope}
+        confirm_label={@fixture.confirm_label}
+        dismiss_label={@fixture.dismiss_label}
+        pending_copy={@fixture.pending_copy}
+        logical_fallback_id={target_value(@story.test_targets, :story)}
+        submit_event="submit-group-confirmation"
+        dismiss_event="close-group-detail"
+        dismissible={@dismissible}
+        results={@results}
+      >
+        <:recovery>
+          <Primitives.button type="button" variant={:primary} phx-click="fresh-group-preview">
+            Create new preview
+          </Primitives.button>
+        </:recovery>
+        <:audit>
+          <Primitives.link href="/ops/jobs/audit">Open audit evidence</Primitives.link>
+        </:audit>
+        <:support_details>Do not enter secrets in the operator reason.</:support_details>
+      </OperatorPatterns.confirm_action_dialog>
+      """
+    end
+
+    attr(:story, :map, required: true)
+    attr(:state, :map, required: true)
+
+    defp group_filter_story(assigns) do
+      form = group_filter_form(assigns.story.id, assigns.state.draft, assigns.state.errors)
+
+      assigns =
+        assigns
+        |> assign(:form, form)
+        |> assign(:mode, assigns.story.fixtures.mode)
+
+      ~H"""
+      <OperatorPatterns.filter_bar
+        id={"showcase-#{@story.id}"}
+        form={@form}
+        mode={@mode}
+        result_summary={@state.result_summary}
+        results_target_id={"#{@story.id}-results"}
+        active_filters={@state.active_filters}
+        dirty={@state.dirty?}
+        filters_expanded={@story.id == "group-filter-unapplied-invalid"}
+        change_event="validate-group-filters"
+        submit_event="apply-group-filters"
+        clear_href={@story.fixtures.clear_destination}
+      >
+        <:fields>
+          <input type="hidden" name={@form[:story_id].name} value={@story.id} />
+          <Forms.input field={@form[:queue]} label="Queue" placeholder="Any queue" />
+          <Forms.input field={@form[:state]} label="State" placeholder="Any state" />
+          <Forms.input
+            :if={Map.has_key?(@state.draft, "worker")}
+            field={@form[:worker]}
+            label="Worker"
+            placeholder="Any worker"
+          />
+        </:fields>
+      </OperatorPatterns.filter_bar>
+      <div
+        id={"#{@story.id}-results"}
+        class="obpt-showcase-placeholder"
+        data-obpt-group-filter-url={@state.canonical_url}
+        data-obpt-group-filter-history={encode_group_history(@state.history)}
+      >
+        Results remain parent-owned at {@state.canonical_url}.
+      </div>
+      """
+    end
+
+    attr(:story, :map, required: true)
+    attr(:state, :map, required: true)
+
+    defp group_detail_story(assigns) do
+      fixture = assigns.story.fixtures
+      selected_id = assigns.state.selected_id || fixture.selected_id
+      body_items = detail_body_items(fixture.body)
+
+      assigns =
+        assigns
+        |> assign(:fixture, fixture)
+        |> assign(:selected_id, selected_id)
+        |> assign(:body_items, body_items)
+
+      ~H"""
+      <OperatorPatterns.detail_surface
+        id={"showcase-#{@story.id}-surface"}
+        title={"Job #{@selected_id} details"}
+        close_label={@fixture.close_label}
+        open={true}
+        variant={@fixture.variant}
+        state={@state.content_state}
+        resource="job details"
+        logical_fallback_id={target_value(@story.test_targets, :story)}
+        close_event="close-group-detail"
+        loaded_announcement={@state.loaded_announcement}
+        full_details_href={@fixture.full_details_destination}
+      >
+        <:body>
+          <DataDisplay.description_list id={"#{@story.id}-detail-facts"}>
+            <:item :for={{label, value} <- @body_items} label={label}>{value}</:item>
+          </DataDisplay.description_list>
+        </:body>
+        <:actions>
+          <Primitives.button
+            type="button"
+            variant={:neutral}
+            phx-click="select-group-detail"
+            phx-value-resource-id="01JZ8M5P999999999999999998"
+          >
+            Select next job
+          </Primitives.button>
+          <Primitives.button
+            type="button"
+            variant={:primary}
+            phx-click="activate-group-story"
+            phx-value-id="group-confirm-single-reversible"
+          >
+            Preview retry
+          </Primitives.button>
+        </:actions>
+        <:evidence>
+          <DataDisplay.code_block
+            id={"#{@story.id}-detail-evidence"}
+            label="Redaction-safe evidence"
+            content="Only normalized presentation evidence is available."
+          />
+        </:evidence>
+      </OperatorPatterns.detail_surface>
+      <span
+        class="obpt-sr-only"
+        data-obpt-group-detail-url={@state.canonical_url}
+        data-obpt-group-detail-history={encode_group_history(@state.history)}
+      >
+        Parent-owned detail history
+      </span>
+      """
+    end
+
+    attr(:id, :string, required: true)
+    attr(:fixture, :map, required: true)
+
+    defp group_attention_story(assigns) do
+      ~H"""
+      <OperatorPatterns.attention_card
+        id={"showcase-#{@id}"}
+        title={@fixture.title}
+        summary={@fixture.summary}
+        impact={@fixture.impact}
+        observed_at={@fixture.observed_at}
+        observed_datetime={@fixture.observed_datetime}
+        domain={@fixture.domain}
+        status={@fixture.status}
+        severity={@fixture.severity}
+        completeness={@fixture.completeness}
+      >
+        <:primary_action>
+          <Primitives.button
+            type="button"
+            variant={:primary}
+            disabled_reason={Map.get(@fixture, :primary_action_disabled_reason)}
+          >
+            {@fixture.primary_action}
+          </Primitives.button>
+        </:primary_action>
+        <:secondary_actions>
+          <Primitives.link :for={action <- @fixture.secondary_actions} href="/ops/jobs/audit">
+            {action}
+          </Primitives.link>
+        </:secondary_actions>
+      </OperatorPatterns.attention_card>
+      """
+    end
+
+    attr(:id, :string, required: true)
+    attr(:fixture, :map, required: true)
+
+    defp group_blocker_story(assigns) do
+      ~H"""
+      <OperatorPatterns.why_blocked
+        id={"showcase-#{@id}"}
+        title={@fixture.title}
+        summary={@fixture.summary}
+        impact={@fixture.impact}
+        observed_at={@fixture.observed_at}
+        observed_datetime={@fixture.observed_datetime}
+        evidence_state={@fixture.evidence_state}
+        completeness={@fixture.completeness}
+        blockers={@fixture.blockers}
+      >
+        <:next_action>
+          <Primitives.button type="button" variant={:primary}>{@fixture.next_action}</Primitives.button>
+        </:next_action>
+        <:evidence :if={Map.has_key?(@fixture, :evidence)}>
+          <DataDisplay.code_block
+            id={"#{@id}-blocker-evidence"}
+            label="Current and snapshot evidence"
+            content={inspect(@fixture.evidence, pretty: false)}
+          />
+        </:evidence>
+      </OperatorPatterns.why_blocked>
+      """
+    end
+
+    attr(:id, :string, required: true)
+    attr(:fixture, :map, required: true)
+
+    defp group_audit_story(assigns) do
+      assigns = assign(assigns, :entries, group_audit_entries(assigns.fixture))
+
+      ~H"""
+      <div class="obpt-primitive-matrix">
+        <OperatorPatterns.audit_entry
+          :for={{entry, index} <- Enum.with_index(@entries, 1)}
+          id={"showcase-#{@id}-#{index}"}
+          entry={entry}
+        />
+      </div>
+      """
+    end
+
+    defp group_story_category("group-confirm-" <> _rest), do: :confirmation
+    defp group_story_category("group-filter-" <> _rest), do: :filter
+    defp group_story_category("group-detail-" <> _rest), do: :detail
+    defp group_story_category("group-attention-" <> _rest), do: :attention
+    defp group_story_category("group-why-blocked-" <> _rest), do: :blocked
+    defp group_story_category("group-audit-entry-" <> _rest), do: :audit
+    defp group_story_category("group-explain-audit-" <> _rest), do: :chain
+
+    defp confirmation_story?("group-confirm-" <> _rest), do: true
+    defp confirmation_story?(_id), do: false
+
+    defp detail_story?("group-detail-" <> _rest), do: true
+    defp detail_story?(_id), do: false
+
+    defp active_group_story(socket) do
+      Enum.find(socket.assigns.group_stories, &(&1.id == socket.assigns.active_group_overlay))
+    end
+
+    defp activate_group_story(socket, id) do
+      case Enum.find(socket.assigns.group_stories, &(&1.id == id and &1.activation == :overlay)) do
+        nil ->
+          socket
+
+        %{fixtures: fixture} = story ->
+          socket =
+            socket
+            |> assign(:active_group_overlay, story.id)
+            |> assign(:group_receipt, nil)
+
+          cond do
+            confirmation_story?(story.id) -> reset_group_confirmation(socket, story)
+            detail_story?(story.id) -> reset_group_detail(socket, story, fixture)
+          end
+      end
+    end
+
+    defp reset_group_confirmation(socket, story) do
+      fixture = story.fixtures
+
+      params = %{
+        "reason" => fixture.reason || "",
+        "confirmation_count" => fixture.entered_count || ""
+      }
+
+      socket
+      |> assign(:group_confirmation_story_id, story.id)
+      |> assign(:group_confirmation_state, fixture.lifecycle)
+      |> assign(:group_confirmation_form, group_confirmation_form(params))
+      |> assign(:group_confirmation_errors, %{})
+      |> assign(:group_confirmation_results, fixture.results)
+      |> assign(:group_confirmation_mutation_count, 0)
+      |> assign(:group_confirmation_receipt_count, 0)
+      |> assign(:group_detail_state, initial_group_detail_state())
+    end
+
+    defp reset_group_detail(socket, story, fixture) do
+      resource_id = fixture.selected_id
+      url = "/ops/jobs/_showcase?detail=#{URI.encode_www_form(resource_id)}"
+
+      socket
+      |> assign(:group_confirmation_story_id, nil)
+      |> assign(:group_detail_state, %{
+        story_id: story.id,
+        selected_id: resource_id,
+        content_state: fixture.content_state,
+        canonical_url: url,
+        history: [{:push, url}],
+        loaded_announcement: fixture.loaded_announcement
+      })
+    end
+
+    defp validate_group_confirmation(params, frozen_count) do
+      reason = params |> Map.get("reason", "") |> String.trim()
+      count = params |> Map.get("confirmation_count", "") |> String.trim()
+      normalized = %{"reason" => reason, "confirmation_count" => count}
+
+      errors =
+        %{}
+        |> maybe_group_error(:reason, reason == "", "Reason is required.")
+        |> maybe_group_error(
+          :reason,
+          reason != "" and String.length(reason) < 8,
+          "Reason must be at least 8 characters."
+        )
+        |> maybe_group_error(
+          :confirmation_count,
+          is_integer(frozen_count) and count != Integer.to_string(frozen_count),
+          "Type #{frozen_count} to confirm."
+        )
+
+      {group_confirmation_form(normalized, errors), errors}
+    end
+
+    defp group_confirmation_form(
+           params \\ %{"reason" => "", "confirmation_count" => ""},
+           errors \\ %{}
+         ) do
+      to_form(params,
+        as: :group_confirmation,
+        id: "group-confirmation-form",
+        errors: group_form_errors(errors)
+      )
+    end
+
+    defp group_confirmation_receipt(%{frozen_count: count, confirm_label: label}) do
+      count = count || 1
+
+      action =
+        if String.starts_with?(label, "Discard"), do: "Discard requested", else: "Retry requested"
+
+      "#{action} for #{count} #{if(count == 1, do: "job", else: "jobs")}. Audit evidence recorded."
+    end
+
+    defp initial_group_filter_states(stories) do
+      stories
+      |> Enum.filter(&String.starts_with?(&1.id, "group-filter-"))
+      |> Map.new(fn story -> {story.id, group_filter_state(story)} end)
+    end
+
+    defp group_filter_state(story) do
+      draft = stringify_group_filter_values(story.fixtures.draft)
+      applied = stringify_group_filter_values(story.fixtures.applied)
+
+      %{
+        draft: Map.put(draft, "story_id", story.id),
+        applied: applied,
+        errors: normalize_group_filter_errors(story.fixtures.errors),
+        dirty?: story.fixtures.dirty,
+        active_filters: ensure_group_filter_labels(story.fixtures.active_filters),
+        result_summary: story.fixtures.result_summary,
+        canonical_url: group_filter_url(applied),
+        history: []
+      }
+    end
+
+    defp update_group_filter_state(socket, params, operation) do
+      id = Map.get(params, "story_id")
+
+      with %{fixtures: fixture} <- Enum.find(socket.assigns.group_stories, &(&1.id == id)),
+           %{^id => state} <- socket.assigns.group_filter_states do
+        draft = Map.take(params, ["queue", "state", "worker"]) |> Map.put("story_id", id)
+        errors = validate_group_filters(draft)
+        apply? = errors == %{} and (operation == :apply or fixture.mode == :instant)
+
+        next_state =
+          if apply? do
+            applied = Map.drop(draft, ["story_id"])
+            url = group_filter_url(applied)
+            history_operation = if fixture.mode == :instant, do: :replace, else: :push
+
+            %{
+              state
+              | draft: draft,
+                applied: applied,
+                errors: %{},
+                dirty?: false,
+                active_filters: group_active_filters(applied),
+                result_summary: group_filter_result_summary(applied),
+                canonical_url: url,
+                history: state.history ++ [{history_operation, url}]
+            }
+          else
+            %{
+              state
+              | draft: draft,
+                errors: errors,
+                dirty?: Map.drop(draft, ["story_id"]) != state.applied
+            }
+          end
+
+        assign(
+          socket,
+          :group_filter_states,
+          Map.put(socket.assigns.group_filter_states, id, next_state)
+        )
+      else
+        _ -> socket
+      end
+    end
+
+    defp remove_group_filter(socket, id, field) when field in ["queue", "state", "worker"] do
+      case Map.fetch(socket.assigns.group_filter_states, id) do
+        {:ok, state} ->
+          applied = Map.put(state.applied, field, "")
+          url = group_filter_url(applied)
+
+          next_state = %{
+            state
+            | draft: Map.put(applied, "story_id", id),
+              applied: applied,
+              errors: %{},
+              dirty?: false,
+              active_filters: group_active_filters(applied),
+              result_summary: group_filter_result_summary(applied),
+              canonical_url: url,
+              history: state.history ++ [{:push, url}]
+          }
+
+          assign(
+            socket,
+            :group_filter_states,
+            Map.put(socket.assigns.group_filter_states, id, next_state)
+          )
+
+        :error ->
+          socket
+      end
+    end
+
+    defp remove_group_filter(socket, _id, _field), do: socket
+
+    defp clear_group_filters(socket, id) do
+      case Map.fetch(socket.assigns.group_filter_states, id) do
+        {:ok, state} ->
+          applied = Map.new(state.applied, fn {field, _value} -> {field, ""} end)
+          url = group_filter_url(applied)
+
+          next_state = %{
+            state
+            | draft: Map.put(applied, "story_id", id),
+              applied: applied,
+              errors: %{},
+              dirty?: false,
+              active_filters: [],
+              result_summary: group_filter_result_summary(applied),
+              canonical_url: url,
+              history: state.history ++ [{:push, url}]
+          }
+
+          assign(
+            socket,
+            :group_filter_states,
+            Map.put(socket.assigns.group_filter_states, id, next_state)
+          )
+
+        :error ->
+          socket
+      end
+    end
+
+    defp group_filter_form(id, draft, errors) do
+      to_form(draft,
+        as: :group_filters,
+        id: "showcase-#{id}-form",
+        errors: group_form_errors(errors)
+      )
+    end
+
+    defp validate_group_filters(params) do
+      queue = Map.get(params, "queue", "")
+      state = Map.get(params, "state", "")
+
+      %{}
+      |> maybe_group_error(
+        :queue,
+        queue not in ["", "all", "critical-mailer", "default"],
+        "Choose a known queue."
+      )
+      |> maybe_group_error(
+        :state,
+        state not in ["", "all", "available", "retryable"],
+        "Choose a known job state."
+      )
+    end
+
+    defp maybe_group_error(errors, _field, false, _message), do: errors
+
+    defp maybe_group_error(errors, field, true, message),
+      do: Map.update(errors, field, [message], &(&1 ++ [message]))
+
+    defp group_form_errors(errors) do
+      Enum.flat_map(errors, fn {field, messages} ->
+        Enum.map(List.wrap(messages), &{field, {&1, []}})
+      end)
+    end
+
+    defp stringify_group_filter_values(values) do
+      Map.new(values, fn {key, value} -> {to_string(key), to_string(value)} end)
+    end
+
+    defp normalize_group_filter_errors(errors) do
+      Map.new(errors, fn {key, message} -> {key, List.wrap(message)} end)
+    end
+
+    defp ensure_group_filter_labels(filters) do
+      Enum.map(filters, fn filter ->
+        Map.put_new(
+          filter,
+          :remove_label,
+          "Remove #{filter.label}: #{filter.value} filter"
+        )
+      end)
+    end
+
+    defp group_active_filters(applied) do
+      applied
+      |> Enum.reject(fn {_field, value} -> value in ["", "all"] end)
+      |> Enum.sort_by(&elem(&1, 0))
+      |> Enum.map(fn {field, value} ->
+        label = String.capitalize(field)
+
+        %{
+          id: "#{field}-#{value}",
+          label: label,
+          value: value,
+          remove_href: group_filter_url(Map.put(applied, field, "")),
+          remove_label: "Remove #{label}: #{value} filter"
+        }
+      end)
+    end
+
+    defp group_filter_url(applied) do
+      query =
+        applied
+        |> Enum.reject(fn {_field, value} -> value in ["", "all"] end)
+        |> Enum.sort_by(&elem(&1, 0))
+        |> URI.encode_query()
+
+      if query == "", do: "/ops/jobs/_showcase", else: "/ops/jobs/_showcase?#{query}"
+    end
+
+    defp group_filter_result_summary(applied) do
+      if Enum.any?(applied, fn {_field, value} -> value not in ["", "all"] end) do
+        "42 jobs match the applied filters."
+      else
+        "248 jobs match the applied filters."
+      end
+    end
+
+    defp initial_group_detail_state do
+      %{
+        story_id: nil,
+        selected_id: nil,
+        content_state: :ready,
+        canonical_url: "/ops/jobs/_showcase",
+        history: [],
+        loaded_announcement: nil
+      }
+    end
+
+    defp detail_body_items(body) do
+      body
+      |> Enum.reject(fn {_key, value} -> is_list(value) or is_map(value) end)
+      |> Enum.sort_by(fn {key, _value} -> to_string(key) end)
+      |> Enum.map(fn {key, value} ->
+        label = key |> to_string() |> String.replace("_", " ") |> String.capitalize()
+        {label, to_string(value)}
+      end)
+    end
+
+    defp group_audit_entries(%{matrix: matrix} = fixture) when is_list(matrix) do
+      base = Map.delete(fixture, :matrix)
+      Enum.map(matrix, &Map.merge(base, &1))
+    end
+
+    defp group_audit_entries(fixture), do: [fixture]
+
+    defp encode_group_history(history) do
+      Enum.map_join(history, "|", fn {operation, url} -> "#{operation}:#{url}" end)
     end
   end
 end

@@ -93,19 +93,21 @@ defmodule ObanPowertools.OperatorPatternStoryCatalog do
     blockers: [
       %{
         id: "sync-support",
+        evidence_kind: :current,
         label: "Support sync has not completed",
         summary: "The support sync step remains retryable.",
         clearing_condition: "The support sync must record a terminal result.",
         evidence_source: "Current workflow state",
-        code: "step_retryable"
+        technical_code: "step_retryable"
       },
       %{
         id: "notify-disconnected",
+        evidence_kind: :current,
         label: "Notification step is disconnected",
         summary: "No executable predecessor can release the notification step.",
         clearing_condition: "Restore an executable predecessor connection.",
         evidence_source: "Current workflow graph",
-        code: "predecessor_disconnected"
+        technical_code: "predecessor_disconnected"
       }
     ],
     next_action: "Open workflow evidence"
@@ -121,8 +123,8 @@ defmodule ObanPowertools.OperatorPatternStoryCatalog do
     reason: "Provider recovered; retry the customer notification. お客様通知 ✅",
     source: "Powertools operator UI",
     correlation: "audit-event-00000000000000000042",
-    observed_at: @observed_at,
-    observed_datetime: @observed_datetime,
+    occurred_at: @observed_at,
+    occurred_datetime: @observed_datetime,
     changes: []
   }
 
@@ -214,6 +216,7 @@ defmodule ObanPowertools.OperatorPatternStoryCatalog do
           scope: "3 frozen jobs were evaluated.",
           frozen_count: 3,
           entered_count: "3",
+          bulk_scope: "The frozen selection includes jobs outside this page.",
           results: [
             %{
               id: "job-result-success",
@@ -292,7 +295,8 @@ defmodule ObanPowertools.OperatorPatternStoryCatalog do
               id: "state-retryable",
               label: "State",
               value: "retryable",
-              remove_href: "/ops/jobs/_showcase"
+              remove_href: "/ops/jobs/_showcase",
+              remove_label: "Remove State: retryable filter"
             }
           ],
           result_summary: "74 jobs match the applied state filter.",
@@ -318,13 +322,15 @@ defmodule ObanPowertools.OperatorPatternStoryCatalog do
               id: "queue-critical-mailer",
               label: "Queue",
               value: "critical-mailer",
-              remove_href: "/ops/jobs/_showcase?state=retryable"
+              remove_href: "/ops/jobs/_showcase?state=retryable",
+              remove_label: "Remove Queue: critical-mailer filter"
             },
             %{
               id: "state-retryable",
               label: "State",
               value: "retryable",
-              remove_href: "/ops/jobs/_showcase?queue=critical-mailer"
+              remove_href: "/ops/jobs/_showcase?queue=critical-mailer",
+              remove_label: "Remove State: retryable filter"
             }
           ],
           result_summary: "42 jobs match the applied filters.",
@@ -474,7 +480,14 @@ defmodule ObanPowertools.OperatorPatternStoryCatalog do
       state: [:current, :snapshot, :stale],
       activation: :none,
       fixtures:
-        Map.put(@blocker_common, :evidence, %{
+        @blocker_common
+        |> Map.put(:blockers, [
+          hd(@blocker_common.blockers),
+          @blocker_common.blockers
+          |> Enum.at(1)
+          |> Map.put(:evidence_kind, :block_start_snapshot)
+        ])
+        |> Map.put(:evidence, %{
           current: "The support sync remains retryable at #{@observed_at}.",
           snapshot: "At block start, the support sync was executing.",
           snapshot_datetime: "2026-07-18T13:55:00Z"

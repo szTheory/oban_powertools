@@ -18,6 +18,7 @@ defmodule ObanPowertools.HexReleaseTest do
   @rp_manifest_path ".release-please-manifest.json"
   @release_workflow_path ".github/workflows/release.yml"
   @showcase_catalog_path "test/support/showcase_catalog.ex"
+  @operator_pattern_catalog_path "test/support/operator_pattern_story_catalog.ex"
 
   # ---------------------------------------------------------------------------
   # REL-03  CHANGELOG + LICENSE
@@ -167,6 +168,22 @@ defmodule ObanPowertools.HexReleaseTest do
 
       refute Enum.any?(files, &String.contains?(&1, "showcase_catalog")),
              ":files must NOT include showcase catalog support artifacts"
+    end
+
+    test "Phase 78 operator-pattern catalog is local-only and excluded from Hex package files" do
+      files = Mix.Project.config()[:package][:files]
+
+      assert File.exists?(@operator_pattern_catalog_path),
+             "Phase 78 operator-pattern catalog must exist for local dev/test use"
+
+      refute "test" in files,
+             ":files must NOT include test support catalogs"
+
+      refute @operator_pattern_catalog_path in files,
+             ":files must NOT directly include #{@operator_pattern_catalog_path}"
+
+      refute Enum.any?(files, &String.contains?(&1, "operator_pattern_story_catalog")),
+             ":files must NOT include the operator-pattern story catalog"
     end
 
     test "igniter dep has runtime: false (keeps code-gen machinery out of adopter prod)" do
