@@ -163,6 +163,19 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     .obpt-audit-entry__title
     .obpt-audit-entry__time
     .obpt-audit-entry__evidence
+    .obpt-filter-bar
+    .obpt-filter-bar__toggle
+    .obpt-filter-bar__form
+    .obpt-filter-bar__fields
+    .obpt-filter-bar__primary-fields
+    .obpt-filter-bar__advanced-fields
+    .obpt-filter-bar__actions
+    .obpt-filter-bar__dirty
+    .obpt-filter-bar__applied
+    .obpt-filter-bar__applied-list
+    .obpt-filter-bar__active-filter
+    .obpt-filter-bar__active-value
+    .obpt-filter-bar__result-summary
   ]
 
   @proof_seam_classes ~w[
@@ -539,6 +552,30 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
         assert String.contains?(value, "var(--obpt-"),
                "group selector #{selector} property #{property} is not token-backed: #{value}"
       end
+    end
+  end
+
+  test "FilterBar remains one root-scoped tree with 44px actions and narrow no-overflow reflow" do
+    css = read_contract_file!(@tokens_path)
+
+    assert css =~ ~s(.obpt-filter-bar[data-obpt-filter-state="closed"] .obpt-filter-bar__fields)
+    assert css =~ ~s(.obpt-filter-bar__toggle[aria-expanded="true"])
+    assert css =~ ".obpt-filter-bar__toggle:focus-visible"
+    assert css =~ ".obpt-filter-bar__active-filter .obpt-link:focus-visible"
+    assert css =~ "min-block-size: calc(var(--obpt-space-7) - var(--obpt-space-1))"
+    assert css =~ "grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr))"
+    assert css =~ "@media (max-width: 24rem)"
+    assert css =~ "overflow-wrap: anywhere"
+    assert css =~ ~s(.obpt-root[data-obpt-motion="reduce"] .obpt-filter-bar__toggle)
+
+    for {selector, body} <- blocks_for(css, ".obpt-filter-bar") do
+      for part <- selector_parts(selector) do
+        assert String.starts_with?(part, ".obpt-root"),
+               "FilterBar selector is not scoped below .obpt-root: #{part}"
+      end
+
+      refute body =~ ~r/overflow-x\s*:\s*(auto|scroll)/,
+             "FilterBar selector #{selector} introduces horizontal scrolling"
     end
   end
 

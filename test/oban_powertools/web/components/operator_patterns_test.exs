@@ -279,6 +279,48 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
     assert_escaped(html)
   end
 
+  @tag phase78_slice: "filter"
+  test "FilterBar defaults to submit and keeps canonical destinations parent-owned" do
+    html =
+      render_pattern(:filter_bar,
+        id: "default-filters",
+        form: filter_form(),
+        result_summary: "1 job matches the applied filters.",
+        results_target_id: "default-results",
+        active_filters: [
+          %{
+            "id" => "worker-unicode",
+            "label" => "Worker",
+            "value" => @hostile,
+            "remove_href" => "/ops/jobs/jobs?queue=critical",
+            "remove_label" => "Remove Worker filter"
+          }
+        ],
+        clear_href: "/ops/jobs/jobs",
+        fields: [slot(:fields, %{}, fn -> "Worker field" end)]
+      )
+
+    assert html =~ "Apply filters"
+    refute html =~ "Changes not applied."
+    assert html =~ ~s(href="/ops/jobs/jobs?queue=critical")
+    assert html =~ ~s(href="/ops/jobs/jobs")
+    assert_escaped(html)
+
+    filter_source = read_source!() |> function_source(:filter_bar)
+
+    for forbidden <- [
+          "Ecto.Query",
+          "Repo.",
+          "push_patch",
+          "push_navigate",
+          "StatusPill",
+          "URI.encode_query",
+          "Plug.Conn.Query"
+        ] do
+      refute filter_source =~ forbidden
+    end
+  end
+
   @tag phase78_slice: "confirmation"
   test "ConfirmActionDialog preview pins consequence-first copy, form, and focus semantics" do
     html =

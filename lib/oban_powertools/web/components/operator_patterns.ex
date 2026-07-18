@@ -1,6 +1,7 @@
 defmodule ObanPowertools.Web.Components.OperatorPatterns do
   @moduledoc """
-  Stateless operator meta-components composed from the Powertools design system.
+  Stateless operator meta-components composed from Powertools Primitives, Forms,
+  and DataDisplay components.
 
   Parent LiveViews own authorization, data loading, mutations, navigation, and
   durable evidence. These components render finite presentation truth only.
@@ -15,6 +16,122 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
   @completeness_values ~w[complete partial unknown unavailable]a
   @live_values ~w[off polite assertive]a
   @evidence_states ~w[current stale unavailable permission_denied]a
+  @filter_modes ~w[submit instant]a
+
+  attr(:id, :string, required: true)
+  attr(:form, Phoenix.HTML.Form, required: true)
+  attr(:mode, :atom, default: :submit, values: @filter_modes)
+  attr(:result_summary, :string, required: true)
+  attr(:results_target_id, :string, required: true)
+  attr(:active_filters, :list, default: [])
+  attr(:dirty, :boolean, default: false)
+  attr(:filters_expanded, :boolean, default: false)
+  attr(:change_event, :string, default: nil)
+  attr(:submit_event, :string, default: nil)
+  attr(:clear_href, :string, default: nil)
+
+  slot(:fields, required: true)
+  slot(:advanced_fields)
+
+  @doc """
+  Renders one stateless filter form while the parent retains draft, applied, and URL truth.
+  """
+  def filter_bar(assigns) do
+    active_filters = ControlPlanePresenter.normalize_active_filters(assigns.active_filters)
+    mode = filter_mode(assigns.mode)
+
+    assigns =
+      assigns
+      |> assign(:id, require_text!(assigns.id, "filter bar id"))
+      |> assign(:mode, mode)
+      |> assign(
+        :result_summary,
+        require_text!(assigns.result_summary, "filter result summary")
+      )
+      |> assign(
+        :results_target_id,
+        require_text!(assigns.results_target_id, "filter results target id")
+      )
+      |> assign(:active_filters, active_filters)
+      |> assign(:clear_href, filter_clear_href(assigns.clear_href, active_filters))
+      |> assign(:fields_id, filter_dom_id(assigns.id, "fields"))
+      |> assign(:filter_state, if(assigns.filters_expanded, do: "open", else: "closed"))
+      |> assign(:disclosure_label, filter_disclosure_label(active_filters))
+
+    ~H"""
+    <section
+      id={@id}
+      class="obpt-filter-bar"
+      data-obpt-filter-bar
+      data-obpt-filter-state={@filter_state}
+      aria-label="Filters"
+    >
+      <div class="obpt-filter-bar__header">
+        <button
+          type="button"
+          class="obpt-filter-bar__toggle"
+          data-obpt-filter-toggle
+          aria-expanded={to_string(@filters_expanded)}
+          aria-controls={@fields_id}
+        >
+          {@disclosure_label}
+        </button>
+      </div>
+
+      <.form
+        for={@form}
+        class="obpt-filter-bar__form"
+        phx-change={@change_event}
+        phx-submit={if(@mode == :submit, do: @submit_event)}
+      >
+        <div id={@fields_id} class="obpt-filter-bar__fields" data-obpt-filter-fields>
+          <div class="obpt-filter-bar__primary-fields">
+            {render_slot(@fields)}
+          </div>
+
+          <div :if={@advanced_fields != []} class="obpt-filter-bar__advanced-fields">
+            {render_slot(@advanced_fields)}
+          </div>
+
+          <div :if={@mode == :submit} class="obpt-filter-bar__actions">
+            <p :if={@dirty} class="obpt-filter-bar__dirty">Changes not applied.</p>
+            <Primitives.button type="submit" variant={:primary}>Apply filters</Primitives.button>
+          </div>
+        </div>
+      </.form>
+
+      <section
+        :if={@active_filters != []}
+        class="obpt-filter-bar__applied"
+        aria-label="Applied filters"
+      >
+        <h2 class="obpt-filter-bar__applied-title">Applied filters</h2>
+        <ul class="obpt-filter-bar__applied-list">
+          <li :for={filter <- @active_filters} class="obpt-filter-bar__active-filter">
+            <span class="obpt-filter-bar__active-value">
+              <strong>{filter.label}:</strong> {filter.value}
+            </span>
+            <Primitives.link href={filter.remove_href} aria-label={filter.remove_label}>
+              Remove
+            </Primitives.link>
+          </li>
+        </ul>
+        <Primitives.link href={@clear_href}>Clear filters</Primitives.link>
+      </section>
+
+      <p
+        id={filter_dom_id(@id, "result-summary")}
+        class="obpt-filter-bar__result-summary"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-controls={@results_target_id}
+      >
+        {@result_summary}
+      </p>
+    </section>
+    """
+  end
 
   attr(:id, :string, required: true)
   attr(:title, :string, required: true)
@@ -259,6 +376,24 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
   defp live_role(:off), do: nil
   defp live_role(:polite), do: "status"
   defp live_role(:assertive), do: "alert"
+
+  defp filter_mode(mode) when mode in @filter_modes, do: mode
+  defp filter_mode(_mode), do: raise(ArgumentError, "unsupported filter mode")
+
+  defp filter_clear_href(clear_href, []) do
+    case clear_href do
+      nil -> nil
+      value -> require_text!(value, "filter clear destination")
+    end
+  end
+
+  defp filter_clear_href(clear_href, _active_filters),
+    do: require_text!(clear_href, "filter clear destination")
+
+  defp filter_disclosure_label(active_filters),
+    do: "Filters (#{length(active_filters)} applied)"
+
+  defp filter_dom_id(id, suffix), do: "#{id}-#{suffix}"
 
   defp severity_spec(severity) do
     %{
