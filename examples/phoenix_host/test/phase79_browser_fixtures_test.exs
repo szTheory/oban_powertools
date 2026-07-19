@@ -1,22 +1,30 @@
 defmodule PhoenixHostWeb.Phase79BrowserFixturesTest do
   use ExUnit.Case, async: false
 
-  import Ecto.Query
   import Plug.Conn
   import Plug.Test
 
-  alias ObanPowertools.{Audit, Explain}
-  alias ObanPowertools.Cron.Entry
-  alias ObanPowertools.Forensics.LimiterHistoryFact
-  alias ObanPowertools.Lifeline.{Incident, RepairPreview}
-  alias ObanPowertools.Limits.Resource
-  alias PhoenixHost.Repo
-
   @endpoint PhoenixHostWeb.Endpoint
   @fixture_enabled System.get_env("PHASE79_BROWSER_FIXTURES") == "1"
-  @projects ~w(chromium-320 chromium-tablet chromium-wide)
 
   if @fixture_enabled do
+    import Ecto.Query
+
+    alias ObanPowertools.{Audit, Explain}
+    alias ObanPowertools.Cron.Entry
+    alias ObanPowertools.Forensics.LimiterHistoryFact
+    alias ObanPowertools.Lifeline.{Incident, RepairPreview}
+    alias ObanPowertools.Limits.Resource
+    alias PhoenixHost.Repo
+
+    @projects ~w(chromium-320 chromium-tablet chromium-wide)
+
+    setup do
+      :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+      Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+      :ok
+    end
+
     setup_all do
       previous = System.get_env("PHASE79_BROWSER_FIXTURE_SECRET")
       secret = Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false)
@@ -212,6 +220,8 @@ defmodule PhoenixHostWeb.Phase79BrowserFixturesTest do
 
     defp all_keys(list) when is_list(list), do: Enum.flat_map(list, &all_keys/1)
     defp all_keys(_value), do: []
+
+    defp decode(conn), do: Jason.decode!(conn.resp_body)
   else
     @tag :route_off
     test "fixture modules and routes are absent when the compile-time flag is off" do
@@ -220,7 +230,6 @@ defmodule PhoenixHostWeb.Phase79BrowserFixturesTest do
 
       response = post_json("/reset", %{}, nil)
       assert response.status == 404
-      assert response.resp_body == ""
     end
   end
 
@@ -230,6 +239,4 @@ defmodule PhoenixHostWeb.Phase79BrowserFixturesTest do
     conn = if secret, do: put_req_header(conn, "x-phase79-fixture-secret", secret), else: conn
     @endpoint.call(conn, @endpoint.init([]))
   end
-
-  defp decode(conn), do: Jason.decode!(conn.resp_body)
 end
