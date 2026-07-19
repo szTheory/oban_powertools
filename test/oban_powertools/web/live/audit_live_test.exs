@@ -55,7 +55,7 @@ defmodule ObanPowertools.Web.AuditLiveTest do
       Plug.Test.init_test_session(conn, current_actor: %{id: "ops-1", permissions: [:view_audit]})
 
     {:ok, _view, html} = live(conn, "/ops/jobs/audit")
-    assert html =~ "lifeline.repair_executed"
+    assert html =~ "Repair executed"
     assert html =~ "job:123"
     assert html =~ "policy actor: Jane Operator"
     assert html =~ "policy reason: MAINTENANCE WINDOW RESCUE"
@@ -200,6 +200,14 @@ defmodule ObanPowertools.Web.AuditLiveTest do
     assert has_element?(view, "a[href='/ops/jobs/audit']", "Previous")
     assert has_element?(view, "a[href='/ops/jobs/audit?page=3']", "Next")
 
+    assigns = live_assigns(view)
+    assert length(assigns.event_rows) == 20
+    assert assigns.audit_page.page == 2
+    assert assigns.audit_page.page_size == 20
+    assert assigns.audit_page.total_count == 45
+    assert assigns.result_summary == "Records 21–40 of 45 · Page 2 of 3"
+    refute Enum.any?(assigns.event_rows, &match?(%Audit{}, &1))
+
     expected_ids =
       events
       |> Enum.map(& &1.id)
@@ -207,6 +215,78 @@ defmodule ObanPowertools.Web.AuditLiveTest do
       |> Enum.slice(20, 20)
 
     assert_occurs_in_order(html, Enum.map(expected_ids, &~s(id="audit-record-#{&1}")))
+  end
+
+  @tag phase79_slice: "audit"
+  test "keeps only genuine allowlisted evidence in render-intended assigns", %{conn: conn} do
+    event =
+      record_audit!(
+        "lifeline.repair_executed",
+        %{type: :job, id: "safe-evidence"},
+        %{
+          "reason" => "complete operator reason",
+          "source" => "lifeline",
+          "outcome" => "Repair recorded",
+          "outcome_state" => "success",
+          "correlation_id" => "request-79",
+          "evidence" => %{
+            "items" => [%{"label" => "Affected jobs", "value" => "1"}],
+            "preview_token" => "AUDIT-NESTED-TOKEN-SENTINEL"
+          },
+          "principal" => %{
+            "id" => "ops-safe",
+            "type" => "user",
+            "label" => "Safe Operator",
+            "credential" => "AUDIT-PRINCIPAL-CREDENTIAL-SENTINEL"
+          },
+          "command_key" => "AUDIT-COMMAND-SENTINEL",
+          "exception" => "AUDIT-RAW-ERROR-SENTINEL"
+        }
+      )
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "audit-safe-79", permissions: [:view_audit]}
+      )
+
+    {:ok, view, html} = live(conn, "/ops/jobs/audit?event=#{event.id}")
+
+    assert html =~ "policy actor: Safe Operator"
+    assert html =~ "policy reason: COMPLETE OPERATOR REASON"
+    assert html =~ "Repair recorded"
+    assert html =~ "lifeline"
+    assert html =~ "request-79"
+    assert html =~ "Affected jobs"
+
+    for secret <- [
+          "AUDIT-NESTED-TOKEN-SENTINEL",
+          "AUDIT-PRINCIPAL-CREDENTIAL-SENTINEL",
+          "AUDIT-COMMAND-SENTINEL",
+          "AUDIT-RAW-ERROR-SENTINEL"
+        ] do
+      refute html =~ secret
+    end
+
+    assigns = live_assigns(view)
+
+    presentation_assigns =
+      Map.take(assigns, [
+        :audit_page,
+        :event_rows,
+        :active_filters,
+        :selected_detail,
+        :retention_summary
+      ])
+
+    refute contains_audit_schema?(presentation_assigns)
+
+    forbidden_keys =
+      ~w[metadata command_key preview_token plan_hash principal credential exception stacktrace error]
+
+    assert MapSet.disjoint?(
+             nested_keys(presentation_assigns),
+             MapSet.new(forbidden_keys)
+           )
   end
 
   @tag phase79_slice: "audit"
@@ -394,4 +474,66 @@ defmodule ObanPowertools.Web.AuditLiveTest do
 
     assert indexes == Enum.sort(indexes)
   end
+
+  defp live_assigns(view) do
+    view.pid
+    |> :sys.get_state()
+    |> find_live_assigns()
+    |> case do
+      nil -> flunk("expected LiveView socket assigns in process state")
+      assigns -> assigns
+    end
+  end
+
+  defp find_live_assigns(%Phoenix.LiveView.Socket{assigns: assigns}), do: assigns
+
+  defp find_live_assigns(value) when is_tuple(value) do
+    value |> Tuple.to_list() |> Enum.find_value(&find_live_assigns/1)
+  end
+
+  defp find_live_assigns(value) when is_list(value),
+    do: Enum.find_value(value, &find_live_assigns/1)
+
+  defp find_live_assigns(value) when is_map(value) and not is_struct(value) do
+    Enum.find_value(value, fn {key, nested} ->
+      find_live_assigns(key) || find_live_assigns(nested)
+    end)
+  end
+
+  defp find_live_assigns(_value), do: nil
+
+  defp contains_audit_schema?(%Audit{}), do: true
+
+  defp contains_audit_schema?(value) when is_map(value) do
+    Enum.any?(value, fn {key, nested} ->
+      contains_audit_schema?(key) or contains_audit_schema?(nested)
+    end)
+  end
+
+  defp contains_audit_schema?(value) when is_list(value),
+    do: Enum.any?(value, &contains_audit_schema?/1)
+
+  defp contains_audit_schema?(value) when is_tuple(value) do
+    value |> Tuple.to_list() |> Enum.any?(&contains_audit_schema?/1)
+  end
+
+  defp contains_audit_schema?(_value), do: false
+
+  defp nested_keys(value, keys \\ MapSet.new())
+
+  defp nested_keys(value, keys) when is_map(value) do
+    Enum.reduce(value, keys, fn {key, nested}, keys ->
+      keys = if is_atom(key) or is_binary(key), do: MapSet.put(keys, to_string(key)), else: keys
+      nested_keys(nested, keys)
+    end)
+  end
+
+  defp nested_keys(value, keys) when is_list(value),
+    do: Enum.reduce(value, keys, &nested_keys/2)
+
+  defp nested_keys(value, keys) when is_tuple(value) do
+    value |> Tuple.to_list() |> Enum.reduce(keys, &nested_keys/2)
+  end
+
+  defp nested_keys(_value, keys), do: keys
 end
