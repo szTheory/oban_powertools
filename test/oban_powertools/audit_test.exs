@@ -137,11 +137,94 @@ defmodule ObanPowertools.AuditTest do
     refute empty.next?
   end
 
+  @tag phase79_slice: "audit"
+  test "fetch_in_scope/3 resolves one id inside every exact filter and fails closed in one query" do
+    inserted_at = ~N[2026-07-19 14:00:00]
+
+    matching =
+      insert_audit!(
+        "lifeline.repair_executed",
+        %{type: :job, id: "job-123"},
+        inserted_at
+      )
+
+    other_resource =
+      insert_audit!(
+        "lifeline.repair_executed",
+        %{type: :job, id: "job-999"},
+        inserted_at
+      )
+
+    filters = %{
+      "resource_type" => "job",
+      "resource_id" => "job-123",
+      "event_type" => "lifeline.repair_executed"
+    }
+
+    assert {{:ok, %Audit{id: id}}, 1} =
+             capture_audit_queries(fn -> fetch(filters, matching.id) end)
+
+    assert id == matching.id
+
+    assert {:error, 1} = capture_audit_queries(fn -> fetch(filters, other_resource.id) end)
+
+    for mismatched_filters <- [
+          Map.put(filters, "resource_type", "workflow"),
+          Map.put(filters, "resource_id", "other-job"),
+          Map.put(filters, "event_type", "cron.paused")
+        ] do
+      assert :error = fetch(mismatched_filters, matching.id)
+    end
+
+    for malformed <- [nil, "", 0, -1, "not-an-id", "12.3", %{}] do
+      assert :error = fetch(filters, malformed)
+    end
+  end
+
   defp page(filters, opts \\ []) do
     assert function_exported?(Audit, :page, 2),
            "Phase 79 requires Audit.page/2 bounded pagination"
 
     apply(Audit, :page, [filters, Keyword.put(opts, :repo, TestRepo)])
+  end
+
+  defp fetch(filters, id) do
+    assert function_exported?(Audit, :fetch_in_scope, 3),
+           "Phase 79 requires Audit.fetch_in_scope/3 filter-scoped lookup"
+
+    apply(Audit, :fetch_in_scope, [filters, id, [repo: TestRepo]])
+  end
+
+  defp capture_audit_queries(fun) do
+    handler_id = {__MODULE__, make_ref()}
+    event = TestRepo.config() |> Keyword.fetch!(:telemetry_prefix) |> Kernel.++([:query])
+    test_pid = self()
+
+    :telemetry.attach(
+      handler_id,
+      event,
+      fn _event, _measurements, metadata, pid ->
+        if metadata[:source] == "oban_powertools_audit_events" do
+          send(pid, :audit_query)
+        end
+      end,
+      test_pid
+    )
+
+    try do
+      result = fun.()
+      {result, collect_audit_queries(0)}
+    after
+      :telemetry.detach(handler_id)
+    end
+  end
+
+  defp collect_audit_queries(count) do
+    receive do
+      :audit_query -> collect_audit_queries(count + 1)
+    after
+      0 -> count
+    end
   end
 
   defp insert_audit!(action, resource, inserted_at, opts \\ []) do

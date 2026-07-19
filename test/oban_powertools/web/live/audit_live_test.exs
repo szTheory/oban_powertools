@@ -92,7 +92,7 @@ defmodule ObanPowertools.Web.AuditLiveTest do
     conn =
       Plug.Test.init_test_session(conn, current_actor: %{id: "ops-1", permissions: [:view_audit]})
 
-    {:ok, _view, html} =
+    {:ok, view, html} =
       live(
         conn,
         "/ops/jobs/audit?resource_type=job&resource_id=123&event_type=lifeline.repair_executed"
@@ -107,6 +107,23 @@ defmodule ObanPowertools.Web.AuditLiveTest do
     assert html =~ "lifeline.repair_executed"
     assert html =~ "job:123"
     refute html =~ "cron_entry:nightly"
+
+    assert has_element?(
+             view,
+             "#audit-filters a[href='/ops/jobs/audit?resource_id=123&event_type=lifeline.repair_executed']"
+           )
+
+    assert has_element?(
+             view,
+             "#audit-filters a[href='/ops/jobs/audit?resource_type=job&event_type=lifeline.repair_executed']"
+           )
+
+    assert has_element?(
+             view,
+             "#audit-filters a[href='/ops/jobs/audit?resource_type=job&resource_id=123']"
+           )
+
+    assert has_element?(view, "#audit-filters a[href='/ops/jobs/audit']", "Clear filters")
   end
 
   test "forensic audit follow-up preserves scoped resource and event filters", %{conn: conn} do
