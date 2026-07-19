@@ -62,7 +62,7 @@ test('keeps project identities isolated across authenticated resets', async ({ r
   const other = await resetPhase79BrowserFixture(request, {
     secret: credential,
     project: otherProject,
-    run: 'isolation-proof'
+    run: `isolation-${testInfo.project.name}`
   });
 
   expect(other.project).toBe(otherProject);
