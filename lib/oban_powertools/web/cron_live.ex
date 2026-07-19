@@ -135,6 +135,42 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     @impl true
     def render(assigns) do
       ~H"""
+      <.page_content
+        entries={@entries}
+        read_only?={@read_only?}
+        error_message={@error_message}
+        selected_entry={@selected_entry}
+        detail_open?={@detail_open?}
+        history_summary={@history_summary}
+        confirmation_open?={@confirmation_open?}
+        confirmation_action={@confirmation_action}
+        confirmation_state={@confirmation_state}
+        confirmation_form={@confirmation_form}
+        confirmation_result={@confirmation_result}
+        current_actor={@current_actor}
+        reason={@reason}
+        receipt={@receipt}
+      />
+      """
+    end
+
+    attr(:entries, :list, required: true)
+    attr(:read_only?, :boolean, required: true)
+    attr(:error_message, :string, default: nil)
+    attr(:selected_entry, :any, default: nil)
+    attr(:detail_open?, :boolean, default: false)
+    attr(:history_summary, :any, default: nil)
+    attr(:confirmation_open?, :boolean, default: false)
+    attr(:confirmation_action, :map, default: nil)
+    attr(:confirmation_state, :atom, default: :preview)
+    attr(:confirmation_form, :any, default: nil)
+    attr(:confirmation_result, :map, default: nil)
+    attr(:current_actor, :any, default: nil)
+    attr(:reason, :string, default: "")
+    attr(:receipt, :map, default: nil)
+
+    def page_content(assigns) do
+      ~H"""
       <section id="cron-page" class="obpt-cron-page" aria-labelledby="cron-page-title">
         <header class="obpt-cron-page__header">
           <h1 id="cron-page-title">Cron</h1>
@@ -743,9 +779,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp follow_up_row_class(path_or_venue) do
       case ControlPlanePresenter.follow_up_render_variant(path_or_venue) do
-        :native_primary -> "rounded border border-indigo-300 bg-indigo-100 px-2 py-1 font-medium"
-        :bridge_guidance -> "rounded border border-slate-300 bg-white px-2 py-1"
-        :host_guidance -> "rounded border border-amber-300 bg-amber-100 px-2 py-1"
+        :native_primary -> "obpt-runbook-path obpt-runbook-path--native"
+        :bridge_guidance -> "obpt-runbook-path obpt-runbook-path--bridge"
+        :host_guidance -> "obpt-runbook-path obpt-runbook-path--host"
       end
     end
 

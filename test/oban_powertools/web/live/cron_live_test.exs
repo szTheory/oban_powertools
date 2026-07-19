@@ -632,6 +632,8 @@ defmodule ObanPowertools.Web.CronLiveTest do
   test "page source keeps durable APIs and both authorization gates while excluding forged lookup" do
     source = File.read!("lib/oban_powertools/web/cron_live.ex")
 
+    assert function_exported?(ObanPowertools.Web.CronLive, :page_content, 1)
+    assert source =~ "def page_content(assigns)"
     assert source =~ "Cron.preview_entry_action"
     assert source =~ "Cron.pause_cron_entry"
     assert source =~ "Cron.resume_cron_entry"
@@ -643,6 +645,21 @@ defmodule ObanPowertools.Web.CronLiveTest do
     assert source =~ "OperatorPatterns.confirm_action_dialog"
     refute source =~ "find_entry!"
     refute source =~ "Audit.list_all"
+  end
+
+  test "page_content renders the reusable Cron composition without a LiveView socket" do
+    html =
+      render_component(&ObanPowertools.Web.CronLive.page_content/1,
+        entries: [],
+        read_only?: false
+      )
+
+    assert count(html, "<h1") == 1
+    assert html =~ ~s(id="cron-page")
+    assert html =~ ~s(id="cron-entries")
+    refute html =~ ~s(id="cron-entry-detail")
+    refute html =~ ~s(id="cron-confirmation-dialog")
+    refute html =~ ~s(id="cron-receipt")
   end
 
   test "renders history summary and forensic handoff for selected entries", %{conn: conn} do
