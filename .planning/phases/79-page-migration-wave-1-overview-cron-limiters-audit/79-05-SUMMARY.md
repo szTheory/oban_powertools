@@ -95,7 +95,7 @@ The Phase 79 Limiters RED contracts were inherited from Plan 79-01 and turned gr
 
 ### Auto-fixed Issues
 
-**1. [Rule 1 - Bug] Corrected the shared WhyBlocked complete-empty truth sentence**
+**1. [Rule 1 - Bug] Corrected the shared current-explanation empty truth sentence**
 
 - **Found during:** Task 79-05-02
 - **Issue:** The shared component rendered `No blockers are present...`, conflicting with the plan's explicit complete-empty `Runnable` contract and its ban on `No blockers` page truth.
@@ -107,7 +107,7 @@ The Phase 79 Limiters RED contracts were inherited from Plan 79-01 and turned gr
 ---
 
 **Total deviations:** 1 auto-fixed bug.
-**Impact on plan:** The narrow shared-component correction enforces the declared truth contract for Limiters and any later WhyBlocked consumer; no API, route, authorization, domain, or dependency scope expanded.
+**Impact on plan:** The narrow shared-component correction enforces the declared truth contract for Limiters and any later current-explanation consumer; no API, route, authorization, domain, or dependency scope expanded.
 
 ## Issues Encountered
 

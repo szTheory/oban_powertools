@@ -5,15 +5,15 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 79
 current_phase_name: page-migration-wave-1-overview-cron-limiters-audit
 status: executing
-stopped_at: Completed 79-04-PLAN.md
-last_updated: "2026-07-19T20:43:01.309Z"
+stopped_at: Completed 79-05-PLAN.md
+last_updated: "2026-07-19T21:01:26.800Z"
 last_activity: 2026-07-19
-last_activity_desc: Completed Phase 79 Plan 03 stable Overview triage migration
+last_activity_desc: Completed Phase 79 Plan 05 limiter scan and current-evidence migration
 progress:
   total_phases: 15
   completed_phases: 9
   total_plans: 61
-  completed_plans: 54
+  completed_plans: 55
   percent: 60
 ---
 
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 79 (page-migration-wave-1-overview-cron-limiters-audit) — EXECUTING
-Plan: 5 of 12
+Plan: 6 of 12
 Status: Ready to execute
-Last activity: 2026-07-19 — Completed Phase 79 Plan 03 stable Overview triage migration
+Last activity: 2026-07-19 — Completed Phase 79 Plan 05 limiter scan and current-evidence migration
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 03 stable Overview triage 
 | Phase 79 P02 | 15 min | 3 tasks | 3 files |
 | Phase 79 P03 | 13 min | 2 tasks | 3 files |
 | Phase 79 P04 | 17 min | 3 tasks | 2 files |
+| Phase 79 P05 | 14 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -93,12 +94,12 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 03 stable Overview triage 
 
 ## Session Continuity
 
-**Last session:** 2026-07-19T20:43:01.304Z
-**Stopped at:** Completed 79-04-PLAN.md
+**Last session:** 2026-07-19T21:01:26.796Z
+**Stopped at:** Completed 79-05-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed Plan 79-03's deterministic bounded Overview read model and stable shared-component triage hierarchy.
-- **Next Action:** Execute Plan 79-04 to migrate Cron onto the bounded presentation foundation.
+- **Last Action:** Completed Plan 79-05's batched limiter scan and current-before-history evidence composition.
+- **Next Action:** Execute Plan 79-06 to migrate Audit to a bounded scan and URL-owned immutable evidence detail.
 
 ## Decisions
 
@@ -181,6 +182,9 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 03 stable Overview triage 
 - [Phase 79]: Cron actions resolve from server-owned selected entry and preview state, with backend identifiers absent from DOM and URL authority. — Fabricated client resource or action parameters must not become mutation authority.
 - [Phase 79]: Skipped and duplicate run-now claims remain recoverable and require an explicit fresh preview while preserving only the trimmed reason draft. — A recorded slot claim is not clean success and must never silently replay or emit a success receipt.
 - [Phase 79]: Cron render delegates to public pure page_content/1 after parent-owned reads, URL parsing, authorization, and mutation orchestration. — Deterministic page stories need the exact production composition without external state work.
+- [Phase 79]: Reuse the initial batched limiter scan across URL selection patches. — Keeps Resource and State list reads constant while selected-only history and snapshot work stays bounded.
+- [Phase 79]: Keep current limiter evidence, block-start snapshot, and retained history as separate finite presentation structures. — Prevents historical or raw repository facts from becoming current or causal page truth.
+- [Phase 79]: Only complete empty current evidence may render Runnable. — Unavailable or partial evidence must remain explicit even if retained history describes a prior runnable state.
 
 ### Blockers
 
