@@ -67,7 +67,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 - [x] **PAGE-05**: Cron migrated; pause/resume/run preview-confirm flow unchanged.
 - [x] **PAGE-06**: Limiters migrated.
 - [ ] **PAGE-07**: Lifeline (incident triage, repair preview/reason/execute/audit) migrated with mutation flow unchanged.
-- [ ] **PAGE-08**: Audit migrated; filters/retention controls unchanged.
+- [x] **PAGE-08**: Audit migrated; filters/retention controls unchanged.
 - [ ] **PAGE-09**: Forensics (bundle inspection, timeline) migrated.
 - [x] **PAGE-10**: Cross-page consistency — identical concepts look and behave identically across all surfaces.
 
