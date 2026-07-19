@@ -10,6 +10,7 @@ defmodule ObanPowertools.Audit do
   alias ObanPowertools.RuntimeConfig
 
   @primary_key {:id, :id, autogenerate: true}
+  @page_size 20
 
   schema "oban_powertools_audit_events" do
     field(:actor_id, :string)
@@ -72,7 +73,7 @@ defmodule ObanPowertools.Audit do
     repo.all(
       from(event in __MODULE__,
         where: event.resource == ^normalized,
-        order_by: [desc: event.inserted_at]
+        order_by: [desc: event.inserted_at, desc: event.id]
       )
     )
   end
@@ -82,7 +83,7 @@ defmodule ObanPowertools.Audit do
 
     repo.all(
       from(event in __MODULE__,
-        order_by: [desc: event.inserted_at]
+        order_by: [desc: event.inserted_at, desc: event.id]
       )
     )
   end
@@ -92,8 +93,41 @@ defmodule ObanPowertools.Audit do
 
     __MODULE__
     |> filter_query(filters)
-    |> order_by([event], desc: event.inserted_at)
+    |> order_by([event], desc: event.inserted_at, desc: event.id)
     |> repo.all()
+  end
+
+  @doc """
+  Returns one stable, bounded page of audit events for the existing exact filters.
+
+  Pages contain at most #{@page_size} events ordered by `inserted_at DESC, id DESC`.
+  Invalid pages normalize to the first page, excessive pages clamp to the last
+  reachable page, and an empty scope remains on page 1.
+  """
+  def page(filters, opts \\ []) when is_map(filters) and is_list(opts) do
+    repo = RuntimeConfig.repo(opts)
+    query = filter_query(__MODULE__, filters)
+    total_count = repo.aggregate(query, :count, :id)
+    total_pages = total_pages(total_count)
+    page = opts |> Keyword.get(:page, 1) |> normalize_page(total_pages)
+    offset = (page - 1) * @page_size
+
+    events =
+      query
+      |> order_by([event], desc: event.inserted_at, desc: event.id)
+      |> limit(^@page_size)
+      |> offset(^offset)
+      |> repo.all()
+
+    %{
+      events: events,
+      total_count: total_count,
+      page: page,
+      page_size: @page_size,
+      total_pages: total_pages,
+      previous?: page > 1,
+      next?: page < total_pages
+    }
   end
 
   def event_principal(%__MODULE__{} = event) do
@@ -214,6 +248,16 @@ defmodule ObanPowertools.Audit do
   defp infer_command_key("workflow.recovery_completed"), do: "recover_step"
   defp infer_command_key("workflow.step_completed"), do: "complete_step"
   defp infer_command_key(_event_type), do: nil
+
+  defp total_pages(0), do: 0
+  defp total_pages(total_count), do: div(total_count + @page_size - 1, @page_size)
+
+  defp normalize_page(_page, 0), do: 1
+
+  defp normalize_page(page, total_pages) when is_integer(page) and page > 0,
+    do: min(page, total_pages)
+
+  defp normalize_page(_page, _total_pages), do: 1
 
   defp filter_query(query, filters) do
     Enum.reduce(filters, query, fn
