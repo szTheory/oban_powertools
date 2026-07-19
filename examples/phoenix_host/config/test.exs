@@ -25,6 +25,7 @@ config :phoenix_host, PhoenixHost.Repo,
 # you can enable the server option below.
 config :phoenix_host, PhoenixHostWeb.Endpoint,
   http: [ip: if(phase79_browser_server?, do: {0, 0, 0, 0}, else: {127, 0, 0, 1}), port: 4002],
+  check_origin: not phase79_browser_server?,
   secret_key_base: "fsGe826sUc4hrzHxHNi2Zl6/OywWnUeE7cyo2e69+6AeaKQ7WmQEEBUk5NhkBx73",
   server: phase79_browser_server?
 
