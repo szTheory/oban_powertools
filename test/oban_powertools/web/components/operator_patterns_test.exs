@@ -267,13 +267,29 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
           %{password: @secret},
           %{"previewToken" => @secret},
           %{"planHash" => @secret},
-          %{"rawError" => "database password: #{@secret}"}
+          %{"rawError" => "database password: #{@secret}"},
+          %{"APIKey" => @secret},
+          %{"apikey" => @secret},
+          %{"secretKey" => @secret},
+          %{"credentials" => @secret},
+          %{"clientSecret" => @secret},
+          %{"accessToken" => @secret},
+          %{"auth_token" => @secret},
+          %{"passwd" => @secret},
+          %{"sessionToken" => @secret}
         ] do
       unsafe_entry = %{entry | evidence: %{recorded: unsafe_evidence}}
 
       assert_raise ArgumentError, ~r/prohibited source field/, fn ->
         render_pattern(:audit_entry, id: "unsafe-audit-entry", entry: unsafe_entry)
       end
+    end
+
+    assert_raise ArgumentError, ~r/unsupported presentation field/, fn ->
+      render_pattern(:audit_entry,
+        id: "unclassified-audit-entry",
+        entry: %{entry | evidence: %{"unclassifiedMetadata" => @secret}}
+      )
     end
   end
 

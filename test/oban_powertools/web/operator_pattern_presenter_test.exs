@@ -172,7 +172,7 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
       "correlation" => "audit-2026-0001",
       "occurred_at" => "July 18, 2026 at 21:00 UTC",
       "occurred_datetime" => "2026-07-18T21:00:00Z",
-      "changes" => %{"queue" => ["default", "critical"]},
+      "changes" => [%{"field" => "queue", "before" => "default", "after" => "critical"}],
       "evidence" => "Already redacted evidence",
       "preview_token" => nil
     }
@@ -189,7 +189,7 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
              correlation: "audit-2026-0001",
              occurred_at: "July 18, 2026 at 21:00 UTC",
              occurred_datetime: "2026-07-18T21:00:00Z",
-             changes: %{"queue" => ["default", "critical"]},
+             changes: [%{"field" => "queue", "before" => "default", "after" => "critical"}],
              evidence: "Already redacted evidence"
            }
 
@@ -236,6 +236,49 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
           %{id: "error", raw_error: %RuntimeError{message: "database password"}}
         ] do
       assert_raise ArgumentError, fn -> normalize(:normalize_active_filters, [forbidden]) end
+    end
+  end
+
+  test "rejects common credential-key aliases and arbitrary audit evidence maps" do
+    audit_entry = %{
+      sentence: "System policy requested a retry for job job-123.",
+      outcome: "Retry requested",
+      outcome_state: :success,
+      actor: "System policy",
+      action: "Retry requested",
+      target: "job-123",
+      reason: "Incident response",
+      source: "Powertools-native",
+      correlation: "audit-2026-0001",
+      occurred_at: "July 18, 2026 at 21:00 UTC",
+      occurred_datetime: "2026-07-18T21:00:00Z",
+      changes: nil,
+      evidence: nil
+    }
+
+    for sensitive_key <- [
+          "APIKey",
+          "apikey",
+          "secretKey",
+          "credentials",
+          "clientSecret",
+          "accessToken",
+          "auth_token",
+          "passwd",
+          "sessionToken"
+        ] do
+      unsafe_entry = %{audit_entry | evidence: %{sensitive_key => "SYNTHETIC_SECRET"}}
+
+      assert_raise ArgumentError, ~r/prohibited source field/, fn ->
+        normalize(:normalize_audit_entry, unsafe_entry)
+      end
+    end
+
+    assert_raise ArgumentError, ~r/unsupported presentation field/, fn ->
+      normalize(:normalize_audit_entry, %{
+        audit_entry
+        | evidence: %{"unclassifiedMetadata" => "SYNTHETIC_SECRET"}
+      })
     end
   end
 

@@ -31,11 +31,16 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     "unknown" => :unknown,
     "unavailable" => :unavailable
   }
-  @prohibited_presentation_source_field_names ~w[
-    token hash error authorization password secret credential api_key access_key private_key
+  @sensitive_presentation_source_field_names ~w[
+    api_key apikey access_key private_key secret_key client_secret client_id_secret
+    access_token refresh_token id_token auth_token bearer_token authorization
+    password passwd pwd credential credentials signing_key encryption_key
   ]
-  @prohibited_presentation_source_field_suffixes ~w[
-    token hash error authorization password secret credential
+  @sensitive_presentation_source_field_components ~w[
+    token hash error authorization password passwd pwd secret credential credentials
+  ]
+  @audit_presentation_data_fields ~w[
+    field before after label value items
   ]
 
   @doc """
@@ -164,6 +169,8 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     evidence = presentation_value(entry, :evidence)
     ensure_safe_presentation_data!(changes, "audit changes")
     ensure_safe_presentation_data!(evidence, "audit evidence")
+    ensure_audit_presentation_data!(changes, "audit changes")
+    ensure_audit_presentation_data!(evidence, "audit evidence")
 
     %{
       sentence:
@@ -499,11 +506,7 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     Enum.each(value, fn {key, nested} ->
       normalized_key = normalize_presentation_source_key(key)
 
-      if not is_nil(nested) and
-           (normalized_key in @prohibited_presentation_source_field_names or
-              Enum.any?(@prohibited_presentation_source_field_suffixes, fn suffix ->
-                String.ends_with?(normalized_key, "_#{suffix}")
-              end)) do
+      if not is_nil(nested) and sensitive_presentation_source_key?(normalized_key) do
         raise ArgumentError, "#{name} contains a prohibited source field"
       end
 
@@ -516,9 +519,42 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
 
   defp ensure_safe_presentation_data!(_value, _name), do: :ok
 
+  defp ensure_audit_presentation_data!(nil, _name), do: :ok
+
+  defp ensure_audit_presentation_data!(value, name) when is_struct(value),
+    do: raise(ArgumentError, "#{name} must not contain structs")
+
+  defp ensure_audit_presentation_data!(value, name) when is_map(value) do
+    Enum.each(value, fn {key, nested} ->
+      if normalize_presentation_source_key(key) not in @audit_presentation_data_fields do
+        raise ArgumentError, "#{name} contains an unsupported presentation field"
+      end
+
+      ensure_audit_presentation_data!(nested, name)
+    end)
+  end
+
+  defp ensure_audit_presentation_data!(value, name) when is_list(value),
+    do: Enum.each(value, &ensure_audit_presentation_data!(&1, name))
+
+  defp ensure_audit_presentation_data!(value, _name)
+       when is_binary(value) or is_number(value) or is_boolean(value) or is_atom(value),
+       do: :ok
+
+  defp ensure_audit_presentation_data!(_value, name),
+    do: raise(ArgumentError, "#{name} contains unsupported presentation data")
+
+  defp sensitive_presentation_source_key?(normalized_key) do
+    components = String.split(normalized_key, "_", trim: true)
+
+    normalized_key in @sensitive_presentation_source_field_names or
+      Enum.any?(components, &(&1 in @sensitive_presentation_source_field_components))
+  end
+
   defp normalize_presentation_source_key(key) do
     key
     |> to_string()
+    |> String.replace(~r/([A-Z]+)([A-Z][a-z])/, "\\1_\\2")
     |> String.replace(~r/([a-z0-9])([A-Z])/, "\\1_\\2")
     |> String.replace(~r/[^A-Za-z0-9]+/, "_")
     |> String.trim("_")
