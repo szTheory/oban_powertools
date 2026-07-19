@@ -928,38 +928,56 @@ test.describe("group operator-pattern connected behavior contracts", () => {
       "severity",
     );
     const stage = await prepareGroupStory(page, testInfo.project.name, story);
-    const attention = stage.locator(".obpt-attention-card");
+    const attentions = stage.locator(".obpt-attention-card");
     const focusAnchor = page.locator("#form-input-required");
 
     await focusAnchor.focus();
     await activateTarget(page, story);
     await expect(focusAnchor).toBeFocused();
-    await expect(attention).not.toHaveAttribute("role", /.+/);
-    await expect(attention).toHaveAttribute("data-obpt-severity", "warning");
-    await expect(attention).toHaveAttribute(
-      "data-obpt-completeness",
-      "complete",
-    );
-    const pills = attention.locator(".obpt-status-pill");
-    await expect(pills).toHaveCount(2);
-    await expect(pills.locator(".obpt-status-pill-label")).toHaveText([
-      "Retryable",
-      "Warning",
-    ]);
-    await expect(pills.locator("[data-obpt-icon]")).toHaveCount(2);
-    await expect(pills.nth(0)).toContainText("Job state:");
-    await expect(pills.nth(1)).toContainText("Attention severity:");
-    expect(
-      await attention.evaluate(
-        (element) =>
-          Number.parseFloat(getComputedStyle(element).borderInlineStartWidth) >
-          0,
-      ),
-    ).toBe(true);
-    await expect(attention.locator("time")).toHaveAttribute(
-      "datetime",
-      "2026-07-18T14:05:00Z",
-    );
+    await expect(attentions).toHaveCount(4);
+
+    for (const [index, status, severity, completeness, statusTone, statusIcon] of [
+      [0, "Available", "Neutral", "complete", "neutral", "dot"],
+      [1, "Retryable", "Warning", "partial", "warning", "alert"],
+      [2, "Discarded", "Danger", "unknown", "danger", "alert"],
+      [3, "Completed", "Info", "unavailable", "success", "check"],
+    ] as const) {
+      const attention = attentions.nth(index);
+      const pills = attention.locator(".obpt-status-pill");
+      await expect(attention).not.toHaveAttribute("role", /.+/);
+      await expect(attention).toHaveAttribute(
+        "data-obpt-severity",
+        severity.toLowerCase(),
+      );
+      await expect(attention).toHaveAttribute(
+        "data-obpt-completeness",
+        completeness,
+      );
+      await expect(pills).toHaveCount(2);
+      await expect(pills.locator(".obpt-status-pill-label")).toHaveText([
+        status,
+        severity,
+      ]);
+      await expect(pills.nth(0)).toHaveAttribute("data-obpt-tone", statusTone);
+      await expect(pills.nth(0).locator("[data-obpt-icon]")).toHaveAttribute(
+        "data-obpt-icon",
+        statusIcon,
+      );
+      await expect(pills.nth(0)).toContainText("Job state:");
+      await expect(pills.nth(1)).toContainText("Attention severity:");
+      expect(
+        await attention.evaluate(
+          (element) =>
+            Number.parseFloat(
+              getComputedStyle(element).borderInlineStartWidth,
+            ) > 0,
+        ),
+      ).toBe(true);
+      await expect(attention.locator("time")).toHaveAttribute(
+        "datetime",
+        "2026-07-18T14:05:00Z",
+      );
+    }
 
     const longStage = await prepareGroupStory(
       page,

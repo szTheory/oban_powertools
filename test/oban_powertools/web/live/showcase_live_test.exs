@@ -570,6 +570,21 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       assert html =~ "Outcome not recorded"
       assert html =~ "July 18, 2026 at 14:05 UTC"
 
+      for {index, severity, completeness, status_label, severity_label} <- [
+            {1, "neutral", "complete", "Available", "Neutral"},
+            {2, "warning", "partial", "Retryable", "Warning"},
+            {3, "danger", "unknown", "Discarded", "Danger"},
+            {4, "info", "unavailable", "Completed", "Info"}
+          ] do
+        selector =
+          "#showcase-group-attention-status-severity-matrix-#{index}" <>
+            "[data-obpt-severity='#{severity}']" <>
+            "[data-obpt-completeness='#{completeness}']"
+
+        assert has_element?(view, selector, status_label)
+        assert has_element?(view, selector, severity_label)
+      end
+
       render_hook(view, "validate-group-filters", %{
         "group_filters" => %{
           "story_id" => "group-filter-submit",

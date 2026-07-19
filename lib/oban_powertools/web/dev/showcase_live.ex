@@ -1391,34 +1391,42 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
     attr(:fixture, :map, required: true)
 
     defp group_attention_story(assigns) do
+      assigns = assign(assigns, :entries, group_attention_entries(assigns.id, assigns.fixture))
+
       ~H"""
-      <OperatorPatterns.attention_card
-        id={"showcase-#{@id}"}
-        title={@fixture.title}
-        summary={@fixture.summary}
-        impact={@fixture.impact}
-        observed_at={@fixture.observed_at}
-        observed_datetime={@fixture.observed_datetime}
-        domain={@fixture.domain}
-        status={@fixture.status}
-        severity={@fixture.severity}
-        completeness={@fixture.completeness}
-      >
-        <:primary_action>
-          <Primitives.button
-            type="button"
-            variant={:primary}
-            disabled_reason={Map.get(@fixture, :primary_action_disabled_reason)}
-          >
-            {@fixture.primary_action}
-          </Primitives.button>
-        </:primary_action>
-        <:secondary_actions>
-          <Primitives.link :for={action <- @fixture.secondary_actions} href="/ops/jobs/audit">
-            {action}
-          </Primitives.link>
-        </:secondary_actions>
-      </OperatorPatterns.attention_card>
+      <div class="obpt-primitive-matrix">
+        <OperatorPatterns.attention_card
+          :for={entry <- @entries}
+          id={"showcase-#{entry.id}"}
+          title={entry.fixture.title}
+          summary={entry.fixture.summary}
+          impact={entry.fixture.impact}
+          observed_at={entry.fixture.observed_at}
+          observed_datetime={entry.fixture.observed_datetime}
+          domain={entry.fixture.domain}
+          status={entry.fixture.status}
+          severity={entry.fixture.severity}
+          completeness={entry.fixture.completeness}
+        >
+          <:primary_action>
+            <Primitives.button
+              type="button"
+              variant={:primary}
+              disabled_reason={Map.get(entry.fixture, :primary_action_disabled_reason)}
+            >
+              {entry.fixture.primary_action}
+            </Primitives.button>
+          </:primary_action>
+          <:secondary_actions>
+            <Primitives.link
+              :for={action <- entry.fixture.secondary_actions}
+              href="/ops/jobs/audit"
+            >
+              {action}
+            </Primitives.link>
+          </:secondary_actions>
+        </OperatorPatterns.attention_card>
+      </div>
       """
     end
 
@@ -1818,6 +1826,18 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
         {label, to_string(value)}
       end)
     end
+
+    defp group_attention_entries(id, %{matrix: matrix} = fixture) when is_list(matrix) do
+      base = Map.delete(fixture, :matrix)
+
+      matrix
+      |> Enum.with_index(1)
+      |> Enum.map(fn {entry, index} ->
+        %{id: "#{id}-#{index}", fixture: Map.merge(base, entry)}
+      end)
+    end
+
+    defp group_attention_entries(id, fixture), do: [%{id: id, fixture: fixture}]
 
     defp group_audit_entries(%{matrix: matrix} = fixture) when is_list(matrix) do
       base = Map.delete(fixture, :matrix)

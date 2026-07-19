@@ -425,7 +425,7 @@ defmodule ObanPowertools.OperatorPatternStoryCatalog do
       kind: :group,
       name: "Attention status and severity matrix",
       description:
-        "Domain status remains independent from neutral, warning, danger, and success priority.",
+        "Domain status remains independent from neutral, info, warning, and danger priority.",
       components: [:attention_card, :status_pill],
       variant: [:matrix],
       state: [:current, :complete],
@@ -435,7 +435,7 @@ defmodule ObanPowertools.OperatorPatternStoryCatalog do
           %{status: :available, severity: :neutral, completeness: :complete},
           %{status: :retryable, severity: :warning, completeness: :partial},
           %{status: :discarded, severity: :danger, completeness: :unknown},
-          %{status: :completed, severity: :success, completeness: :unavailable}
+          %{status: :completed, severity: :info, completeness: :unavailable}
         ])
     },
     %{
