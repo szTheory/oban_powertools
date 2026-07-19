@@ -156,7 +156,7 @@ if Mix.env() == :test and is_binary(phase79_fixture_compile_partition) and
         insert_entry(names, names.cron_second, names.worker_second, @fixed_now, "queue_one")
 
       recovery =
-        insert_entry(names, names.cron_recovery, names.worker_recovery, nil, "queue_one")
+        insert_entry(names, names.cron_recovery, names.worker_recovery, nil, "skip")
 
       %{first: first, second: second, recovery: recovery}
     end
@@ -344,7 +344,6 @@ if Mix.env() == :test and is_binary(phase79_fixture_compile_partition) and
     end
 
     defp prepare_recovery(repo, entry, recovery) do
-      repo.delete_all(from(preview in RepairPreview, where: preview.target_id == ^entry.id))
       repo.delete_all(from(slot in Slot, where: slot.entry_id == ^entry.id))
       repo.delete_all(from(job in Oban.Job, where: job.worker == ^entry.worker))
 
@@ -354,16 +353,16 @@ if Mix.env() == :test and is_binary(phase79_fixture_compile_partition) and
         )
       )
 
-      entry =
-        entry
-        |> Entry.changeset(%{
-          paused_at: nil,
-          expression: "*/5 * * * *",
-          overlap_policy: "queue_one"
-        })
-        |> repo.update!()
-
-      {:ok, preview} = Cron.preview_entry_action(repo, "run_cron_entry", entry, now: @fixed_now)
+      preview =
+        repo.one(
+          from(preview in RepairPreview,
+            where:
+              preview.target_id == ^entry.id and preview.action == "run_cron_entry" and
+                preview.status == "ready",
+            order_by: [desc: preview.inserted_at],
+            limit: 1
+          )
+        ) || repo.rollback(:not_found)
 
       case recovery do
         "expired" ->
@@ -373,7 +372,7 @@ if Mix.env() == :test and is_binary(phase79_fixture_compile_partition) and
 
         "drifted" ->
           entry
-          |> Entry.changeset(%{expression: "7 * * * *"})
+          |> Entry.changeset(%{overlap_policy: "queue_one"})
           |> repo.update!()
 
         "consumed" ->
@@ -382,12 +381,8 @@ if Mix.env() == :test and is_binary(phase79_fixture_compile_partition) and
           |> repo.update!()
 
         recovery when recovery in ["skipped", "partial"] ->
-          entry
-          |> Entry.changeset(%{overlap_policy: "skip"})
-          |> repo.update!()
-
           entry.args
-          |> Oban.Job.new(worker: entry.worker, queue: entry.queue)
+          |> Oban.Job.new(worker: entry.worker, queue: entry.queue, scheduled_at: @fixed_now)
           |> repo.insert!()
       end
     end
