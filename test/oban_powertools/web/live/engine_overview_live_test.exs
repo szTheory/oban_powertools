@@ -5,7 +5,7 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
   alias ObanPowertools.Forensics.LimiterHistoryFact
   alias ObanPowertools.Lifeline.Incident
   alias ObanPowertools.Limits.{Resource, State}
-  alias ObanPowertools.Web.{ControlPlanePresenter, OverviewReadModel}
+  alias ObanPowertools.Web.{ControlPlanePresenter, EngineOverviewLive, OverviewReadModel}
 
   test "renders diagnosis-first cards with native and bridge ownership labels", %{conn: conn} do
     seed_overview_fixture!()
@@ -322,6 +322,52 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
     assert first == second
     assert Enum.all?(first, &(&1.observed_at == "July 19, 2026 at 18:00 UTC"))
     assert Enum.all?(first, &(&1.observed_datetime == DateTime.to_iso8601(now)))
+  end
+
+  @tag phase79_slice: "overview"
+  test "page content is the render tree and safely preserves Unicode presentation text" do
+    buckets =
+      OverviewReadModel.build(
+        repo: TestRepo,
+        dashboard_path: "/oban",
+        now: ~U[2026-07-19 18:00:00Z]
+      )
+      |> Enum.map(fn
+        %{id: :needs_review} = bucket ->
+          %{
+            bucket
+            | count: 1,
+              summary: "مراجعة 東京 🚦 <script>alert(1)</script>",
+              impact: "One current incident needs operator review.",
+              exemplars: [
+                %{
+                  label: "عامل 東京 <strong>unsafe</strong>",
+                  fact: "Unicode evidence remains readable.",
+                  status: :active,
+                  path: "/ops/jobs/lifeline",
+                  venue: "Powertools",
+                  ownership: "Powertools-native",
+                  source: "lifeline"
+                }
+              ]
+          }
+
+        bucket ->
+          bucket
+      end)
+      |> Enum.map(&ControlPlanePresenter.present_overview_bucket/1)
+
+    direct =
+      render_component(&EngineOverviewLive.page_content/1, overview_buckets: buckets)
+
+    delegated = render_component(&EngineOverviewLive.render/1, overview_buckets: buckets)
+
+    assert direct == delegated
+    assert direct =~ "مراجعة 東京 🚦"
+    assert direct =~ "&lt;script&gt;alert(1)&lt;/script&gt;"
+    assert direct =~ "عامل 東京 &lt;strong&gt;unsafe&lt;/strong&gt;"
+    refute direct =~ "<script>"
+    refute direct =~ "<strong>unsafe</strong>"
   end
 
   @tag phase79_slice: "overview"

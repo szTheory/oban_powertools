@@ -5,6 +5,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     use Phoenix.LiveView
 
     alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth, OverviewReadModel}
+    alias ObanPowertools.Web.Components.{DataDisplay, OperatorPatterns, Primitives}
 
     @impl true
     def mount(_params, %{"oban_dashboard_path" => dashboard_path}, socket) do
@@ -23,151 +24,203 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     @impl true
     def render(assigns) do
       ~H"""
-      <div class="space-y-6 p-6">
-        <div>
-          <h1 class="text-2xl font-semibold">Unified /ops/jobs Control Plane</h1>
-          <p class="text-sm text-zinc-600">
-            <%= ControlPlanePresenter.native_banner() %> <%= ControlPlanePresenter.bridge_banner() %>
-          </p>
-        </div>
+      <.page_content overview_buckets={@overview_buckets} />
+      """
+    end
 
-        <div class="rounded-lg border bg-slate-50 p-4">
-          <h2 class="text-base font-semibold">Diagnosis-first overview</h2>
-          <p class="mt-2 text-sm text-zinc-600">
-            Each card answers what needs attention, why it matters, where to go next, and whether the next venue is Powertools-native or bridge-only.
-          </p>
-        </div>
+    attr(:overview_buckets, :list, required: true)
 
-        <div class="grid gap-4 xl:grid-cols-2">
-          <div :for={bucket <- active_buckets(@overview_buckets)} class="rounded-lg border bg-white p-4">
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <h2 class="text-base font-semibold"><%= bucket.status %></h2>
-                <p class="mt-1 text-2xl font-semibold"><%= bucket.count %></p>
-              </div>
-              <div class="space-y-1 text-right text-xs">
-                <div class="rounded border px-2 py-1"><%= bucket.venue %></div>
-                <div class="rounded border px-2 py-1"><%= bucket.posture %></div>
-              </div>
-            </div>
+    def page_content(assigns) do
+      assigns =
+        assigns
+        |> assign(:needs_review, bucket!(assigns.overview_buckets, "needs_review"))
+        |> assign(:blocked, bucket!(assigns.overview_buckets, "blocked"))
+        |> assign(:waiting, bucket!(assigns.overview_buckets, "waiting"))
+        |> assign(:bridge, bucket!(assigns.overview_buckets, "bridge_follow_up"))
+        |> assign(:runnable, bucket!(assigns.overview_buckets, "runnable"))
+        |> assign(
+          :resolved_continuity,
+          bucket!(assigns.overview_buckets, "resolved_continuity")
+        )
+        |> assign(:all_quiet?, all_quiet?(assigns.overview_buckets))
 
-            <p class="mt-3 text-sm text-zinc-700"><%= bucket.diagnosis %></p>
+      ~H"""
+      <section id="overview-page" aria-labelledby="overview-title">
+        <header>
+          <h1 id="overview-title">Overview</h1>
+          <p>See what needs attention, why it matters, and where to continue.</p>
+        </header>
 
-            <div class="mt-4 space-y-3">
-              <.empty_attention :if={bucket.exemplars == []} />
-              <.exemplar_card
-                :for={exemplar <- bucket.exemplars}
-                exemplar={exemplar}
-                class="bg-slate-50"
-              />
-            </div>
+        <section id="overview-current-attention" aria-labelledby="overview-current-attention-title">
+          <h2 id="overview-current-attention-title">Current attention</h2>
 
-            <div class="mt-4">
-              <.link navigate={bucket.next_step_path} class={cta_class(bucket)}>
-                <%= bucket.next_step_label %>
-              </.link>
-            </div>
-          </div>
+          <DataDisplay.empty_state
+            :if={@all_quiet?}
+            id="overview-all-quiet"
+            heading="No current follow-up identified"
+            body="Available evidence identifies no current native or bridge follow-up. Open Jobs to review individual job state."
+          >
+            <:action>
+              <Primitives.link navigate="/ops/jobs/jobs">Open Jobs</Primitives.link>
+            </:action>
+          </DataDisplay.empty_state>
 
-          <div :for={bucket <- resolved_buckets(@overview_buckets)} class="rounded-lg border bg-emerald-50 p-4">
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <h2 class="text-base font-semibold"><%= bucket.status %></h2>
-                <p class="mt-1 text-2xl font-semibold"><%= bucket.count %></p>
-              </div>
-              <div class="space-y-1 text-right text-xs">
-                <div class="rounded border px-2 py-1"><%= bucket.venue %></div>
-                <div class="rounded border px-2 py-1"><%= bucket.posture %></div>
-              </div>
-            </div>
+          <.current_attention_lane bucket={@needs_review} />
+          <.current_attention_lane bucket={@blocked} />
+          <.current_attention_lane bucket={@waiting} />
+        </section>
 
-            <p class="mt-3 text-sm text-zinc-700"><%= bucket.diagnosis %></p>
+        <section id="overview-bridge-follow-up" aria-labelledby="overview-bridge-follow-up-title">
+          <Primitives.surface variant={:elevated}>
+            <h2 id="overview-bridge-follow-up-title">{@bridge.title}</h2>
+            <p>{@bridge.sample_count_label}</p>
+            <p>{@bridge.summary}</p>
+            <p>{@bridge.impact}</p>
+            <p>Oban Web bridge · Inspection only</p>
+            <Primitives.link navigate={@bridge.next_step_path}>
+              {@bridge.next_step_label}
+            </Primitives.link>
+          </Primitives.surface>
+          <.exemplar_rows bucket={@bridge} />
+        </section>
 
-            <div class="mt-4 space-y-3">
-              <.empty_attention :if={bucket.exemplars == []} />
-              <.exemplar_card
-                :for={exemplar <- bucket.exemplars}
-                exemplar={exemplar}
-                class="bg-white"
-              />
-            </div>
+        <section id="overview-runnable" aria-labelledby="overview-runnable-title">
+          <h2 id="overview-runnable-title">{@runnable.title}</h2>
+          <DataDisplay.metric_card
+            id="overview-runnable-metric"
+            label="Current runnable capacity"
+            value={Integer.to_string(@runnable.count)}
+            status={@runnable.summary}
+            tone={:info}
+          >
+            <:action>
+              <Primitives.link navigate={@runnable.next_step_path}>
+                {@runnable.next_step_label}
+              </Primitives.link>
+            </:action>
+          </DataDisplay.metric_card>
+          <p>{@runnable.impact}</p>
+          <.exemplar_rows bucket={@runnable} />
+        </section>
 
-            <div class="mt-4">
-              <.link navigate={bucket.next_step_path} class="rounded border px-3 py-2 text-sm">
-                <%= bucket.next_step_label %>
-              </.link>
-            </div>
-          </div>
-        </div>
-      </div>
+        <section
+          id="overview-resolved-continuity"
+          aria-labelledby="overview-resolved-continuity-title"
+        >
+          <Primitives.surface variant={:plain}>
+            <h2 id="overview-resolved-continuity-title">{@resolved_continuity.title}</h2>
+            <p>{@resolved_continuity.sample_count_label}</p>
+            <p>{@resolved_continuity.summary}</p>
+            <p>{@resolved_continuity.impact}</p>
+            <p>Continuity evidence</p>
+            <Primitives.link navigate={@resolved_continuity.next_step_path}>
+              {@resolved_continuity.next_step_label}
+            </Primitives.link>
+          </Primitives.surface>
+          <.exemplar_rows bucket={@resolved_continuity} />
+        </section>
+      </section>
+      """
+    end
+
+    attr(:bucket, :map, required: true)
+
+    defp current_attention_lane(assigns) do
+      assigns =
+        assigns
+        |> assign(:region_id, "overview-#{String.replace(assigns.bucket.id, "_", "-")}")
+        |> assign(:empty_heading, empty_lane_heading(assigns.bucket.kind))
+
+      ~H"""
+      <section id={@region_id}>
+        <OperatorPatterns.attention_card
+          :if={@bucket.count > 0}
+          id={"#{@region_id}-attention"}
+          title={@bucket.title}
+          summary={@bucket.summary}
+          impact={@bucket.impact}
+          observed_at={@bucket.observed_at}
+          observed_datetime={@bucket.observed_datetime}
+          domain={:limiter}
+          status={@bucket.status}
+          severity={@bucket.severity}
+          completeness={@bucket.completeness}
+          live={:off}
+        >
+          <:primary_action>
+            <Primitives.link navigate={@bucket.next_step_path}>
+              {@bucket.next_step_label}
+            </Primitives.link>
+          </:primary_action>
+        </OperatorPatterns.attention_card>
+
+        <Primitives.surface :if={@bucket.count == 0} variant={:inset}>
+          <DataDisplay.empty_state
+            id={"#{@region_id}-empty"}
+            heading={@empty_heading}
+            body={@bucket.summary}
+          >
+            <:action>
+              <Primitives.link navigate={@bucket.next_step_path}>
+                {@bucket.next_step_label}
+              </Primitives.link>
+            </:action>
+          </DataDisplay.empty_state>
+        </Primitives.surface>
+
+        <.exemplar_rows bucket={@bucket} />
+      </section>
+      """
+    end
+
+    attr(:bucket, :map, required: true)
+
+    defp exemplar_rows(assigns) do
+      ~H"""
+      <ul :if={@bucket.exemplars != []} aria-label={"#{@bucket.title} examples"}>
+        <li :for={exemplar <- @bucket.exemplars}>
+          <p><strong>{exemplar.label}</strong></p>
+          <p>{exemplar_detail(exemplar)}</p>
+          <p :if={Map.get(exemplar, :venue)}>{exemplar.venue}</p>
+          <p :if={Map.get(exemplar, :ownership)}>{exemplar.ownership}</p>
+          <p :if={show_completeness?(exemplar)}>{exemplar.evidence_completeness}</p>
+          <nav aria-label={"Destinations for #{exemplar.label}"}>
+            <Primitives.link
+              :if={Map.get(exemplar, :evidence_path)}
+              navigate={exemplar.evidence_path}
+            >
+              Open forensic timeline
+            </Primitives.link>
+            <Primitives.link navigate={exemplar.path}>
+              {exemplar_link_label(exemplar)}
+            </Primitives.link>
+          </nav>
+        </li>
+      </ul>
       """
     end
 
     defp assign_metrics(socket, dashboard_path) do
-      socket
-      |> assign(
-        :overview_buckets,
-        OverviewReadModel.build(repo: repo(), dashboard_path: dashboard_path)
-      )
+      overview_buckets =
+        repo()
+        |> then(&OverviewReadModel.build(repo: &1, dashboard_path: dashboard_path))
+        |> Enum.map(&ControlPlanePresenter.present_overview_bucket/1)
+
+      assign(socket, :overview_buckets, overview_buckets)
     end
 
     defp repo, do: Application.fetch_env!(:oban_powertools, :repo)
 
-    defp active_buckets(buckets) do
-      Enum.reject(buckets, &(&1.status == "Resolved Recently"))
+    defp bucket!(buckets, id), do: Enum.find(buckets, &(&1.id == id)) || raise("missing #{id}")
+
+    defp all_quiet?(buckets) do
+      quiet_ids = ~w[needs_review blocked waiting bridge_follow_up]
+      Enum.all?(buckets, &(&1.id not in quiet_ids or &1.count == 0))
     end
 
-    defp resolved_buckets(buckets) do
-      Enum.filter(buckets, &(&1.status == "Resolved Recently"))
-    end
-
-    defp cta_class(%{status: "Bridge-only Follow-up"}),
-      do: "rounded border px-3 py-2 text-sm"
-
-    defp cta_class(_bucket), do: "rounded bg-indigo-600 px-3 py-2 text-sm text-white"
-
-    defp exemplar_card(assigns) do
-      ~H"""
-      <div class={["rounded border p-3 text-sm", @class]}>
-        <div class="font-medium"><%= @exemplar.label %></div>
-        <div class="mt-1 text-zinc-600"><%= exemplar_detail(@exemplar) %></div>
-        <div class="mt-2 flex flex-wrap gap-2 text-xs text-zinc-700">
-          <span :if={Map.get(@exemplar, :venue)} class="rounded border bg-white px-2 py-1">
-            <%= @exemplar.venue %>
-          </span>
-          <span :if={Map.get(@exemplar, :ownership)} class="rounded border bg-white px-2 py-1">
-            <%= @exemplar.ownership %>
-          </span>
-          <span :if={show_completeness?(@exemplar)} class="rounded border bg-amber-50 px-2 py-1">
-            <%= @exemplar.evidence_completeness %>
-          </span>
-        </div>
-        <div class="mt-2 flex flex-wrap gap-3">
-          <.link
-            :if={Map.get(@exemplar, :evidence_path)}
-            navigate={@exemplar.evidence_path}
-            class="text-indigo-700 underline"
-          >
-            Open forensic timeline
-          </.link>
-          <.link navigate={@exemplar.path} class="text-indigo-700 underline">
-            <%= exemplar_link_label(@exemplar) %>
-          </.link>
-        </div>
-      </div>
-      """
-    end
-
-    defp empty_attention(assigns) do
-      ~H"""
-      <div class="rounded border bg-slate-50 p-3 text-sm">
-        <div class="font-medium">No historical attention needed</div>
-        <div class="mt-1 text-zinc-600">
-          Current state and retained history do not identify a safe runbook path right now.
-        </div>
-      </div>
-      """
-    end
+    defp empty_lane_heading(:needs_review), do: "No needs review identified"
+    defp empty_lane_heading(:blocked), do: "No blocked limiters identified"
+    defp empty_lane_heading(:waiting), do: "No waiting work identified"
 
     defp exemplar_detail(exemplar) do
       Map.get(exemplar, :attention_reason) || Map.get(exemplar, :fact)
