@@ -1,8 +1,4 @@
-phase79_fixture_compile_partition =
-  Application.compile_env(:phoenix_host, :phase79_fixture_compile_partition)
-
-if Mix.env() == :test and is_binary(phase79_fixture_compile_partition) and
-     System.get_env("PHASE79_BROWSER_FIXTURES") == "1" do
+if Mix.env() == :test and System.get_env("PHASE79_BROWSER_FIXTURES") == "1" do
   defmodule PhoenixHostWeb.Phase79BrowserFixtures do
     @moduledoc false
 
@@ -454,6 +450,10 @@ if Mix.env() == :test and is_binary(phase79_fixture_compile_partition) and
     @moduledoc false
 
     use PhoenixHostWeb, :controller
+
+    # This source emits no fixture modules when the opt-in flag is absent. The
+    # compiler hook ensures a later route-off run removes prior opt-in beams.
+    def __mix_recompile__?, do: Mix.env() == :test
 
     alias PhoenixHostWeb.Phase79BrowserFixtures
 

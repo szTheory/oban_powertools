@@ -29,9 +29,7 @@ config :phoenix_host, PhoenixHostWeb.Endpoint,
   secret_key_base: "fsGe826sUc4hrzHxHNi2Zl6/OywWnUeE7cyo2e69+6AeaKQ7WmQEEBUk5NhkBx73",
   server: phase79_browser_server?
 
-config :phoenix_host,
-  dev_routes: phase79_browser_fixtures?,
-  phase79_fixture_compile_partition: System.get_env("MIX_TEST_PARTITION")
+config :phoenix_host, dev_routes: phase79_browser_fixtures?
 
 config :oban_powertools, dev_routes: phase79_browser_fixtures?
 
