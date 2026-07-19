@@ -4,17 +4,17 @@ milestone: v2.0
 milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 78
 current_phase_name: component-groups-meta-components
-status: executing
-stopped_at: Completed 78-07-PLAN.md
-last_updated: "2026-07-19T00:45:22.315Z"
+status: verifying
+stopped_at: Completed 78-08-PLAN.md; ready for Phase 78 verification
+last_updated: "2026-07-19T01:45:45.467Z"
 last_activity: 2026-07-19
 last_activity_desc: Phase 78 Plan 07 connected operator-group behavior proof complete
 progress:
   total_phases: 15
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 49
-  completed_plans: 48
-  percent: 53
+  completed_plans: 49
+  percent: 60
 ---
 
 # Project State
@@ -23,7 +23,7 @@ progress:
 
 Phase: 78 (component-groups-meta-components) — EXECUTING
 Plan: 8 of 8
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-19 — Phase 78 Plan 07 connected operator-group behavior proof complete
 
 ## Performance Metrics
@@ -60,6 +60,7 @@ Last activity: 2026-07-19 — Phase 78 Plan 07 connected operator-group behavior
 | Phase 78 P05 | 16 min | 3 tasks | 9 files |
 | Phase 78 P06 | 24 min | 4 tasks | 12 files |
 | Phase 78 P07 | 39 min | 3 tasks | 1 files |
+| Phase 78 P08 | 1h 27m | 3 tasks | 284 files |
 
 ## Accumulated Context
 
@@ -87,8 +88,8 @@ Last activity: 2026-07-19 — Phase 78 Plan 07 connected operator-group behavior
 
 ## Session Continuity
 
-**Last session:** 2026-07-19T00:45:22.312Z
-**Stopped at:** Completed 78-07-PLAN.md
+**Last session:** 2026-07-19T01:45:45.463Z
+**Stopped at:** Completed 78-08-PLAN.md; ready for Phase 78 verification
 **Resume file:** None
 
 - **Last Action:** Completed connected confirmation, filter, detail, explanation, audit, responsive, confidentiality, and five-story mechanical zoom behavior proof for Plan 78-07.
@@ -158,6 +159,8 @@ Last activity: 2026-07-19 — Phase 78 Plan 07 connected operator-group behavior
 - [Phase 78]: Assert adaptive detail through native modal state and one persistent DOM identity — Proves constrained inertness and wide comparison behavior across responsive transitions
 - [Phase 78]: Measure 200 percent zoom with Chromium device metrics and mechanical geometry assertions — Makes wrapping, visible focus, one-tree rendering, and overflow objective
 - [Phase 78]: Scan complete document text, markup, URLs, values, titles, and attributes for confidentiality sentinels — Covers hidden and non-visible leak channels as well as rendered copy
+- [Phase 78]: Give DetailSurface a server-rendered keyboard-scroll baseline and remove the body tab stop when the responsive controller places it inline. — Preserves no-JavaScript narrow accessibility without adding an unnecessary wide-layout tab stop.
+- [Phase 78]: Require exact manifest-derived group baseline equality, group-only changed scope, and a fresh compare-only run after VRT updates. — Prevents unrelated scenario residuals or update-mode generation from being reported as group visual success.
 
 ### Blockers
 

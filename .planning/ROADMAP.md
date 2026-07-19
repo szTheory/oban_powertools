@@ -14,7 +14,7 @@
 - [x] **Phase 75: Form Components** — Accessible form primitives on `to_form`. (completed 2026-07-11)
 - [x] **Phase 76: Navigation & App Shell** — Responsive Powertools shell (header, nav, theme toggle, actor). (completed 2026-07-12)
 - [x] **Phase 77: Data-Display & Operator Patterns** — Shared data components + unified status taxonomy. *[split-risk]* — verification gap closure required (completed 2026-07-13)
-- [ ] **Phase 78: Component Groups (Meta-Components)** — Operator meta-patterns encapsulating "explain, then act".
+- [x] **Phase 78: Component Groups (Meta-Components)** — Operator meta-patterns encapsulating "explain, then act". (completed 2026-07-19)
 - [ ] **Phase 79: Page Migration Wave 1** — Overview, Cron, Limiters, Audit.
 - [ ] **Phase 80: Page Migration Wave 2** — Jobs + Forensics. *[split-risk]*
 - [ ] **Phase 81: Page Migration Wave 3** — Batches, Workflows, Lifeline. *[split-risk]*
@@ -272,7 +272,7 @@
   2. The danger pattern enforces a required reason + consequence/scope copy; a11y (focus trap, Esc, SR announcements, focus restore) green.
   3. Stories + VRT cover each group; pages will compose these, not re-implement.
 
-**Plans**: 7/8 plans executed
+**Plans**: 8/8 plans complete
 
 - [x] 78-01-PLAN.md
 - [x] 78-02-PLAN.md
@@ -281,7 +281,7 @@
 - [x] 78-05-PLAN.md
 - [x] 78-06-PLAN.md
 - [x] 78-07-PLAN.md
-- [ ] 78-08-PLAN.md
+- [x] 78-08-PLAN.md
 
 ### Phase 79: Page Migration Wave 1 — Overview, Cron, Limiters, Audit
 
@@ -374,7 +374,7 @@
 | 75. Form Components | 6/6 | Complete    | 2026-07-11 |
 | 76. Navigation & App Shell | 5/5 | Complete    | 2026-07-12 |
 | 77. Data-Display & Operator Patterns | 9/9 | Complete    | 2026-07-13 |
-| 78. Component Groups (Meta-Components) | 7/8 | In Progress|  |
+| 78. Component Groups (Meta-Components) | 8/8 | Complete   | 2026-07-19 |
 | 79. Page Migration Wave 1 | 0/TBD | Not started | — |
 | 80. Page Migration Wave 2 | 0/TBD | Not started | — |
 | 81. Page Migration Wave 3 | 0/TBD | Not started | — |
