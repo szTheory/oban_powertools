@@ -343,7 +343,11 @@ defmodule ObanPowertools.Web.CronLiveTest do
     assert expired_html =~ "This preview expired."
     assert expired_html =~ "Create new preview"
 
-    refreshed_preview = TestRepo.get!(RepairPreview, preview.id)
+    view
+    |> element("button", "Create new preview")
+    |> render_click()
+
+    refreshed_preview = TestRepo.get_by!(RepairPreview, status: "ready")
 
     TestRepo.update!(
       RepairPreview.changeset(refreshed_preview, %{
@@ -362,7 +366,11 @@ defmodule ObanPowertools.Web.CronLiveTest do
     assert drifted_html =~ "This preview is out of date"
     assert drifted_html =~ "Create new preview"
 
-    drifted_preview = TestRepo.get!(RepairPreview, preview.id)
+    view
+    |> element("button", "Create new preview")
+    |> render_click()
+
+    drifted_preview = TestRepo.get_by!(RepairPreview, status: "ready")
 
     TestRepo.update!(
       RepairPreview.changeset(drifted_preview, %{
@@ -505,7 +513,7 @@ defmodule ObanPowertools.Web.CronLiveTest do
         })
         |> render_submit()
 
-      assert html =~ "Reason is required."
+      assert html =~ "Enter a reason before continuing."
       assert has_element?(view, "#cron-confirmation-dialog[role='dialog']")
       refute has_element?(view, "#cron-receipt")
     end
@@ -606,11 +614,11 @@ defmodule ObanPowertools.Web.CronLiveTest do
       })
       |> render_submit()
 
-    assert has_element?(view, "#cron-confirmation")
+    assert has_element?(view, "#cron-confirmation-dialog[role='dialog']")
     assert html =~ "Preserve this safe draft"
     assert html =~ "skipped"
     assert html =~ "Create new preview"
-    refute html =~ "job ran"
+    refute html =~ "The job ran."
     refute html =~ "completed"
     refute has_element?(view, "#cron-receipt")
 
