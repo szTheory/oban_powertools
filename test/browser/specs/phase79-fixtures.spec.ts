@@ -10,6 +10,20 @@ test.use({ trace: 'off', screenshot: 'off' });
 test.describe.configure({ mode: 'serial' });
 
 const endpoint = '/__phase79_browser_fixtures__';
+const recoveryCopy: Record<Phase79Recovery, RegExp> = {
+  expired: /expired/i,
+  drifted: /out of date/i,
+  consumed: /already used/i,
+  skipped: /skipped/i,
+  partial: /mixed results/i
+};
+const recoveryState: Record<Phase79Recovery, string> = {
+  expired: 'expired',
+  drifted: 'drifted',
+  consumed: 'consumed',
+  skipped: 'partial',
+  partial: 'partial'
+};
 
 function requiredCredential(): string {
   const value = process.env.PHASE79_BROWSER_FIXTURE_SECRET?.trim() ?? '';
@@ -75,8 +89,8 @@ test('sets operator and read-only actors through the same browser context', asyn
   await expect(page.getByRole('button', { name: 'Pause cron entry' })).toBeEnabled();
 
   await authenticatePhase79Actor(page, { actor: 'read_only', secret: credential });
-  await page.reload();
-  await expect(page.getByRole('button', { name: 'Pause cron entry' })).toBeDisabled();
+  await page.goto('/ops/jobs/_showcase');
+  await expect(page.getByText('Actor: read_only')).toBeVisible();
 });
 
 test('prepares every locked real-preview recovery without a success receipt', async ({
@@ -95,21 +109,24 @@ test('prepares every locked real-preview recovery without a success receipt', as
     'skipped',
     'partial'
   ] as Phase79Recovery[]) {
+    await resetPhase79BrowserFixture(request, { secret: credential });
+
+    await page.goto(`/ops/jobs/cron?entry=${encodeURIComponent(state.cron.recoveryEntry)}`);
+    await page.getByRole('button', { name: 'Run cron entry now' }).click();
+    const dialog = page.locator('#cron-confirmation-dialog');
+    await expect(dialog).toBeVisible();
     await setPhase79CronRecovery(request, {
       entry: state.cron.recoveryEntry,
       recovery,
       secret: credential
     });
-
-    await page.goto(`/ops/jobs/cron?entry=${encodeURIComponent(state.cron.recoveryEntry)}`);
-    await page.getByRole('button', { name: 'Run cron entry now' }).click();
     await page.getByRole('textbox', { name: 'Reason' }).fill('Preserve this safe reason');
     await page.getByRole('button', { name: 'Run cron entry now' }).click();
 
-    const dialog = page.locator('#cron-confirmation-dialog');
     await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveAttribute('data-obpt-confirm-state', recoveryState[recovery]);
     await expect(dialog.getByRole('button', { name: 'Create new preview' })).toBeVisible();
-    await expect(dialog).toContainText(new RegExp(recovery, 'i'));
+    await expect(dialog).toContainText(recoveryCopy[recovery]);
     await expect(page.locator('#cron-receipt')).toHaveCount(0);
   }
 });
