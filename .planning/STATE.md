@@ -5,15 +5,15 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 79
 current_phase_name: page-migration-wave-1-overview-cron-limiters-audit
 status: executing
-stopped_at: Completed 79-03-PLAN.md
-last_updated: "2026-07-19T20:21:31.570Z"
+stopped_at: Completed 79-04-PLAN.md
+last_updated: "2026-07-19T20:43:01.309Z"
 last_activity: 2026-07-19
 last_activity_desc: Completed Phase 79 Plan 03 stable Overview triage migration
 progress:
   total_phases: 15
   completed_phases: 9
   total_plans: 61
-  completed_plans: 53
+  completed_plans: 54
   percent: 60
 ---
 
@@ -22,7 +22,7 @@ progress:
 ## Current Position
 
 Phase: 79 (page-migration-wave-1-overview-cron-limiters-audit) — EXECUTING
-Plan: 4 of 12
+Plan: 5 of 12
 Status: Ready to execute
 Last activity: 2026-07-19 — Completed Phase 79 Plan 03 stable Overview triage migration
 
@@ -65,6 +65,7 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 03 stable Overview triage 
 | Phase 79 P09 | 7 min | 1 tasks | 3 files |
 | Phase 79 P02 | 15 min | 3 tasks | 3 files |
 | Phase 79 P03 | 13 min | 2 tasks | 3 files |
+| Phase 79 P04 | 17 min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -92,8 +93,8 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 03 stable Overview triage 
 
 ## Session Continuity
 
-**Last session:** 2026-07-19T20:19:51.597Z
-**Stopped at:** Completed 79-03-PLAN.md
+**Last session:** 2026-07-19T20:43:01.304Z
+**Stopped at:** Completed 79-04-PLAN.md
 **Resume file:** None
 
 - **Last Action:** Completed Plan 79-03's deterministic bounded Overview read model and stable shared-component triage hierarchy.
@@ -177,6 +178,9 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 03 stable Overview triage 
 - [Phase 79]: Normalize Overview buckets once after the mount-owned repository read so page_content/1 remains a pure reusable rendering boundary.
 - [Phase 79]: Treat all-quiet as absence of identified native current attention and bridge follow-up; runnable capacity and retained continuity do not turn quiet state into an alarm.
 - [Phase 79]: Use the shared limiter/control-plane status taxonomy for Overview attention lanes while preserving Overview-specific presentation IDs and copy.
+- [Phase 79]: Cron actions resolve from server-owned selected entry and preview state, with backend identifiers absent from DOM and URL authority. — Fabricated client resource or action parameters must not become mutation authority.
+- [Phase 79]: Skipped and duplicate run-now claims remain recoverable and require an explicit fresh preview while preserving only the trimmed reason draft. — A recorded slot claim is not clean success and must never silently replay or emit a success receipt.
+- [Phase 79]: Cron render delegates to public pure page_content/1 after parent-owned reads, URL parsing, authorization, and mutation orchestration. — Deterministic page stories need the exact production composition without external state work.
 
 ### Blockers
 

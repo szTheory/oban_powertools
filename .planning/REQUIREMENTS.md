@@ -64,7 +64,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 - [ ] **PAGE-02**: Jobs (list + detail, filter bar, big table) migrated; URL filter/search/bulk/deep-link behavior preserved.
 - [ ] **PAGE-03**: Batches (list + detail, chain steps) migrated; Lifeline-routed recovery unchanged.
 - [ ] **PAGE-04**: Workflows (list + detail, DAG/blocked state) migrated.
-- [ ] **PAGE-05**: Cron migrated; pause/resume/run preview-confirm flow unchanged.
+- [x] **PAGE-05**: Cron migrated; pause/resume/run preview-confirm flow unchanged.
 - [ ] **PAGE-06**: Limiters migrated.
 - [ ] **PAGE-07**: Lifeline (incident triage, repair preview/reason/execute/audit) migrated with mutation flow unchanged.
 - [ ] **PAGE-08**: Audit migrated; filters/retention controls unchanged.
