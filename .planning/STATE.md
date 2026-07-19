@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 79
 current_phase_name: page-migration-wave-1-overview-cron-limiters-audit
 status: executing
-stopped_at: Completed 79-11-PLAN.md
-last_updated: "2026-07-19T23:30:26.300Z"
+stopped_at: Completed 79-12-PLAN.md
+last_updated: "2026-07-19T23:47:54.461Z"
 last_activity: 2026-07-19
-last_activity_desc: Completed Phase 79 Plan 11 production-composed page catalog
+last_activity_desc: Completed Phase 79 Plan 12 schema-7 page showcase targets
 progress:
   total_phases: 15
   completed_phases: 9
   total_plans: 61
-  completed_plans: 59
-  percent: 97
+  completed_plans: 60
+  percent: 98
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 79 (page-migration-wave-1-overview-cron-limiters-audit) — EXECUTING
-Plan: 10 of 12
+Plan: 11 of 12
 Status: Ready to execute
-Last activity: 2026-07-19 — Completed Phase 79 Plan 11 production-composed page catalog
+Last activity: 2026-07-19 — Completed Phase 79 Plan 12 schema-7 page showcase targets
 
 ## Performance Metrics
 
@@ -71,6 +71,7 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 11 production-composed pag
 | Phase 79 P07 | 11 min | 1 tasks | 4 files |
 | Phase 79 P10 | 79m | 3 tasks | 8 files |
 | Phase 79 P11 | 13m | 1 tasks | 4 files |
+| Phase 79 P12 | 13m | 1 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -98,12 +99,12 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 11 production-composed pag
 
 ## Session Continuity
 
-**Last session:** 2026-07-19T23:29:52.478Z
-**Stopped at:** Completed 79-11-PLAN.md
+**Last session:** 2026-07-19T23:47:18.349Z
+**Stopped at:** Completed 79-12-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed Plan 79-11's exact package-excluded page catalog through all four production page composition seams.
-- **Next Action:** Execute Plan 79-12 to generate and verify connected page accessibility and visual evidence.
+- **Last Action:** Completed Plan 79-12's schema-7 page manifest, strict validators, and shared browser activation path.
+- **Next Action:** Execute Plan 79-08 to complete connected accessibility, motion, responsive, confidentiality, and visual evidence.
 
 ## Decisions
 
@@ -200,6 +201,8 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 11 production-composed pag
 - [Phase 79]: Open the real Cron preview before applying recovery perturbations; use a future scheduled active job for deterministic skipped and partial evidence.
 - [Phase 79]: Keep raw page-story form maps in the package-excluded catalog and materialize Phoenix forms only at the Showcase rendering boundary. — Preserves normalized deterministic fixtures while satisfying production component inputs.
 - [Phase 79]: Store only one validated active page-story ID and mount only its matching production page_content tree. — Prevents duplicate page trees, overlays, IDs, and client-persisted fixture payloads.
+- [Phase 79]: Append page stories after the unchanged 64-target schema-6 prefix. — Existing scenario and component discovery remains byte-for-byte stable while schema 7 adds page evidence.
+- [Phase 79]: Close any active group overlay before page activation, then enforce one active page story and at most one dialog or modal. — The shared structure, axe, and VRT loops can traverse all generated targets without overlapping top-layer state.
 
 ### Blockers
 

@@ -294,7 +294,7 @@
   2. Each page passes the VRT + a11y gates across themes × breakpoints over fixtures.
   3. Concepts shared with other pages render identically (consistency check).
 
-**Plans**: 10/12 plans executed
+**Plans**: 11/12 plans executed
 **Wave 1**
 
 - [x] 79-01-PLAN.md
@@ -319,7 +319,7 @@
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 79-12-PLAN.md
+- [x] 79-12-PLAN.md
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -404,7 +404,7 @@
 | 76. Navigation & App Shell | 5/5 | Complete    | 2026-07-12 |
 | 77. Data-Display & Operator Patterns | 9/9 | Complete    | 2026-07-13 |
 | 78. Component Groups (Meta-Components) | 8/8 | Complete    | 2026-07-19 |
-| 79. Page Migration Wave 1 | 10/12 | In Progress|  |
+| 79. Page Migration Wave 1 | 11/12 | In Progress|  |
 | 80. Page Migration Wave 2 | 0/TBD | Not started | — |
 | 81. Page Migration Wave 3 | 0/TBD | Not started | — |
 | 82. Cross-Cutting A11y/Motion/Responsive Sweep | 0/TBD | Not started | — |
