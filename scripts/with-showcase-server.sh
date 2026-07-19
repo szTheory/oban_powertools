@@ -18,9 +18,15 @@ case "${PORT}" in
 esac
 
 MIX_TEST_PARTITION="_phase79_${PORT}_$$"
+PHASE79_BUILD_PATH="${HOST_DIR}/_build/phase79_${PORT}_$$"
 
 if [[ ! "${MIX_TEST_PARTITION}" =~ ^_phase79_[0-9]+_[0-9]+$ ]]; then
   echo "refusing unresolved Phase 79 test database partition" >&2
+  exit 64
+fi
+
+if [[ ! "${PHASE79_BUILD_PATH}" =~ /examples/phoenix_host/_build/phase79_[0-9]+_[0-9]+$ ]]; then
+  echo "refusing unresolved Phase 79 build path" >&2
   exit 64
 fi
 
@@ -61,6 +67,8 @@ cleanup() {
       "${DATABASE_NAME}" || drop_status=$?
   fi
 
+  rm -rf -- "${PHASE79_BUILD_PATH}"
+
   if [ "${exit_status}" -eq 0 ] && [ "${drop_status}" -ne 0 ]; then
     exit_status="${drop_status}"
   fi
@@ -76,14 +84,29 @@ mkdir -p "$(dirname "${SERVER_LOG}")"
 
 (
   cd "${HOST_DIR}"
-  mix deps.get --quiet
-  env MIX_ENV=test MIX_TEST_PARTITION="${MIX_TEST_PARTITION}" mix ecto.create --quiet
+  env \
+    MIX_ENV=test \
+    MIX_BUILD_PATH="${PHASE79_BUILD_PATH}" \
+    MIX_TEST_PARTITION="${MIX_TEST_PARTITION}" \
+    PHASE79_BROWSER_FIXTURES=1 \
+    mix deps.get --quiet
+  env \
+    MIX_ENV=test \
+    MIX_BUILD_PATH="${PHASE79_BUILD_PATH}" \
+    MIX_TEST_PARTITION="${MIX_TEST_PARTITION}" \
+    PHASE79_BROWSER_FIXTURES=1 \
+    mix ecto.create --quiet
 )
 DATABASE_CREATED=1
 
 (
   cd "${HOST_DIR}"
-  env MIX_ENV=test MIX_TEST_PARTITION="${MIX_TEST_PARTITION}" mix ecto.migrate --quiet
+  env \
+    MIX_ENV=test \
+    MIX_BUILD_PATH="${PHASE79_BUILD_PATH}" \
+    MIX_TEST_PARTITION="${MIX_TEST_PARTITION}" \
+    PHASE79_BROWSER_FIXTURES=1 \
+    mix ecto.migrate --quiet
 )
 
 PHASE79_BROWSER_FIXTURE_SECRET="$(openssl rand -hex 32)"
@@ -97,6 +120,7 @@ fi
   cd "${HOST_DIR}"
   exec env \
     MIX_ENV=test \
+    MIX_BUILD_PATH="${PHASE79_BUILD_PATH}" \
     MIX_TEST_PARTITION="${MIX_TEST_PARTITION}" \
     PHASE79_BROWSER_FIXTURES=1 \
     PHASE79_BROWSER_FIXTURE_SECRET="${PHASE79_BROWSER_FIXTURE_SECRET}" \
