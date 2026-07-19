@@ -301,6 +301,64 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
   end
 
   @tag phase79_slice: "overview"
+  test "read model uses one injected observation time for byte-stable presentation input" do
+    seed_overview_fixture!()
+    now = ~U[2026-07-19 18:00:00Z]
+
+    first = OverviewReadModel.build(repo: TestRepo, dashboard_path: "/oban", now: now)
+    second = OverviewReadModel.build(repo: TestRepo, dashboard_path: "/oban", now: now)
+
+    assert first == second
+    assert Enum.all?(first, &(&1.observed_at == "July 19, 2026 at 18:00 UTC"))
+    assert Enum.all?(first, &(&1.observed_datetime == DateTime.to_iso8601(now)))
+  end
+
+  @tag phase79_slice: "overview"
+  test "resolved continuity filters audit support before the twenty-row bound" do
+    assert {:ok, repair} =
+             Audit.record(
+               "lifeline.repair_executed",
+               %{type: :job, id: "older-repair-job"},
+               %{
+                 "event_type" => "lifeline.repair_executed",
+                 "reason" => "older repair evidence"
+               },
+               repo: TestRepo,
+               actor_id: "ops-79"
+             )
+
+    for index <- 1..21 do
+      assert {:ok, _event} =
+               Audit.record(
+                 "cron.paused",
+                 %{type: :cron_entry, id: "newer-unrelated-#{index}"},
+                 %{"event_type" => "cron.paused", "reason" => "unrelated"},
+                 repo: TestRepo,
+                 actor_id: "ops-79"
+               )
+    end
+
+    continuity =
+      TestRepo
+      |> then(
+        &OverviewReadModel.build(
+          repo: &1,
+          dashboard_path: "/oban",
+          now: ~U[2026-07-19 18:00:00Z]
+        )
+      )
+      |> Enum.find(&(&1.id == :resolved_continuity))
+
+    assert [%{source: "audit", label: "job:older-repair-job", path: path}] =
+             continuity.exemplars
+
+    assert path ==
+             "/ops/jobs/audit?resource_type=job&resource_id=older-repair-job&event_type=lifeline.repair_executed"
+
+    assert repair.id < Enum.max(Enum.map(Audit.list_all(repo: TestRepo), & &1.id))
+  end
+
+  @tag phase79_slice: "overview"
   test "quiet overview uses compact available-evidence truth without live or mutation semantics",
        %{
          conn: conn
