@@ -74,13 +74,13 @@ async function prepareControlledGroupStory(
   page: Page,
   projectName: string,
   story: ShowcaseGroupStory,
+  controlledId = `showcase-${story.id}-dialog`,
 ): Promise<{ story: Locator; trigger: Locator }> {
   await showcaseSupport.prepareShowcase(page, {
     theme: "light",
     viewportName: viewportNameFromProject(projectName),
   });
 
-  const controlledId = `showcase-${story.id}-dialog`;
   const trigger = page.locator(
     '.obpt-showcase-controls [data-obpt-theme-choice="light"]',
   );
@@ -93,6 +93,34 @@ async function prepareControlledGroupStory(
   );
   await expect(storyLocator.getByRole("dialog")).toBeVisible();
   return { story: storyLocator, trigger };
+}
+
+async function bindParentEvent(
+  control: Locator,
+  event: string,
+  values: Record<string, string>,
+): Promise<void> {
+  await control.evaluate(
+    (element, contract) => {
+      element.setAttribute("phx-click", contract.event);
+      for (const [name, value] of Object.entries(contract.values)) {
+        element.setAttribute(`phx-value-${name}`, value);
+      }
+      element.addEventListener("click", (click) => click.preventDefault(), {
+        once: true,
+      });
+    },
+    { event, values },
+  );
+}
+
+async function expectNativeModal(
+  detail: Locator,
+  expected: boolean,
+): Promise<void> {
+  expect(await detail.evaluate((element) => element.matches(":modal"))).toBe(
+    expected,
+  );
 }
 
 async function activateFromControlledInvoker(
@@ -493,88 +521,279 @@ test.describe("group operator-pattern connected behavior contracts", () => {
     await expectConfidentialityChannelsSafe(page);
   });
 
-  test("group FilterBar disclosure, draft, Apply, remove, clear, URL, and status stay parent-owned", async ({
+  test("group filter disclosure keeps collapsed fields out of narrow keyboard order", async ({
     page,
   }, testInfo) => {
+    test.skip(
+      viewportNameFromProject(testInfo.project.name) !== "320",
+      "narrow filter disclosure runs in chromium-320",
+    );
+
     const story = groupStory("submit filter", "filter", "submit");
     const stage = await prepareGroupStory(page, testInfo.project.name, story);
     const toggle = stage.getByRole("button", { name: /Filters/ });
-    const queue = stage.getByRole("combobox", { name: "Queue" });
-    const state = stage.getByRole("combobox", { name: "State" });
-    const originalUrl = page.url();
+    const fields = stage.locator("[data-obpt-filter-fields]");
+    const queue = stage.getByRole("textbox", { name: "Queue" });
+    const fieldsId = await fields.getAttribute("id");
+
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(toggle).toHaveAttribute("aria-controls", fieldsId as string);
+    await expect(fields).toBeHidden();
+    await expect(fields).toHaveAttribute("inert", "");
+    await expect(stage.getByRole("status")).toHaveText(
+      "248 jobs match the applied filters.",
+    );
+
+    await toggle.focus();
+    await page.keyboard.press("Tab");
+    expect(
+      await fields.evaluate((element) =>
+        element.contains(document.activeElement),
+      ),
+    ).toBe(false);
 
     await toggle.focus();
     await page.keyboard.press("Enter");
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(fields).toBeVisible();
+    await expect(fields).not.toHaveAttribute("inert", /.+/);
+    await page.keyboard.press("Tab");
+    await expect(queue).toBeFocused();
+
+    await toggle.focus();
     await page.keyboard.press("Space");
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
-    await toggle.click();
+    await expect(fields).toBeHidden();
+    await expect(fields).toHaveAttribute("inert", "");
+    await expectOneResponsiveTree(stage, "[data-obpt-filter-fields]");
+    await expectNoHorizontalOverflow(stage);
+  });
 
-    await queue.selectOption("critical");
-    await state.selectOption("retryable");
-    await expect(page).toHaveURL(originalUrl);
+  test("group filter draft, Apply, named remove, Clear, canonical URL, and one status stay parent-owned", async ({
+    page,
+  }, testInfo) => {
+    const story = groupStory("submit filter", "filter", "submit");
+    const stage = await prepareGroupStory(page, testInfo.project.name, story);
+    const fields = stage.locator("[data-obpt-filter-fields]");
+    const queue = stage.getByRole("textbox", { name: "Queue" });
+    const state = stage.getByRole("textbox", { name: "State" });
+    const results = stage.locator(`#${story.id}-results`);
+    const originalBrowserUrl = page.url();
+
+    if (!(await fields.isVisible())) {
+      await stage.getByRole("button", { name: /Filters/ }).click();
+    }
+
+    await queue.fill("critical-mailer");
+    await state.fill("retryable");
+    await expect(page).toHaveURL(originalBrowserUrl);
+    await expect(results).toHaveAttribute(
+      "data-obpt-group-filter-url",
+      "/ops/jobs/_showcase",
+    );
+    await expect(stage.getByRole("status")).toHaveText(
+      "248 jobs match the applied filters.",
+    );
     await expect(
       stage.getByText("Changes not applied.", { exact: true }),
     ).toBeVisible();
 
     await stage.getByRole("button", { name: "Apply filters" }).click();
-    await expect(page).toHaveURL(/queue=critical.*state=retryable/);
-    await expect(page).not.toHaveURL(/[?&]page=/);
+    const appliedUrl =
+      "/ops/jobs/_showcase?queue=critical-mailer&state=retryable";
+    await expect(results).toHaveAttribute(
+      "data-obpt-group-filter-url",
+      appliedUrl,
+    );
+    await expect(results).toHaveAttribute(
+      "data-obpt-group-filter-history",
+      `push:${appliedUrl}`,
+    );
+    await expect(results).not.toHaveAttribute(
+      "data-obpt-group-filter-url",
+      /[?&]page=/,
+    );
     await expect(stage.getByRole("status")).toHaveText(
-      "12 jobs match the applied filters.",
+      "42 jobs match the applied filters.",
+    );
+    await expect(stage.getByRole("status")).toHaveCount(1);
+    await expect(stage.locator(".obpt-filter-bar__active-filter")).toHaveCount(
+      2,
     );
 
-    await stage
-      .getByRole("link", { name: "Remove Queue: critical filter" })
-      .click();
-    await expect(page).not.toHaveURL(/queue=critical/);
-    await stage.getByRole("link", { name: "Clear filters" }).click();
-    await expect(page).not.toHaveURL(/queue=|state=/);
+    const removeQueue = stage.getByRole("link", {
+      name: "Remove Queue: critical-mailer filter",
+    });
+    await bindParentEvent(removeQueue, "remove-group-filter", {
+      id: story.id,
+      field: "queue",
+    });
+    await removeQueue.click();
+    await expect(results).toHaveAttribute(
+      "data-obpt-group-filter-url",
+      "/ops/jobs/_showcase?state=retryable",
+    );
+    await expect(stage.locator(".obpt-filter-bar__active-filter")).toHaveCount(
+      1,
+    );
+
+    const clear = stage.getByRole("link", { name: "Clear filters" });
+    await bindParentEvent(clear, "clear-group-filters", { id: story.id });
+    await clear.click();
+    await expect(results).toHaveAttribute(
+      "data-obpt-group-filter-url",
+      "/ops/jobs/_showcase",
+    );
+    await expect(stage.getByRole("status")).toHaveText(
+      "248 jobs match the applied filters.",
+    );
+    await expect(stage.getByRole("status")).toHaveCount(1);
+    await expect(stage.locator(".obpt-filter-bar__applied")).toHaveCount(0);
+    await expect(page).toHaveURL(originalBrowserUrl);
+    await expectConfidentialityChannelsSafe(page);
   });
 
-  test("group detail tablet-adaptive mode is modal, inert, history-aware, and restores focus", async ({
+  test("group filter instant mode applies one criterion without inventing Apply semantics", async ({
+    page,
+  }, testInfo) => {
+    const story = groupStory("instant filter", "filter", "instant");
+    const stage = await prepareGroupStory(page, testInfo.project.name, story);
+    const fields = stage.locator("[data-obpt-filter-fields]");
+    const results = stage.locator(`#${story.id}-results`);
+
+    if (!(await fields.isVisible())) {
+      await stage.getByRole("button", { name: /Filters/ }).click();
+    }
+
+    await expect(
+      stage.getByRole("button", { name: "Apply filters" }),
+    ).toHaveCount(0);
+    await stage.getByRole("textbox", { name: "State" }).fill("available");
+    await expect(results).toHaveAttribute(
+      "data-obpt-group-filter-url",
+      "/ops/jobs/_showcase?state=available",
+    );
+    await expect(results).toHaveAttribute(
+      "data-obpt-group-filter-history",
+      "replace:/ops/jobs/_showcase?state=available",
+    );
+    await expect(stage.getByRole("status")).toHaveText(
+      "42 jobs match the applied filters.",
+    );
+    await expect(
+      stage.getByRole("button", { name: "Apply filters" }),
+    ).toHaveCount(0);
+  });
+
+  test("group detail constrained drawer is native-modal, contained, history-aware, dismissible, and restorable", async ({
     page,
   }, testInfo) => {
     test.skip(
       viewportNameFromProject(testInfo.project.name) !== "tablet",
-      "tablet-adaptive behavior runs in chromium-tablet",
+      "constrained native modality runs in chromium-tablet",
     );
 
-    const stage = await prepareGroupStory(
-      page,
-      testInfo.project.name,
-      groupStory("adaptive modal detail", "detail", "modal"),
-    );
-    const trigger = stage.getByRole("button", { name: /Job 101 details/ });
-    const detail = stage.locator("[data-obpt-detail-surface]");
-
-    await trigger.click();
-    await expect(detail).toHaveAttribute("data-obpt-detail-mode", "modal");
-    await expect(detail).toHaveAttribute("aria-modal", "true");
-    await expect(page.locator("[data-obpt-showcase-main]")).toHaveAttribute(
-      "inert",
-      "",
-    );
-    await expect(page).toHaveURL(/detail=101/);
-
-    await stage.getByRole("button", { name: /Job 202 details/ }).click();
-    await expect(page).toHaveURL(/detail=202/);
-    await detail.getByRole("button", { name: "Close job details" }).click();
-    await expect(page).not.toHaveURL(/detail=/);
-    await expect(trigger).toBeFocused();
-
-    const backStage = await prepareGroupStory(
+    const story = groupStory("modal detail", "detail", "modal");
+    const surfaceId = `showcase-${story.id}-surface`;
+    const controlled = await prepareControlledGroupStory(
       page,
       testInfo.project.name,
       story,
+      surfaceId,
     );
-    const backDetail = backStage.locator("[data-obpt-detail-surface]");
-    await backStage.getByRole("button", { name: /Job 101 details/ }).click();
-    await page.goBack();
-    await expect(backDetail).toHaveCount(0);
+    const detail = controlled.story.locator("[data-obpt-detail-surface]");
+    const results = controlled.story.locator(
+      "[data-obpt-group-detail-history]",
+    );
+    const firstResource = "01JZ8M5P999999999999999999";
+    const nextResource = "01JZ8M5P999999999999999998";
+
+    await expect(detail).toHaveAttribute("data-obpt-detail-mode", "drawer");
+    await expect(detail).toHaveAttribute("aria-modal", "true");
+    await expectNativeModal(detail, true);
+    await expect(results).toHaveAttribute(
+      "data-obpt-group-detail-history",
+      `push:/ops/jobs/_showcase?detail=${firstResource}`,
+    );
+    await expect(detail.getByRole("status")).toHaveText(
+      `Job ${firstResource} details loaded.`,
+    );
+
+    const outside = page.locator("#form-input-required");
+    await outside.focus();
+    expect(
+      await detail.evaluate((element) =>
+        element.contains(document.activeElement),
+      ),
+      "native modal should prevent background focus",
+    ).toBe(true);
+
+    await detail.getByRole("link", { name: "Open full details" }).focus();
+    await page.keyboard.press("Tab");
+    expect(
+      await detail.evaluate(
+        (element) =>
+          document.activeElement === document.body ||
+          element.contains(document.activeElement),
+      ),
+      "native modal Tab should not enter background content",
+    ).toBe(true);
+    await expect(outside).not.toBeFocused();
+    await page.keyboard.press("Tab");
+    expect(
+      await detail.evaluate((element) =>
+        element.contains(document.activeElement),
+      ),
+      "native modal Tab should cycle back into the detail tree",
+    ).toBe(true);
+
+    await detail.getByRole("button", { name: "Select next job" }).click();
+    await expect(detail.getByRole("heading", { level: 2 })).toHaveText(
+      `Job ${nextResource} details`,
+    );
+    await expect(detail.getByRole("status")).toHaveText(
+      `Job ${nextResource} details loaded.`,
+    );
+    await expect(results).toHaveAttribute(
+      "data-obpt-group-detail-history",
+      `push:/ops/jobs/_showcase?detail=${firstResource}|replace:/ops/jobs/_showcase?detail=${nextResource}`,
+    );
+
+    await page.keyboard.press("Escape");
+    await expect(detail).toHaveCount(0);
+    await expect(controlled.trigger).toBeFocused();
+
+    await activateFromControlledInvoker(
+      page,
+      controlled.trigger,
+      story,
+      surfaceId,
+    );
+    const reopened = controlled.story.locator("[data-obpt-detail-surface]");
+    await reopened.getByRole("button", { name: "Close job details" }).click();
+    await expect(reopened).toHaveCount(0);
+    await expect(controlled.trigger).toBeFocused();
+
+    await activateFromControlledInvoker(
+      page,
+      controlled.trigger,
+      story,
+      surfaceId,
+    );
+    const fallback = page.locator("#form-input-required");
+    await controlled.story
+      .locator("[data-obpt-detail-surface]")
+      .evaluate((element) =>
+        element.setAttribute("data-obpt-focus-fallback", "form-input-required"),
+      );
+    await controlled.trigger.evaluate((element) => element.remove());
+    await controlled.story
+      .getByRole("button", { name: "Close job details" })
+      .click();
+    await expect(fallback).toBeFocused();
   });
 
-  test("group detail wide behavior never traps focus and switches one tree on resize", async ({
+  test("group detail wide adaptive mode is modeless and switches one tree safely across resize", async ({
     page,
   }, testInfo) => {
     test.skip(
@@ -585,22 +804,90 @@ test.describe("group operator-pattern connected behavior contracts", () => {
     const stage = await prepareGroupStory(
       page,
       testInfo.project.name,
-      groupStory("wide inline detail", "detail", "inline"),
+      groupStory("long adaptive detail", "detail", "long"),
     );
     const detail = stage.locator("[data-obpt-detail-surface]");
-    const after = page.locator("[data-obpt-after-group-stage]");
+    await detail.evaluate((element) =>
+      element.setAttribute("data-obpt-test-tree-identity", "phase78-detail"),
+    );
 
     await expect(detail).toHaveAttribute("data-obpt-detail-mode", "inline");
     await expect(detail).not.toHaveAttribute("aria-modal", /.+/);
+    await expectNativeModal(detail, false);
     await expectOneResponsiveTree(stage, "[data-obpt-detail-surface]");
 
-    await detail.getByRole("link", { name: /full details/i }).focus();
-    await page.keyboard.press("Tab");
-    await expect(after).toBeFocused();
+    const outside = page.locator("#form-input-required");
+    await outside.focus();
+    await expect(outside).toBeFocused();
 
     await page.setViewportSize({ width: 768, height: 1000 });
-    await expect(detail).toHaveAttribute("data-obpt-detail-mode", "modal");
+    await expect(detail).toHaveAttribute("data-obpt-detail-mode", "drawer");
+    await expect(detail).toHaveAttribute("aria-modal", "true");
+    await expectNativeModal(detail, true);
     await expectOneResponsiveTree(stage, "[data-obpt-detail-surface]");
+    await expect(detail).toHaveAttribute(
+      "data-obpt-test-tree-identity",
+      "phase78-detail",
+    );
+
+    await page.setViewportSize({ width: 320, height: 900 });
+    await expect(detail).toHaveAttribute("data-obpt-detail-mode", "drawer");
+    await expectNativeModal(detail, true);
+    await expectOneResponsiveTree(stage, "[data-obpt-detail-surface]");
+
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await expect(detail).toHaveAttribute("data-obpt-detail-mode", "inline");
+    await expect(detail).not.toHaveAttribute("aria-modal", /.+/);
+    await expectNativeModal(detail, false);
+    await expectOneResponsiveTree(stage, "[data-obpt-detail-surface]");
+    await expect(detail).toHaveAttribute(
+      "data-obpt-test-tree-identity",
+      "phase78-detail",
+    );
+    await expectNoHorizontalOverflow(stage);
+  });
+
+  test("group detail exposes explicit unavailable and long content without nesting confirmation", async ({
+    page,
+  }, testInfo) => {
+    const unavailable = await prepareGroupStory(
+      page,
+      testInfo.project.name,
+      groupStory("unavailable detail", "detail", "loading", "unavailable"),
+    );
+    const unavailableSurface = unavailable.locator(
+      "[data-obpt-detail-surface]",
+    );
+    await expect(unavailableSurface).toHaveAttribute(
+      "data-obpt-detail-state",
+      "unavailable",
+    );
+    await expect(
+      unavailableSurface.getByText("Data unavailable", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      unavailableSurface.getByText("Refresh data", { exact: true }),
+    ).toBeVisible();
+
+    const long = await prepareGroupStory(
+      page,
+      testInfo.project.name,
+      groupStory("long detail", "detail", "long"),
+    );
+    await expect(long).toContainText("01JZ8M5P999999999999999999");
+    await expect(long).toContainText("مرحبا ✅");
+    await expectOneResponsiveTree(long, ".obpt-detail-surface__body");
+    await expectNoHorizontalOverflow(long);
+
+    await long.getByRole("button", { name: "Preview retry" }).click();
+    await expect(
+      page.locator(
+        '[data-obpt-group-story="group-confirm-single-reversible"][data-obpt-overlay-active="true"]',
+      ),
+    ).toHaveCount(1);
+    await expect(page.locator("dialog[open]")).toHaveCount(0);
+    await expect(page.getByRole("dialog")).toHaveCount(1);
+    await expectConfidentialityChannelsSafe(page);
   });
 
   test("group explanation and audit expose non-color truth, unknown evidence, absolute time, and no secrets", async ({
@@ -667,26 +954,6 @@ test.describe("group operator-pattern connected behavior contracts", () => {
     );
     await expect(stage).toContainText("01JZ8M5P999999999999999999");
     await expectNoHorizontalOverflow(stage);
-  });
-
-  test("group tablet-adaptive behavior chooses the modal detail branch with one body tree", async ({
-    page,
-  }, testInfo) => {
-    test.skip(
-      viewportNameFromProject(testInfo.project.name) !== "tablet",
-      "tablet-adaptive proof runs in chromium-tablet",
-    );
-
-    const stage = await prepareGroupStory(
-      page,
-      testInfo.project.name,
-      groupStory("modal detail", "detail", "modal"),
-    );
-    await expect(stage.locator("[data-obpt-detail-surface]")).toHaveAttribute(
-      "data-obpt-detail-mode",
-      "modal",
-    );
-    await expectOneResponsiveTree(stage, ".obpt-detail-surface__body");
   });
 
   test("group wide behavior keeps explanation and action hierarchy readable without a modal", async ({
@@ -785,42 +1052,112 @@ test.describe("group operator-pattern connected behavior contracts", () => {
     await expectConfidentialityChannelsSafe(page);
   });
 
-  test("group 200% zoom filter reflows fields without losing draft and applied truth", async ({
+  test("group filter 200% zoom keeps disclosure, fields, actions, and applied truth usable", async ({
     page,
   }, testInfo) => {
+    const viewport = viewportNameFromProject(testInfo.project.name);
+    test.skip(
+      viewport !== "wide",
+      "200% zoom proof executes only in chromium-wide",
+    );
+    expect(viewport, "the exact zoom grep must execute rather than skip").toBe(
+      "wide",
+    );
+
     const stage = await prepareGroupStory(
       page,
       testInfo.project.name,
-      groupStory("invalid unapplied filter", "filter", "unapplied", "invalid"),
+      groupStory("active filter", "filter", "active", "clear"),
     );
     await apply200PercentZoom(page);
+    await expect(page.locator("[data-phx-main].phx-connected")).toHaveCount(1);
 
-    await expect(stage.locator("[data-obpt-filter-fields]")).toHaveCSS(
-      "grid-template-columns",
-      /1fr/,
+    const toggle = stage.getByRole("button", { name: /Filters/ });
+    await expect(toggle).toBeVisible();
+    await toggle.focus();
+    await page.keyboard.press("Enter");
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await page.keyboard.press("Tab");
+    await expectVisibleFocus(
+      stage.getByRole("textbox", { name: "Queue" }),
+      "200% zoom first filter field",
+    );
+
+    const fields = stage.locator("[data-obpt-filter-fields]");
+    expect(
+      await fields.evaluate(
+        (element) =>
+          getComputedStyle(element)
+            .gridTemplateColumns.split(" ")
+            .filter(Boolean).length,
+      ),
+    ).toBe(1);
+    await expect(
+      stage.getByRole("button", { name: "Apply filters" }),
+    ).toBeVisible();
+    await expect(stage.locator(".obpt-filter-bar__active-filter")).toHaveCount(
+      2,
     );
     await expect(
-      stage.getByText("Changes not applied.", { exact: true }),
+      stage.getByRole("link", {
+        name: "Remove Queue: critical-mailer filter",
+      }),
     ).toBeVisible();
+
+    const wrapping = await stage
+      .locator(
+        ".obpt-label, .obpt-filter-bar__active-value, .obpt-filter-bar__result-summary, .obpt-button, .obpt-link",
+      )
+      .evaluateAll((elements) =>
+        elements.map((element) => ({
+          clipped: element.scrollWidth > element.clientWidth + 1,
+          nowrap: getComputedStyle(element).whiteSpace === "nowrap",
+        })),
+      );
+    expect(wrapping.every(({ clipped, nowrap }) => !clipped && !nowrap)).toBe(
+      true,
+    );
     await expectOneResponsiveTree(stage, "[data-obpt-filter-fields]");
     await expectNoHorizontalOverflow(stage);
+    await expectConfidentialityChannelsSafe(page);
   });
 
-  test("group 200% zoom detail keeps one wrapped body and usable close focus", async ({
+  test("group detail 200% zoom becomes one modal body with usable close focus", async ({
     page,
   }, testInfo) => {
+    const viewport = viewportNameFromProject(testInfo.project.name);
+    test.skip(
+      viewport !== "wide",
+      "200% zoom proof executes only in chromium-wide",
+    );
+    expect(viewport, "the exact zoom grep must execute rather than skip").toBe(
+      "wide",
+    );
+
     const stage = await prepareGroupStory(
       page,
       testInfo.project.name,
       groupStory("long detail", "detail", "long"),
     );
     await apply200PercentZoom(page);
+    await expect(page.locator("[data-phx-main].phx-connected")).toHaveCount(1);
 
+    const detail = stage.locator("[data-obpt-detail-surface]");
+    await expect(detail).toHaveAttribute("data-obpt-detail-mode", "drawer");
+    await expectNativeModal(detail, true);
     const close = stage.getByRole("button", { name: "Close job details" });
-    await close.focus();
+    await detail.getByRole("heading", { level: 2 }).focus();
+    await page.keyboard.press("Tab");
     await expectVisibleFocus(close, "200% zoom detail close");
+    await expect(detail.locator(".obpt-detail-surface__body")).toHaveCSS(
+      "overflow-y",
+      "auto",
+    );
+    await expect(stage).toContainText("01JZ8M5P999999999999999999");
     await expectOneResponsiveTree(stage, ".obpt-detail-surface__body");
-    await expectNoHorizontalOverflow(stage);
+    await expect(page.locator("dialog[open]")).toHaveCount(1);
+    await expectNoHorizontalOverflow(detail);
+    await expectConfidentialityChannelsSafe(page);
   });
 
   test("group 200% zoom explanation wraps current and snapshot evidence in one tree", async ({
