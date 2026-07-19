@@ -18,7 +18,7 @@ created: 2026-07-19
 | Property | Value |
 |----------|-------|
 | **Framework** | ExUnit + Playwright/browser VRT and axe harness |
-| **Config file** | `mix.exs`, `assets/package.json`, and `playwright.config.ts` |
+| **Config file** | `mix.exs`, root `package.json`, and `playwright.config.ts` |
 | **Quick run command** | `mix test test/oban_powertools/web/live/engine_overview_live_test.exs test/oban_powertools/web/live/cron_live_test.exs test/oban_powertools/web/live/limiters_live_test.exs test/oban_powertools/web/live/audit_live_test.exs --seed 0` |
 | **Full suite command** | `mix format --check-formatted && mix test --exclude host_contract && mix credo --strict && mix dialyzer && npm run visual:a11y` |
 | **Estimated runtime** | Targeted checks in seconds to a few minutes; integrated gate below 20 minutes |
