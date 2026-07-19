@@ -40,7 +40,7 @@ mkdir -p "$(dirname "${SERVER_LOG}")"
 
 (
   cd "${HOST_DIR}"
-  MIX_ENV=dev PORT="${PORT}" PHX_SERVER=true mix phx.server >"${SERVER_LOG}" 2>&1
+  exec env MIX_ENV=dev PORT="${PORT}" PHX_SERVER=true mix phx.server >"${SERVER_LOG}" 2>&1
 ) &
 SERVER_PID="$!"
 
