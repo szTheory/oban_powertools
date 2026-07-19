@@ -6,6 +6,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     alias ObanPowertools.{Audit, DisplayPolicy, Lifeline}
     alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth, Selectors}
+    alias ObanPowertools.Web.Components.{DataDisplay, Forms, OperatorPatterns, Primitives}
 
     @filter_fields ~w[resource_type resource_id event_type]
     @filter_labels %{
@@ -74,149 +75,201 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     @impl true
     def render(assigns) do
       ~H"""
-      <section id="audit-page" class="space-y-6 p-6">
-        <header>
-          <h1 class="text-2xl font-semibold">Audit</h1>
-          <p class="text-sm text-zinc-600">
-            Review recorded operator actions and the evidence available for each record.
-          </p>
+      <.page_content
+        audit_page={@audit_page}
+        event_rows={@event_rows}
+        filter_form={@filter_form}
+        active_filters={@active_filters}
+        result_summary={@result_summary}
+        selected_event_id={@selected_event_id}
+        selected_detail={@selected_detail}
+        detail_state={@detail_state}
+        retention_summary={@retention_summary}
+      />
+      """
+    end
+
+    attr(:audit_page, :map, required: true)
+    attr(:event_rows, :list, required: true)
+    attr(:filter_form, :any, required: true)
+    attr(:active_filters, :list, default: [])
+    attr(:result_summary, :string, required: true)
+    attr(:selected_event_id, :any, default: nil)
+    attr(:selected_detail, :map, default: nil)
+    attr(:detail_state, :atom, default: :empty, values: [:empty, :ready, :unavailable])
+    attr(:retention_summary, :map, required: true)
+    attr(:load_state, :atom, default: :ready, values: [:ready, :error])
+    attr(:clear_filters_href, :string, default: "/ops/jobs/audit")
+
+    attr(
+      :read_only_copy,
+      :string,
+      default:
+        "Permission: read-only. This page is the cross-surface audit destination. Powertools-native pages keep preview, reason, and local audit evidence close to the acted-on resource."
+    )
+
+    @doc """
+    Renders the bounded read-only Audit scan and selected immutable evidence.
+
+    The component consumes normalized presentation assigns only. It performs no
+    authorization, repository work, URL parsing, time lookup, or mutation.
+    """
+    def page_content(assigns) do
+      assigns =
+        assign(
+          assigns,
+          :detail_fallback_id,
+          detail_fallback_id(assigns.selected_event_id, assigns.event_rows)
+        )
+
+      ~H"""
+      <section id="audit-page" class="obpt-audit-page" aria-labelledby="audit-page-title">
+        <header class="obpt-audit-page__header">
+          <h1 id="audit-page-title">Audit</h1>
+          <p>Review recorded operator actions and the evidence available for each record.</p>
         </header>
 
-        <div class="rounded-lg border bg-white px-4 py-3 text-sm text-zinc-700">
-          <p><%= LiveAuth.page_read_only_banner(:audit) %></p>
-          <p class="mt-2">
-            Powertools-native pages keep preview, reason, and local audit evidence close to the acted-on resource. The Oban Web bridge remains Inspection only and read-only.
+        <Primitives.surface variant={:inset}>
+          <p>{@read_only_copy}</p>
+          <p>
+            The Oban Web bridge remains Inspection only and read-only. Historical records show what was recorded; they do not claim current state or causality.
           </p>
-        </div>
+        </Primitives.surface>
 
-        <section id="audit-retention" class="rounded-lg border bg-slate-50 p-4">
-          <h2 class="text-base font-semibold"><%= @retention_summary.title %></h2>
-          <p class="mt-2 text-sm text-zinc-600"><%= @retention_summary.description %></p>
-          <p class="mt-2 text-sm text-zinc-600"><%= @retention_summary.last_run %></p>
+        <section id="audit-retention" aria-labelledby="audit-retention-title">
+          <Primitives.surface variant={:inset}>
+            <h2 id="audit-retention-title">{@retention_summary.title}</h2>
+            <p>{@retention_summary.description}</p>
+            <p>{@retention_summary.last_run}</p>
+          </Primitives.surface>
         </section>
 
-        <section id="audit-filters" class="rounded-lg border bg-white p-4">
-          <h2 class="text-base font-semibold">Filter audit records</h2>
-          <.form for={@filter_form} phx-submit="apply_filters" class="mt-3 space-y-3">
-            <div class="grid gap-3 sm:grid-cols-3">
-              <label>
-                <span>Resource type</span>
-                <input name="filters[resource_type]" value={@filter_form[:resource_type].value} />
-              </label>
-              <label>
-                <span>Resource ID</span>
-                <input name="filters[resource_id]" value={@filter_form[:resource_id].value} />
-              </label>
-              <label>
-                <span>Event type</span>
-                <input name="filters[event_type]" value={@filter_form[:event_type].value} />
-              </label>
-            </div>
-            <button type="submit">Apply filters</button>
-          </.form>
+        <OperatorPatterns.filter_bar
+          id="audit-filters"
+          form={@filter_form}
+          mode={:submit}
+          result_summary={@result_summary}
+          results_target_id="audit-records"
+          active_filters={@active_filters}
+          submit_event="apply_filters"
+          clear_href={@clear_filters_href}
+          filters_expanded={true}
+        >
+          <:fields>
+            <Forms.input
+              field={@filter_form[:resource_type]}
+              label="Resource type"
+              variant={:filter}
+            />
+            <Forms.input
+              field={@filter_form[:resource_id]}
+              label="Resource ID"
+              variant={:filter}
+            />
+            <Forms.input
+              field={@filter_form[:event_type]}
+              label="Event type"
+              variant={:filter}
+            />
+          </:fields>
+        </OperatorPatterns.filter_bar>
 
-          <div :if={@active_filters != []} class="mt-3">
-            <span :for={filter <- @active_filters} id={filter.id} class="mr-3">
-              <span><%= filter.label %>: <%= filter.value %></span>
-              <.link patch={filter.remove_href} aria-label={filter.remove_label}>Remove</.link>
-            </span>
-            <.link patch={Selectors.audit_path([])}>Clear filters</.link>
-          </div>
+        <Primitives.surface :if={@load_state == :error} variant={:inset} role="alert">
+          <h2>Audit records did not load</h2>
+          <p>Retry the request. If the problem continues, check the host logs.</p>
+        </Primitives.surface>
 
-          <p class="mt-3 text-sm text-zinc-600"><%= @result_summary %></p>
-        </section>
+        <DataDisplay.data_table
+          :if={@load_state == :ready}
+          id="audit-records"
+          caption="Audit records"
+          rows={@event_rows}
+          row_id={& &1.id}
+          state={:ready}
+          resource="audit records"
+          row_count={@audit_page.total_count}
+          pagination_summary={@result_summary}
+        >
+          <:col :let={row} label="Event">
+            <span id={"audit-record-#{row.id}"}>{row.event_label}</span>
+          </:col>
+          <:col :let={row} label="Target">
+            <Primitives.link :if={row.target_href} navigate={row.target_href}>
+              {row.target_label}
+            </Primitives.link>
+            <span :if={!row.target_href}>{row.target_label}</span>
+          </:col>
+          <:col :let={row} label="Actor">
+            <span>{row.actor}</span>
+          </:col>
+          <:col :let={row} label="Reason">
+            <span>{row.reason_summary}</span>
+          </:col>
+          <:col :let={row} label="Recorded at">
+            <time datetime={row.recorded_datetime}>{row.recorded_at}</time>
+          </:col>
+          <:action :let={row}>
+            <Primitives.button
+              id={evidence_trigger_id(row.id)}
+              variant={:ghost}
+              phx-click="select_event"
+              phx-value-event={row.id}
+              aria-label={row.evidence_label}
+              aria-expanded={to_string(selected_row?(@selected_event_id, row.id))}
+              aria-controls="audit-detail"
+            >
+              View evidence
+            </Primitives.button>
+          </:action>
+        </DataDisplay.data_table>
 
-        <div class="overflow-hidden rounded-lg border bg-white">
-          <table id="audit-records" class="obpt-data-table min-w-full divide-y">
-            <caption>Audit records</caption>
-            <thead>
-              <tr>
-                <th>Event</th>
-                <th>Target</th>
-                <th>Actor</th>
-                <th>Reason</th>
-                <th>Recorded at</th>
-                <th><span class="sr-only">Evidence</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr :for={row <- @event_rows} id={"audit-record-#{row.id}"}>
-                <td><%= row.event_label %></td>
-                <td>
-                  <.link :if={row.target_href} navigate={row.target_href}><%= row.target_label %></.link>
-                  <span :if={!row.target_href}><%= row.target_label %></span>
-                </td>
-                <td><%= row.actor %></td>
-                <td><%= row.reason_summary %></td>
-                <td><time datetime={row.recorded_datetime}><%= row.recorded_at %></time></td>
-                <td>
-                  <button
-                    type="button"
-                    phx-click="select_event"
-                    phx-value-event={row.id}
-                    aria-label={row.evidence_label}
-                  >
-                    View evidence
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <DataDisplay.empty_state
+          :if={@load_state == :ready && @event_rows == []}
+          id="audit-records-empty"
+          heading={empty_title(@active_filters)}
+          body={empty_description(@active_filters)}
+        />
 
-          <div :if={@event_rows == []} class="p-4">
-            <h2><%= empty_title(@active_filters) %></h2>
-            <p><%= empty_description(@active_filters) %></p>
-          </div>
-        </div>
-
-        <nav aria-label="Audit pagination" class="flex items-center justify-between">
-          <.link :if={@audit_page.previous_href} patch={@audit_page.previous_href}>Previous</.link>
-          <span :if={!@audit_page.previous_href}>Previous</span>
-          <.link :if={@audit_page.next_href} patch={@audit_page.next_href}>Next</.link>
-          <span :if={!@audit_page.next_href}>Next</span>
+        <nav
+          :if={@load_state == :ready}
+          class="obpt-audit-page__pagination"
+          aria-label="Audit pagination"
+        >
+          <Primitives.link :if={@audit_page.previous_href} patch={@audit_page.previous_href}>
+            Previous
+          </Primitives.link>
+          <span :if={!@audit_page.previous_href} aria-disabled="true">Previous</span>
+          <Primitives.link :if={@audit_page.next_href} patch={@audit_page.next_href}>
+            Next
+          </Primitives.link>
+          <span :if={!@audit_page.next_href} aria-disabled="true">Next</span>
         </nav>
 
-        <aside
+        <OperatorPatterns.detail_surface
           :if={@detail_state != :empty}
           id="audit-detail"
-          data-obpt-detail-state={@detail_state}
-          class="rounded-lg border bg-white p-4"
+          title="Audit evidence"
+          close_label="Close audit evidence"
+          open={true}
+          variant={:adaptive}
+          state={@detail_state}
+          resource="audit evidence"
+          logical_fallback_id={@detail_fallback_id}
+          close_event="close_detail"
+          full_details_href={detail_target_href(@detail_state, @selected_detail)}
         >
-          <button type="button" phx-click="close_detail">Close evidence</button>
-
-          <article :if={@detail_state == :ready} id={"audit-entry-#{@selected_event_id}"}>
-            <h2>Audit evidence</h2>
-            <p><%= @selected_detail.sentence %></p>
-            <dl>
-              <dt>Outcome</dt><dd><%= @selected_detail.outcome %></dd>
-              <dt>Actor</dt><dd><%= @selected_detail.actor %></dd>
-              <dt>Action</dt><dd><%= @selected_detail.action %></dd>
-              <dt>Target</dt>
-              <dd>
-                <.link :if={@selected_detail.target_href} navigate={@selected_detail.target_href}>
-                  <%= @selected_detail.target %>
-                </.link>
-                <span :if={!@selected_detail.target_href}><%= @selected_detail.target %></span>
-              </dd>
-              <dt>Reason</dt><dd><%= @selected_detail.reason %></dd>
-              <dt>Source</dt><dd><%= @selected_detail.source %></dd>
-              <dt>Correlation</dt><dd><%= @selected_detail.correlation %></dd>
-              <dt><%= @selected_detail.recorded_at_label %></dt>
-              <dd>
-                <time datetime={@selected_detail.occurred_datetime}>
-                  <%= @selected_detail.occurred_at %>
-                </time>
-              </dd>
-            </dl>
-            <pre :if={@selected_detail.changes}><%= inspect(@selected_detail.changes) %></pre>
-            <pre :if={@selected_detail.evidence}><%= inspect(@selected_detail.evidence) %></pre>
-          </article>
-
-          <div :if={@detail_state == :unavailable}>
-            <h2>Audit evidence is unavailable</h2>
+          <:body>
+            <OperatorPatterns.audit_entry
+              :if={@detail_state == :ready}
+              id={"audit-entry-#{@selected_event_id}"}
+              entry={@selected_detail}
+            />
+          </:body>
+          <:evidence :if={@detail_state == :unavailable}>
+            <h3>Audit evidence is unavailable</h3>
             <p>The selected evidence could not be loaded for this review scope.</p>
-          </div>
-        </aside>
+          </:evidence>
+        </OperatorPatterns.detail_surface>
       </section>
       """
     end
@@ -526,6 +579,20 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp empty_description(_filters),
       do: "Remove a filter or clear all filters to widen the review."
+
+    defp evidence_trigger_id(event_id), do: "audit-evidence-#{event_id}"
+
+    defp selected_row?(nil, _row_id), do: false
+    defp selected_row?(selected_id, row_id), do: to_string(selected_id) == to_string(row_id)
+
+    defp detail_fallback_id(selected_id, rows) do
+      if Enum.any?(rows, &selected_row?(selected_id, &1.id)),
+        do: evidence_trigger_id(selected_id),
+        else: "audit-records"
+    end
+
+    defp detail_target_href(:ready, %{target_href: target_href}), do: target_href
+    defp detail_target_href(_state, _detail), do: nil
 
     defp blank_to_nil(""), do: nil
     defp blank_to_nil(value), do: value

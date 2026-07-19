@@ -21,6 +21,7 @@ defmodule ObanPowertools.Web.AuditLiveTest do
   alias ObanPowertools.Audit
   alias ObanPowertools.Workflow
   alias ObanPowertools.WorkflowFixtures
+  alias ObanPowertools.Web.AuditLive
 
   setup do
     original_display_policy = Application.get_env(:oban_powertools, :display_policy)
@@ -196,7 +197,7 @@ defmodule ObanPowertools.Web.AuditLiveTest do
     assert has_element?(view, "#audit-records.obpt-data-table")
     assert has_element?(view, "#audit-records caption", "Audit records")
     assert html =~ "Records 21–40 of 45 · Page 2 of 3"
-    assert length(Regex.scan(~r/<tr[^>]+id="audit-record-\d+"/, html)) == 20
+    assert length(Regex.scan(~r/id="audit-record-\d+"/, html)) == 20
     assert has_element?(view, "a[href='/ops/jobs/audit']", "Previous")
     assert has_element?(view, "a[href='/ops/jobs/audit?page=3']", "Next")
 
@@ -442,6 +443,107 @@ defmodule ObanPowertools.Web.AuditLiveTest do
     for forbidden <- ["pause", "resume", "run_now", "retry", "cancel", "delete", "execute"] do
       refute MapSet.member?(events, forbidden)
     end
+  end
+
+  @tag phase79_slice: "audit"
+  test "public page_content composes the shared read-only scan tree without repository work" do
+    form =
+      Phoenix.Component.to_form(
+        %{"resource_type" => "", "resource_id" => "", "event_type" => ""},
+        as: :filters,
+        id: "audit-filters-form"
+      )
+
+    html =
+      render_component(&AuditLive.page_content/1,
+        audit_page: %{
+          total_count: 0,
+          page: 1,
+          page_size: 20,
+          total_pages: 0,
+          previous?: false,
+          next?: false,
+          previous_href: nil,
+          next_href: nil
+        },
+        event_rows: [],
+        filter_form: form,
+        active_filters: [],
+        result_summary: "0 records · Page 1 of 1",
+        selected_event_id: nil,
+        selected_detail: nil,
+        detail_state: :empty,
+        retention_summary: %{
+          title: "Repair evidence retention",
+          description:
+            "Archived repair evidence is stored separately from the live Audit rows shown here.",
+          last_run: "No repair archive run has been recorded."
+        }
+      )
+
+    assert length(Regex.scan(~r/<h1(?:\s|>)/, html)) == 1
+    assert length(Regex.scan(~r/<table(?:\s|>)/, html)) == 1
+    assert html =~ ~s(id="audit-filters")
+    assert html =~ ~s(id="audit-records")
+    assert html =~ "No audit records recorded"
+    assert html =~ "Recorded operator actions will appear here when evidence is available."
+    refute html =~ ~s(role="alert")
+    refute html =~ "obpt-timeline"
+    refute html =~ ~s(type="checkbox")
+
+    fields =
+      Regex.scan(~r/name="filters\[([^]]+)\]"/, html, capture: :all_but_first)
+      |> List.flatten()
+      |> MapSet.new()
+
+    assert fields == MapSet.new(~w[resource_type resource_id event_type])
+
+    error_html =
+      render_component(&AuditLive.page_content/1,
+        audit_page: %{
+          total_count: 0,
+          page: 1,
+          page_size: 20,
+          total_pages: 0,
+          previous?: false,
+          next?: false,
+          previous_href: nil,
+          next_href: nil
+        },
+        event_rows: [],
+        filter_form: form,
+        active_filters: [],
+        result_summary: "0 records · Page 1 of 1",
+        detail_state: :empty,
+        retention_summary: %{
+          title: "Repair evidence retention",
+          description: "Archived repair evidence is stored separately from live Audit rows.",
+          last_run: "No repair archive run has been recorded."
+        },
+        load_state: :error
+      )
+
+    assert error_html =~ "Audit records did not load"
+    assert error_html =~ "Retry the request. If the problem continues, check the host logs."
+    assert error_html =~ ~s(role="alert")
+
+    source = File.read!("lib/oban_powertools/web/audit_live.ex")
+    assert source =~ "def page_content(assigns)"
+    assert source =~ "OperatorPatterns.filter_bar"
+    assert source =~ "DataDisplay.data_table"
+    assert source =~ "OperatorPatterns.detail_surface"
+    assert source =~ "OperatorPatterns.audit_entry"
+
+    [composition_source | _rest] =
+      source
+      |> String.split("def page_content(assigns)", parts: 2)
+      |> List.last()
+      |> String.split("defp load_audit_state", parts: 2)
+
+    refute composition_source =~ "Audit.page"
+    refute composition_source =~ "Audit.fetch_in_scope"
+    refute composition_source =~ "Lifeline.retention_status"
+    refute composition_source =~ "DateTime.utc_now"
   end
 
   defp record_audit!(action, resource, metadata, opts \\ []) do
