@@ -67,7 +67,10 @@ cleanup() {
       "${DATABASE_NAME}" || drop_status=$?
   fi
 
-  rm -rf -- "${PHASE79_BUILD_PATH}"
+  rm -rf -- "${PHASE79_BUILD_PATH}" || {
+    sleep 1
+    rm -rf -- "${PHASE79_BUILD_PATH}"
+  }
 
   if [ "${exit_status}" -eq 0 ] && [ "${drop_status}" -ne 0 ]; then
     exit_status="${drop_status}"
