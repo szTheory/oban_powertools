@@ -90,6 +90,56 @@ export async function activateTarget(page: Page, target: ShowcaseTarget): Promis
 
   const story = targetLocator(page, target);
 
+  if (target.kind === 'page') {
+    await closeActiveGroupOverlay(page);
+
+    const stage = story.locator(`[data-obpt-page-story-stage="${target.id}"]`);
+    const trigger = story.locator(
+      `[phx-click="activate-page-story"][phx-value-id="${target.id}"]`
+    );
+
+    await expect(trigger).toHaveCount(1);
+    await trigger.dispatchEvent('click');
+    await expect(story).toHaveAttribute('data-obpt-page-active', 'true');
+    await expect(stage).toHaveAttribute('data-obpt-page-active', 'true');
+    await expect(stage).toHaveCount(1);
+    await expect(stage).toBeVisible();
+    await expect(page.locator('[data-obpt-page-story][data-obpt-page-active="true"]')).toHaveCount(
+      1
+    );
+
+    const pageDialog = story.locator('[role="dialog"], dialog[open]');
+    const expectedOverlayCount = target.activation === 'none' ? 0 : 1;
+    await expect(pageDialog).toHaveCount(expectedOverlayCount);
+
+    if (expectedOverlayCount === 1) {
+      await expect(pageDialog.first()).toBeVisible();
+    }
+
+    const activeOverlayCount = await page
+      .locator(
+        '[data-obpt-group-story][data-obpt-overlay-active="true"], [data-obpt-page-story][data-obpt-page-active="true"] [role="dialog"], [data-obpt-page-story][data-obpt-page-active="true"] dialog[open]'
+      )
+      .count();
+    expect(activeOverlayCount).toBeLessThanOrEqual(1);
+
+    const dialogCount = await page
+      .locator(
+        '[data-obpt-group-story] [role="dialog"], [data-obpt-group-story] dialog[open], [data-obpt-page-story] [role="dialog"], [data-obpt-page-story] dialog[open]'
+      )
+      .count();
+    expect(dialogCount).toBeLessThanOrEqual(1);
+
+    const modalCount = await page
+      .locator(
+        '[data-obpt-group-story] [role="dialog"][aria-modal="true"], [data-obpt-group-story] dialog[open], [data-obpt-page-story] [role="dialog"][aria-modal="true"], [data-obpt-page-story] dialog[open]'
+      )
+      .count();
+    expect(modalCount).toBeLessThanOrEqual(1);
+
+    return story;
+  }
+
   if (target.kind !== 'group' || target.activation === 'none') {
     return story;
   }
@@ -128,7 +178,10 @@ export async function visualTargetLocator(
   story: Locator,
   target: ShowcaseTarget
 ): Promise<Locator> {
-  if (target.kind !== 'group' || target.activation === 'none') {
+  if (
+    (target.kind !== 'group' && target.kind !== 'page') ||
+    target.activation === 'none'
+  ) {
     return story;
   }
 
@@ -140,6 +193,26 @@ export async function visualTargetLocator(
   await expect(overlay).toBeVisible();
 
   return overlay;
+}
+
+async function closeActiveGroupOverlay(page: Page): Promise<void> {
+  const activeGroup = page.locator(
+    '[data-obpt-group-story][data-obpt-overlay-active="true"]'
+  );
+
+  if ((await activeGroup.count()) === 0) {
+    return;
+  }
+
+  const close = activeGroup
+    .locator(
+      '[data-obpt-detail-close], .obpt-confirm-action__actions button[type="button"]'
+    )
+    .first();
+
+  await expect(close).toHaveCount(1);
+  await close.dispatchEvent('click');
+  await expect(activeGroup).toHaveCount(0);
 }
 
 export async function assertShowcaseStructure(page: Page): Promise<void> {
@@ -174,13 +247,18 @@ export async function assertShowcaseStructure(page: Page): Promise<void> {
   }
 
   const groupTargets = targets.filter((target) => target.kind === 'group');
+  const pageTargets = targets.filter((target) => target.kind === 'page');
   const targetIds = targets.map((target) => target.story);
 
   expect(new Set(targetIds).size).toBe(targetIds.length);
   await expect(page.locator('[data-obpt-group-story]')).toHaveCount(groupTargets.length);
+  await expect(page.locator('[data-obpt-page-story]')).toHaveCount(pageTargets.length);
   await expect(
     page.locator('[data-obpt-group-story][data-obpt-overlay-active="true"]')
   ).toHaveCount(0);
+  await expect(page.locator('[data-obpt-page-story][data-obpt-page-active="true"]')).toHaveCount(
+    0
+  );
 
   for (const target of targets) {
     const story = await activateTarget(page, target);
@@ -224,6 +302,22 @@ export async function assertShowcaseStructure(page: Page): Promise<void> {
       await expect(story).toHaveAttribute('data-obpt-a11y-target', target.a11y);
       await expect(stage).toHaveCount(1);
       await expect(stage).toHaveAttribute('data-obpt-overlay-active', active);
+      await expect(story.locator('[data-obpt-mobile-copy], [data-obpt-desktop-copy]')).toHaveCount(
+        0
+      );
+    } else if (target.kind === 'page') {
+      const stage = story.locator(`[data-obpt-page-story-stage="${target.id}"]`);
+
+      await expect(story).toHaveAttribute('data-obpt-page-story', target.id);
+      await expect(story).toHaveAttribute('data-obpt-page', target.page);
+      await expect(story).toHaveAttribute('data-obpt-component', target.components.join(' '));
+      await expect(story).toHaveAttribute('data-obpt-variant', target.variant.join(' '));
+      await expect(story).toHaveAttribute('data-obpt-state', target.state.join(' '));
+      await expect(story).toHaveAttribute('data-obpt-activation', target.activation);
+      await expect(story).toHaveAttribute('data-obpt-page-active', 'true');
+      await expect(story).toHaveAttribute('data-obpt-a11y-target', target.a11y);
+      await expect(stage).toHaveCount(1);
+      await expect(stage).toHaveAttribute('data-obpt-page-active', 'true');
       await expect(story.locator('[data-obpt-mobile-copy], [data-obpt-desktop-copy]')).toHaveCount(
         0
       );

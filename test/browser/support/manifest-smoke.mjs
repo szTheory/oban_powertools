@@ -3,6 +3,7 @@ import path from 'node:path';
 
 const manifestPath = path.join(process.cwd(), 'test/browser/.generated/showcase-manifest.json');
 const expectedThemes = ['system', 'light', 'dark', 'high-contrast'];
+const expectedPages = ['overview', 'cron', 'limiters', 'audit'];
 const expectedViewports = [
   { name: '320', width: 320, height: 900 },
   { name: 'tablet', width: 768, height: 1000 },
@@ -51,6 +52,94 @@ function exactList(actual, expected, label) {
   });
 }
 
+function exactFields(actual, expected, label) {
+  const actualFields = Object.keys(actual);
+  const missing = expected.filter((field) => !actualFields.includes(field));
+  const unknown = actualFields.filter((field) => !expected.includes(field));
+
+  if (missing.length > 0 || unknown.length > 0) {
+    fail(
+      `${label} fields must match the schema; missing=${JSON.stringify(missing)}, unknown=${JSON.stringify(unknown)}`
+    );
+  }
+}
+
+function pageStory(value, label) {
+  const actual = record(value, label);
+
+  exactFields(
+    actual,
+    [
+      'id',
+      'kind',
+      'page',
+      'component',
+      'components',
+      'name',
+      'description',
+      'variant',
+      'state',
+      'activation',
+      'story',
+      'snapshot',
+      'a11y'
+    ],
+    label
+  );
+
+  const id = string(actual.id, `${label}.id`);
+  const components = array(actual.components, `${label}.components`);
+  const variant = array(actual.variant, `${label}.variant`);
+  const state = array(actual.state, `${label}.state`);
+
+  equal(actual.kind, 'page', `${label}.kind`);
+  if (!/^page-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)) {
+    fail(`${label}.id must be a slug-like page-* identifier`);
+  }
+  if (!expectedPages.includes(actual.page)) {
+    fail(`${label}.page must be "overview", "cron", "limiters", or "audit"`);
+  }
+  if (!['none', 'detail', 'confirmation'].includes(actual.activation)) {
+    fail(`${label}.activation must be "none", "detail", or "confirmation"`);
+  }
+
+  string(actual.component, `${label}.component`);
+  string(actual.name, `${label}.name`);
+  string(actual.description, `${label}.description`);
+  equal(components.length > 0, true, `${label}.components non-empty`);
+  equal(variant.length > 0, true, `${label}.variant non-empty`);
+  equal(state.length > 0, true, `${label}.state non-empty`);
+  equal(actual.component, components[0], `${label}.component`);
+  equal(actual.story, `obpt-page-story-${id}`, `${label}.story`);
+  equal(actual.snapshot, `showcase/${id}`, `${label}.snapshot`);
+  equal(actual.a11y, `[data-obpt-page-story="${id}"]`, `${label}.a11y`);
+
+  return actual;
+}
+
+function assertPageTargetOrder(targets, pageStories, firstPageIndex) {
+  const actualPageTargets = targets
+    .map((target, index) => record(target, `targets[${index}]`))
+    .filter((target) => target.kind === 'page');
+  const actualIds = actualPageTargets.map((target) => target.id);
+  const expectedIds = pageStories.map((story) => story.id);
+  const missing = expectedIds.filter((id) => !actualIds.includes(id));
+  const extra = actualIds.filter((id) => !expectedIds.includes(id));
+
+  if (missing.length > 0 || extra.length > 0) {
+    fail(
+      `targets page ids differ; missing=${JSON.stringify(missing)}, extra=${JSON.stringify(extra)}`
+    );
+  }
+
+  equal(actualIds.length, expectedIds.length, 'targets page count');
+
+  expectedIds.forEach((expectedId, index) => {
+    const actual = record(targets[firstPageIndex + index], `targets[${firstPageIndex + index}]`);
+    equal(actual.id, expectedId, `targets page order[${index}]`);
+  });
+}
+
 function loadManifest() {
   if (!fs.existsSync(manifestPath)) {
     fail(`missing ${manifestPath}; run npm run showcase:manifest first`);
@@ -61,7 +150,24 @@ function loadManifest() {
 
 const manifest = loadManifest();
 
-equal(manifest.schema_version, 6, 'schema_version');
+exactFields(
+  manifest,
+  [
+    'schema_version',
+    'themes',
+    'viewports',
+    'scenarios',
+    'primitive_stories',
+    'form_stories',
+    'shell_stories',
+    'data_stories',
+    'group_stories',
+    'page_stories',
+    'targets'
+  ],
+  'manifest'
+);
+equal(manifest.schema_version, 7, 'schema_version');
 exactList(array(manifest.themes, 'themes'), expectedThemes, 'themes');
 
 const viewports = array(manifest.viewports, 'viewports');
@@ -247,8 +353,34 @@ for (const [index, story] of groupStories.entries()) {
   expectedTargets.push({ ...actual });
 }
 
+const pageStories = array(manifest.page_stories, 'page_stories');
+equal(pageStories.length, 19, 'page_stories.length');
+
+const pageIds = new Set();
+
+for (const [index, story] of pageStories.entries()) {
+  const actual = pageStory(story, `page_stories[${index}]`);
+
+  equal(pageIds.has(actual.id), false, `page_stories[${index}].id unique`);
+  pageIds.add(actual.id);
+  expectedTargets.push({ ...actual });
+}
+
 const targets = array(manifest.targets, 'targets');
-equal(expectedTargets.length, 64, 'expected targets.length');
+const allowedTargetKinds = ['scenario', 'primitive', 'form', 'shell', 'data', 'group', 'page'];
+
+for (const [index, target] of targets.entries()) {
+  const actual = record(target, `targets[${index}]`);
+
+  if (!allowedTargetKinds.includes(actual.kind)) {
+    fail(
+      `targets[${index}].kind must be "scenario", "primitive", "form", "shell", "data", "group", or "page"`
+    );
+  }
+}
+
+assertPageTargetOrder(targets, pageStories, 64);
+equal(expectedTargets.length, 83, 'expected targets.length');
 equal(targets.length, expectedTargets.length, 'targets.length');
 
 for (const [index, target] of targets.entries()) {
@@ -377,8 +509,32 @@ for (const [index, target] of targets.entries()) {
     );
     equal(actual.activation, expected.activation, `targets[${index}].activation`);
   }
+
+  if (expected.kind === 'page') {
+    pageStory(actual, `targets[${index}]`);
+    equal(actual.page, expected.page, `targets[${index}].page`);
+    equal(actual.component, expected.component, `targets[${index}].component`);
+    exactList(
+      array(actual.components, `targets[${index}].components`),
+      expected.components,
+      `targets[${index}].components`
+    );
+    equal(actual.name, expected.name, `targets[${index}].name`);
+    equal(actual.description, expected.description, `targets[${index}].description`);
+    exactList(
+      array(actual.variant, `targets[${index}].variant`),
+      expected.variant,
+      `targets[${index}].variant`
+    );
+    exactList(
+      array(actual.state, `targets[${index}].state`),
+      expected.state,
+      `targets[${index}].state`
+    );
+    equal(actual.activation, expected.activation, `targets[${index}].activation`);
+  }
 }
 
 console.log(
-  `showcase manifest ok: ${scenarios.length} scenarios, ${primitiveStories.length} primitive stories, ${formStories.length} form stories, ${shellStories.length} shell stories, ${dataStories.length} data stories, ${groupStories.length} group stories, ${targets.length} targets, ${expectedThemes.length} themes, ${expectedViewports.length} viewports`
+  `showcase manifest ok: ${scenarios.length} scenarios, ${primitiveStories.length} primitive stories, ${formStories.length} form stories, ${shellStories.length} shell stories, ${dataStories.length} data stories, ${groupStories.length} group stories, ${pageStories.length} page stories, ${targets.length} targets, ${expectedThemes.length} themes, ${expectedViewports.length} viewports`
 );

@@ -3,6 +3,7 @@ import path from 'node:path';
 
 const manifestPath = path.join(process.cwd(), 'test/browser/.generated/showcase-manifest.json');
 const allowedThemes = ['system', 'light', 'dark', 'high-contrast'] as const;
+const allowedPages = ['overview', 'cron', 'limiters', 'audit'] as const;
 const expectedViewports = [
   { name: '320', width: 320, height: 900 },
   { name: 'tablet', width: 768, height: 1000 },
@@ -11,6 +12,7 @@ const expectedViewports = [
 
 export type ShowcaseTheme = (typeof allowedThemes)[number];
 export type ViewportName = (typeof expectedViewports)[number]['name'];
+export type ShowcasePageName = (typeof allowedPages)[number];
 
 export type ShowcaseViewport = {
   name: ViewportName;
@@ -60,16 +62,23 @@ export type ShowcaseGroupStory = Omit<ShowcasePrimitiveStory, 'kind'> & {
   activation: 'none' | 'overlay';
 };
 
+export type ShowcasePageStory = Omit<ShowcasePrimitiveStory, 'kind'> & {
+  kind: 'page';
+  page: ShowcasePageName;
+  activation: 'none' | 'detail' | 'confirmation';
+};
+
 export type ShowcaseTarget =
   | (ShowcaseScenario & { kind: 'scenario' })
   | ShowcasePrimitiveStory
   | ShowcaseFormStory
   | ShowcaseShellStory
   | ShowcaseDataStory
-  | ShowcaseGroupStory;
+  | ShowcaseGroupStory
+  | ShowcasePageStory;
 
 export type ShowcaseManifest = {
-  schema_version: 6;
+  schema_version: 7;
   themes: ShowcaseTheme[];
   viewports: ShowcaseViewport[];
   scenarios: ShowcaseScenario[];
@@ -78,6 +87,7 @@ export type ShowcaseManifest = {
   shell_stories: ShowcaseShellStory[];
   data_stories: ShowcaseDataStory[];
   group_stories: ShowcaseGroupStory[];
+  page_stories: ShowcasePageStory[];
   targets: ShowcaseTarget[];
 };
 
@@ -95,7 +105,24 @@ export function loadManifest(filePath = manifestPath): ShowcaseManifest {
 function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
   const manifest = assertRecord(value, filePath);
 
-  assertEqual(manifest.schema_version, 6, 'schema_version');
+  assertExactRecordFields(
+    manifest,
+    [
+      'schema_version',
+      'themes',
+      'viewports',
+      'scenarios',
+      'primitive_stories',
+      'form_stories',
+      'shell_stories',
+      'data_stories',
+      'group_stories',
+      'page_stories',
+      'targets'
+    ],
+    'manifest'
+  );
+  assertEqual(manifest.schema_version, 7, 'schema_version');
 
   const themes = assertStringArray(manifest.themes, 'themes') as ShowcaseTheme[];
   assertExactList(themes, [...allowedThemes], 'themes');
@@ -236,6 +263,16 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
     'group_stories ids'
   );
 
+  const pageStories = assertArray(manifest.page_stories, 'page_stories').map((story, index) =>
+    validatePageStory(story, index, 'page_stories')
+  );
+
+  assertEqual(pageStories.length, 19, 'page_stories.length');
+  assertUniqueList(
+    pageStories.map((story) => story.id),
+    'page_stories ids'
+  );
+
   const targets = assertArray(manifest.targets, 'targets').map((target, index) =>
     validateTarget(target, index)
   );
@@ -248,10 +285,12 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
     ...formStories,
     ...shellStories,
     ...dataStories,
-    ...groupStories
+    ...groupStories,
+    ...pageStories
   ];
 
-  assertEqual(expectedTargets.length, 64, 'expected targets.length');
+  assertPageTargetOrder(targets, pageStories, 64);
+  assertEqual(expectedTargets.length, 83, 'expected targets.length');
   assertEqual(targets.length, expectedTargets.length, 'targets.length');
 
   for (const [index, expectedTarget] of expectedTargets.entries()) {
@@ -308,10 +347,33 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
         );
       }
     }
+
+    if (actualTarget.kind === 'page' && expectedTarget.kind === 'page') {
+      assertEqual(actualTarget.component, expectedTarget.component, `targets[${index}].component`);
+      assertExactList(
+        actualTarget.components,
+        expectedTarget.components,
+        `targets[${index}].components`
+      );
+      assertEqual(actualTarget.name, expectedTarget.name, `targets[${index}].name`);
+      assertEqual(
+        actualTarget.description,
+        expectedTarget.description,
+        `targets[${index}].description`
+      );
+      assertExactList(actualTarget.variant, expectedTarget.variant, `targets[${index}].variant`);
+      assertExactList(actualTarget.state, expectedTarget.state, `targets[${index}].state`);
+      assertEqual(actualTarget.page, expectedTarget.page, `targets[${index}].page`);
+      assertEqual(
+        actualTarget.activation,
+        expectedTarget.activation,
+        `targets[${index}].activation`
+      );
+    }
   }
 
   return {
-    schema_version: 6,
+    schema_version: 7,
     themes,
     viewports,
     scenarios,
@@ -320,6 +382,7 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
     shell_stories: shellStories,
     data_stories: dataStories,
     group_stories: groupStories,
+    page_stories: pageStories,
     targets
   };
 }
@@ -338,6 +401,10 @@ function validateTarget(value: unknown, index: number): ShowcaseTarget {
     const states = assertStringArray(actual.states, `targets[${index}].states`);
 
     return { kind, id, domain, persona, states, story, snapshot, a11y };
+  }
+
+  if (kind === 'page') {
+    return validatePageStory(value, index, 'targets');
   }
 
   if (
@@ -385,8 +452,81 @@ function validateTarget(value: unknown, index: number): ShowcaseTarget {
   }
 
   throw new Error(
-    `targets[${index}].kind must be "scenario", "primitive", "form", "shell", "data", or "group"`
+    `targets[${index}].kind must be "scenario", "primitive", "form", "shell", "data", "group", or "page"`
   );
+}
+
+function validatePageStory(
+  value: unknown,
+  index: number,
+  collection: 'page_stories' | 'targets'
+): ShowcasePageStory {
+  const label = `${collection}[${index}]`;
+  const actual = assertRecord(value, label);
+
+  assertExactRecordFields(
+    actual,
+    [
+      'id',
+      'kind',
+      'page',
+      'component',
+      'components',
+      'name',
+      'description',
+      'variant',
+      'state',
+      'activation',
+      'story',
+      'snapshot',
+      'a11y'
+    ],
+    label
+  );
+
+  const id = assertString(actual.id, `${label}.id`);
+  assertEqual(actual.kind, 'page', `${label}.kind`);
+
+  if (!/^page-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)) {
+    throw new Error(`${label}.id must be a slug-like page-* identifier`);
+  }
+
+  const page = assertPageName(actual.page, `${label}.page`);
+  const component = assertString(actual.component, `${label}.component`);
+  const components = assertStringArray(actual.components, `${label}.components`);
+  const name = assertString(actual.name, `${label}.name`);
+  const description = assertString(actual.description, `${label}.description`);
+  const variant = assertStringArray(actual.variant, `${label}.variant`);
+  const state = assertStringArray(actual.state, `${label}.state`);
+  const activation = assertPageActivation(actual.activation, `${label}.activation`);
+  const story = assertString(actual.story, `${label}.story`);
+  const snapshot = assertString(actual.snapshot, `${label}.snapshot`);
+  const a11y = assertString(actual.a11y, `${label}.a11y`);
+
+  if (components.length === 0 || variant.length === 0 || state.length === 0) {
+    throw new Error(`${label} components, variant, and state must not be empty`);
+  }
+
+  assertEqual(component, components[0], `${label}.component`);
+  assertEqual(story, `obpt-page-story-${id}`, `${label}.story`);
+  assertEqual(snapshot, `showcase/${id}`, `${label}.snapshot`);
+  assertEqual(a11y, `[data-obpt-page-story="${id}"]`, `${label}.a11y`);
+
+  return {
+    id,
+    kind: 'page',
+    page,
+    component,
+    components,
+    name,
+    description,
+    variant,
+    state,
+    activation,
+    story,
+    snapshot,
+    a11y
+  };
 }
 
 function validateComponentStory(
@@ -469,6 +609,29 @@ function assertActivation(value: unknown, label: string): 'none' | 'overlay' {
   return activation;
 }
 
+function assertPageActivation(
+  value: unknown,
+  label: string
+): 'none' | 'detail' | 'confirmation' {
+  const activation = assertString(value, label);
+
+  if (activation !== 'none' && activation !== 'detail' && activation !== 'confirmation') {
+    throw new Error(`${label} must be "none", "detail", or "confirmation"`);
+  }
+
+  return activation;
+}
+
+function assertPageName(value: unknown, label: string): ShowcasePageName {
+  const page = assertString(value, label);
+
+  if (!allowedPages.includes(page as ShowcasePageName)) {
+    throw new Error(`${label} must be "overview", "cron", "limiters", or "audit"`);
+  }
+
+  return page as ShowcasePageName;
+}
+
 function assertNavState(value: unknown, label: string): 'closed' | 'open' {
   const navState = assertString(value, label);
 
@@ -485,6 +648,52 @@ function assertRecord(value: unknown, label: string): Record<string, unknown> {
   }
 
   return value as Record<string, unknown>;
+}
+
+function assertExactRecordFields(
+  value: Record<string, unknown>,
+  expectedFields: string[],
+  label: string
+): void {
+  const actualFields = Object.keys(value);
+  const missing = expectedFields.filter((field) => !actualFields.includes(field));
+  const unknown = actualFields.filter((field) => !expectedFields.includes(field));
+
+  if (missing.length > 0 || unknown.length > 0) {
+    throw new Error(
+      `${label} fields must match the schema; missing=${JSON.stringify(missing)}, unknown=${JSON.stringify(unknown)}`
+    );
+  }
+}
+
+function assertPageTargetOrder(
+  actualTargets: ShowcaseTarget[],
+  expectedPageStories: ShowcasePageStory[],
+  firstPageIndex: number
+): void {
+  const actualPageTargets = actualTargets.filter(
+    (target): target is ShowcasePageStory => target.kind === 'page'
+  );
+  const actualIds = actualPageTargets.map((target) => target.id);
+  const expectedIds = expectedPageStories.map((story) => story.id);
+  const missing = expectedIds.filter((id) => !actualIds.includes(id));
+  const extra = actualIds.filter((id) => !expectedIds.includes(id));
+
+  if (missing.length > 0 || extra.length > 0) {
+    throw new Error(
+      `targets page ids differ; missing=${JSON.stringify(missing)}, extra=${JSON.stringify(extra)}`
+    );
+  }
+
+  assertEqual(actualIds.length, expectedIds.length, 'targets page count');
+
+  for (const [index, expectedId] of expectedIds.entries()) {
+    assertEqual(
+      actualTargets[firstPageIndex + index]?.id,
+      expectedId,
+      `targets page order[${index}]`
+    );
+  }
 }
 
 function assertArray(value: unknown, label: string): unknown[] {
@@ -540,4 +749,5 @@ export const formStories = manifest.form_stories;
 export const shellStories = manifest.shell_stories;
 export const dataStories = manifest.data_stories;
 export const groupStories = manifest.group_stories;
+export const pageStories = manifest.page_stories;
 export const targets = manifest.targets;

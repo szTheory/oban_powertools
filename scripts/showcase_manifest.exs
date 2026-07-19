@@ -4,6 +4,7 @@ alias ObanPowertools.FormStoryCatalog
 alias ObanPowertools.ShellStoryCatalog
 alias ObanPowertools.DataDisplayStoryCatalog
 alias ObanPowertools.OperatorPatternStoryCatalog
+alias ObanPowertools.PageStoryCatalog
 
 themes = ["system", "light", "dark", "high-contrast"]
 
@@ -148,12 +149,44 @@ group_stories =
     }
   end)
 
+page_stories =
+  PageStoryCatalog.stories()
+  |> Enum.map(fn story ->
+    id = Map.fetch!(story, :id)
+    test_targets = Map.fetch!(story, :test_targets)
+
+    %{
+      id: id,
+      kind: story.kind |> Atom.to_string(),
+      page: story.page |> Atom.to_string(),
+      component: story.components |> List.first() |> Atom.to_string(),
+      components: Enum.map(story.components, &Atom.to_string/1),
+      name: Map.fetch!(story, :name),
+      description: Map.fetch!(story, :description),
+      variant: stringify_list.(Map.fetch!(story, :variant)),
+      state: stringify_list.(Map.fetch!(story, :state)),
+      activation: stringify.(Map.fetch!(story, :activation)),
+      story: Map.fetch!(test_targets, :story),
+      snapshot: PageStoryCatalog.snapshot_name(id),
+      a11y: PageStoryCatalog.a11y_target(id)
+    }
+  end)
+
+unless length(page_stories) == 19 do
+  raise "expected exactly 19 page stories, got #{length(page_stories)}"
+end
+
 targets =
   Enum.map(scenarios, &Map.put(&1, :kind, "scenario")) ++
-    primitive_stories ++ form_stories ++ shell_stories ++ data_stories ++ group_stories
+    primitive_stories ++
+    form_stories ++ shell_stories ++ data_stories ++ group_stories ++ page_stories
+
+unless length(targets) == 83 do
+  raise "expected exactly 83 showcase targets, got #{length(targets)}"
+end
 
 manifest = %{
-  schema_version: 6,
+  schema_version: 7,
   themes: themes,
   viewports: viewports,
   scenarios: scenarios,
@@ -162,6 +195,7 @@ manifest = %{
   shell_stories: shell_stories,
   data_stories: data_stories,
   group_stories: group_stories,
+  page_stories: page_stories,
   targets: targets
 }
 
