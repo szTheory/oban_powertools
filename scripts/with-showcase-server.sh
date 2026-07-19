@@ -67,7 +67,7 @@ cleanup() {
       "${DATABASE_NAME}" || drop_status=$?
   fi
 
-  rm -rf -- "${PHASE79_BUILD_PATH}" || {
+  rm -rf -- "${PHASE79_BUILD_PATH}" 2>/dev/null || {
     sleep 1
     rm -rf -- "${PHASE79_BUILD_PATH}"
   }
