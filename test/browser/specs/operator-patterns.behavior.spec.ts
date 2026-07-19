@@ -1124,16 +1124,22 @@ test.describe("group operator-pattern connected behavior contracts", () => {
       "July 18, 2026 at 14:05 UTC",
       "July 18, 2026 at 14:05 UTC",
     ]);
-    for (const [index, actor, outcome] of [
-      [0, "Miyazaki Haruka", "Retry requested"],
-      [1, "Powertools system", "Request failed"],
-      [2, "Queue policy", "Request skipped"],
+    for (const [index, actor, outcome, state, label, tone, icon] of [
+      [0, "Miyazaki Haruka", "Retry requested", "success", "Success", "success", "check"],
+      [1, "Powertools system", "Request failed", "failed", "Failed", "danger", "alert"],
+      [2, "Queue policy", "Request skipped", "skipped", "Skipped", "warning", "alert"],
     ] as const) {
-      await expect(entries.nth(index)).toContainText(actor);
-      await expect(entries.nth(index)).toContainText(outcome);
-      await expect(
-        entries.nth(index).locator(".obpt-status-pill-label"),
-      ).toHaveText(outcome);
+      const entry = entries.nth(index);
+      const status = entry.locator(".obpt-status-pill");
+      await expect(entry).toContainText(actor);
+      await expect(entry).toContainText(outcome);
+      await expect(entry).toHaveAttribute("data-obpt-audit-outcome", state);
+      await expect(status).toHaveAttribute("data-obpt-tone", tone);
+      await expect(status.locator(".obpt-status-pill-icon")).toHaveAttribute(
+        "data-obpt-icon",
+        icon,
+      );
+      await expect(status.locator(".obpt-status-pill-label")).toHaveText(label);
     }
 
     const missing = await prepareGroupStory(

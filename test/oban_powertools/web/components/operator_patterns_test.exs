@@ -178,6 +178,7 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
     entry = %{
       sentence: "System policy requested a retry for job job-123.",
       outcome: "Outcome not recorded",
+      outcome_state: :unknown,
       actor: "System policy",
       action: "Retry requested",
       target: @hostile,
@@ -209,10 +210,45 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
     assert_escaped(html)
   end
 
+  test "AuditEntry renders finite outcome state semantics separately from human outcome copy" do
+    common = %{
+      sentence: "System policy evaluated job job-123.",
+      actor: "System policy",
+      action: "Evaluated retry",
+      target: "job-123",
+      reason: "Incident response",
+      source: "Powertools-native",
+      correlation: "audit-2026-0001",
+      occurred_at: "July 18, 2026 at 21:00 UTC",
+      occurred_datetime: "2026-07-18T21:00:00Z",
+      changes: nil,
+      evidence: nil
+    }
+
+    for {state, outcome, label, tone, icon} <- [
+          {:success, "Retry requested", "Success", "success", "check"},
+          {:failed, "Request failed", "Failed", "danger", "alert"},
+          {:skipped, "Request skipped", "Skipped", "warning", "alert"}
+        ] do
+      html =
+        render_pattern(:audit_entry,
+          id: "audit-entry-#{state}",
+          entry: Map.merge(common, %{outcome: outcome, outcome_state: state})
+        )
+
+      assert html =~ ~s(data-obpt-audit-outcome="#{state}")
+      assert html =~ ~s(data-obpt-tone="#{tone}")
+      assert html =~ ~s(data-obpt-icon="#{icon}")
+      assert html =~ ~s(class="obpt-status-pill-label">#{label}</span>)
+      assert html =~ outcome
+    end
+  end
+
   test "AuditEntry rejects credential and raw-error evidence before rendering" do
     entry = %{
       sentence: "System policy requested a retry for job job-123.",
       outcome: "Retry requested",
+      outcome_state: :success,
       actor: "System policy",
       action: "Retry requested",
       target: "job-123",

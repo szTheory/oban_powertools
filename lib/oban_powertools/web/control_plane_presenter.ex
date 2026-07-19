@@ -20,6 +20,7 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     "failed" => :failed,
     "skipped" => :skipped
   }
+  @audit_outcome_states Map.put(@operator_result_states, "unknown", :unknown)
   @blocker_evidence_kinds %{
     "current" => :current,
     "block_start_snapshot" => :block_start_snapshot
@@ -170,6 +171,12 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
       outcome:
         optional_presentation_text(presentation_value(entry, :outcome), "audit outcome") ||
           "Outcome not recorded",
+      outcome_state:
+        normalize_closed_value!(
+          presentation_value(entry, :outcome_state) || :unknown,
+          @audit_outcome_states,
+          "audit outcome state"
+        ),
       actor: required_presentation_text!(presentation_value(entry, :actor), "audit actor"),
       action: required_presentation_text!(presentation_value(entry, :action), "audit action"),
       target: required_presentation_text!(presentation_value(entry, :target), "audit target"),

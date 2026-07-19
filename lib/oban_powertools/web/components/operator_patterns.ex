@@ -757,10 +757,15 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
       |> assign(:entry_evidence, audit_evidence(entry))
 
     ~H"""
-    <article id={@id} class="obpt-audit-entry" aria-labelledby={"#{@id}-title"}>
+    <article
+      id={@id}
+      class="obpt-audit-entry"
+      data-obpt-audit-outcome={@entry.outcome_state}
+      aria-labelledby={"#{@id}-title"}
+    >
       <header class="obpt-audit-entry__header">
         <h2 id={"#{@id}-title"} class="obpt-audit-entry__title">{@entry.sentence}</h2>
-        <DataDisplay.status_pill domain={:operator_result} state={@entry.outcome} />
+        <DataDisplay.status_pill domain={:operator_result} state={@entry.outcome_state} />
         <time datetime={@entry.occurred_datetime} class="obpt-audit-entry__time">
           {@entry.occurred_at}
         </time>

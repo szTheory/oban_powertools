@@ -180,6 +180,7 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
     assert normalize(:normalize_audit_entry, input) == %{
              sentence: "System policy requested a retry for job job-123.",
              outcome: "Outcome not recorded",
+             outcome_state: :unknown,
              actor: "System policy",
              action: "Retry requested",
              target: @hostile,
@@ -191,6 +192,13 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
              changes: %{"queue" => ["default", "critical"]},
              evidence: "Already redacted evidence"
            }
+
+    assert normalize(:normalize_audit_entry, Map.put(input, "outcome_state", "failed")).outcome_state ==
+             :failed
+
+    assert_raise ArgumentError, ~r/outcome state/i, fn ->
+      normalize(:normalize_audit_entry, Map.put(input, "outcome_state", "invalid"))
+    end
 
     assert_raise ArgumentError, ~r/datetime/i, fn ->
       normalize(:normalize_audit_entry, Map.put(input, "occurred_datetime", "yesterday"))
