@@ -12,7 +12,9 @@ for (const theme of themes) {
         await prepareShowcase(page, { theme, viewportName });
         const story = await activateTarget(page, target);
         await expect(story).toBeVisible();
-        await expect(story).toHaveScreenshot([target.snapshot, `${theme}.png`]);
+        await expect(story).toHaveScreenshot([target.snapshot, `${theme}.png`], {
+          timeout: 15_000
+        });
       });
     }
   });

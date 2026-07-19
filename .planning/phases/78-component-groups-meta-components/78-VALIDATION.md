@@ -54,7 +54,7 @@ Final task IDs are assigned by PLAN.md. The planner must map every task to one o
 | Connected schema-6 structure | GROUP-01, GROUP-02, A11Y-02 | T-78-ACTIVATE | Group metadata, unique IDs, activation state, one responsive tree, and overlay cardinality execute against a connected Docker-backed showcase | Playwright structure | `scripts/with-showcase-server.sh scripts/playwright-docker.sh npx playwright test test/browser/specs/showcase.structure.spec.ts` | ✅ | ✅ green |
 | Representative 200% zoom reflow | GROUP-01, GROUP-02, FORM-04, COPY-02, A11Y-02 | T-78-ZOOM, T-78-FOCUS | Five connected confirmation/filter/detail/explanation/audit stories, project-gated to chromium-wide, assert effective half-CSS-width/device-scale-2 zoom, wrapping/stacking, usable visible focus, one tree, and no ordinary horizontal overflow; exact grep requires five passes/zero skips | Playwright behavior | `scripts/with-showcase-server.sh scripts/playwright-docker.sh npx playwright test test/browser/specs/operator-patterns.behavior.spec.ts --grep "200% zoom" --project chromium-wide` | ✅ | ✅ green |
 | Asset/package boundary | GROUP-01, GROUP-02, A11Y-02 | T-78-HOST, T-78-SUPPLY | Scoped selectors/assets need no host hook registration; source/static assets match; optional catalog failure reaches the existing placeholder | ExUnit source/package | `mix test test/oban_powertools/web/theme_tokens_test.exs test/oban_powertools/web/assets_test.exs test/oban_powertools/hex_release_test.exs --seed 0` | ✅ infrastructure | ⬜ pending |
-| Group axe and VRT | GROUP-01, GROUP-02, COPY-02, A11Y-02 | T-78-VISUAL | One overlay story is activated at a time; 276 group axe/VRT cases are discoverable; exact group baseline scope excludes unrelated residuals | Playwright axe/VRT | `node test/browser/support/verify-group-baselines.mjs` | ❌ W0 | ⬜ pending |
+| Group axe and VRT | GROUP-01, GROUP-02, COPY-02, A11Y-02 | T-78-VISUAL | One overlay story is activated at a time; 276 group axe/VRT cases are discoverable; exact group baseline scope excludes unrelated residuals | Playwright axe/VRT | `node test/browser/support/verify-group-baselines.mjs` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠ flaky*
 
@@ -83,6 +83,14 @@ Every missing Wave 0 contract must first fail at its intended seam before produc
 - Focused group axe passed **276 tests**: 23 group stories × 4 themes × 3 viewports, with **0 critical or serious violations**.
 - The first fresh axe run exposed `scrollable-region-focusable` on the narrow DetailSurface body. The body now has a server-rendered keyboard-access baseline, while client synchronization removes the extra tab stop in inline mode; focused ExUnit/asset coverage passed **21 tests**, and the affected axe slice passed **8 tests** before the complete matrix rerun.
 - No manual screen-reader or representative visual-review claim is made here. Those remain explicit manual boundaries below and the broader cross-page sweep remains assigned to Phase 82.
+
+### 78-08-02 — Exact group VRT baseline scope
+
+- The canonical Docker update produced the exact **276 group PNGs**: 23 group stories × 4 themes × 3 viewports. The first parallel update encountered **39 new-crop stability timeouts** at Playwright's 5-second screenshot limit; serial group-only recovery isolated tablet and wide generation, and an explicit 15-second assertion timeout made the remaining long-content crop deterministic without changing visual comparison semantics.
+- `node test/browser/support/verify-group-baselines.mjs` reported `group baselines ok: 276`.
+- `node test/browser/support/verify-group-baselines.mjs --changed-scope` reported `276 paths, all within 276`; no non-group screenshot path was modified or added.
+- A fresh canonical Docker **compare-only** run passed **276 tests** with no update flag.
+- The unrelated scenario baseline set remains exactly **108 PNGs** and is not counted as Phase 78 success. No manual representative-visual-review claim is made by this automated evidence.
 
 ---
 
