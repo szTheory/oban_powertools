@@ -1,7 +1,7 @@
 ---
 phase: 78
 slug: component-groups-meta-components
-status: pending_reverification
+status: passed
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-07-18
@@ -127,7 +127,7 @@ Every missing Wave 0 contract must first fail at its intended seam before produc
 - `visualTargetLocator()` now returns the exact active confirmation root or open native detail dialog for `activation: overlay`, while all non-overlay targets retain story framing. Every overlay VRT case asserts a visible heading plus a confirmation action or detail close control before screenshot comparison.
 - A confirmed Docker update passed **276/276** and changed exactly **120** PNGs: 10 overlay stories × 4 themes × 3 viewports. Exact-set verification remained **276**, changed-scope verification reported `120 paths, all within 276`, and no non-group screenshot changed.
 - Representative inspection confirmed complete 320/high-contrast bulk confirmation, tablet/dark modal detail, and wide/light long-detail surfaces with their headings and required close/actions. The mandatory fresh no-update Docker comparison then passed **276/276** in 3.8 minutes.
-- Independent re-verification remains the final status gate; the automated gap-closure evidence above is green, but this file intentionally stays `pending_reverification` until that fresh verdict is recorded.
+- Fresh independent re-verification passed **67/67** must-haves with no gaps or regressions. It independently reran the complete no-update Docker VRT matrix (**276/276**), all **120** overlay semantic guards, format/warnings compilation, and **46** core Phase 78 tests; `78-VERIFICATION.md` records the full goal-backward evidence.
 
 ---
 
@@ -169,4 +169,15 @@ Do not mark Phase 78 complete from discovery, static markup, axe, or baseline ex
 - [x] Fast feedback remains under 30 seconds for the component/presenter loop and under 120 seconds for the focused ExUnit/manifest loop.
 - [x] `wave_0_complete: true` and `nyquist_compliant: true` are set only after evidence is recorded.
 
-**Approval:** automated Phase 78 gap-closure gate passed; independent re-verification is pending. Broader manual-only screen-reader and cross-page representative visual boundaries remain intentionally unclaimed for Phase 82.
+## Validation Audit 2026-07-19
+
+| Metric | Count |
+|--------|-------|
+| Requirements audited | 5 |
+| Automated coverage gaps found | 0 |
+| Resolved during audit | 0 |
+| Escalated to manual-only | 0 new |
+
+All PLAN tasks map to executable ExUnit, connected Playwright, manifest, asset/package, or protected-boundary contracts. The two existing manual-only items concern qualitative cross-assistive-technology and broader representative visual review; they remain explicitly assigned to Phase 82 and do not replace any Phase 78 automated requirement gate.
+
+**Approval:** automated Phase 78 gate and fresh 67/67 goal-backward re-verification passed. Broader manual-only screen-reader and cross-page representative visual boundaries remain intentionally unclaimed for Phase 82.
