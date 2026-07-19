@@ -200,6 +200,30 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     .obpt-detail-surface__actions
   ]
 
+  @page_classes ~w[
+    .obpt-page
+    .obpt-page__header
+    .obpt-page__title
+    .obpt-page__intro
+    .obpt-page__stack
+    .obpt-page__section
+    .obpt-page__master-detail
+    .obpt-page__actions
+    .obpt-page__pagination
+    .obpt-page__long-value
+    .obpt-overview__current-grid
+    .obpt-overview__exemplars
+    .obpt-overview__exemplar
+    .obpt-page-story
+  ]
+
+  @production_page_seams ~w[
+    #overview-page
+    .obpt-cron-page
+    .obpt-limiters-page
+    .obpt-audit-page
+  ]
+
   @proof_seam_classes ~w[
     .obpt-tab
     .obpt-modal
@@ -670,6 +694,68 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     end
   end
 
+  test "production pages share scoped token-owned composition at wide and 320px widths" do
+    css = read_contract_file!(@tokens_path)
+    vars = variables_for(css, ".obpt-root")
+    page_blocks = page_blocks(css)
+
+    assert Map.fetch!(vars, "--obpt-font-size-page-title") == "1.75rem"
+    assert length(Regex.scan(~r/--obpt-font-size-page-title\s*:/, css)) == 1
+    assert Map.has_key?(vars, "--obpt-color-page-separator")
+
+    for class <- @page_classes do
+      assert css =~ ".obpt-root #{class}", "missing root-scoped page selector #{class}"
+    end
+
+    for seam <- @production_page_seams do
+      assert css =~ ".obpt-root #{seam}", "missing production page seam #{seam}"
+    end
+
+    for title <- ~w[#overview-title #cron-page-title #limiters-page-title #audit-page-title] do
+      assert css =~ ".obpt-root #{title}",
+             "page title does not use the title token family: #{title}"
+    end
+
+    assert css =~ "font-size: var(--obpt-font-size-page-title)"
+    assert css =~ "@media (min-width: 64rem)"
+    assert css =~ "@media (max-width: 24rem)"
+    assert css =~ "grid-template-columns: repeat(2, minmax(0, 1fr))"
+    assert css =~ ".obpt-root .obpt-audit-page__pagination"
+    assert css =~ ~s(.obpt-root[data-obpt-effective-theme="high-contrast"] :is(.obpt-page,)
+    assert css =~ ":focus-visible"
+    assert css =~ "scroll-margin-block: var(--obpt-space-5)"
+    assert css =~ "@media (prefers-reduced-motion: reduce)"
+    assert css =~ ~s(.obpt-root[data-obpt-motion="reduce"] .obpt-page)
+    assert css =~ "transition-duration: var(--obpt-motion-duration-instant)"
+
+    assert page_blocks != [], "expected production page composition blocks"
+
+    for {selector, body} <- page_blocks do
+      for part <- selector_parts(selector) do
+        assert String.starts_with?(part, ".obpt-root"),
+               "page selector is not scoped below .obpt-root: #{part}"
+      end
+
+      refute body =~ ~r/#[0-9a-fA-F]{3,8}/,
+             "page selector #{selector} contains a raw color value"
+
+      refute body =~ ~r/overflow-x\s*:\s*(auto|scroll)/,
+             "ordinary page selector #{selector} introduces horizontal scrolling"
+
+      for {property, value} <- declarations(body),
+          page_visual_property?(property),
+          not allowed_literal_page_value?(value) do
+        assert String.contains?(value, "var(--obpt-"),
+               "page selector #{selector} property #{property} is not token-backed: #{value}"
+      end
+
+      for {"font-size", value} <- declarations(body) do
+        refute value == "var(--obpt-font-size-xs)",
+               "ordinary page copy must not drop below the 13px floor: #{selector}"
+      end
+    end
+  end
+
   test "theme selector blocks only remap semantic color/focus variables" do
     css = read_contract_file!(@tokens_path)
     blocks = theme_blocks(css)
@@ -827,9 +913,27 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     end)
   end
 
+  defp page_blocks(css) do
+    Regex.scan(~r/([^{}]+)\{([^{}]+)\}/m, css, capture: :all_but_first)
+    |> Enum.map(fn [selector, body] -> {String.trim(selector), body} end)
+    |> Enum.filter(fn {selector, _body} ->
+      Enum.any?(@page_classes ++ @production_page_seams, &String.contains?(selector, &1))
+    end)
+  end
+
   defp selector_parts(selector) do
-    selector
-    |> String.split(",")
+    {parts, current, _depth} =
+      selector
+      |> String.graphemes()
+      |> Enum.reduce({[], [], 0}, fn
+        "(", {parts, current, depth} -> {parts, ["(" | current], depth + 1}
+        ")", {parts, current, depth} -> {parts, [")" | current], max(depth - 1, 0)}
+        ",", {parts, current, 0} -> {[current |> Enum.reverse() |> Enum.join() | parts], [], 0}
+        character, {parts, current, depth} -> {parts, [character | current], depth}
+      end)
+
+    [current |> Enum.reverse() |> Enum.join() | parts]
+    |> Enum.reverse()
     |> Enum.map(&String.trim/1)
     |> Enum.reject(&(&1 == ""))
   end
@@ -875,6 +979,19 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
       font-family font-size font-weight gap line-height margin min-block-size outline
       outline-offset padding padding-block-start
     ] or String.starts_with?(property, "--obpt-")
+  end
+
+  defp page_visual_property?(property) do
+    property in ~w[
+      background border border-block-start border-color color font-family font-size font-weight
+      gap line-height margin max-inline-size max-width min-block-size min-inline-size min-width
+      padding padding-block scroll-margin-block transition-duration width
+    ] or String.starts_with?(property, "--obpt-")
+  end
+
+  defp allowed_literal_page_value?(value) do
+    value in ~w[0 100% auto none transparent] or
+      String.starts_with?(value, "1px solid var(--obpt-")
   end
 
   defp allowed_literal_group_value?(value) do

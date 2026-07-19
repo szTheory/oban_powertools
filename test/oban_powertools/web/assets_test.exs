@@ -63,7 +63,7 @@ defmodule ObanPowertools.Web.AssetsTest do
     assert second_build == first_build
   end
 
-  test "checked-in compiled assets include primitive, shell, and data CSS plus scoped browser behavior" do
+  test "checked-in compiled assets include component and production page CSS plus scoped browser behavior" do
     assert Code.ensure_loaded?(Mix.Tasks.ObanPowertools.Assets.Build),
            "expected mix oban_powertools.assets.build task to be loadable"
 
@@ -116,13 +116,33 @@ defmodule ObanPowertools.Web.AssetsTest do
           ".obpt-root[data-obpt-motion=\"reduce\"] .obpt-confirm-action__dialog",
           ".obpt-root .obpt-detail-surface",
           ".obpt-root .obpt-detail-surface[data-obpt-detail-mode=\"drawer\"]::backdrop",
-          ".obpt-root[data-obpt-motion=\"reduce\"] .obpt-detail-surface"
+          ".obpt-root[data-obpt-motion=\"reduce\"] .obpt-detail-surface",
+          ".obpt-root .obpt-page",
+          ".obpt-root .obpt-page__header",
+          ".obpt-root .obpt-page__title",
+          ".obpt-root .obpt-page__master-detail",
+          ".obpt-root .obpt-page__pagination",
+          ".obpt-root .obpt-page__long-value",
+          ".obpt-root .obpt-overview__current-grid",
+          ".obpt-root .obpt-overview__exemplars",
+          ".obpt-root .obpt-page-story",
+          ".obpt-root #overview-page",
+          ".obpt-root .obpt-cron-page",
+          ".obpt-root .obpt-limiters-page",
+          ".obpt-root .obpt-audit-page",
+          ".obpt-root #overview-title",
+          ".obpt-root #cron-page-title",
+          ".obpt-root #limiters-page-title",
+          ".obpt-root #audit-page-title",
+          ".obpt-root[data-obpt-motion=\"reduce\"] .obpt-page"
         ] do
       assert css =~ selector, "expected compiled CSS to include #{selector}"
     end
 
     assert css =~ "@keyframes obpt-spinner-spin"
+    assert css =~ "--obpt-font-size-page-title: 1.75rem"
     assert css =~ "@media (prefers-reduced-motion: reduce)"
+    assert css =~ "@media (min-width: 64rem)"
     assert css =~ "@media (max-width: 24rem)"
     assert js =~ "[data-obpt-tooltip-trigger]"
     assert js =~ "data-obpt-tooltip-open"
