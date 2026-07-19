@@ -700,6 +700,10 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
           <h3 class="obpt-why-blocked__blocker-title">{blocker.label}</h3>
           <p class="obpt-why-blocked__blocker-summary">{blocker.summary}</p>
           <dl class="obpt-why-blocked__facts">
+            <div :if={blocker.affected_scope}>
+              <dt>Affected scope</dt>
+              <dd>{blocker.affected_scope}</dd>
+            </div>
             <div>
               <dt>Clearing condition</dt>
               <dd>{blocker.clearing_condition}</dd>
@@ -707,10 +711,6 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
             <div>
               <dt>Evidence source</dt>
               <dd>{blocker.evidence_source}</dd>
-            </div>
-            <div :if={blocker.technical_code}>
-              <dt>Technical code</dt>
-              <dd><code>{blocker.technical_code}</code></dd>
             </div>
           </dl>
         </li>
@@ -754,6 +754,7 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
       assigns
       |> assign(:id, require_text!(assigns.id, "audit entry id"))
       |> assign(:entry, entry)
+      |> assign(:recorded_at_label, Map.get(entry, :recorded_at_label, "Recorded at"))
       |> assign(:entry_evidence, audit_evidence(entry))
 
     ~H"""
@@ -766,9 +767,10 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
       <header class="obpt-audit-entry__header">
         <h2 id={"#{@id}-title"} class="obpt-audit-entry__title">{@entry.sentence}</h2>
         <DataDisplay.status_pill domain={:operator_result} state={@entry.outcome_state} />
-        <time datetime={@entry.occurred_datetime} class="obpt-audit-entry__time">
-          {@entry.occurred_at}
-        </time>
+        <p class="obpt-audit-entry__time">
+          <span>{@recorded_at_label}</span>
+          <time datetime={@entry.occurred_datetime}>{@entry.occurred_at}</time>
+        </p>
       </header>
 
       <DataDisplay.description_list id={"#{@id}-facts"}>

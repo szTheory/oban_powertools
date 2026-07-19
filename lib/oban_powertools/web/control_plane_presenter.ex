@@ -34,8 +34,7 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     "neutral" => :neutral,
     "info" => :info,
     "warning" => :warning,
-    "danger" => :danger,
-    "success" => :success
+    "danger" => :danger
   }
   @overview_ownerships %{
     "powertools_native" => :powertools_native,
@@ -282,6 +281,7 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     metadata = validate_audit_event!(event, context)
     identity = Audit.event_resource_identity(event)
     event_label = finite_audit_event_label(event)
+    target_label = audit_target_label(identity, event.resource)
     actor = audit_actor(event, audit_policy_context(context, event))
     reason = audit_reason(metadata, audit_policy_context(context, event))
     {recorded_at, recorded_datetime} = audit_recorded_time!(event.inserted_at)
@@ -289,14 +289,14 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     %{
       id: normalize_audit_id!(event.id),
       event_label: event_label,
-      target_label: audit_target_label(identity, event.resource),
+      target_label: target_label,
       target_href: audit_target_href(identity),
       actor: actor,
       reason_summary: reason,
       recorded_at: recorded_at,
       recorded_datetime: recorded_datetime,
       evidence_href: audit_evidence_href(identity, event),
-      evidence_label: "View evidence for #{event_label}"
+      evidence_label: "View evidence for #{event_label} on #{target_label}"
     }
   end
 
@@ -435,6 +435,11 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
         label: required_presentation_text!(presentation_value(blocker, :label), "blocker label"),
         summary:
           required_presentation_text!(presentation_value(blocker, :summary), "blocker summary"),
+        affected_scope:
+          optional_presentation_text(
+            presentation_value(blocker, :affected_scope),
+            "blocker affected scope"
+          ),
         clearing_condition:
           required_presentation_text!(
             presentation_value(blocker, :clearing_condition),
@@ -471,7 +476,7 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     ensure_audit_presentation_data!(changes, "audit changes")
     ensure_audit_presentation_data!(evidence, "audit evidence")
 
-    %{
+    normalized = %{
       sentence:
         required_presentation_text!(presentation_value(entry, :sentence), "audit sentence"),
       outcome:
@@ -489,12 +494,12 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
       reason:
         optional_presentation_text(presentation_value(entry, :reason), "audit reason") ||
           "No operator reason recorded",
-      source: required_presentation_text!(presentation_value(entry, :source), "audit source"),
+      source:
+        optional_presentation_text(presentation_value(entry, :source), "audit source") ||
+          "Source not recorded",
       correlation:
-        required_presentation_text!(
-          presentation_value(entry, :correlation),
-          "audit correlation"
-        ),
+        optional_presentation_text(presentation_value(entry, :correlation), "audit correlation") ||
+          "Correlation not recorded",
       occurred_at:
         required_presentation_text!(
           presentation_value(entry, :occurred_at),
@@ -505,6 +510,14 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
       changes: changes,
       evidence: evidence
     }
+
+    case optional_presentation_text(
+           presentation_value(entry, :recorded_at_label),
+           "audit recorded time label"
+         ) do
+      nil -> normalized
+      label -> Map.put(normalized, :recorded_at_label, label)
+    end
   end
 
   @doc """
