@@ -10,6 +10,7 @@ requires:
 provides:
   - zero-critical-or-serious axe evidence for all 276 group story/theme/viewport cases
   - exact group-only 276-file canonical Docker visual baseline set and compare-only proof
+  - review-hardened audit confidentiality, confirmation submission, finite outcomes, and attention-matrix coverage
   - keyboard-accessible narrow DetailSurface scrolling with inline-mode tab-stop synchronization
   - final focused, package, asset, manifest, connected structure, zoom, and protected-boundary evidence
 affects: [79, 80, 81, 82]
@@ -30,30 +31,33 @@ key-files:
     - test/browser/specs/showcase.vrt.spec.ts
     - test/oban_powertools/web/assets_test.exs
     - test/oban_powertools/web/components/operator_patterns_test.exs
+    - scripts/playwright-docker.sh
+    - scripts/with-showcase-server.sh
 key-decisions:
   - "Keep the detail body keyboard-scrollable in the server-rendered narrow baseline, then remove its tab stop whenever the connected controller places the surface inline."
   - "Derive and audit the visual set exclusively from schema-6 group targets; retain the unrelated 108 scenario PNGs without treating them as Phase 78 evidence."
   - "Give screenshot stability 15 seconds for large deterministic story crops while preserving Playwright's ordinary pixel-comparison semantics."
+  - "Treat the container launcher as evidence-bearing infrastructure: it must fail closed on unsupported shells and must own the connected server process it cleans up."
 patterns-established:
   - "A new scroll owner must have a no-JavaScript keyboard baseline and a controller-owned responsive tab-stop policy."
   - "Canonical VRT completion requires manifest-derived exact-set verification, changed-scope verification, and a fresh compare-only run after updates."
 requirements-completed: [GROUP-01, GROUP-02, FORM-04, COPY-02, A11Y-02]
-duration: 1h 27m
+duration: 2h 45m
 completed: 2026-07-18
 status: complete
 ---
 
 # Phase 78 Plan 08: Accessibility, Visual Baselines, and Final Gate Summary
 
-**All 23 operator-group stories now have exact 276-case axe and canonical visual evidence, keyboard-accessible responsive detail scrolling, and a green final package/scope gate.**
+**All 23 operator-group stories now have exact 276-case axe and canonical visual evidence, review-hardened confidentiality and interaction semantics, keyboard-accessible responsive detail scrolling, and a green final package/scope gate.**
 
 ## Performance
 
-- **Duration:** 1h 27m
+- **Duration:** 2h 45m including code-review remediation and canonical revalidation
 - **Started:** 2026-07-18T20:17:00-04:00
-- **Completed:** 2026-07-18T21:44:00-04:00
+- **Completed:** 2026-07-18T23:02:00-04:00
 - **Tasks:** 3
-- **Files modified:** 284
+- **Files modified:** 322 across the cumulative phase diff
 
 ## Accomplishments
 
@@ -62,6 +66,8 @@ status: complete
 - Added exactly 276 group-only PNG baselines across 23 stories, four themes, and three viewports; exact-set and changed-scope verification passed, followed by a fresh 276-pass compare-only run.
 - Passed format, warnings-as-errors compilation, 157 focused ExUnit contracts, schema-6/64-target manifest smoke, repeated asset-build equality, optional-catalog package fallback, and cumulative/worktree protected-boundary audits.
 - Reconciled every Phase 78 task and RED-to-green seam in VALIDATION while preserving the 108 unrelated scenario baselines and Phase 82 manual/cross-page boundaries.
+- Closed every in-scope code-review finding: audit evidence now has an explicit presentation allowlist, submitting confirmations are locked, outcome states remain finite, and the attention fixture exercises the complete four-card matrix.
+- Corrected the macOS Bash 3.2 Docker-launch path, refreshed the 80 baselines that differed in the real container, and independently re-passed 276 VRT, 276 axe, 37 connected behavior, and 12 structure cases.
 
 ## Task Commits
 
@@ -73,6 +79,8 @@ Each task was committed atomically:
 
 **Plan summary:** committed separately after the three atomic task commits.
 
+Post-plan review and remediation commits: `13a722b`, `89f687b`, `473df91`, `c960fc9`, `abd3370`, `59d51e4`, and `1f1e4b5`; review evidence is recorded in `78-REVIEW.md` and `78-REVIEW-FIX.md`.
+
 ## Files Created/Modified
 
 - `test/browser/__screenshots__/chromium-{320,tablet,wide}/showcase/group-*/*.png` - Exact 276-case group visual baseline matrix.
@@ -82,6 +90,7 @@ Each task was committed atomically:
 - `test/browser/specs/operator-patterns.behavior.spec.ts` - Connected keyboard-scroll regression coverage.
 - `test/browser/specs/showcase.vrt.spec.ts` - Explicit 15-second stability allowance for large deterministic story crops.
 - `test/oban_powertools/web/assets_test.exs` and `test/oban_powertools/web/components/operator_patterns_test.exs` - Packaged-controller and server-baseline regressions.
+- `scripts/playwright-docker.sh` and `scripts/with-showcase-server.sh` - Bash-3.2-safe canonical container launch and listener-owning server cleanup.
 
 ## Decisions Made
 
@@ -109,9 +118,23 @@ Each task was committed atomically:
 - **Verification:** Serial recovery completed the exact set, both verifiers passed, and a fresh parallel compare-only run passed 276/276.
 - **Committed in:** `a915871`
 
+**3. Hardened operator-pattern semantics during code review**
+- **Found during:** Post-plan code review iterations 1–2
+- **Issue:** Audit evidence admitted secret-like keys, pending confirmations remained dismissible, audit outcome copy collapsed distinct states, and the attention matrix fixture rendered only one of four intended cards.
+- **Fix:** Projected evidence through an allowlisted display schema, locked dismissal while submitting, preserved finite outcome semantics, and rendered the complete deterministic card matrix.
+- **Verification:** Focused ExUnit/behavior contracts passed, followed by the complete canonical browser gates.
+- **Committed in:** `89f687b`, `473df91`, `c960fc9`, and `abd3370` (with `13a722b` as the superseded first confidentiality pass)
+
+**4. Repaired the canonical Docker evidence path**
+- **Found during:** Post-review visual re-verification
+- **Issue:** Apple Bash 3.2 rejected an empty array expansion under `set -u`, so an earlier refresh captured host Chromium instead of the intended container runtime.
+- **Fix:** Used a non-empty portable Docker argument array and made the showcase wrapper `exec` the server process it must clean up; refreshed the 80 group PNGs that differed in the confirmed container.
+- **Verification:** Exact inventory stayed 276, changed scope was 80/276 and group-only, and fresh Docker compare-only and axe matrices each passed 276/276.
+- **Committed in:** `1f1e4b5` plus the final evidence commit
+
 ---
 
-**Total deviations:** 2 auto-fixed correctness/stability issues.
+**Total deviations:** 4 auto-fixed correctness, semantics, and evidence-infrastructure issues.
 **Impact on plan:** Both fixes were required to make the locked accessibility and visual contracts deterministic; no dependency, route, data, production-page, or authority scope expanded.
 
 ## Issues Encountered
@@ -120,6 +143,7 @@ Each task was committed atomically:
 - The first parallel new-baseline update timed out 39 large crops. Group-only tablet/wide serial recovery generated the missing files before the required complete compare-only pass.
 - One early behavior run had a transient tablet LiveView connection miss; its exact case and then the complete suite passed on fresh reruns, and only the repeat green result is recorded.
 - Docker dependency resolution continued to print the repository's existing advisory set and expired local Hex-auth warning. Public dependencies resolved; Phase 78 changed no dependency manifest or lockfile.
+- The repository-wide ExUnit run completed 797 tests with 794 passes and three failures in pre-existing child-host compilation/migration lanes. The focused 157-test Phase 78 gate remained green; the residuals are documented rather than misreported as phase regressions or an aggregate green run.
 
 ## User Setup Required
 
@@ -133,10 +157,10 @@ None - no external service configuration required.
 
 ## Self-Check: PASSED
 
-- All three task commits exist in order, all declared artifacts exist, and the plan-local cumulative diff contains 284 expected files.
+- All three task commits and the post-plan review-fix commits exist in order, all declared artifacts exist, and the cumulative phase diff contains 322 expected files.
 - Format, warnings-as-errors compile, 157 focused ExUnit tests, manifest smoke, exact 276-baseline verification, 12 connected structure cases, five exact zoom cases, 276 axe cases, and 276 compare-only VRT cases pass.
 - The immutable start SHA resolves; cumulative and final worktree/untracked protected audits are empty outside the five allowed production seams.
-- Exactly 276 group PNGs exist; changed screenshot scope is group-only, the unrelated 108 scenario PNGs remain preserved, and manual-only boundaries remain unclaimed.
+- Exactly 276 group PNGs exist; the final canonical correction changed 80 group-only paths, a fresh compare-only Docker run passed 276/276, the unrelated 108 scenario PNGs remain preserved, and manual-only boundaries remain unclaimed.
 
 ---
 *Phase: 78-component-groups-meta-components*

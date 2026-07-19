@@ -81,7 +81,7 @@ Every missing Wave 0 contract must first fail at its intended seam before produc
 - **78-05-01 through 78-05-03:** turned the detail component and connected slices green (**2/2** and **4/4**), then made the first complete unfiltered component/presenter/harness gate green (**38/38**) with one native detail tree and parent-owned history/modality.
 - **78-06-01 through 78-06-04:** made the exact 23-story support catalog, fail-closed showcase, schema-6/64-target manifest, and shared connected activation path green; structure passed **12/12**.
 - **78-07-01 through 78-07-03:** made connected confirmation, filter/detail, explanation/audit, confidentiality, responsive, focus/history, and exact five-story zoom behavior green; the complete behavior suite passed **37** with **20 intentional project gates**.
-- **78-08-01 through 78-08-03:** made connected behavior/structure/zoom and axe green, generated and compared the exact group-only 276-baseline set, then passed the focused final gate and both protected-boundary audits recorded below.
+- **78-08-01 through 78-08-03:** made connected behavior/structure/zoom and axe green, generated and compared the exact group-only 276-baseline set, then passed the focused final gate and both protected-boundary audits recorded below. Post-plan review tightened confidentiality, submission, outcome, and attention-matrix semantics; the corrected Docker launcher then re-proved the complete browser matrix.
 
 ## Execution Evidence
 
@@ -97,10 +97,11 @@ Every missing Wave 0 contract must first fail at its intended seam before produc
 
 ### 78-08-02 — Exact group VRT baseline scope
 
-- The canonical Docker update produced the exact **276 group PNGs**: 23 group stories × 4 themes × 3 viewports. The first parallel update encountered **39 new-crop stability timeouts** at Playwright's 5-second screenshot limit; serial group-only recovery isolated tablet and wide generation, and an explicit 15-second assertion timeout made the remaining long-content crop deterministic without changing visual comparison semantics.
+- The plan-time update produced the exact **276 group PNGs**: 23 group stories × 4 themes × 3 viewports. The first parallel update encountered **39 new-crop stability timeouts** at Playwright's 5-second screenshot limit; serial group-only recovery isolated tablet and wide generation, and an explicit 15-second assertion timeout made the remaining long-content crop deterministic without changing visual comparison semantics.
 - `node test/browser/support/verify-group-baselines.mjs` reported `group baselines ok: 276`.
-- `node test/browser/support/verify-group-baselines.mjs --changed-scope` reported `276 paths, all within 276`; no non-group screenshot path was modified or added.
-- A fresh canonical Docker **compare-only** run passed **276 tests** with no update flag.
+- Code review later exposed that Apple Bash 3.2 rejected the launcher's empty `NETWORK_ARGS` expansion under `set -u`; the earlier updater had therefore captured host Chromium despite being invoked through the Docker wrapper. The launcher now uses a non-empty portable Docker argument array, and the showcase wrapper `exec`s the BEAM server so cleanup owns the actual listener.
+- A fresh update in the confirmed container passed **276/276** and corrected **80** tracked PNGs. `node test/browser/support/verify-group-baselines.mjs --changed-scope` reported `80 paths, all within 276`; no non-group screenshot path was modified or added.
+- The required fresh canonical Docker **compare-only** run then passed **276/276** in 3.7 minutes with no update flag.
 - The unrelated scenario baseline set remains exactly **108 PNGs** and is not counted as Phase 78 success. No manual representative-visual-review claim is made by this automated evidence.
 
 ### 78-08-03 — Final focused and protected-boundary gates
@@ -111,6 +112,13 @@ Every missing Wave 0 contract must first fail at its intended seam before produc
 - The immutable start commit `f2e1c98944197c90265d7599ae2493ede153c97f` resolved. Its cumulative `base..HEAD` audit found only the five allowed production seams under `lib/oban_powertools`; no config, migration, dependency manifest, or lockfile boundary changed.
 - The final working-tree and untracked protected-path audit was empty. Unrelated pre-existing planning-directory changes remain outside Phase 78 and were neither staged nor claimed.
 - Browser behavior (**37 passed**, 20 intentional project gates), group axe (**276 passed**, zero critical/serious), and compare-only group VRT (**276 passed**) are retained from Tasks 78-08-01 and 78-08-02; no discovery-only or aggregate scenario claim substitutes for those connected runs.
+
+### Post-plan code review and canonical revalidation
+
+- Three review/fix iterations resolved all four in-scope findings: audit evidence is now projected through an explicit presentation allowlist (`abd3370`), submitting confirmations cannot be dismissed (`89f687b`), finite audit outcomes retain their semantics (`473df91`), and the attention story renders the complete four-card status/severity matrix (`c960fc9`). The canonical-launcher correction and focused baseline repair are in `1f1e4b5`; the detailed record is `78-REVIEW-FIX.md`.
+- After the launcher correction, the complete connected Docker behavior suite passed **37** with **20 intentional project gates**, including the exact five wide `200% zoom` cases, and connected structure passed **12/12**. The complete group axe matrix passed **276/276** with zero critical or serious violations. The full group VRT update and independent compare-only matrix each passed **276/276**, with exactly **80** corrected group PNGs and zero non-group screenshot changes.
+- The repository-wide ExUnit command executed **797 tests**: **794 passed** and **3 failed** in pre-existing host/package lanes. Two child-host compilation failures require Phoenix UI dependencies already referenced by Phase-78-start modules, and the example-host reset failure timed out in an unrelated concurrent-index migration. These are recorded as out-of-phase residuals; they do not replace or weaken the green **157-test** focused Phase 78 gate.
+- The Docker dependency preflight continues to report the repository's existing vulnerable-dependency advisories and expired local Hex authentication warning. Phase 78 changed no dependency manifest or lockfile; dependency remediation remains outside this phase's allowed boundary.
 
 ---
 

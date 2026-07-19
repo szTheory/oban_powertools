@@ -34,3 +34,7 @@ status: all_fixed
 _Fixed: 2026-07-19T02:35:03Z_
 _Fixer: Codex (gsd-code-fixer)_
 _Iteration: 3_
+
+## Post-fix full-matrix closure
+
+The focused 12-case repair exposed broader host-versus-container differences once the launcher was genuinely fail-closed. A confirmed canonical Docker update therefore exercised all **276** group targets and corrected **80** tracked group PNGs. Exact-set verification remained **276**, changed-scope verification reported **80 paths, all within 276**, and a fresh compare-only Docker run passed **276/276**. The same confirmed runtime then passed the complete group axe matrix **276/276** and connected behavior **37 passed / 20 intentional skips**. No non-group screenshot was changed.
