@@ -389,7 +389,12 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
         </Primitives.icon_button>
       </header>
 
-      <div id={"#{@id}-body"} class="obpt-detail-surface__body">
+      <div
+        id={"#{@id}-body"}
+        class="obpt-detail-surface__body"
+        data-obpt-detail-body
+        tabindex="0"
+      >
         <div :if={@state == :ready} class="obpt-detail-surface__content">
           {render_slot(@body)}
         </div>

@@ -726,6 +726,10 @@ test.describe("group operator-pattern connected behavior contracts", () => {
       surfaceId,
     );
     const detail = controlled.story.locator("[data-obpt-detail-surface]");
+    await expect(detail.locator("[data-obpt-detail-body]")).toHaveAttribute(
+      "tabindex",
+      "0",
+    );
     const results = controlled.story.locator(
       "[data-obpt-group-detail-history]",
     );

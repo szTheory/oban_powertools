@@ -461,6 +461,8 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
       assert html =~ ~s(data-obpt-detail-requested="open")
       assert html =~ ~s(aria-labelledby="job-detail-#{variant}-#{state}-title")
       assert html =~ ~s(id="job-detail-#{variant}-#{state}-body")
+      assert html =~ ~s(data-obpt-detail-body)
+      assert html =~ ~s(tabindex="0")
       assert html =~ ~s(id="job-detail-#{variant}-#{state}-status")
       assert html =~ ~s(aria-label="Close job details")
       assert html =~ ~s(data-obpt-detail-fallback="job-results-heading")

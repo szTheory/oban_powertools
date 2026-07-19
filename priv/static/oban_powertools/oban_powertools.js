@@ -19,6 +19,7 @@
   const FILTER_TOGGLE_SELECTOR = "[data-obpt-filter-toggle]";
   const FILTER_FIELDS_SELECTOR = "[data-obpt-filter-fields]";
   const DETAIL_SURFACE_SELECTOR = "[data-obpt-detail-surface]";
+  const DETAIL_BODY_SELECTOR = "[data-obpt-detail-body]";
   const DETAIL_CLOSE_SELECTOR = "[data-obpt-detail-close]";
   const FOCUS_OWNER_SELECTOR = "[data-obpt-focus-fallback]";
   const CONTROLLED_TRIGGER_SELECTOR = "[aria-controls]";
@@ -480,12 +481,17 @@
     const previousMode = surface.getAttribute("data-obpt-detail-mode");
     const nextMode = effectiveDetailMode(surface);
     const shouldBeModal = nextMode === "drawer";
+    const body = surface.querySelector(DETAIL_BODY_SELECTOR);
     const activeElement = root.ownerDocument ? root.ownerDocument.activeElement : null;
     const retainedFocus = surface.contains(activeElement) ? activeElement : null;
     const nativeModeMismatch =
       surface.open && (detailIsModal(surface) ? "drawer" : "inline") !== nextMode;
 
     if (!requestedOpen) {
+      if (body) {
+        body.removeAttribute("tabindex");
+      }
+
       closeDetailSurface(surface);
       surface.setAttribute("data-obpt-detail-mode", nextMode);
       surface.removeAttribute("aria-modal");
@@ -498,6 +504,14 @@
     }
 
     surface.setAttribute("data-obpt-detail-mode", nextMode);
+
+    if (body) {
+      if (shouldBeModal) {
+        body.setAttribute("tabindex", "0");
+      } else {
+        body.removeAttribute("tabindex");
+      }
+    }
 
     if (shouldBeModal) {
       surface.setAttribute("aria-modal", "true");
