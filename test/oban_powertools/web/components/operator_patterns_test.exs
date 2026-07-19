@@ -401,7 +401,6 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
   test "ConfirmActionDialog exposes named pending, ordered mixed results, and fresh-preview states" do
     pending =
       render_confirmation(:submitting,
-        dismissible: false,
         pending_copy: "Retrying 12 jobs…",
         progress: %{value: 3, max: 12}
       )
@@ -411,6 +410,7 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
     assert pending =~ "This action has been accepted and can no longer be canceled."
     assert pending =~ "3/12"
     refute pending =~ ~s(phx-key="Escape")
+    refute pending =~ "Keep current state"
     refute pending =~ "obpt-spinner"
 
     partial = render_confirmation(:partial)

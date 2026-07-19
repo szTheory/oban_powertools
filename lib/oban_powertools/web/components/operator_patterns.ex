@@ -811,6 +811,8 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
   defp detail_state(state) when state in @detail_states, do: state
   defp detail_state(_state), do: raise(ArgumentError, "unsupported detail surface state")
 
+  defp confirmation_dismissible?(:submitting, dismissible) when is_boolean(dismissible), do: false
+
   defp confirmation_dismissible?(_state, dismissible) when is_boolean(dismissible),
     do: dismissible
 
