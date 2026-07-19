@@ -5,15 +5,15 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 78
 current_phase_name: component-groups-meta-components
 status: executing
-stopped_at: Completed 78-05-PLAN.md
-last_updated: "2026-07-18T23:28:55.797Z"
+stopped_at: Completed 78-06-PLAN.md
+last_updated: "2026-07-19T00:02:03.857Z"
 last_activity: 2026-07-18
-last_activity_desc: Phase 78 Plan 05 adaptive native DetailSurface and parent-owned history complete
+last_activity_desc: Phase 78 Plan 06 deterministic operator-group showcase and schema-6 browser activation complete
 progress:
   total_phases: 15
   completed_phases: 8
   total_plans: 49
-  completed_plans: 46
+  completed_plans: 47
   percent: 53
 ---
 
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 78 (component-groups-meta-components) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Ready to execute
-Last activity: 2026-07-18 — Phase 78 Plan 05 adaptive native DetailSurface and parent-owned history complete
+Last activity: 2026-07-18 — Phase 78 Plan 06 deterministic operator-group showcase and schema-6 browser activation complete
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Last activity: 2026-07-18 — Phase 78 Plan 05 adaptive native DetailSurface and
 | Phase 78 P03 | 27 min | 3 tasks | 9 files |
 | Phase 78 P04 | 15 min | 3 tasks | 7 files |
 | Phase 78 P05 | 16 min | 3 tasks | 9 files |
+| Phase 78 P06 | 24 min | 4 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -85,12 +86,12 @@ Last activity: 2026-07-18 — Phase 78 Plan 05 adaptive native DetailSurface and
 
 ## Session Continuity
 
-**Last session:** 2026-07-18T23:28:22.217Z
-**Stopped at:** Completed 78-05-PLAN.md
+**Last session:** 2026-07-19T00:01:41.353Z
+**Stopped at:** Completed 78-06-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed the one-tree adaptive native DetailSurface, scoped modality/focus controller, deterministic assets, and connected parent history/transition proof for Plan 78-05.
-- **Next Action:** Execute Plan 78-06 for group story catalogs, showcase activation, and schema-6 manifest integration.
+- **Last Action:** Completed the deterministic 23-story operator-group catalog, fail-closed connected showcase, schema-6/64-target manifest, and shared browser activation proof for Plan 78-06.
+- **Next Action:** Execute Plan 78-07 for connected operator-pattern behavior contracts.
 
 ## Decisions
 
@@ -148,6 +149,9 @@ Last activity: 2026-07-18 — Phase 78 Plan 05 adaptive native DetailSurface and
 - [Phase 78]: Keep DetailSurface presentation-only while parents own selection, authorization, redaction, explicit content states, URLs, history, and confirmation transitions. — Prevents a shared adaptive surface from becoming a data, authority, or navigation boundary.
 - [Phase 78]: Use one native dialog tree with show() inline, showModal() in drawer mode, and close-before-reopen modality switching. — Preserves comparison and outside focus wide while retaining native inertness and focus containment constrained.
 - [Phase 78]: Track detail focus ownership only in root-scoped ephemeral invoker state and owner-element WeakMaps. — Restores a connected invoker or logical fallback without persisting resource, filter, reason, token, or result payloads.
+- [Phase 78]: Keep the 23 group story IDs, ordering, fixtures, and activation metadata Elixir-owned; TypeScript and Node validate generated output without duplicating the registry. — Maintains one deterministic source of truth across showcase and browser discovery.
+- [Phase 78]: Load the support-only group catalog through a fail-closed optional seam while ShowcaseLive owns confirmation, filter, detail, URL/history, result, and receipt truth. — Prevents malformed or packaged-absent fixtures from leaking partial UI and keeps production components presentation-only.
+- [Phase 78]: Use one shared generated-target activation helper that dispatches the validated LiveView event and enforces one active overlay and at most one modal. — Allows native top-layer dialogs to switch safely while structure, axe, VRT, and behavior share the same path.
 
 ### Blockers
 
