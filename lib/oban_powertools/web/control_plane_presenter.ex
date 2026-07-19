@@ -3,7 +3,7 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
   Shared control-plane labels, ownership copy, and venue-aware wording.
   """
 
-  alias ObanPowertools.{Audit, ControlPlane}
+  alias ObanPowertools.{Audit, ControlPlane, DisplayPolicy, RuntimeConfig}
   alias ObanPowertools.Web.Selectors
 
   @status_labels %{
@@ -21,6 +21,69 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     "skipped" => :skipped
   }
   @audit_outcome_states Map.put(@operator_result_states, "unknown", :unknown)
+  @overview_kinds %{
+    "needs_review" => :needs_review,
+    "blocked" => :blocked,
+    "waiting" => :waiting,
+    "bridge_only" => :bridge_only,
+    "runnable" => :runnable,
+    "resolved_continuity" => :resolved_continuity
+  }
+  @overview_domains %{"overview" => :overview}
+  @overview_severities %{
+    "neutral" => :neutral,
+    "info" => :info,
+    "warning" => :warning,
+    "danger" => :danger,
+    "success" => :success
+  }
+  @overview_ownerships %{
+    "powertools_native" => :powertools_native,
+    "Powertools-native" => :powertools_native,
+    "oban_web_bridge" => :oban_web_bridge,
+    "Oban Web bridge" => :oban_web_bridge,
+    "host_owned" => :host_owned,
+    "Host-owned" => :host_owned
+  }
+  @overview_statuses Map.merge(@overview_kinds, %{"resolved" => :resolved})
+  @cron_action_kinds %{
+    "pause" => :pause,
+    "pause_cron_entry" => :pause,
+    "resume" => :resume,
+    "resume_cron_entry" => :resume,
+    "run_now" => :run_now,
+    "run_cron_entry_now" => :run_now
+  }
+  @cron_result_states %{
+    "success" => :success,
+    "skipped" => :skipped,
+    "duplicate" => :duplicate,
+    "partial" => :partial,
+    "failed" => :failed,
+    "expired" => :expired,
+    "drifted" => :drifted,
+    "consumed" => :consumed
+  }
+  @audit_event_labels %{
+    "cron.missed_fire" => "Missed schedule recorded",
+    "cron.paused" => "Cron entry paused",
+    "cron.previewed" => "Cron action previewed",
+    "cron.reconfigured" => "Cron entry reconfigured",
+    "cron.snapshot" => "Cron snapshot recorded",
+    "lifeline.host_follow_up" => "Host follow-up recorded",
+    "lifeline.incident_diagnosis" => "Incident diagnosis recorded",
+    "lifeline.incident_opened" => "Incident opened",
+    "lifeline.repair_executed" => "Repair executed",
+    "lifeline.repair_requested" => "Repair requested",
+    "limiter.blocked" => "Limiter blocked",
+    "limiter.cooled_down" => "Limiter cooled down",
+    "limiter.reconfigured" => "Limiter reconfigured",
+    "limiter.released" => "Limiter released",
+    "oban_web.inspection" => "Oban Web inspection recorded",
+    "workflow.created" => "Workflow created",
+    "workflow.step_completed" => "Workflow step completed",
+    "workflow.step_state" => "Workflow step state recorded"
+  }
   @blocker_evidence_kinds %{
     "current" => :current,
     "block_start_snapshot" => :block_start_snapshot
@@ -37,11 +100,247 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     password passwd pwd credential credentials signing_key encryption_key
   ]
   @sensitive_presentation_source_field_components ~w[
-    token hash error authorization password passwd pwd secret credential credentials
+    token hash error authorization password passwd pwd secret credential credentials exception
+    stacktrace
   ]
   @audit_presentation_data_fields ~w[
     field before after label value items
   ]
+
+  @doc """
+  Projects one Overview bucket through the fixed Wave 1 presentation contract.
+  """
+  def present_overview_bucket(bucket) do
+    ensure_presentation_map!(bucket, "overview bucket")
+
+    kind =
+      normalize_closed_value!(
+        presentation_value(bucket, :kind),
+        @overview_kinds,
+        "overview bucket kind"
+      )
+
+    count = normalize_nonnegative_integer!(presentation_value(bucket, :count), "overview count")
+    exemplars = normalize_overview_exemplars!(presentation_value(bucket, :exemplars))
+
+    %{
+      id: normalize_presentation_id!(presentation_value(bucket, :id), "overview bucket id"),
+      kind: kind,
+      title: required_presentation_text!(presentation_value(bucket, :title), "overview title"),
+      count: count,
+      summary:
+        required_presentation_text!(presentation_value(bucket, :summary), "overview summary"),
+      impact: required_presentation_text!(presentation_value(bucket, :impact), "overview impact"),
+      observed_at:
+        required_presentation_text!(
+          presentation_value(bucket, :observed_at),
+          "overview observation"
+        ),
+      observed_datetime:
+        normalize_datetime!(
+          presentation_value(bucket, :observed_datetime),
+          "overview observation datetime"
+        ),
+      domain:
+        normalize_closed_value!(
+          presentation_value(bucket, :domain),
+          @overview_domains,
+          "overview domain"
+        ),
+      status:
+        normalize_closed_value!(
+          presentation_value(bucket, :status),
+          @overview_statuses,
+          "overview status"
+        ),
+      severity:
+        normalize_closed_value!(
+          presentation_value(bucket, :severity),
+          @overview_severities,
+          "overview severity"
+        ),
+      completeness:
+        normalize_closed_value!(
+          presentation_value(bucket, :completeness),
+          @evidence_completeness,
+          "overview completeness"
+        ),
+      ownership:
+        normalize_closed_value!(
+          presentation_value(bucket, :ownership),
+          @overview_ownerships,
+          "overview ownership"
+        ),
+      sample_count_label: overview_sample_count_label(kind, count),
+      next_step_label: overview_next_step_label(kind),
+      next_step_path:
+        required_presentation_text!(
+          presentation_value(bucket, :next_step_path),
+          "overview next step destination"
+        ),
+      exemplars: exemplars
+    }
+  end
+
+  @doc """
+  Returns fixed confirmation copy for one Cron action.
+  """
+  def present_cron_action(action) do
+    ensure_presentation_map!(action, "cron action")
+
+    kind =
+      normalize_closed_value!(
+        presentation_value(action, :kind),
+        @cron_action_kinds,
+        "cron action kind"
+      )
+
+    object_label =
+      required_presentation_text!(presentation_value(action, :object_label), "cron entry label")
+
+    cron_action_presentation(kind, object_label)
+  end
+
+  @doc """
+  Returns one truthful, closed Cron action result without claiming job execution.
+  """
+  def present_cron_result(result) do
+    ensure_presentation_map!(result, "cron result")
+
+    kind =
+      normalize_closed_value!(
+        presentation_value(result, :kind),
+        @cron_action_kinds,
+        "cron result kind"
+      )
+
+    state =
+      normalize_closed_value!(
+        presentation_value(result, :state),
+        @cron_result_states,
+        "cron result state"
+      )
+
+    recorded_result =
+      optional_presentation_text(
+        presentation_value(result, :recorded_result),
+        "cron recorded result"
+      )
+
+    %{
+      state: state,
+      message: cron_result_message(kind, state),
+      recorded_result: recorded_result,
+      recovery: cron_result_recovery(state),
+      audit_href:
+        optional_presentation_text(
+          presentation_value(result, :audit_href),
+          "cron result audit destination"
+        ),
+      receipt: cron_result_receipt(kind, state, result, recorded_result)
+    }
+  end
+
+  @doc """
+  Projects one current limiter blocker while consuming, but never returning, its classifier.
+  """
+  def present_limiter_blocker(blocker) do
+    ensure_presentation_map!(blocker, "limiter blocker")
+
+    %{
+      id: normalize_presentation_id!(presentation_value(blocker, :id), "limiter blocker id"),
+      evidence_kind: normalize_current_evidence!(presentation_value(blocker, :evidence_kind)),
+      label:
+        required_presentation_text!(presentation_value(blocker, :label), "limiter blocker label"),
+      summary:
+        required_presentation_text!(
+          presentation_value(blocker, :summary),
+          "limiter blocker summary"
+        ),
+      affected_scope:
+        optional_presentation_text(
+          presentation_value(blocker, :affected_scope),
+          "limiter affected scope"
+        ),
+      clearing_condition:
+        required_presentation_text!(
+          presentation_value(blocker, :clearing_condition),
+          "limiter clearing condition"
+        ),
+      evidence_source:
+        required_presentation_text!(
+          presentation_value(blocker, :evidence_source),
+          "limiter evidence source"
+        )
+    }
+  end
+
+  @doc """
+  Projects the bounded fields needed by one Audit table row.
+  """
+  def present_audit_row(%Audit{} = event, context) do
+    metadata = validate_audit_event!(event, context)
+    identity = Audit.event_resource_identity(event)
+    event_label = finite_audit_event_label(event)
+    actor = audit_actor(event, audit_policy_context(context, event))
+    reason = audit_reason(metadata, audit_policy_context(context, event))
+    {recorded_at, recorded_datetime} = audit_recorded_time!(event.inserted_at)
+
+    %{
+      id: normalize_audit_id!(event.id),
+      event_label: event_label,
+      target_label: audit_target_label(identity, event.resource),
+      target_href: audit_target_href(identity),
+      actor: actor,
+      reason_summary: reason,
+      recorded_at: recorded_at,
+      recorded_datetime: recorded_datetime,
+      evidence_href: audit_evidence_href(identity, event),
+      evidence_label: "View evidence for #{event_label}"
+    }
+  end
+
+  def present_audit_row(_event, _context),
+    do: raise(ArgumentError, "audit row source must be an Audit event")
+
+  @doc """
+  Projects one immutable Audit detail through a strict metadata allowlist.
+  """
+  def present_audit_detail(%Audit{} = event, context) do
+    metadata = validate_audit_event!(event, context)
+    identity = Audit.event_resource_identity(event)
+    policy_context = audit_policy_context(context, event)
+    action = finite_audit_event_label(event)
+    actor = audit_actor(event, policy_context)
+    reason = audit_reason(metadata, policy_context)
+    target = audit_target_label(identity, event.resource)
+    {recorded_at, recorded_datetime} = audit_recorded_time!(event.inserted_at)
+    changes = audit_presentation_data(metadata, :changes, "audit changes")
+    evidence = audit_presentation_data(metadata, :evidence, "audit evidence")
+
+    %{
+      sentence: "#{actor} recorded #{String.downcase(action)} for #{target}.",
+      outcome:
+        first_metadata_text(metadata, [:outcome, :result, :decision]) || "Outcome not recorded",
+      outcome_state: audit_outcome_state(metadata),
+      actor: actor,
+      action: action,
+      target: target,
+      reason: reason,
+      source: first_metadata_text(metadata, [:source]) || "Source not recorded",
+      correlation:
+        first_metadata_text(metadata, [:correlation, :correlation_id, :request_id]) ||
+          "Correlation not recorded",
+      occurred_at: recorded_at,
+      occurred_datetime: recorded_datetime,
+      recorded_at_label: "Recorded at",
+      changes: changes,
+      evidence: evidence
+    }
+  end
+
+  def present_audit_detail(_event, _context),
+    do: raise(ArgumentError, "audit detail source must be an Audit event")
 
   @doc """
   Normalizes ordered active-filter presentation maps through a finite key contract.
@@ -401,6 +700,300 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     }
   end
 
+  defp overview_sample_count_label(:bridge_only, count),
+    do: "#{count} representative follow-ups"
+
+  defp overview_sample_count_label(_kind, count), do: "#{count} shown"
+
+  defp overview_next_step_label(:bridge_only), do: "Inspect in Oban Web"
+  defp overview_next_step_label(:needs_review), do: "Review Needs Review"
+  defp overview_next_step_label(:blocked), do: "Review Blocked Limiters"
+  defp overview_next_step_label(:waiting), do: "Review Waiting Work"
+  defp overview_next_step_label(:runnable), do: "Review Runnable Capacity"
+  defp overview_next_step_label(:resolved_continuity), do: "Review Resolved Continuity"
+
+  defp normalize_overview_exemplars!(exemplars) when is_list(exemplars) do
+    exemplars
+    |> Enum.take(3)
+    |> Enum.map(&normalize_overview_exemplar!/1)
+  end
+
+  defp normalize_overview_exemplars!(_exemplars),
+    do: raise(ArgumentError, "overview exemplars must be a list")
+
+  defp normalize_overview_exemplar!(exemplar) do
+    ensure_presentation_map!(exemplar, "overview exemplar")
+
+    [
+      :id,
+      :label,
+      :fact,
+      :status,
+      :attention_reason,
+      :evidence_completeness,
+      :path,
+      :evidence_path,
+      :venue,
+      :ownership,
+      :source,
+      :family,
+      :bucket
+    ]
+    |> Enum.reduce(%{}, fn key, normalized ->
+      case presentation_value(exemplar, key) do
+        nil -> normalized
+        value -> Map.put(normalized, key, normalize_exemplar_value!(value))
+      end
+    end)
+  end
+
+  defp normalize_exemplar_value!(value)
+       when is_binary(value) or is_number(value) or is_boolean(value) or is_atom(value),
+       do: value
+
+  defp normalize_exemplar_value!(_value),
+    do: raise(ArgumentError, "overview exemplar values must be finite scalars")
+
+  defp cron_action_presentation(:pause, object_label) do
+    %{
+      kind: :pause,
+      confirm_label: "Pause cron entry",
+      dismiss_label: "Keep running",
+      title: "Pause #{object_label}",
+      consequence:
+        "Future schedule claims stop. Work that is already running or enqueued is unaffected.",
+      support_boundary: "The existing schedule and already-claimed work remain unchanged.",
+      pending_copy: "Pausing cron entry",
+      intent: :warning
+    }
+  end
+
+  defp cron_action_presentation(:resume, object_label) do
+    %{
+      kind: :resume,
+      confirm_label: "Resume cron entry",
+      dismiss_label: "Keep paused",
+      title: "Resume #{object_label}",
+      consequence: "Future schedule claims continue. Missed work is not run retroactively.",
+      support_boundary: "Only future schedule claims continue after this action.",
+      pending_copy: "Resuming cron entry",
+      intent: :warning
+    }
+  end
+
+  defp cron_action_presentation(:run_now, object_label) do
+    %{
+      kind: :run_now,
+      confirm_label: "Run cron entry now",
+      dismiss_label: "Keep current schedule",
+      title: "Run #{object_label} now",
+      consequence:
+        "Powertools attempts a manual schedule-slot claim. Overlap policy may skip, queue, or enqueue it.",
+      support_boundary: "A recorded slot claim does not prove that a job ran.",
+      pending_copy: "Claiming a manual schedule slot",
+      intent: :warning
+    }
+  end
+
+  defp cron_result_message(:run_now, :success),
+    do: "The manual schedule-slot claim result was recorded."
+
+  defp cron_result_message(_kind, :success), do: "The cron entry state change was recorded."
+  defp cron_result_message(:run_now, :skipped), do: "The manual schedule-slot claim was skipped."
+  defp cron_result_message(_kind, :skipped), do: "The cron action was skipped."
+  defp cron_result_message(_kind, :duplicate), do: "This action was already recorded."
+  defp cron_result_message(_kind, :partial), do: "Only part of the requested action was recorded."
+  defp cron_result_message(_kind, :failed), do: "The cron action was not recorded."
+  defp cron_result_message(_kind, :expired), do: "The action preview expired before execution."
+  defp cron_result_message(_kind, :drifted), do: "The cron entry changed after the preview."
+  defp cron_result_message(_kind, :consumed), do: "The action preview was already used."
+
+  defp cron_result_recovery(:success), do: nil
+
+  defp cron_result_recovery(:drifted),
+    do: "Review the current cron entry, then create a new preview."
+
+  defp cron_result_recovery(_state), do: "Create a new preview before trying again."
+
+  defp cron_result_receipt(_kind, state, _result, _recorded_result) when state != :success,
+    do: nil
+
+  defp cron_result_receipt(kind, :success, result, recorded_result) do
+    object_label =
+      required_presentation_text!(presentation_value(result, :object_label), "cron entry label")
+
+    case kind do
+      :pause ->
+        "Cron entry #{object_label} paused. Audit evidence recorded."
+
+      :resume ->
+        "Cron entry #{object_label} resumed. Audit evidence recorded."
+
+      :run_now ->
+        recorded_result = recorded_result || "result recorded"
+
+        "Manual slot claim recorded for #{object_label}: #{recorded_result}. Audit evidence recorded."
+    end
+  end
+
+  defp normalize_current_evidence!(value) do
+    case normalize_closed_value!(value, @blocker_evidence_kinds, "limiter evidence kind") do
+      :current -> :current
+      :block_start_snapshot -> raise ArgumentError, "limiter blocker must use current evidence"
+    end
+  end
+
+  defp validate_audit_event!(%Audit{} = event, context) do
+    ensure_presentation_map!(context, "audit presentation context")
+    metadata = event.metadata || %{}
+
+    if not is_map(metadata) or is_struct(metadata) do
+      raise ArgumentError, "audit metadata must be a plain map"
+    end
+
+    ensure_safe_presentation_data!(metadata, "audit metadata")
+    _ = audit_presentation_data(metadata, :changes, "audit changes")
+    _ = audit_presentation_data(metadata, :evidence, "audit evidence")
+    metadata
+  end
+
+  defp audit_policy_context(context, event) do
+    surface = presentation_value(context, :surface)
+    section = presentation_value(context, :section)
+
+    %{
+      surface: normalize_audit_context_value(surface, [:audit], :audit, "audit surface"),
+      section:
+        normalize_audit_context_value(
+          section,
+          [:table, :selected_evidence, :detail],
+          :detail,
+          "audit section"
+        ),
+      event: event.event_type || event.action
+    }
+  end
+
+  defp normalize_audit_context_value(nil, _allowed, fallback, _field), do: fallback
+
+  defp normalize_audit_context_value(value, allowed, _fallback, field) do
+    normalized =
+      if is_binary(value),
+        do: Map.get(Map.new(allowed, &{Atom.to_string(&1), &1}), value),
+        else: value
+
+    if normalized in allowed do
+      normalized
+    else
+      raise ArgumentError, "unsupported #{field}"
+    end
+  end
+
+  defp audit_actor(event, context) do
+    principal = Audit.event_principal(event)
+
+    actor =
+      case RuntimeConfig.display_policy() do
+        nil -> principal.label || principal.id || "system"
+        _module -> DisplayPolicy.actor_label(principal, context)
+      end
+
+    required_presentation_text!(actor, "audit actor")
+  end
+
+  defp audit_reason(metadata, context) do
+    case optional_presentation_text(presentation_value(metadata, :reason), "audit reason") do
+      nil ->
+        "No operator reason recorded"
+
+      reason ->
+        rendered =
+          case RuntimeConfig.display_policy() do
+            nil -> reason
+            _module -> DisplayPolicy.reason(reason, context)
+          end
+
+        required_presentation_text!(rendered, "audit reason")
+    end
+  end
+
+  defp finite_audit_event_label(event) do
+    Map.get(@audit_event_labels, event.event_type || event.action, "Recorded event")
+  end
+
+  defp audit_target_label(identity, fallback) do
+    case {optional_identity_text(identity.type), optional_identity_text(identity.id)} do
+      {type, id} when is_binary(type) and is_binary(id) -> "#{type}:#{id}"
+      _missing -> required_presentation_text!(fallback, "audit target")
+    end
+  end
+
+  defp audit_target_href(%{type: "job", id: id}) when not is_nil(id),
+    do: Selectors.job_detail_path(id)
+
+  defp audit_target_href(_identity), do: nil
+
+  defp audit_evidence_href(identity, event) do
+    Selectors.audit_path([
+      {"resource_type", optional_identity_text(identity.type)},
+      {"resource_id", optional_identity_text(identity.id)},
+      {"page", 1},
+      {"event", normalize_audit_id!(event.id)}
+    ])
+  end
+
+  defp optional_identity_text(nil), do: nil
+
+  defp optional_identity_text(value) when is_binary(value),
+    do: optional_presentation_text(value, "audit identity")
+
+  defp optional_identity_text(value) when is_integer(value), do: Integer.to_string(value)
+
+  defp optional_identity_text(_value),
+    do: raise(ArgumentError, "audit identity must be text or an integer")
+
+  defp normalize_audit_id!(value) when is_integer(value) and value > 0, do: value
+
+  defp normalize_audit_id!(value),
+    do: normalize_presentation_id!(value, "audit event id")
+
+  defp audit_recorded_time!(%NaiveDateTime{} = value) do
+    value
+    |> DateTime.from_naive!("Etc/UTC")
+    |> audit_recorded_time!()
+  end
+
+  defp audit_recorded_time!(%DateTime{} = value) do
+    utc = DateTime.shift_zone!(value, "Etc/UTC")
+
+    recorded_at =
+      "#{Calendar.strftime(utc, "%B")} #{utc.day}, #{utc.year} at #{Calendar.strftime(utc, "%H:%M")} UTC"
+
+    {recorded_at, DateTime.to_iso8601(utc)}
+  end
+
+  defp audit_recorded_time!(_value),
+    do: raise(ArgumentError, "audit recorded time must be a datetime")
+
+  defp audit_presentation_data(metadata, key, name) do
+    value = presentation_value(metadata, key)
+    ensure_audit_presentation_data!(value, name)
+    value
+  end
+
+  defp first_metadata_text(metadata, keys) do
+    Enum.find_value(keys, fn key ->
+      optional_presentation_text(presentation_value(metadata, key), "audit #{key}")
+    end)
+  end
+
+  defp audit_outcome_state(metadata) do
+    case presentation_value(metadata, :outcome_state) do
+      nil -> :unknown
+      value -> normalize_closed_value!(value, @audit_outcome_states, "audit outcome state")
+    end
+  end
+
   defp legal_next_move_label([]),
     do: "Review the workflow diagnosis before retrying a bounded action."
 
@@ -457,6 +1050,12 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
       raise ArgumentError, "#{field} must be a stable identifier"
     end
   end
+
+  defp normalize_nonnegative_integer!(value, _field) when is_integer(value) and value >= 0,
+    do: value
+
+  defp normalize_nonnegative_integer!(_value, field),
+    do: raise(ArgumentError, "#{field} must be a nonnegative integer")
 
   defp normalize_closed_value!(value, values, field) do
     key = if is_atom(value), do: Atom.to_string(value), else: value
