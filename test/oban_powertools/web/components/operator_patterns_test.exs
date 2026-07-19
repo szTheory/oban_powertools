@@ -209,6 +209,38 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
     assert_escaped(html)
   end
 
+  test "AuditEntry rejects credential and raw-error evidence before rendering" do
+    entry = %{
+      sentence: "System policy requested a retry for job job-123.",
+      outcome: "Retry requested",
+      actor: "System policy",
+      action: "Retry requested",
+      target: "job-123",
+      reason: "Incident response",
+      source: "Powertools-native",
+      correlation: "audit-2026-0001",
+      occurred_at: "July 18, 2026 at 21:00 UTC",
+      occurred_datetime: "2026-07-18T21:00:00Z",
+      changes: nil,
+      evidence: nil
+    }
+
+    for unsafe_evidence <- [
+          %{token: @secret},
+          %{authorization: "Bearer #{@secret}"},
+          %{password: @secret},
+          %{"previewToken" => @secret},
+          %{"planHash" => @secret},
+          %{"rawError" => "database password: #{@secret}"}
+        ] do
+      unsafe_entry = %{entry | evidence: %{recorded: unsafe_evidence}}
+
+      assert_raise ArgumentError, ~r/prohibited source field/, fn ->
+        render_pattern(:audit_entry, id: "unsafe-audit-entry", entry: unsafe_entry)
+      end
+    end
+  end
+
   @tag phase78_slice: "filter"
   test "FilterBar submit mode keeps one form tree and applied truth outside disclosure" do
     html =

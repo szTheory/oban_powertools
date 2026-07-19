@@ -30,6 +30,12 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     "unknown" => :unknown,
     "unavailable" => :unavailable
   }
+  @prohibited_presentation_source_field_names ~w[
+    token hash error authorization password secret credential api_key access_key private_key
+  ]
+  @prohibited_presentation_source_field_suffixes ~w[
+    token hash error authorization password secret credential
+  ]
 
   @doc """
   Normalizes ordered active-filter presentation maps through a finite key contract.
@@ -484,12 +490,13 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
 
   defp ensure_safe_presentation_data!(value, name) when is_map(value) do
     Enum.each(value, fn {key, nested} ->
-      normalized_key = to_string(key)
+      normalized_key = normalize_presentation_source_key(key)
 
       if not is_nil(nested) and
-           (String.ends_with?(normalized_key, "_token") or
-              String.ends_with?(normalized_key, "_hash") or
-              String.ends_with?(normalized_key, "_error")) do
+           (normalized_key in @prohibited_presentation_source_field_names or
+              Enum.any?(@prohibited_presentation_source_field_suffixes, fn suffix ->
+                String.ends_with?(normalized_key, "_#{suffix}")
+              end)) do
         raise ArgumentError, "#{name} contains a prohibited source field"
       end
 
@@ -501,6 +508,15 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     do: Enum.each(value, &ensure_safe_presentation_data!(&1, name))
 
   defp ensure_safe_presentation_data!(_value, _name), do: :ok
+
+  defp normalize_presentation_source_key(key) do
+    key
+    |> to_string()
+    |> String.replace(~r/([a-z0-9])([A-Z])/, "\\1_\\2")
+    |> String.replace(~r/[^A-Za-z0-9]+/, "_")
+    |> String.trim("_")
+    |> String.downcase()
+  end
 
   def humanize(atom) when is_atom(atom), do: humanize(Atom.to_string(atom))
 
