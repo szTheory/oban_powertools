@@ -193,6 +193,30 @@ async function expectVisibleFocus(
   ).toBe(true);
 }
 
+async function focusWithKeyboard(
+  page: Page,
+  locator: Locator,
+  label: string,
+): Promise<void> {
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  });
+
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    await page.keyboard.press("Tab");
+    if (
+      await locator.evaluate((element) => element === document.activeElement)
+    ) {
+      await expectVisibleFocus(locator, label);
+      return;
+    }
+  }
+
+  throw new Error(`${label} was not reachable through the page Tab order`);
+}
+
 async function expectOneResponsiveTree(
   story: Locator,
   selector: string,
@@ -890,51 +914,267 @@ test.describe("group operator-pattern connected behavior contracts", () => {
     await expectConfidentialityChannelsSafe(page);
   });
 
-  test("group explanation and audit expose non-color truth, unknown evidence, absolute time, and no secrets", async ({
+  test("group explanation keeps static attention calm and exposes status, severity, permission, and long-content truth", async ({
     page,
   }, testInfo) => {
-    const explanation = await prepareGroupStory(
+    const story = groupStory(
+      "attention status severity matrix",
+      "attention",
+      "status",
+      "severity",
+    );
+    const stage = await prepareGroupStory(page, testInfo.project.name, story);
+    const attention = stage.locator(".obpt-attention-card");
+    const focusAnchor = page.locator("#form-input-required");
+
+    await focusAnchor.focus();
+    await activateTarget(page, story);
+    await expect(focusAnchor).toBeFocused();
+    await expect(attention).not.toHaveAttribute("role", /.+/);
+    await expect(attention).toHaveAttribute("data-obpt-severity", "warning");
+    await expect(attention).toHaveAttribute(
+      "data-obpt-completeness",
+      "complete",
+    );
+    const pills = attention.locator(".obpt-status-pill");
+    await expect(pills).toHaveCount(2);
+    await expect(pills.locator(".obpt-status-pill-label")).toHaveText([
+      "Retryable",
+      "Warning",
+    ]);
+    await expect(pills.locator("[data-obpt-icon]")).toHaveCount(2);
+    await expect(pills.nth(0)).toContainText("Job state:");
+    await expect(pills.nth(1)).toContainText("Attention severity:");
+    expect(
+      await attention.evaluate(
+        (element) =>
+          Number.parseFloat(getComputedStyle(element).borderInlineStartWidth) >
+          0,
+      ),
+    ).toBe(true);
+    await expect(attention.locator("time")).toHaveAttribute(
+      "datetime",
+      "2026-07-18T14:05:00Z",
+    );
+
+    const longStage = await prepareGroupStory(
       page,
       testInfo.project.name,
       groupStory(
-        "attention status severity matrix",
+        "long attention content and actions",
         "attention",
-        "status",
-        "severity",
+        "long",
+        "actions",
       ),
     );
-
-    await expect(
-      explanation.getByText("Unknown", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      explanation.locator("[data-obpt-status-label]"),
-    ).not.toHaveCount(0);
-    await expect(
-      explanation.locator("[data-obpt-severity-label]"),
-    ).not.toHaveCount(0);
-    await expect(explanation.locator("time[datetime]")).not.toHaveCount(0);
-
-    const auditStory = groupStory(
-      "missing-field audit entry",
-      "audit",
-      "missing",
+    const longAttention = longStage.locator(".obpt-attention-card");
+    const denied = longAttention.getByRole("button", {
+      name: "Open retryable notification jobs",
+    });
+    await expect(denied).toHaveAttribute("aria-disabled", "true");
+    const reasonId = await denied.getAttribute("aria-describedby");
+    expect(reasonId).toBeTruthy();
+    await expect(longAttention.locator(`#${reasonId}`)).toHaveText(
+      "Requires operator role.",
     );
-    await activateTarget(page, auditStory);
-    const audit = page.locator(auditStory.a11y);
-    await expect(
-      audit.getByText("No operator reason recorded", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      audit.getByText("Outcome not recorded", { exact: true }),
-    ).toBeVisible();
-    await expect(audit.locator('time[datetime^="2026-"]')).not.toHaveCount(0);
-    await expect(audit).not.toContainText("N/A");
-    await expectSecretAbsent(page, explanation);
-    await expectSecretAbsent(page, audit);
+    await expect(denied).not.toHaveAttribute("phx-click", /.+/);
+    await expect(longAttention).toContainText(
+      "<script>alert('group')</script>",
+    );
+    await expect(longAttention).toContainText("مرحبا ✅");
+    await expect(longAttention).toContainText("01JZ8M5P999999999999999999");
+    await expect(longAttention).not.toHaveAttribute("role", /.+/);
+    await expectNoHorizontalOverflow(longStage);
+    await expectConfidentialityChannelsSafe(page);
   });
 
-  test("group 320 behavior keeps one responsive tree, stacked actions, long content, and no overflow", async ({
+  test("group explanation preserves every blocker and distinguishes current, snapshot, and unavailable evidence", async ({
+    page,
+  }, testInfo) => {
+    const multiple = await prepareGroupStory(
+      page,
+      testInfo.project.name,
+      groupStory("multiple blockers", "why", "multiple", "causes"),
+    );
+    const rows = multiple.locator(".obpt-why-blocked__blocker");
+    await expect(rows).toHaveCount(2);
+    expect(
+      await rows.evaluateAll((elements) =>
+        elements.map((element) =>
+          element.getAttribute("data-obpt-evidence-kind"),
+        ),
+      ),
+    ).toEqual(["current", "current"]);
+    expect(
+      await rows.evaluateAll((elements) =>
+        elements.map((element) => element.getAttribute("data-obpt-blocker-id")),
+      ),
+    ).toEqual(["sync-support", "notify-disconnected"]);
+    await expect(rows.locator(".obpt-why-blocked__blocker-title")).toHaveText([
+      "Support sync has not completed",
+      "Notification step is disconnected",
+    ]);
+    await expect(rows.nth(0)).toContainText(
+      "The support sync must record a terminal result.",
+    );
+    await expect(rows.nth(0)).toContainText("Current workflow state");
+    await expect(rows.nth(0)).toContainText("step_retryable");
+    await expect(rows.nth(1)).toContainText(
+      "Restore an executable predecessor connection.",
+    );
+    await expect(rows.nth(1)).toContainText("Current workflow graph");
+    await expect(rows.nth(1)).toContainText("predecessor_disconnected");
+    await expect(multiple).not.toContainText(/root cause/i);
+
+    const mixed = await prepareGroupStory(
+      page,
+      testInfo.project.name,
+      groupStory("current and snapshot blockers", "why", "live", "snapshot"),
+    );
+    const mixedRows = mixed.locator(".obpt-why-blocked__blocker");
+    expect(
+      await mixedRows.evaluateAll((elements) =>
+        elements.map((element) =>
+          element.getAttribute("data-obpt-evidence-kind"),
+        ),
+      ),
+    ).toEqual(["current", "block_start_snapshot"]);
+    await expect(
+      mixed.getByText("Current state", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      mixed.getByText("Block-start snapshot", { exact: true }),
+    ).toBeVisible();
+    const evidence = mixed.locator(".obpt-why-blocked__evidence");
+    const evidenceSummary = evidence.locator("summary");
+    await expect(evidence).not.toHaveAttribute("open", /.+/);
+    await focusWithKeyboard(
+      page,
+      evidenceSummary,
+      "blocker technical evidence disclosure",
+    );
+    await page.keyboard.press("Enter");
+    await expect(evidence).toHaveAttribute("open", "");
+    await expect(evidence).toContainText(
+      "The support sync remains retryable at July 18, 2026 at 14:05 UTC.",
+    );
+    await expect(evidence).toContainText(
+      "At block start, the support sync was executing.",
+    );
+    await expect(evidence.locator("pre")).toHaveAttribute("tabindex", "0");
+
+    const unavailable = await prepareGroupStory(
+      page,
+      testInfo.project.name,
+      groupStory("unavailable blockers", "why", "unavailable", "evidence"),
+    );
+    const unavailableWhy = unavailable.locator(".obpt-why-blocked");
+    await expect(unavailableWhy).toHaveAttribute(
+      "data-obpt-evidence-state",
+      "unavailable",
+    );
+    await expect(unavailableWhy).toHaveAttribute(
+      "data-obpt-completeness",
+      "unknown",
+    );
+    await expect(
+      unavailableWhy.locator(".obpt-why-blocked__blocker"),
+    ).toHaveCount(0);
+    await expect(unavailableWhy).toContainText(
+      "Current blocker evidence is unavailable. Refresh the workflow or open Forensics.",
+    );
+    await expect(unavailableWhy).toContainText(
+      "Current blocker evidence is unknown. Refresh the workflow before acting.",
+    );
+    await expect(unavailableWhy).not.toContainText(/no blockers|root cause/i);
+    await expect(
+      unavailableWhy.getByRole("button", { name: "Open workflow evidence" }),
+    ).toBeVisible();
+    await expectConfidentialityChannelsSafe(page);
+  });
+
+  test("group audit exposes immutable actors, outcomes, absolute time, missing copy, and redacted evidence", async ({
+    page,
+  }, testInfo) => {
+    const matrix = await prepareGroupStory(
+      page,
+      testInfo.project.name,
+      groupStory("audit actor outcome matrix", "audit", "actor", "outcome"),
+    );
+    const entries = matrix.locator("article.obpt-audit-entry");
+    await expect(entries).toHaveCount(3);
+    await expect(entries.locator("h2")).toHaveCount(3);
+    expect(
+      await entries
+        .locator("time")
+        .evaluateAll((elements) =>
+          elements.map((element) => element.getAttribute("datetime")),
+        ),
+    ).toEqual([
+      "2026-07-18T14:05:00Z",
+      "2026-07-18T14:05:00Z",
+      "2026-07-18T14:05:00Z",
+    ]);
+    await expect(entries.locator("time")).toHaveText([
+      "July 18, 2026 at 14:05 UTC",
+      "July 18, 2026 at 14:05 UTC",
+      "July 18, 2026 at 14:05 UTC",
+    ]);
+    for (const [index, actor, outcome] of [
+      [0, "Miyazaki Haruka", "Retry requested"],
+      [1, "Powertools system", "Request failed"],
+      [2, "Queue policy", "Request skipped"],
+    ] as const) {
+      await expect(entries.nth(index)).toContainText(actor);
+      await expect(entries.nth(index)).toContainText(outcome);
+      await expect(
+        entries.nth(index).locator(".obpt-status-pill-label"),
+      ).toHaveText(outcome);
+    }
+
+    const missing = await prepareGroupStory(
+      page,
+      testInfo.project.name,
+      groupStory("missing audit fields", "audit", "missing"),
+    );
+    const missingEntry = missing.locator("article.obpt-audit-entry");
+    await expect(missingEntry).toHaveCount(1);
+    await expect(missingEntry.locator("h2")).toHaveText(
+      "Powertools system evaluated job 01JZ8M5P999999999999999999.",
+    );
+    await expect(missingEntry).toContainText("No operator reason recorded");
+    await expect(missingEntry).toContainText("Outcome not recorded");
+    await expect(missingEntry).toContainText("Correlation not recorded");
+    await expect(missingEntry.locator("time")).toHaveAttribute(
+      "datetime",
+      "2026-07-18T14:05:00Z",
+    );
+    await expect(missingEntry).not.toContainText("N/A");
+
+    const redacted = await prepareGroupStory(
+      page,
+      testInfo.project.name,
+      groupStory("redacted audit changes", "audit", "redacted", "changes"),
+    );
+    const redactedEntry = redacted.locator("article.obpt-audit-entry");
+    const evidence = redactedEntry.locator(".obpt-audit-entry__evidence");
+    const evidenceSummary = evidence.locator("summary");
+    await expect(evidence).not.toHaveAttribute("open", /.+/);
+    await focusWithKeyboard(
+      page,
+      evidenceSummary,
+      "audit technical evidence disclosure",
+    );
+    await page.keyboard.press("Enter");
+    await expect(evidence).toHaveAttribute("open", "");
+    await expect(evidence).toContainText("credential");
+    await expect(evidence).toContainText("[redacted]");
+    await expect(evidence).toContainText("critical-mailer");
+    await expect(evidence).toContainText("default");
+    await expectConfidentialityChannelsSafe(page);
+  });
+
+  test("group 320 behavior keeps one explanation-to-audit chain, stacked actions, keyboard focus, and no overflow", async ({
     page,
   }, testInfo) => {
     test.skip(
@@ -947,13 +1187,26 @@ test.describe("group operator-pattern connected behavior contracts", () => {
       testInfo.project.name,
       groupStory("narrow explanation and audit", "explain", "audit", "narrow"),
     );
-    await expectOneResponsiveTree(stage, "[data-obpt-group-content]");
-    await expect(stage.locator("[data-obpt-group-actions]")).toHaveCSS(
+    await expectOneResponsiveTree(stage, ".obpt-attention-card");
+    await expectOneResponsiveTree(stage, ".obpt-why-blocked");
+    await expectOneResponsiveTree(stage, "article.obpt-audit-entry");
+    await expect(stage.getByRole("dialog")).toHaveCount(0);
+    await expect(
+      stage.locator(".obpt-attention-card__primary-action"),
+    ).toHaveCSS("flex-direction", "column");
+    await expect(
+      stage.locator(".obpt-attention-card__secondary-actions"),
+    ).toHaveCSS("flex-direction", "column");
+    await expect(stage.locator(".obpt-why-blocked__next-action")).toHaveCSS(
       "flex-direction",
       "column",
     );
     await expect(stage).toContainText("01JZ8M5P999999999999999999");
+    await expect(stage).toContainText("お客様通知 ✅");
+    const action = stage.getByRole("button", { name: "Open retryable jobs" });
+    await focusWithKeyboard(page, action, "320 explanation primary action");
     await expectNoHorizontalOverflow(stage);
+    await expectConfidentialityChannelsSafe(page);
   });
 
   test("group wide behavior keeps explanation and action hierarchy readable without a modal", async ({
@@ -975,8 +1228,15 @@ test.describe("group operator-pattern connected behavior contracts", () => {
       ),
     );
     await expect(stage.getByRole("dialog")).toHaveCount(0);
-    await expect(stage.locator("[data-obpt-primary-action]")).toHaveCount(1);
+    await expect(
+      stage.locator(".obpt-attention-card__primary-action"),
+    ).toHaveCount(1);
+    await expect(
+      stage.locator(".obpt-attention-card__secondary-actions"),
+    ).toHaveCount(1);
+    await expect(stage).toContainText("مرحبا ✅");
     await expectNoHorizontalOverflow(stage);
+    await expectConfidentialityChannelsSafe(page);
   });
 
   test("group confirmation 200% zoom reflows long copy and preserves visible keyboard focus", async ({
@@ -1160,15 +1420,25 @@ test.describe("group operator-pattern connected behavior contracts", () => {
     await expectConfidentialityChannelsSafe(page);
   });
 
-  test("group 200% zoom explanation wraps current and snapshot evidence in one tree", async ({
+  test("group explanation 200% zoom wraps current and snapshot evidence in one keyboard-usable tree", async ({
     page,
   }, testInfo) => {
+    const viewport = viewportNameFromProject(testInfo.project.name);
+    test.skip(
+      viewport !== "wide",
+      "200% zoom proof executes only in chromium-wide",
+    );
+    expect(viewport, "the exact zoom grep must execute rather than skip").toBe(
+      "wide",
+    );
+
     const stage = await prepareGroupStory(
       page,
       testInfo.project.name,
       groupStory("live versus snapshot blockers", "why", "live", "snapshot"),
     );
     await apply200PercentZoom(page);
+    await expect(page.locator("[data-phx-main].phx-connected")).toHaveCount(1);
 
     await expect(
       stage.getByText("Current state", { exact: true }),
@@ -1176,26 +1446,81 @@ test.describe("group operator-pattern connected behavior contracts", () => {
     await expect(
       stage.getByText("Block-start snapshot", { exact: true }),
     ).toBeVisible();
-    await expectOneResponsiveTree(stage, "[data-obpt-why-blocked]");
+    const evidence = stage.locator(".obpt-why-blocked__evidence");
+    const summary = evidence.locator("summary");
+    await focusWithKeyboard(page, summary, "200% zoom blocker evidence");
+    await page.keyboard.press("Enter");
+    await expect(evidence).toHaveAttribute("open", "");
+    await expect(evidence).toContainText(
+      "At block start, the support sync was executing.",
+    );
+    const prose = stage.locator(
+      ".obpt-why-blocked__title, .obpt-why-blocked__summary, .obpt-why-blocked__blocker-title, .obpt-why-blocked__blocker-summary, .obpt-why-blocked__facts dt, .obpt-why-blocked__facts dd, .obpt-why-blocked__impact p, .obpt-why-blocked__freshness p",
+    );
+    const wrapping = await prose.evaluateAll((elements) =>
+      elements.map((element) => ({
+        clipped: element.scrollWidth > element.clientWidth + 1,
+        nowrap: getComputedStyle(element).whiteSpace === "nowrap",
+      })),
+    );
+    expect(wrapping.length).toBeGreaterThan(0);
+    expect(wrapping.every(({ clipped, nowrap }) => !clipped && !nowrap)).toBe(
+      true,
+    );
+    await expectOneResponsiveTree(stage, ".obpt-why-blocked");
     await expectNoHorizontalOverflow(stage);
+    await expectConfidentialityChannelsSafe(page);
   });
 
-  test("group 200% zoom audit preserves absolute time, missing copy, and safe wrapping", async ({
+  test("group audit 200% zoom preserves absolute time, redacted evidence, keyboard focus, and safe wrapping", async ({
     page,
   }, testInfo) => {
+    const viewport = viewportNameFromProject(testInfo.project.name);
+    test.skip(
+      viewport !== "wide",
+      "200% zoom proof executes only in chromium-wide",
+    );
+    expect(viewport, "the exact zoom grep must execute rather than skip").toBe(
+      "wide",
+    );
+
     const stage = await prepareGroupStory(
       page,
       testInfo.project.name,
-      groupStory("missing audit fields", "audit", "missing"),
+      groupStory("redacted audit changes", "audit", "redacted", "changes"),
     );
     await apply200PercentZoom(page);
+    await expect(page.locator("[data-phx-main].phx-connected")).toHaveCount(1);
 
-    await expect(stage.locator('time[datetime^="2026-"]')).toBeVisible();
-    await expect(
-      stage.getByText("No operator reason recorded", { exact: true }),
-    ).toBeVisible();
+    await expect(stage.locator("time")).toHaveAttribute(
+      "datetime",
+      "2026-07-18T14:05:00Z",
+    );
+    await expect(stage.locator("time")).toHaveText(
+      "July 18, 2026 at 14:05 UTC",
+    );
+    const evidence = stage.locator(".obpt-audit-entry__evidence");
+    const summary = evidence.locator("summary");
+    await focusWithKeyboard(page, summary, "200% zoom audit evidence");
+    await page.keyboard.press("Enter");
+    await expect(evidence).toHaveAttribute("open", "");
+    await expect(evidence).toContainText("[redacted]");
+    await expect(evidence).toContainText("critical-mailer");
+    const prose = stage.locator(
+      ".obpt-audit-entry__title, .obpt-audit-entry__time, .obpt-description-list dt, .obpt-description-list dd, .obpt-audit-entry__evidence summary",
+    );
+    const wrapping = await prose.evaluateAll((elements) =>
+      elements.map((element) => ({
+        clipped: element.scrollWidth > element.clientWidth + 1,
+        nowrap: getComputedStyle(element).whiteSpace === "nowrap",
+      })),
+    );
+    expect(wrapping.length).toBeGreaterThan(0);
+    expect(wrapping.every(({ clipped, nowrap }) => !clipped && !nowrap)).toBe(
+      true,
+    );
     await expectOneResponsiveTree(stage, "article.obpt-audit-entry");
     await expectNoHorizontalOverflow(stage);
-    await expectSecretAbsent(page, stage);
+    await expectConfidentialityChannelsSafe(page);
   });
 });
