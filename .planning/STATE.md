@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 79
 current_phase_name: page-migration-wave-1-overview-cron-limiters-audit
 status: executing
-stopped_at: Completed 79-06-PLAN.md
-last_updated: "2026-07-19T21:29:23.838Z"
+stopped_at: Completed 79-07-PLAN.md
+last_updated: "2026-07-19T21:44:39.739Z"
 last_activity: 2026-07-19
-last_activity_desc: Completed Phase 79 Plan 05 limiter scan and current-evidence migration
+last_activity_desc: Completed Phase 79 Plan 07 deterministic page composition assets
 progress:
   total_phases: 15
   completed_phases: 9
   total_plans: 61
-  completed_plans: 56
-  percent: 60
+  completed_plans: 57
+  percent: 93
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 79 (page-migration-wave-1-overview-cron-limiters-audit) — EXECUTING
-Plan: 7 of 12
+Plan: 8 of 12
 Status: Ready to execute
-Last activity: 2026-07-19 — Completed Phase 79 Plan 05 limiter scan and current-evidence migration
+Last activity: 2026-07-19 — Completed Phase 79 Plan 07 deterministic page composition assets
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 05 limiter scan and curren
 | Phase 79 P04 | 17 min | 3 tasks | 2 files |
 | Phase 79 P05 | 14 min | 2 tasks | 4 files |
 | Phase 79 P06 | 22 min | 3 tasks | 4 files |
+| Phase 79 P07 | 11 min | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -95,12 +96,12 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 05 limiter scan and curren
 
 ## Session Continuity
 
-**Last session:** 2026-07-19T21:29:23.833Z
-**Stopped at:** Completed 79-06-PLAN.md
+**Last session:** 2026-07-19T21:44:39.734Z
+**Stopped at:** Completed 79-07-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed Plan 79-05's batched limiter scan and current-before-history evidence composition.
-- **Next Action:** Execute Plan 79-06 to migrate Audit to a bounded scan and URL-owned immutable evidence detail.
+- **Last Action:** Completed Plan 79-07's token-owned responsive page composition and deterministic packaged CSS.
+- **Next Action:** Execute Plan 79-10 to verify connected production-page behavior.
 
 ## Decisions
 
@@ -189,6 +190,9 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 05 limiter scan and curren
 - [Phase 79]: Resolve selected Audit evidence with its exact filters in one scoped query and use the same unavailable result for missing or out-of-scope IDs. — This prevents transient or stale selection detail from escaping the bounded scan scope.
 - [Phase 79]: Project Audit metadata through a narrow structural allowlist before shared presentation and retain only normalized assigns. — This preserves useful evidence while preventing raw or redacted metadata from leaking into render state.
 - [Phase 79]: Push the first Audit selection, replace selection switches and closes, and emit URLs in canonical filter-page-event order. — This keeps back-button behavior meaningful and makes URL-owned detail deterministic.
+- [Phase 79]: Bind canonical page composition to stable production roots — Preserves the verified semantic DOM while giving all four pages one token-owned layout contract.
+- [Phase 79]: Keep page CSS limited to composition — Shared components retain chrome, modality, interaction, and bounded scroll ownership while the page layer owns only geometry and wrapping.
+- [Phase 79]: Require source/package equality and repeat-build hash equality together — Both checks are necessary to prove the distributed CSS is current and deterministically generated without JavaScript drift.
 
 ### Blockers
 
