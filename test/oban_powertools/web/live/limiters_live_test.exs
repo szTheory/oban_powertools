@@ -388,6 +388,36 @@ defmodule ObanPowertools.Web.LimitersLiveTest do
     assert source =~ "now = DateTime.utc_now()"
   end
 
+  @tag phase79_slice: "limiters"
+  test "resource and state list query counts stay constant as the scan grows", %{conn: conn} do
+    insert_resource!("single-resource")
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-query-shape-79", permissions: [:view_limiters]}
+      )
+
+    one_resource_counts = capture_limiter_queries(fn -> live(conn, "/ops/jobs/limiters") end)
+
+    for index <- 1..12 do
+      insert_resource!("many-resources-#{index}")
+    end
+
+    many_resource_counts = capture_limiter_queries(fn -> live(conn, "/ops/jobs/limiters") end)
+
+    assert Map.take(one_resource_counts, [
+             "oban_powertools_limit_resources",
+             "oban_powertools_limit_states"
+           ]) ==
+             Map.take(many_resource_counts, [
+               "oban_powertools_limit_resources",
+               "oban_powertools_limit_states"
+             ])
+
+    assert one_resource_counts["oban_powertools_limit_resources"] == 2
+    assert one_resource_counts["oban_powertools_limit_states"] == 2
+  end
+
   defp insert_resource!(name) do
     TestRepo.insert!(%Resource{
       name: name,
@@ -425,5 +455,41 @@ defmodule ObanPowertools.Web.LimitersLiveTest do
       end)
 
     assert indexes == Enum.sort(indexes)
+  end
+
+  defp capture_limiter_queries(fun) do
+    handler_id = {__MODULE__, make_ref()}
+    event = TestRepo.config() |> Keyword.fetch!(:telemetry_prefix) |> Kernel.++([:query])
+    test_pid = self()
+
+    :telemetry.attach(
+      handler_id,
+      event,
+      fn _event, _measurements, metadata, pid ->
+        if metadata[:source] in [
+             "oban_powertools_limit_resources",
+             "oban_powertools_limit_states"
+           ] do
+          send(pid, {:limiter_query, metadata.source})
+        end
+      end,
+      test_pid
+    )
+
+    try do
+      fun.()
+      collect_limiter_queries(%{})
+    after
+      :telemetry.detach(handler_id)
+    end
+  end
+
+  defp collect_limiter_queries(counts) do
+    receive do
+      {:limiter_query, source} ->
+        collect_limiter_queries(Map.update(counts, source, 1, &(&1 + 1)))
+    after
+      0 -> counts
+    end
   end
 end
