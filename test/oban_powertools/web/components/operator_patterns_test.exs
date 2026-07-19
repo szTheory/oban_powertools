@@ -244,6 +244,95 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
     end
   end
 
+  @tag phase79_slice: "shared"
+  test "WhyBlocked renders optional affected scope and never exposes technical classifier codes" do
+    html =
+      render_pattern(:why_blocked,
+        id: "limiter-current-blockers",
+        title: "Current blockers",
+        summary: "Current limiter evidence identifies one blocker.",
+        impact: "New reservations are waiting.",
+        observed_at: "July 19, 2026 at 14:00 UTC",
+        observed_datetime: "2026-07-19T14:00:00Z",
+        evidence_state: :current,
+        completeness: :complete,
+        blockers: [
+          %{
+            id: "billing-cooldown",
+            evidence_kind: :current,
+            label: "Cooldown is active",
+            summary: "New reservations wait until the cooldown clears.",
+            affected_scope: "All queues using the billing limiter",
+            clearing_condition: "Wait for the cooldown window to end.",
+            evidence_source: "Current limiter state",
+            technical_code: "cooldown_active"
+          }
+        ]
+      )
+
+    assert html =~ "Cooldown is active"
+    assert html =~ "Affected scope"
+    assert html =~ "All queues using the billing limiter"
+    refute html =~ "Technical code"
+    refute html =~ "cooldown_active"
+    assert count(html, "Affected scope") == 1
+  end
+
+  @tag phase79_slice: "shared"
+  test "AuditEntry visibly associates Recorded at with its absolute machine-readable time" do
+    entry = %{
+      sentence: "Operator One paused cron entry nightly.",
+      outcome: "Cron entry paused",
+      outcome_state: :success,
+      actor: "Operator One",
+      action: "Pause cron entry",
+      target: "cron entry nightly",
+      reason: "Scheduled maintenance",
+      source: "Powertools-native",
+      correlation: "Correlation not recorded",
+      occurred_at: "July 19, 2026 at 14:30 UTC",
+      occurred_datetime: "2026-07-19T14:30:00Z",
+      recorded_at_label: "Recorded at",
+      changes: nil,
+      evidence: nil
+    }
+
+    html = render_pattern(:audit_entry, id: "audit-entry-recorded-at", entry: entry)
+
+    assert html =~ "Recorded at"
+    assert html =~ ~s(<time datetime="2026-07-19T14:30:00Z")
+    assert_in_order(html, ["Recorded at", "July 19, 2026 at 14:30 UTC"])
+    assert count(html, "Recorded at") == 1
+  end
+
+  @tag phase79_slice: "shared"
+  test "AuditEntry keeps missing source and correlation explicit and neutral" do
+    entry = %{
+      sentence: "Operator One requested a retry for job 123.",
+      outcome: nil,
+      outcome_state: :unknown,
+      actor: "Operator One",
+      action: "Retry requested",
+      target: "job 123",
+      reason: nil,
+      source: nil,
+      correlation: nil,
+      occurred_at: "July 19, 2026 at 14:45 UTC",
+      occurred_datetime: "2026-07-19T14:45:00Z",
+      changes: nil,
+      evidence: nil
+    }
+
+    html = render_pattern(:audit_entry, id: "audit-entry-missing-facts", entry: entry)
+
+    assert html =~ "No operator reason recorded"
+    assert html =~ "Outcome not recorded"
+    assert html =~ "Source not recorded"
+    assert html =~ "Correlation not recorded"
+    assert html =~ "Recorded at"
+    refute html =~ "N/A"
+  end
+
   test "AuditEntry rejects credential and raw-error evidence before rendering" do
     entry = %{
       sentence: "System policy requested a retry for job job-123.",

@@ -1,6 +1,7 @@
 defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
   use ExUnit.Case, async: true
 
+  alias ObanPowertools.Audit
   alias ObanPowertools.Web.ControlPlanePresenter, as: Presenter
 
   @source_path "lib/oban_powertools/web/control_plane_presenter.ex"
@@ -11,12 +12,265 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
     normalize_evidence_completeness
   ]a
 
+  @phase79_presenters ~w[
+    present_overview_bucket present_cron_action present_cron_result present_limiter_blocker
+    present_audit_row present_audit_detail
+  ]a
+
   test "exports all five finite Phase 78 presenter seams" do
     assert Code.ensure_loaded?(Presenter), "Phase 78 requires #{Presenter}"
 
     for normalizer <- @normalizers do
       assert function_exported?(Presenter, normalizer, 1),
              "GROUP-01 requires #{inspect(Presenter)}.#{normalizer}/1"
+    end
+  end
+
+  @tag phase79_slice: "shared"
+  test "exports the six finite Phase 79 page presentation seams" do
+    assert Code.ensure_loaded?(Presenter), "Phase 79 requires #{Presenter}"
+
+    for presenter <- @phase79_presenters do
+      arity = if presenter in [:present_audit_row, :present_audit_detail], do: 2, else: 1
+
+      assert function_exported?(Presenter, presenter, arity),
+             "Phase 79 requires #{inspect(Presenter)}.#{presenter}/#{arity}"
+    end
+  end
+
+  @tag phase79_slice: "shared"
+  test "Overview presentation preserves fixed bridge truth and bounds deterministic exemplars" do
+    input = %{
+      id: "bridge-only-follow-up",
+      kind: :bridge_only,
+      title: "Bridge-only Follow-up",
+      count: 4,
+      summary: "Representative follow-up remains in Oban Web.",
+      impact: "Powertools does not own this inspection surface.",
+      observed_at: "July 19, 2026 at 14:00 UTC",
+      observed_datetime: "2026-07-19T14:00:00Z",
+      domain: :overview,
+      status: :bridge_only,
+      severity: :neutral,
+      completeness: :partial,
+      ownership: :oban_web_bridge,
+      next_step_path: "/ops/jobs/oban",
+      exemplars: Enum.map(1..4, &%{id: "follow-up-#{&1}", label: "Follow-up #{&1}"})
+    }
+
+    presented = present(:present_overview_bucket, [input])
+
+    assert Map.keys(presented) |> Enum.sort() ==
+             Enum.sort([
+               :id,
+               :kind,
+               :title,
+               :count,
+               :summary,
+               :impact,
+               :observed_at,
+               :observed_datetime,
+               :domain,
+               :status,
+               :severity,
+               :completeness,
+               :ownership,
+               :sample_count_label,
+               :next_step_label,
+               :next_step_path,
+               :exemplars
+             ])
+
+    assert presented.title == "Bridge-only Follow-up"
+    assert presented.sample_count_label == "4 representative follow-ups"
+    assert presented.next_step_label == "Inspect in Oban Web"
+    assert presented.next_step_path == "/ops/jobs/oban"
+    assert Enum.map(presented.exemplars, & &1.id) == ~w[follow-up-1 follow-up-2 follow-up-3]
+    refute inspect(presented) =~ "global total"
+  end
+
+  @tag phase79_slice: "shared"
+  test "Cron actions use exact action-specific labels, warning intent, and consequence truth" do
+    expectations = [
+      pause: {
+        "Pause cron entry",
+        "Keep running",
+        "Future schedule claims stop. Work that is already running or enqueued is unaffected."
+      },
+      resume: {
+        "Resume cron entry",
+        "Keep paused",
+        "Future schedule claims continue. Missed work is not run retroactively."
+      },
+      run_now: {
+        "Run cron entry now",
+        "Keep current schedule",
+        "Powertools attempts a manual schedule-slot claim. Overlap policy may skip, queue, or enqueue it."
+      }
+    ]
+
+    for {kind, {confirm, dismiss, consequence}} <- expectations do
+      action = present(:present_cron_action, [%{kind: kind, object_label: "nightly"}])
+
+      assert Map.keys(action) |> Enum.sort() ==
+               Enum.sort([
+                 :kind,
+                 :confirm_label,
+                 :dismiss_label,
+                 :title,
+                 :consequence,
+                 :support_boundary,
+                 :pending_copy,
+                 :intent
+               ])
+
+      assert action.kind == kind
+      assert action.confirm_label == confirm
+      assert action.dismiss_label == dismiss
+      assert action.consequence == consequence
+      assert action.intent == :warning
+      refute action.title in ["Confirm", "Are you sure?"]
+    end
+  end
+
+  @tag phase79_slice: "shared"
+  test "Cron result presentation never turns a recorded run-now claim into completed work" do
+    result =
+      present(:present_cron_result, [
+        %{
+          kind: :run_now,
+          state: :skipped,
+          recorded_result: "overlap policy skipped the slot claim",
+          audit_href: "/ops/jobs/audit?resource_type=cron_entry&resource_id=nightly"
+        }
+      ])
+
+    assert Map.keys(result) |> Enum.sort() ==
+             Enum.sort([
+               :state,
+               :message,
+               :recorded_result,
+               :recovery,
+               :audit_href,
+               :receipt
+             ])
+
+    assert result.state == :skipped
+    assert result.recovery =~ "preview"
+    assert result.receipt == nil
+    refute String.downcase(result.message) =~ "job ran"
+    refute String.downcase(result.message) =~ "completed"
+  end
+
+  @tag phase79_slice: "shared"
+  test "Limiter presentation keeps affected scope and omits internal classifier codes" do
+    blocker =
+      present(:present_limiter_blocker, [
+        %{
+          id: "global-cooldown",
+          evidence_kind: :current,
+          technical_code: "cooldown_active",
+          label: "Cooldown is active",
+          summary: "New reservations wait until the cooldown clears.",
+          affected_scope: "All queues using the billing limiter",
+          clearing_condition: "Wait for the cooldown window to end.",
+          evidence_source: "Current limiter state"
+        }
+      ])
+
+    assert blocker == %{
+             id: "global-cooldown",
+             evidence_kind: :current,
+             label: "Cooldown is active",
+             summary: "New reservations wait until the cooldown clears.",
+             affected_scope: "All queues using the billing limiter",
+             clearing_condition: "Wait for the cooldown window to end.",
+             evidence_source: "Current limiter state"
+           }
+
+    refute Map.has_key?(blocker, :technical_code)
+    refute inspect(blocker) =~ "cooldown_active"
+  end
+
+  @tag phase79_slice: "shared"
+  test "Audit row and detail use exact absence copy, Recorded at, and closed safe fields" do
+    event = %Audit{
+      id: 41,
+      actor_id: nil,
+      action: "lifeline.repair_requested",
+      command_key: "execute_repair",
+      event_type: "lifeline.repair_requested",
+      resource: "job:123",
+      resource_type: "job",
+      resource_id: "123",
+      metadata: %{},
+      inserted_at: ~N[2026-07-19 14:30:00.000000]
+    }
+
+    context = %{surface: :audit, section: :selected_evidence}
+    row = present(:present_audit_row, [event, context])
+    detail = present(:present_audit_detail, [event, context])
+
+    assert Map.keys(row) |> Enum.sort() ==
+             Enum.sort([
+               :id,
+               :event_label,
+               :target_label,
+               :target_href,
+               :actor,
+               :reason_summary,
+               :recorded_at,
+               :recorded_datetime,
+               :evidence_href,
+               :evidence_label
+             ])
+
+    assert row.reason_summary == "No operator reason recorded"
+    assert row.recorded_at =~ "UTC"
+    assert row.recorded_datetime == "2026-07-19T14:30:00.000000Z"
+    assert row.evidence_href =~ "resource_type=job&resource_id=123&page=1&event=41"
+
+    assert detail.reason == "No operator reason recorded"
+    assert detail.outcome == "Outcome not recorded"
+    assert detail.source == "Source not recorded"
+    assert detail.correlation == "Correlation not recorded"
+    assert detail.recorded_at_label == "Recorded at"
+    assert detail.occurred_datetime == row.recorded_datetime
+    refute inspect(detail) =~ "execute_repair"
+  end
+
+  @tag phase79_slice: "shared"
+  test "Audit presentation rejects secret metadata and implementation-shaped evidence" do
+    base = %Audit{
+      id: 42,
+      actor_id: "operator-1",
+      action: "cron.previewed",
+      event_type: "cron.previewed",
+      resource: "cron_entry:nightly",
+      resource_type: "cron_entry",
+      resource_id: "nightly",
+      inserted_at: ~N[2026-07-19 14:45:00.000000]
+    }
+
+    for metadata <- [
+          %{"preview_token" => "SYNTHETIC_PREVIEW_TOKEN"},
+          %{"plan_hash" => "SYNTHETIC_PLAN_HASH"},
+          %{"credentials" => %{"password" => "SYNTHETIC_PASSWORD"}},
+          %{"principal" => %{"access_token" => "SYNTHETIC_ACCESS_TOKEN"}},
+          %{"exception" => "SYNTHETIC_EXCEPTION"},
+          %{"stacktrace" => ["SYNTHETIC_STACKTRACE"]},
+          %{"evidence" => %{"arbitrary_provider_blob" => "SYNTHETIC_SECRET"}}
+        ] do
+      assert_raise ArgumentError, fn ->
+        present(:present_audit_detail, [%{base | metadata: metadata}, %{surface: :audit}])
+      end
+    end
+
+    assert_raise ArgumentError, fn ->
+      present(:present_audit_detail, [
+        %{"metadata" => %{"preview_token" => "SYNTHETIC_PREVIEW_TOKEN"}},
+        %{surface: :audit}
+      ])
     end
   end
 
@@ -312,6 +566,13 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
            "GROUP-01 requires #{inspect(Presenter)}.#{function}/1"
 
     apply(Presenter, function, [input])
+  end
+
+  defp present(function, arguments) do
+    assert function_exported?(Presenter, function, length(arguments)),
+           "Phase 79 requires #{inspect(Presenter)}.#{function}/#{length(arguments)}"
+
+    apply(Presenter, function, arguments)
   end
 
   defp count(text, needle), do: length(String.split(text, needle)) - 1

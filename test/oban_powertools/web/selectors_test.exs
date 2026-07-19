@@ -79,4 +79,79 @@ defmodule ObanPowertools.Web.SelectorsTest do
     assert result =~ "resource="
     assert result =~ "event_type="
   end
+
+  @tag phase79_slice: "shared"
+  test "keeps Cron entry and Limiter resource selectors first and delimiter-safe" do
+    entry = "nightly:eu/west?attempt=1#manual%slot"
+    resource = "tenant:alpha/billing?region=us east&mode=strict"
+
+    assert Selectors.cron_path([{"entry", entry}]) ==
+             "/ops/jobs/cron?entry=nightly%3Aeu%2Fwest%3Fattempt%3D1%23manual%25slot"
+
+    assert Selectors.limiter_path([{"resource", resource}]) ==
+             "/ops/jobs/limiters?resource=tenant%3Aalpha%2Fbilling%3Fregion%3Dus+east%26mode%3Dstrict"
+
+    assert URI.decode_query(URI.parse(Selectors.cron_path([{"entry", entry}])).query) == %{
+             "entry" => entry
+           }
+
+    assert URI.decode_query(URI.parse(Selectors.limiter_path([{"resource", resource}])).query) ==
+             %{"resource" => resource}
+  end
+
+  @tag phase79_slice: "shared"
+  test "keeps Audit filters, page, and selected event in literal canonical order" do
+    resource_id = "job:123/attempt?view=full#evidence"
+    event_id = "audit:41/selected?panel=detail"
+
+    path =
+      Selectors.audit_path([
+        {"resource_type", "job"},
+        {"resource_id", resource_id},
+        {"event_type", "lifeline.repair_executed"},
+        {"page", 3},
+        {"event", event_id}
+      ])
+
+    assert path ==
+             "/ops/jobs/audit?resource_type=job&resource_id=job%3A123%2Fattempt%3Fview%3Dfull%23evidence&event_type=lifeline.repair_executed&page=3&event=audit%3A41%2Fselected%3Fpanel%3Ddetail"
+
+    assert URI.decode_query(URI.parse(path).query) == %{
+             "resource_type" => "job",
+             "resource_id" => resource_id,
+             "event_type" => "lifeline.repair_executed",
+             "page" => "3",
+             "event" => event_id
+           }
+  end
+
+  @tag phase79_slice: "shared"
+  test "Audit selection removal and pagination links preserve the active exact filters" do
+    filters = [
+      {"resource_type", "workflow"},
+      {"resource_id", "wf:alpha/beta"},
+      {"event_type", "workflow.step_completed"}
+    ]
+
+    selected = Selectors.audit_path(filters ++ [{"page", 2}, {"event", "73"}])
+    closed = Selectors.audit_path(filters ++ [{"page", 2}])
+    previous = Selectors.audit_path(filters ++ [{"page", 1}])
+    next = Selectors.audit_path(filters ++ [{"page", 3}])
+
+    assert selected ==
+             "/ops/jobs/audit?resource_type=workflow&resource_id=wf%3Aalpha%2Fbeta&event_type=workflow.step_completed&page=2&event=73"
+
+    assert closed ==
+             "/ops/jobs/audit?resource_type=workflow&resource_id=wf%3Aalpha%2Fbeta&event_type=workflow.step_completed&page=2"
+
+    assert previous ==
+             "/ops/jobs/audit?resource_type=workflow&resource_id=wf%3Aalpha%2Fbeta&event_type=workflow.step_completed&page=1"
+
+    assert next ==
+             "/ops/jobs/audit?resource_type=workflow&resource_id=wf%3Aalpha%2Fbeta&event_type=workflow.step_completed&page=3"
+
+    refute closed =~ "event="
+    refute previous =~ "event="
+    refute next =~ "event="
+  end
 end
