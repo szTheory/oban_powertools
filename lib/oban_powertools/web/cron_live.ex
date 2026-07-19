@@ -4,10 +4,11 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     use Phoenix.LiveView
 
-    alias ObanPowertools.{Audit, ControlPlane, Cron, DisplayPolicy, Telemetry}
+    alias ObanPowertools.{ControlPlane, Cron, DisplayPolicy, Telemetry}
     alias ObanPowertools.Forensics.CronHistory
     alias ObanPowertools.Lifeline.RepairPreview
-    alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth}
+    alias ObanPowertools.Web.Components.{DataDisplay, OperatorPatterns, Primitives}
+    alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth, Selectors}
 
     @impl true
     def mount(_params, _mount_payload, socket) do
@@ -19,9 +20,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
          socket
          |> assign_entries(Cron.list_entries(repo()))
          |> assign(:selected_entry, nil)
+         |> assign(:detail_open?, false)
          |> assign(:preview, nil)
          |> assign(:reason, "")
-         |> assign(:error_message, nil)}
+         |> assign(:error_message, nil)
+         |> assign(:confirmation_form, nil)
+         |> assign(:confirmation_state, :preview)
+         |> assign(:confirmation_result, nil)
+         |> assign(:confirmation_open?, false)
+         |> assign(:receipt, nil)}
       else
         {:error, socket} -> {:ok, socket}
       end
@@ -30,16 +37,24 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     @impl true
     def handle_params(params, _uri, socket) do
       entries = Cron.list_entries(repo())
+      selected_entry = Enum.find(entries, &(&1.name == params["entry"]))
 
       {:noreply,
        socket
        |> assign_entries(entries)
-       |> assign_selected_entry(Enum.find(entries, &(&1.name == params["entry"])))}
+       |> assign_selected_entry(selected_entry)
+       |> assign(:detail_open?, not is_nil(selected_entry))
+       |> assign(:confirmation_open?, false)
+       |> assign(:preview, nil)
+       |> assign(:reason, "")
+       |> assign(:error_message, nil)
+       |> assign(:confirmation_result, nil)
+       |> assign(:receipt, nil)}
     end
 
     @impl true
-    def handle_event("select_entry", %{"entry" => entry_name}, socket) do
-      {:noreply, push_patch(socket, to: entry_path(entry_name))}
+    def handle_event("close_detail", _params, socket) do
+      {:noreply, push_patch(socket, to: Selectors.cron_path([]), replace: true)}
     end
 
     @impl true
@@ -126,224 +141,139 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     @impl true
     def render(assigns) do
       ~H"""
-      <div class="space-y-6 p-6">
-        <div>
-          <h1 class="text-2xl font-semibold">Cron</h1>
-          <p class="text-sm text-zinc-600">
-            <%= ControlPlanePresenter.native_banner() %> Preview, reason, venue, and audit stay aligned for every cron entry mutation.
-          </p>
-        </div>
+      <section id="cron-page" class="obpt-cron-page" aria-labelledby="cron-page-title">
+        <header class="obpt-cron-page__header">
+          <h1 id="cron-page-title">Cron</h1>
+          <p>Review schedules, inspect one cron entry, and take deliberate action with recorded evidence.</p>
+        </header>
 
-        <p :if={@read_only?} class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <%= LiveAuth.page_read_only_banner(:cron) %>
-        </p>
+        <Primitives.surface :if={@read_only?} variant={:inset}>
+          <p>{LiveAuth.page_read_only_banner(:cron)}</p>
+        </Primitives.surface>
 
-        <p :if={@error_message} class="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          <%= @error_message %>
-        </p>
+        <DataDisplay.state_message
+          :if={@error_message && !@confirmation_open?}
+          id="cron-page-error"
+          state={:error}
+          resource="cron entries"
+        >
+          <p>{@error_message}</p>
+        </DataDisplay.state_message>
 
-        <div class="overflow-hidden rounded-lg border bg-white">
-          <table class="min-w-full divide-y">
-            <thead class="bg-slate-50 text-left text-sm">
-              <tr>
-                <th class="px-4 py-3 font-medium">Entry</th>
-                <th class="px-4 py-3 font-medium">Source</th>
-                <th class="px-4 py-3 font-medium">Policies</th>
-                <th class="px-4 py-3 font-medium">Operator Status</th>
-                <th class="px-4 py-3 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y text-sm">
-              <tr :for={entry <- @entries}>
-                <td class="px-4 py-3 font-medium"><%= entry.name %></td>
-                <td class="px-4 py-3">
-                  <span class="rounded border px-2 py-1"><%= source_label(entry.source) %></span>
-                </td>
-                <td class="px-4 py-3">
-                  <div><%= overlap_label(entry.overlap_policy) %></div>
-                  <div class="text-zinc-500"><%= catch_up_label(entry.catch_up_policy) %></div>
-                </td>
-                <td class="px-4 py-3"><%= entry_status_label(entry) %></td>
-                <td class="px-4 py-3">
-                  <div class="space-y-3">
-                    <button
-                      type="button"
-                      phx-click="select_entry"
-                      phx-value-entry={entry.name}
-                      class="rounded border px-3 py-2"
+        <DataDisplay.data_table
+          id="cron-entries"
+          caption="Cron entries"
+          rows={@entries}
+          row_id={&entry_row_id/1}
+          state={cron_table_state(@entries)}
+          resource="cron entries"
+          row_count={length(@entries)}
+        >
+          <:col :let={entry} label="Entry">
+            <.link
+              id={entry_dom_id(entry)}
+              patch={Selectors.cron_path(entry: entry.name)}
+              replace={not is_nil(@selected_entry)}
+              class="obpt-link"
+              aria-expanded={to_string(@selected_entry && @selected_entry.name == entry.name)}
+              aria-controls="cron-entry-detail"
+            >
+              {entry.name}
+            </.link>
+          </:col>
+          <:col :let={entry} label="Schedule" value_kind={:literal}>
+            <span>{entry.expression}</span>
+            <span>{entry.timezone}</span>
+          </:col>
+          <:col :let={entry} label="Policies/support">
+            <span>{overlap_label(entry.overlap_policy)}</span>
+            <span>{catch_up_label(entry.catch_up_policy)}</span>
+            <span>{source_label(entry.source)}</span>
+          </:col>
+          <:col :let={entry} label="State">
+            <DataDisplay.status_pill domain={:cron} state={entry_status(entry)} />
+          </:col>
+        </DataDisplay.data_table>
+
+        <OperatorPatterns.detail_surface
+          :if={@selected_entry && @detail_open? && !@confirmation_open?}
+          id="cron-entry-detail"
+          title={@selected_entry.name}
+          close_label="Close cron entry details"
+          open={true}
+          variant={:adaptive}
+          state={:ready}
+          resource="cron entry details"
+          logical_fallback_id={entry_dom_id(@selected_entry)}
+          close_event="close_detail"
+          loaded_announcement={"Cron entry #{@selected_entry.name} details loaded"}
+        >
+          <:body>
+            <DataDisplay.description_list id="cron-entry-current">
+              <:item label="Current state">
+                <DataDisplay.status_pill domain={:cron} state={entry_status(@selected_entry)} />
+              </:item>
+              <:item label="Support">{ControlPlanePresenter.native_banner()}</:item>
+              <:item label="Schedule" value_kind={:literal}>{@selected_entry.expression}</:item>
+              <:item label="Timezone">{@selected_entry.timezone}</:item>
+              <:item label="Queue">{@selected_entry.queue}</:item>
+              <:item label="Overlap policy">{overlap_label(@selected_entry.overlap_policy)}</:item>
+              <:item label="Catch-up policy">{catch_up_label(@selected_entry.catch_up_policy)}</:item>
+            </DataDisplay.description_list>
+
+            <section :if={@history_summary} aria-labelledby="cron-history-title">
+              <h3 id="cron-history-title">History Summary</h3>
+              <p>{@history_summary.detail}</p>
+              <p>{ControlPlanePresenter.forensic_completeness_label(@history_summary.completeness.state)}</p>
+              <ul :if={@history_summary.slots != []}>
+                <li :for={slot <- @history_summary.slots}>
+                  <strong>{history_label(slot.classification)}</strong>
+                  <span>{slot.detail}</span>
+                </li>
+              </ul>
+              <section aria-labelledby="cron-runbook-title">
+                <h4 id="cron-runbook-title">Open runbook entry</h4>
+                <p>{@history_summary.detail}</p>
+                <p>
+                  Caution: partial evidence and history unavailable states stay diagnostic only until retained cron history proves what happened.
+                </p>
+                <ol>
+                  <li :for={venue <- ["Powertools-native", "Oban Web bridge", "host-owned follow-up"]}>
+                    <span
+                      data-runbook-ownership={ControlPlanePresenter.runbook_ownership_label(venue)}
+                      data-runbook-variant={follow_up_variant(venue)}
+                      class={follow_up_row_class(venue)}
                     >
-                      Review Entry
-                    </button>
-                    <div :for={action <- entry_actions(entry, @current_actor)} class="space-y-1">
-                      <button
-                        type="button"
-                        phx-click="preview"
-                        phx-value-action={action.action}
-                        phx-value-entry={entry.name}
-                        disabled={not action.enabled?}
-                        class={action_button_class(action)}
-                      >
-                        <%= action.label %>
-                      </button>
-                      <p :if={not action.enabled?} class="text-xs text-zinc-500">
-                        <%= action.disabled_reason %>
-                      </p>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div :if={@selected_entry} class="rounded-lg border bg-white p-4">
-          <h2 class="text-base font-semibold"><%= @selected_entry.name %></h2>
-          <p class="mt-2 text-sm text-zinc-600">
-            Operator Status: <%= entry_status_label(@selected_entry) %>
-          </p>
-          <p class="mt-1 text-sm text-zinc-600">Source: <%= source_label(@selected_entry.source) %></p>
-          <p class="mt-1 text-sm text-zinc-600">
-            Exact selected context survives remount through <code>entry=</code> while preview state stays off the URL.
-          </p>
-
-          <div :if={@history_summary} class="mt-4 rounded border bg-slate-50 p-4">
-            <div class="flex items-center justify-between gap-3">
-              <h3 class="text-sm font-semibold">History Summary</h3>
-              <a
-                :if={can_view_forensics?(@current_actor)}
-                href={forensics_path(@selected_entry.name)}
-                class="text-sm text-indigo-700 underline"
+                      {ControlPlanePresenter.runbook_ownership_label(venue)}
+                    </span>
+                  </li>
+                </ol>
+              </section>
+            </section>
+          </:body>
+          <:actions>
+            <div :for={action <- entry_actions(@selected_entry, @current_actor)}>
+              <Primitives.button
+                id={entry_action_id(@selected_entry, action)}
+                variant={:warning}
+                disabled={not action.enabled?}
+                phx-click={open_confirmation_event(action.action)}
               >
-                Open forensic timeline
-              </a>
+                {action.label}
+              </Primitives.button>
+              <p :if={not action.enabled?}>{action.disabled_reason}</p>
             </div>
-            <p class="mt-2 text-sm text-zinc-700"><%= @history_summary.detail %></p>
-            <p class="mt-1 text-xs text-zinc-500">
-              <%= ControlPlanePresenter.forensic_completeness_label(@history_summary.completeness.state) %>
-            </p>
-
-            <div :if={@history_summary.slots != []} class="mt-3 space-y-2">
-              <div :for={slot <- @history_summary.slots} class="rounded border bg-white p-3 text-sm">
-                <p class="font-medium"><%= history_label(slot.classification) %></p>
-                <p class="mt-1 text-zinc-600"><%= slot.detail %></p>
-              </div>
-            </div>
-
-            <div class="mt-3 rounded border bg-white p-3 text-sm">
-              <h4 class="font-semibold">Open runbook entry</h4>
-              <p class="mt-1 text-zinc-600"><%= @history_summary.detail %></p>
-              <p class="mt-2 text-xs text-amber-700">
-                Caution: partial evidence and history unavailable states stay diagnostic only until retained cron history proves what happened.
-              </p>
-              <ol class="mt-3 space-y-2">
-                <li>
-                  1. Return to cron diagnosis —
-                  <span
-                    data-runbook-ownership={ControlPlanePresenter.runbook_ownership_label("Powertools-native")}
-                    data-runbook-variant={follow_up_variant("Powertools-native")}
-                    class={follow_up_row_class("Powertools-native")}
-                  >
-                    <%= ControlPlanePresenter.runbook_ownership_label("Powertools-native") %>
-                  </span>
-                </li>
-                <li>
-                  2. Inspect audit trail —
-                  <span
-                    data-runbook-ownership={ControlPlanePresenter.runbook_ownership_label("Oban Web bridge")}
-                    data-runbook-variant={follow_up_variant("Oban Web bridge")}
-                    class={follow_up_row_class("Oban Web bridge")}
-                  >
-                    <%= ControlPlanePresenter.runbook_ownership_label("Oban Web bridge") %>
-                  </span>
-                </li>
-                <li>
-                  3. Coordinate schedule owner follow-up —
-                  <span
-                    data-runbook-ownership={ControlPlanePresenter.runbook_ownership_label("host-owned follow-up")}
-                    data-runbook-variant={follow_up_variant("host-owned follow-up")}
-                    class={follow_up_row_class("host-owned follow-up")}
-                  >
-                    <%= ControlPlanePresenter.runbook_ownership_label("host-owned follow-up") %>
-                  </span>
-                </li>
-              </ol>
-              <a
-                :if={can_view_forensics?(@current_actor)}
-                href={forensics_path(@selected_entry.name)}
-                class="mt-3 inline-block text-sm text-indigo-700 underline"
-              >
-                Evidence link
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div :if={@preview} class="rounded-lg border bg-slate-50 p-4">
-          <h2 class="text-base font-semibold">Preview Action</h2>
-          <p class="mt-2 text-sm"><%= preview_summary(@preview) %></p>
-          <p class="mt-2 text-sm text-zinc-600">
-            This action will be written to the Powertools audit trail with the acting operator and reason.
-          </p>
-          <p class="mt-2 text-sm">
-            <strong>Actor:</strong> <%= preview_actor_label(@current_actor) %>
-          </p>
-          <p class="mt-2 text-sm">
-            <strong>Action:</strong> <%= preview_action_label(@preview.action) %>
-          </p>
-          <p class="mt-2 text-sm">
-            <strong>Resource:</strong> <%= preview_resource_label(@preview) %>
-          </p>
-          <p class="mt-2 text-sm">
-            <strong>Intended Effect:</strong> <%= preview_effect(@preview) %>
-          </p>
-          <p class="mt-2 text-sm">
-            <strong>Audit Consequence:</strong> <%= LiveAuth.audit_consequence_copy() %>
-          </p>
-          <p class="mt-2 text-sm">
-            <strong>Preview Status:</strong> <%= @preview.status %>
-          </p>
-          <p class="mt-2 text-sm">
-            <strong>Preview Token:</strong> <%= @preview.preview_token %>
-          </p>
-          <label class="mt-4 block text-sm font-medium">
-            Reason
-            <input
-              type="text"
-              name="reason"
-              value={@reason}
-              phx-change="reason"
-              class="mt-2 w-full rounded border px-3 py-2"
-            />
-          </label>
-          <p class="mt-2 text-sm">
-            <strong>Rendered Reason:</strong> <%= preview_reason(@reason) %>
-          </p>
-          <p class="mt-2 text-sm">
-            <strong>Risk:</strong> <%= get_in(@preview.metadata, ["risk"]) %>
-          </p>
-          <p :if={@error_message} class="mt-3 text-sm text-red-700"><%= @error_message %></p>
-          <div class="mt-4 flex gap-3">
-            <button type="button" phx-click="confirm" class="rounded bg-indigo-600 px-3 py-2 text-white">
-              Confirm
-            </button>
-            <button type="button" phx-click="cancel_preview" class="rounded border px-3 py-2">
-              Cancel
-            </button>
-          </div>
-        </div>
-
-        <div class="rounded-lg border bg-white p-4">
-          <h2 class="text-base font-semibold">Recent Audit Evidence</h2>
-          <ul class="mt-3 space-y-2 text-sm">
-            <li :for={event <- recent_audit(@entries)}>
-              <strong><%= ControlPlanePresenter.audit_event_label(event) %></strong> <span class="text-zinc-500"><%= ControlPlanePresenter.audit_resource_label(event) %></span>
-              <.link navigate={ControlPlanePresenter.audit_follow_up_path(event)} class="ml-2 text-indigo-700 underline">
-                Open in Audit
-              </.link>
-            </li>
-          </ul>
-        </div>
-      </div>
+          </:actions>
+          <:evidence>
+            <Primitives.link
+              :if={can_view_forensics?(@current_actor)}
+              href={forensics_path(@selected_entry.name)}
+            >
+              Open forensic timeline
+            </Primitives.link>
+          </:evidence>
+        </OperatorPatterns.detail_surface>
+      </section>
       """
     end
 
@@ -394,27 +324,29 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp auth_action("resume_cron_entry"), do: :resume_cron_entry
     defp auth_action("run_cron_entry"), do: :run_cron_entry
 
-    defp preview_summary(preview),
-      do: get_in(preview.metadata, ["summary"]) || preview_action_label(preview.action)
+    defp entry_status(entry),
+      do: entry |> ControlPlane.cron_status() |> Map.fetch!(:operator_status)
 
-    defp preview_action_label("pause_cron_entry"), do: "pause cron entry"
-    defp preview_action_label("resume_cron_entry"), do: "resume cron entry"
-    defp preview_action_label("run_cron_entry"), do: "run cron entry now"
+    defp cron_table_state([]), do: :empty
+    defp cron_table_state(_entries), do: :ready
 
-    defp preview_resource_label(preview) do
-      resource = get_in(preview.metadata, ["resource"]) || %{}
-      "#{resource["type"]}:#{resource["id"]}"
+    defp entry_row_id(entry), do: entry_dom_id(entry)
+
+    defp entry_dom_id(entry) do
+      "cron-entry-#{Base.url_encode64(entry.name, padding: false)}"
     end
 
-    defp preview_effect(%RepairPreview{after_snapshot: %{"effect" => effect}}), do: effect
-    defp preview_effect(_preview), do: "See preview details."
+    defp entry_action_id(entry, action) do
+      "#{entry_dom_id(entry)}-#{action_kind(action.action)}"
+    end
 
-    defp entry_status_label(entry),
-      do:
-        entry
-        |> ControlPlane.cron_status()
-        |> Map.fetch!(:operator_status)
-        |> ControlPlanePresenter.status_label()
+    defp action_kind("pause_cron_entry"), do: "pause"
+    defp action_kind("resume_cron_entry"), do: "resume"
+    defp action_kind("run_cron_entry"), do: "run-now"
+
+    defp open_confirmation_event("pause_cron_entry"), do: "open_pause_confirmation"
+    defp open_confirmation_event("resume_cron_entry"), do: "open_resume_confirmation"
+    defp open_confirmation_event("run_cron_entry"), do: "open_run_now_confirmation"
 
     defp entry_actions(entry, actor) do
       entry
@@ -459,15 +391,6 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp disabled_reason(%{action: "run_cron_entry"}),
       do: unauthorized_preview_message("run_cron_entry")
 
-    defp action_button_class(%{enabled?: true, emphasis: :primary}),
-      do: "rounded bg-indigo-600 px-3 py-2 text-white"
-
-    defp action_button_class(%{enabled?: true}),
-      do: "rounded border px-3 py-2"
-
-    defp action_button_class(_action),
-      do: "cursor-not-allowed rounded border border-zinc-200 px-3 py-2 text-zinc-400"
-
     defp unauthorized_preview_message("pause_cron_entry"),
       do: LiveAuth.permission_message(:pause_cron_entry)
 
@@ -476,28 +399,6 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp unauthorized_preview_message("run_cron_entry"),
       do: LiveAuth.permission_message(:run_cron_entry)
-
-    defp preview_actor_label(actor) do
-      case ObanPowertools.Auth.audit_principal(actor) do
-        {:ok, principal} ->
-          DisplayPolicy.actor_label(principal, %{surface: :cron, section: :preview})
-
-        {:error, _reason} ->
-          "Audit principal unavailable"
-      end
-    end
-
-    defp preview_reason(reason) do
-      DisplayPolicy.reason(reason, %{surface: :cron, section: :preview})
-    end
-
-    defp recent_audit(entries) do
-      entry_names = MapSet.new(Enum.map(entries, &"cron_entry:#{&1.name}"))
-
-      Audit.list_all(repo: repo())
-      |> Enum.filter(&MapSet.member?(entry_names, &1.resource))
-      |> Enum.take(5)
-    end
 
     defp read_only_page?(entries, actor) do
       checks =
@@ -548,7 +449,6 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp blank_to_nil(""), do: nil
     defp blank_to_nil(value), do: value
-    defp entry_path(entry_name), do: "/ops/jobs/cron?entry=#{URI.encode_www_form(entry_name)}"
     defp repo, do: Application.fetch_env!(:oban_powertools, :repo)
   end
 end
