@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 79
 current_phase_name: page-migration-wave-1-overview-cron-limiters-audit
 status: executing
-stopped_at: Completed 79-09-PLAN.md (independent RED contract; next incomplete is 79-02)
-last_updated: "2026-07-19T19:38:55.190Z"
+stopped_at: Completed 79-02-PLAN.md
+last_updated: "2026-07-19T19:59:21.726Z"
 last_activity: 2026-07-19
-last_activity_desc: Completed Phase 79 Plan 09 independent RED evidence contracts
+last_activity_desc: Completed Phase 79 Plan 02 bounded query and finite presentation foundations
 progress:
   total_phases: 15
   completed_phases: 9
   total_plans: 61
-  completed_plans: 51
-  percent: 60
+  completed_plans: 52
+  percent: 85
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 79 (page-migration-wave-1-overview-cron-limiters-audit) — EXECUTING
-Plan: 2 of 12
+Plan: 3 of 12
 Status: Ready to execute
-Last activity: 2026-07-19 — Completed Phase 79 Plan 09 independent RED evidence contracts
+Last activity: 2026-07-19 — Completed Phase 79 Plan 02 bounded query and finite presentation foundations
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 09 independent RED evidenc
 | Phase 78 P08 | 1h 27m | 3 tasks | 284 files |
 | Phase 79 P01 | 23 min | 2 tasks | 9 files |
 | Phase 79 P09 | 7 min | 1 tasks | 3 files |
+| Phase 79 P02 | 15 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -90,12 +91,12 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 09 independent RED evidenc
 
 ## Session Continuity
 
-**Last session:** 2026-07-19T19:38:25.887Z
-**Stopped at:** Completed 79-09-PLAN.md (independent RED contract; next incomplete is 79-02)
+**Last session:** 2026-07-19T19:59:21.721Z
+**Stopped at:** Completed 79-02-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed Plan 79-09's exact page-story, connected-browser, and page-baseline RED evidence contracts.
-- **Next Action:** Execute Plan 79-02 to implement the shared presenter, selector, Audit pagination, and operator-pattern seams.
+- **Last Action:** Completed Plan 79-02's bounded Audit paging, finite cross-page presenters, structural redaction, and shared evidence-component refinements.
+- **Next Action:** Execute Plan 79-03 to migrate Overview onto the bounded presentation foundation.
 
 ## Decisions
 
@@ -169,6 +170,9 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 09 independent RED evidenc
 - [Phase 79]: Keep the exact 19 page-story IDs literal only in the Elixir catalog contract; TypeScript derives page targets from schema-7 pageStories. — Preserves one story-ID source and prevents browser registry drift.
 - [Phase 79]: Require the Plan 79-10 Task 79-10-03 authenticated reset, actor, and recovery helper plus PHASE79_BROWSER_FIXTURE_SECRET before connected evidence runs. — Prevents ambient example-host seeds or static story assigns from masquerading as connected database behavior.
 - [Phase 79]: Verify page baselines as exactly 19 stories times four themes times three projects with page-only tracked, untracked, renamed, and copied scope. — Keeps the known unrelated scenario residual separate from Phase 79 page evidence.
+- [Phase 79]: Count and retrieve Audit rows from the same exact filtered query, then clamp page input before calculating a fixed-size offset. — Keeps count and rows in one exact scope while making every nonempty page reachable under a fixed SQL bound.
+- [Phase 79]: Treat page presenters as structural boundaries: accept only plain safe inputs, project fixed fields, and reject sensitive or provider-shaped Audit evidence before display policy or HEEx. — Prevents raw schemas, metadata, credentials, errors, and provider payloads from becoming visible or hidden DOM data.
+- [Phase 79]: Keep legacy blocker classifier normalization for callers while removing classifier values from shared HTML and Phase 79 limiter maps. — Preserves compatibility without exposing implementation-shaped technical codes to operators.
 
 ### Blockers
 
