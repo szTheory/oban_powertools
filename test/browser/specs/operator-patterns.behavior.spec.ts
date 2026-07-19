@@ -1,22 +1,8 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { viewportNameFromProject } from "../support/deterministic";
 import * as manifestSupport from "../support/manifest";
+import type { ShowcaseGroupStory } from "../support/manifest";
 import * as showcaseSupport from "../support/showcase";
-
-type ShowcaseGroupStory = {
-  id: string;
-  kind: "group";
-  component: string;
-  components: string[];
-  name: string;
-  description: string;
-  variant: string[];
-  state: string[];
-  activation: "none" | "overlay";
-  story: string;
-  snapshot: string;
-  a11y: string;
-};
 
 type GroupManifestSupport = typeof manifestSupport & {
   groupStories?: ShowcaseGroupStory[];
@@ -28,7 +14,12 @@ type GroupShowcaseSupport = typeof showcaseSupport & {
 
 const groupStories = (manifestSupport as GroupManifestSupport).groupStories;
 const activateTarget = (showcaseSupport as GroupShowcaseSupport).activateTarget;
-const secretSentinel = "PHASE78-GROUP-SECRET-SENTINEL";
+const confidentialitySentinels = [
+  "PHASE78-GROUP-SECRET-SENTINEL",
+  "PHASE78-GROUP-TOKEN-SENTINEL",
+  "PHASE78-GROUP-HASH-SENTINEL",
+  "PHASE78-GROUP-RAW-ERROR-SENTINEL",
+] as const;
 
 if (!Array.isArray(groupStories) || groupStories.length !== 23) {
   throw new Error(
@@ -73,6 +64,51 @@ async function prepareGroupStory(
   return locator;
 }
 
+function activationTrigger(page: Page, story: ShowcaseGroupStory): Locator {
+  return page
+    .locator(story.a11y)
+    .locator(`[phx-click="activate-group-story"][phx-value-id="${story.id}"]`);
+}
+
+async function prepareControlledGroupStory(
+  page: Page,
+  projectName: string,
+  story: ShowcaseGroupStory,
+): Promise<{ story: Locator; trigger: Locator }> {
+  await showcaseSupport.prepareShowcase(page, {
+    theme: "light",
+    viewportName: viewportNameFromProject(projectName),
+  });
+
+  const controlledId = `showcase-${story.id}-dialog`;
+  const trigger = page.locator(
+    '.obpt-showcase-controls [data-obpt-theme-choice="light"]',
+  );
+  await activateFromControlledInvoker(page, trigger, story, controlledId);
+
+  const storyLocator = page.locator(story.a11y);
+  await expect(storyLocator).toHaveAttribute(
+    "data-obpt-overlay-active",
+    "true",
+  );
+  await expect(storyLocator.getByRole("dialog")).toBeVisible();
+  return { story: storyLocator, trigger };
+}
+
+async function activateFromControlledInvoker(
+  page: Page,
+  trigger: Locator,
+  story: ShowcaseGroupStory,
+  controlledId = `showcase-${story.id}-dialog`,
+): Promise<void> {
+  await trigger.evaluate((button, id) => {
+    button.setAttribute("aria-controls", id);
+  }, controlledId);
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  await activationTrigger(page, story).dispatchEvent("click");
+}
+
 async function expectNoHorizontalOverflow(story: Locator): Promise<void> {
   const overflow = await story.evaluate((element) => ({
     story: Math.ceil(element.scrollWidth - element.clientWidth),
@@ -94,25 +130,39 @@ async function expectVisibleFocus(
 ): Promise<void> {
   await expect(locator, `${label} should be focused`).toBeFocused();
 
-  const outline = await locator.evaluate((element) => {
+  const focusPresentation = await locator.evaluate((element) => {
     const style = getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
     return {
       color: style.outlineColor,
       style: style.outlineStyle,
       width: Number.parseFloat(style.outlineWidth),
+      inViewport:
+        rect.width > 0 &&
+        rect.height > 0 &&
+        rect.top >= 0 &&
+        rect.left >= 0 &&
+        rect.bottom <= window.innerHeight &&
+        rect.right <= window.innerWidth,
     };
   });
 
-  expect(outline.style, `${label} should have an outline style`).not.toBe(
-    "none",
-  );
   expect(
-    outline.width,
+    focusPresentation.style,
+    `${label} should have an outline style`,
+  ).not.toBe("none");
+  expect(
+    focusPresentation.width,
     `${label} should have a non-zero outline`,
   ).toBeGreaterThan(0);
-  expect(outline.color, `${label} should have a visible outline`).not.toBe(
-    "rgba(0, 0, 0, 0)",
-  );
+  expect(
+    focusPresentation.color,
+    `${label} should have a visible outline`,
+  ).not.toBe("rgba(0, 0, 0, 0)");
+  expect(
+    focusPresentation.inViewport,
+    `${label} should remain inside the visual viewport`,
+  ).toBe(true);
 }
 
 async function expectOneResponsiveTree(
@@ -124,31 +174,46 @@ async function expectOneResponsiveTree(
   await expect(story.locator("[data-obpt-desktop-copy]")).toHaveCount(0);
 }
 
-async function expectSecretAbsent(page: Page, story: Locator): Promise<void> {
-  await expect(story).not.toContainText(secretSentinel);
+async function expectConfidentialityChannelsSafe(page: Page): Promise<void> {
+  const leaks = await page.locator("html").evaluate(
+    (documentElement, sentinels) => {
+      const channels = [
+        documentElement.textContent ?? "",
+        documentElement.innerHTML,
+        document.documentElement.outerHTML,
+        document.URL,
+      ];
 
-  const leaked = await story.evaluate((element, sentinel) => {
-    const channels = [element.textContent ?? "", element.innerHTML];
+      for (const candidate of documentElement.querySelectorAll<HTMLElement>(
+        "*",
+      )) {
+        channels.push(
+          candidate.innerText ?? "",
+          candidate.getAttribute("value") ?? "",
+          candidate.getAttribute("title") ?? "",
+        );
 
-    for (const candidate of element.querySelectorAll<HTMLElement>("*")) {
-      for (const attribute of Array.from(candidate.attributes)) {
         if (
-          attribute.name === "title" ||
-          attribute.name === "value" ||
-          attribute.name.startsWith("data-") ||
-          attribute.name.startsWith("aria-") ||
-          attribute.name.includes("href")
+          candidate instanceof HTMLInputElement ||
+          candidate instanceof HTMLTextAreaElement ||
+          candidate instanceof HTMLSelectElement
         ) {
-          channels.push(attribute.value);
+          channels.push(candidate.value);
+        }
+
+        for (const attribute of Array.from(candidate.attributes)) {
+          channels.push(`${attribute.name}=${attribute.value}`);
         }
       }
-    }
 
-    return channels.some((value) => value.includes(sentinel));
-  }, secretSentinel);
+      return sentinels.filter((sentinel) =>
+        channels.some((channel) => channel.includes(sentinel)),
+      );
+    },
+    [...confidentialitySentinels],
+  );
 
-  expect(leaked).toBe(false);
-  expect(await page.locator(`text=${secretSentinel}`).count()).toBe(0);
+  expect(leaks).toEqual([]);
 }
 
 async function apply200PercentZoom(page: Page): Promise<void> {
@@ -190,9 +255,13 @@ test.describe("group operator-pattern connected behavior contracts", () => {
       "single",
       "destructive",
     );
-    const stage = await prepareGroupStory(page, testInfo.project.name, story);
-    const dialog = stage.getByRole("dialog");
-    const reason = dialog.getByRole("textbox", { name: "Reason" });
+    const controlled = await prepareControlledGroupStory(
+      page,
+      testInfo.project.name,
+      story,
+    );
+    const dialog = controlled.story.getByRole("dialog");
+    const title = dialog.locator(`#showcase-${story.id}-title`);
     const focusable = dialog.locator(
       'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]',
     );
@@ -200,29 +269,119 @@ test.describe("group operator-pattern connected behavior contracts", () => {
     const last = focusable.last();
 
     await expect(dialog).toHaveAttribute("aria-modal", "true");
-    await expect(reason).toBeFocused();
+    await expectVisibleFocus(title, "confirmation title on mount");
 
     await first.focus();
     await page.keyboard.press("Shift+Tab");
     await expect(last).toBeFocused();
+    await last.focus();
     await page.keyboard.press("Tab");
-    await expect(first).toBeFocused();
+    expect(
+      await dialog.evaluate((element) =>
+        element.contains(document.activeElement),
+      ),
+      "forward Tab from the final control should remain in the modal",
+    ).toBe(true);
 
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
-    await expect(
-      page.locator(`[data-obpt-activate-target="${story.id}"]`),
-    ).toBeFocused();
+    await expect(controlled.trigger).toBeFocused();
 
-    await activateTarget(page, story);
-    await page
-      .locator(`[data-obpt-activate-target="${story.id}"]`)
-      .evaluate((element) => element.remove());
+    await activateFromControlledInvoker(page, controlled.trigger, story);
+    const reopened = controlled.story.getByRole("dialog");
+    await expect(reopened).toBeVisible();
+    await reopened.getByRole("button", { name: "Keep current state" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(reopened).toHaveCount(0);
+    await expect(controlled.trigger).toBeFocused();
+
+    await activateFromControlledInvoker(page, controlled.trigger, story);
+    const fallback = page.locator("#form-input-required");
+    await controlled.story
+      .getByRole("dialog")
+      .evaluate((element) =>
+        element.setAttribute("data-obpt-focus-fallback", "form-input-required"),
+      );
+    await controlled.trigger.evaluate((element) => element.remove());
     await page.keyboard.press("Escape");
-    await expect(page.locator("[data-obpt-logical-fallback]")).toBeFocused();
+    await expect(fallback).toBeFocused();
   });
 
-  test("group confirmation keeps server truth for busy, duplicate, partial order, and one receipt", async ({
+  test("group confirmation rejects blank, short, and wrong-count input before one duplicate-safe receipt", async ({
+    page,
+  }, testInfo) => {
+    const valid = await prepareGroupStory(
+      page,
+      testInfo.project.name,
+      groupStory("bulk confirmation", "confirm", "bulk", "count"),
+    );
+    const reason = valid.getByRole("textbox", { name: "Reason" });
+    const count = valid.getByRole("textbox", { name: "Type 12 to confirm" });
+    const submit = valid.getByRole("button", { name: "Retry 12 jobs" });
+
+    await reason.fill("");
+    await count.fill("");
+    await submit.click();
+    expect(
+      await reason.evaluate((element) => element.matches(":invalid")),
+    ).toBe(true);
+    expect(await count.evaluate((element) => element.matches(":invalid"))).toBe(
+      true,
+    );
+    await expect(valid.getByRole("dialog")).toBeVisible();
+    await expect(page.locator("#obpt-group-receipt")).toHaveCount(0);
+
+    await reason.fill("short");
+    await count.fill("11");
+    await expect(reason).toHaveValue("short");
+    await expect(count).toHaveValue("11");
+    await submit.click();
+    await expect(valid.getByRole("dialog")).toBeVisible();
+    await expect(page.locator("#obpt-group-receipt")).toHaveCount(0);
+
+    await reason.fill("Provider recovered; retry safely.");
+    await count.fill("12");
+    await valid.locator("form").evaluate((form) => {
+      const evidence = { busyTransitions: 0, busy: false };
+      (
+        window as typeof window & { __phase78Busy?: typeof evidence }
+      ).__phase78Busy = evidence;
+      const observer = new MutationObserver(() => {
+        const busy = form.classList.contains("phx-submit-loading");
+        if (busy && !evidence.busy) evidence.busyTransitions += 1;
+        evidence.busy = busy;
+      });
+      observer.observe(form, { attributes: true, attributeFilter: ["class"] });
+    });
+    await submit.evaluate((button: HTMLButtonElement) => {
+      button.click();
+      button.click();
+    });
+
+    const receipt = page.locator("#obpt-group-receipt");
+    const exactReceipt =
+      "Retry requested for 12 jobs. Audit evidence recorded.";
+    await expect(receipt).toHaveAttribute("data-obpt-group-receipt-count", "1");
+    await expect(receipt).toHaveText(exactReceipt);
+    await expect(page.getByText(exactReceipt, { exact: true })).toHaveCount(1);
+    await expect(receipt).not.toContainText(/completed|fixed/i);
+    expect(
+      await page.evaluate(
+        () =>
+          (
+            window as typeof window & {
+              __phase78Busy?: { busyTransitions: number };
+            }
+          ).__phase78Busy?.busyTransitions,
+      ),
+    ).toBe(1);
+    await expect(
+      page.locator("[data-obpt-group-story][data-obpt-overlay-active='true']"),
+    ).toHaveCount(0);
+    await expectConfidentialityChannelsSafe(page);
+  });
+
+  test("group confirmation keeps nondismissible busy, ordered partial, and stale replay truth", async ({
     page,
   }, testInfo) => {
     const pending = await prepareGroupStory(
@@ -233,11 +392,25 @@ test.describe("group operator-pattern connected behavior contracts", () => {
     const pendingDialog = pending.getByRole("dialog");
     await expect(pendingDialog).toHaveAttribute("aria-busy", "true");
     await expect(
+      pendingDialog.locator(".obpt-confirm-action__busy"),
+    ).toContainText(
+      "Retrying 1 job… This action has been accepted and can no longer be canceled.",
+    );
+    await expect(
+      pendingDialog.getByText(
+        "This action has been accepted and can no longer be canceled.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
       pendingDialog.getByRole("button", { name: /Retry/ }),
     ).toBeDisabled();
     await expect(
       pendingDialog.getByRole("button", { name: /Keep current state/ }),
     ).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(pendingDialog).toBeVisible();
+    await expectConfidentialityChannelsSafe(page);
 
     const partialStory = groupStory(
       "partial confirmation results",
@@ -249,36 +422,75 @@ test.describe("group operator-pattern connected behavior contracts", () => {
       testInfo.project.name,
       partialStory,
     );
-    const rows = partial.locator("[data-obpt-operator-result]");
+    const resultHeading = partial.locator(
+      `#showcase-${partialStory.id}-result-heading`,
+    );
+    await expect(resultHeading).toHaveText(
+      "Retry requests finished with mixed results. Review failed and skipped jobs before trying again.",
+    );
+    await expect(resultHeading).toBeFocused();
+    const rows = partial.locator("[data-obpt-result]");
     await expect(rows).toHaveCount(3);
-    await expect(rows).toContainText(["Success", "Failed", "Skipped"]);
+    expect(
+      await rows.evaluateAll((elements) =>
+        elements.map((element) => ({
+          id: element.id,
+          outcome: element.getAttribute("data-obpt-result"),
+        })),
+      ),
+    ).toEqual([
+      {
+        id: "showcase-group-confirm-partial-results-job-result-success",
+        outcome: "success",
+      },
+      {
+        id: "showcase-group-confirm-partial-results-job-result-failed",
+        outcome: "failed",
+      },
+      {
+        id: "showcase-group-confirm-partial-results-job-result-skipped",
+        outcome: "skipped",
+      },
+    ]);
+    await expect(rows.nth(0)).toContainText("Success");
+    await expect(rows.nth(1)).toContainText("Failed");
+    await expect(rows.nth(2)).toContainText("Skipped");
     await expect(
-      partial.locator("[data-obpt-confirm-result-heading]"),
-    ).toBeFocused();
-    await expect(
-      partial.getByText("Create a fresh preview.", { exact: true }),
+      partial.getByRole("button", { name: "Create new preview" }),
     ).toBeVisible();
+    await expect(
+      partial.getByRole("link", { name: "Open audit evidence" }).first(),
+    ).toBeVisible();
+    await expect(partial.getByRole("dialog")).toBeVisible();
+    await expectConfidentialityChannelsSafe(page);
 
-    const valid = await prepareGroupStory(
+    const stale = await prepareGroupStory(
       page,
       testInfo.project.name,
-      groupStory(
-        "single reversible confirmation",
-        "confirm",
-        "single",
-        "reversible",
-      ),
+      groupStory("stale confirmation", "confirm", "drifted"),
     );
-    await valid
-      .getByRole("textbox", { name: "Reason" })
-      .fill("Incident response retry");
-    const submit = valid.getByRole("button", { name: /Retry/ });
-    await submit.dispatchEvent("click");
-    await submit.dispatchEvent("click");
-    await expect(page.getByRole("status", { name: /receipt/i })).toHaveCount(1);
-    await expect(page.locator("[data-obpt-mutation-receipt]")).toHaveCount(1);
-    await expectSecretAbsent(page, partial);
-    await expectSecretAbsent(page, valid);
+    const staleHeading = stale.locator(
+      "#showcase-group-confirm-drifted-error-result-heading",
+    );
+    await expect(staleHeading).toHaveText(
+      "This preview is out of date because the job changed. Create a new preview before retrying.",
+    );
+    await expect(staleHeading).toBeFocused();
+    await expect(page.locator("#obpt-group-receipt")).toHaveCount(0);
+
+    await stale.getByRole("button", { name: "Create new preview" }).click();
+    const staleReason = stale.getByRole("textbox", { name: "Reason" });
+    await expect(staleReason).toHaveValue(
+      "Provider recovered; retry the customer notification.",
+    );
+    await stale.getByRole("button", { name: "Retry job" }).click();
+    await expect(staleHeading).toBeFocused();
+    await expect(page.locator("#obpt-group-receipt")).toHaveCount(0);
+    await stale.getByRole("button", { name: "Create new preview" }).click();
+    await expect(staleReason).toHaveValue(
+      "Provider recovered; retry the customer notification.",
+    );
+    await expectConfidentialityChannelsSafe(page);
   });
 
   test("group FilterBar disclosure, draft, Apply, remove, clear, URL, and status stay parent-owned", async ({
@@ -500,25 +712,77 @@ test.describe("group operator-pattern connected behavior contracts", () => {
     await expectNoHorizontalOverflow(stage);
   });
 
-  test("group 200% zoom confirmation reflows actions and preserves visible keyboard focus", async ({
+  test("group confirmation 200% zoom reflows long copy and preserves visible keyboard focus", async ({
     page,
   }, testInfo) => {
+    const viewport = viewportNameFromProject(testInfo.project.name);
+    test.skip(
+      viewport !== "wide",
+      "200% zoom proof executes only in chromium-wide",
+    );
+    expect(viewport, "the exact zoom grep must execute rather than skip").toBe(
+      "wide",
+    );
+
     const stage = await prepareGroupStory(
       page,
       testInfo.project.name,
       groupStory("bulk confirmation", "confirm", "bulk"),
     );
     await apply200PercentZoom(page);
+    await expect(page.locator("[data-phx-main].phx-connected")).toHaveCount(1);
 
+    const dismiss = stage.getByRole("button", { name: "Keep current state" });
     const confirm = stage.getByRole("button", { name: /Retry/ });
-    await confirm.focus();
+    await stage.getByRole("textbox", { name: "Reason" }).focus();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    await expectVisibleFocus(dismiss, "200% zoom safe dismiss action");
+    await page.keyboard.press("Tab");
     await expectVisibleFocus(confirm, "200% zoom confirmation action");
-    await expect(stage.locator("[data-obpt-confirm-actions]")).toHaveCSS(
-      "flex-direction",
-      "column",
+    const actions = stage.locator(".obpt-confirm-action__actions");
+    await expect(actions).toHaveCSS("flex-wrap", "wrap");
+
+    const geometry = await actions.evaluate((element) => {
+      const parent = element.getBoundingClientRect();
+      return Array.from(element.querySelectorAll<HTMLElement>("button")).map(
+        (button) => {
+          const rect = button.getBoundingClientRect();
+          return {
+            inside:
+              rect.left >= parent.left - 1 &&
+              rect.right <= parent.right + 1 &&
+              rect.width > 0 &&
+              rect.height > 0,
+          };
+        },
+      );
+    });
+    expect(geometry).toHaveLength(2);
+    expect(geometry.every(({ inside }) => inside)).toBe(true);
+
+    const wrapped = await stage
+      .locator(
+        ".obpt-confirm-action__scope p, .obpt-confirm-action__consequence p, .obpt-confirm-action__reversibility p, .obpt-field label, .obpt-field-hint",
+      )
+      .evaluateAll((elements) =>
+        elements.map((element) => {
+          const style = getComputedStyle(element);
+          return {
+            clipped: element.scrollWidth > element.clientWidth + 1,
+            whiteSpace: style.whiteSpace,
+          };
+        }),
+      );
+    expect(wrapped.length).toBeGreaterThan(0);
+    expect(wrapped.every(({ clipped }) => !clipped)).toBe(true);
+    expect(wrapped.every(({ whiteSpace }) => whiteSpace !== "nowrap")).toBe(
+      true,
     );
-    await expectOneResponsiveTree(stage, "[data-obpt-confirm-action]");
-    await expectNoHorizontalOverflow(stage);
+    await expect(page.getByRole("dialog")).toHaveCount(1);
+    await expectOneResponsiveTree(stage, ".obpt-confirm-action");
+    await expectNoHorizontalOverflow(stage.getByRole("dialog"));
+    await expectConfidentialityChannelsSafe(page);
   });
 
   test("group 200% zoom filter reflows fields without losing draft and applied truth", async ({
