@@ -19,6 +19,7 @@ defmodule ObanPowertools.HexReleaseTest do
   @release_workflow_path ".github/workflows/release.yml"
   @showcase_catalog_path "test/support/showcase_catalog.ex"
   @operator_pattern_catalog_path "test/support/operator_pattern_story_catalog.ex"
+  @page_story_catalog_path "test/support/page_story_catalog.ex"
 
   # ---------------------------------------------------------------------------
   # REL-03  CHANGELOG + LICENSE
@@ -184,6 +185,35 @@ defmodule ObanPowertools.HexReleaseTest do
 
       refute Enum.any?(files, &String.contains?(&1, "operator_pattern_story_catalog")),
              ":files must NOT include the operator-pattern story catalog"
+    end
+
+    test "Phase 79 page catalog is local-only and production modules keep an optional boundary" do
+      files = Mix.Project.config()[:package][:files]
+
+      assert File.exists?(@page_story_catalog_path),
+             "Phase 79 page story catalog must exist for local dev/test use"
+
+      refute "test" in files,
+             ":files must NOT include test support catalogs"
+
+      refute @page_story_catalog_path in files,
+             ":files must NOT directly include #{@page_story_catalog_path}"
+
+      refute Enum.any?(files, &String.contains?(&1, "page_story_catalog")),
+             ":files must NOT include the page story catalog"
+
+      showcase_source = File.read!("lib/oban_powertools/web/dev/showcase_live.ex")
+      assert showcase_source =~ "@page_catalog_module ObanPowertools.PageStoryCatalog"
+      refute showcase_source =~ "PageStoryCatalog.stories"
+
+      for production_page <- [
+            "lib/oban_powertools/web/engine_overview_live.ex",
+            "lib/oban_powertools/web/cron_live.ex",
+            "lib/oban_powertools/web/limiters_live.ex",
+            "lib/oban_powertools/web/audit_live.ex"
+          ] do
+        refute File.read!(production_page) =~ "PageStoryCatalog"
+      end
     end
 
     test "igniter dep has runtime: false (keeps code-gen machinery out of adopter prod)" do

@@ -14,6 +14,8 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
     use Phoenix.LiveView
 
+    alias ObanPowertools.Web.{AuditLive, CronLive, EngineOverviewLive, LimitersLive}
+
     alias ObanPowertools.Web.Components.{
       AppShell,
       DataDisplay,
@@ -43,6 +45,14 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
                           "../../../../test/support/operator_pattern_story_catalog.ex",
                           __DIR__
                         )
+    @page_catalog_module ObanPowertools.PageStoryCatalog
+    @page_catalog_path Path.expand(
+                         "../../../../test/support/page_story_catalog.ex",
+                         __DIR__
+                       )
+    @page_story_count 19
+    @page_story_pages [:overview, :cron, :limiters, :audit]
+    @page_story_activations [:none, :detail, :confirmation]
 
     @theme_choices [
       %{value: "system", label: "System"},
@@ -82,6 +92,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       shell_catalog = load_shell_catalog()
       data_catalog = load_data_catalog()
       group_catalog = load_group_catalog()
+      page_catalog = load_page_catalog()
 
       {:ok,
        socket
@@ -117,7 +128,10 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
        |> assign(:group_confirmation_receipt_count, 0)
        |> assign(:group_receipt, nil)
        |> assign(:group_filter_states, initial_group_filter_states(group_catalog.stories))
-       |> assign(:group_detail_state, initial_group_detail_state())}
+       |> assign(:group_detail_state, initial_group_detail_state())
+       |> assign(:page_catalog_available?, page_catalog.available?)
+       |> assign(:page_stories, page_catalog.stories)
+       |> assign(:active_page_story, nil)}
     end
 
     @impl Phoenix.LiveView
@@ -143,6 +157,13 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
     def handle_event("activate-group-story", %{"id" => id}, socket) do
       {:noreply, activate_group_story(socket, id)}
+    end
+
+    def handle_event("activate-page-story", %{"id" => id}, socket) do
+      case Enum.find(socket.assigns.page_stories, &(&1.id == id)) do
+        nil -> {:noreply, socket}
+        story -> {:noreply, assign(socket, :active_page_story, story.id)}
+      end
     end
 
     def handle_event("validate-group-confirmation", %{"group_confirmation" => params}, socket) do
@@ -547,6 +568,51 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
                     No operator-pattern stories registered. Add deterministic group stories before updating visual baselines.
                   </p>
                 <% end %>
+              <% "pages" -> %>
+                <%= if @page_catalog_available? and @page_stories != [] do %>
+                  <div class="obpt-showcase-story-grid">
+                    <article
+                      :for={story <- @page_stories}
+                      id={target_value(story.test_targets, :story)}
+                      class="obpt-showcase-story"
+                      data-obpt-page-story={story.id}
+                      data-obpt-page={story.page}
+                      data-obpt-component={component_value(story)}
+                      data-obpt-variant={state_value(story.variant)}
+                      data-obpt-state={state_value(story.state)}
+                      data-obpt-activation={story.activation}
+                      data-obpt-page-active={to_string(@active_page_story == story.id)}
+                      data-obpt-a11y-target={target_value(story.test_targets, :a11y)}
+                    >
+                      <header><p>{stringify(story.page)}</p><h3>{story.name}</h3></header>
+                      <p>{story.description}</p>
+                      <div
+                        class="obpt-primitive-matrix"
+                        data-obpt-page-story-stage={story.id}
+                        data-obpt-page-active={to_string(@active_page_story == story.id)}
+                      >
+                        <Primitives.button
+                          :if={@active_page_story != story.id}
+                          type="button"
+                          variant={:primary}
+                          phx-click="activate-page-story"
+                          phx-value-id={story.id}
+                        >
+                          Open {story.name}
+                        </Primitives.button>
+                        <.page_story_body :if={@active_page_story == story.id} story={story} />
+                      </div>
+                      <dl>
+                        <div><dt>Snapshot</dt><dd><code>{target_value(story.test_targets, :snapshot)}</code></dd></div>
+                        <div><dt>Activation</dt><dd><code>{story.activation}</code></dd></div>
+                      </dl>
+                    </article>
+                  </div>
+                <% else %>
+                  <p class="obpt-showcase-placeholder" data-obpt-page-index="empty">
+                    No page stories registered. Add deterministic production-composition stories before updating visual baselines.
+                  </p>
+                <% end %>
               <% _ -> %>
                 <p class="obpt-showcase-placeholder">
                   Reserved for Phase-owned stories. The anchor and selector are stable now.
@@ -722,6 +788,17 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       end
     end
 
+    defp load_page_catalog do
+      with {:ok, module} <- ensure_page_catalog_module(),
+           true <- function_exported?(module, :stories, 0),
+           stories when is_list(stories) <- apply(module, :stories, []),
+           true <- valid_page_catalog?(stories) do
+        %{available?: true, stories: stories}
+      else
+        _ -> %{available?: false, stories: []}
+      end
+    end
+
     defp ensure_catalog_module do
       ensure_support_module(@catalog_module, @catalog_path)
     end
@@ -744,6 +821,10 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
     defp ensure_group_catalog_module do
       ensure_support_module(@group_catalog_module, @group_catalog_path)
+    end
+
+    defp ensure_page_catalog_module do
+      ensure_support_module(@page_catalog_module, @page_catalog_path)
     end
 
     defp ensure_support_module(module, path) do
@@ -787,8 +868,116 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
     defp target_value(_targets, _key), do: ""
 
+    defp valid_page_catalog?(stories) do
+      ids = Enum.map(stories, &Map.get(&1, :id))
+
+      length(stories) == @page_story_count and
+        length(Enum.uniq(ids)) == @page_story_count and
+        Enum.all?(stories, &valid_page_story?/1)
+    end
+
+    defp valid_page_story?(story) when is_map(story) and not is_struct(story) do
+      is_binary(Map.get(story, :id)) and Map.get(story, :id) != "" and
+        is_binary(Map.get(story, :name)) and Map.get(story, :name) != "" and
+        is_binary(Map.get(story, :description)) and Map.get(story, :description) != "" and
+        Map.get(story, :page) in @page_story_pages and
+        Map.get(story, :activation) in @page_story_activations and
+        is_list(Map.get(story, :components)) and Map.get(story, :components) != [] and
+        is_list(Map.get(story, :variant)) and Map.get(story, :variant) != [] and
+        is_list(Map.get(story, :state)) and Map.get(story, :state) != [] and
+        is_map(Map.get(story, :fixtures)) and not is_struct(Map.get(story, :fixtures)) and
+        is_map(Map.get(story, :test_targets)) and
+        target_value(story.test_targets, :story) == "obpt-page-story-#{story.id}" and
+        target_value(story.test_targets, :snapshot) == "showcase/#{story.id}" and
+        target_value(story.test_targets, :a11y) ==
+          ~s([data-obpt-page-story="#{story.id}"])
+    end
+
+    defp valid_page_story?(_story), do: false
+
     defp toggle_sort_direction(:asc), do: :desc
     defp toggle_sort_direction(_direction), do: :asc
+
+    attr(:story, :map, required: true)
+
+    defp page_story_body(assigns) do
+      assigns = assign(assigns, :page_assigns, materialize_page_assigns(assigns.story))
+
+      ~H"""
+      <%= case @story.page do %>
+        <% :overview -> %>
+          <EngineOverviewLive.page_content overview_buckets={@page_assigns.overview_buckets} />
+        <% :cron -> %>
+          <CronLive.page_content
+            entries={@page_assigns.entries}
+            read_only?={@page_assigns.read_only?}
+            error_message={@page_assigns.error_message}
+            selected_entry={@page_assigns.selected_entry}
+            detail_open?={@page_assigns.detail_open?}
+            history_summary={@page_assigns.history_summary}
+            confirmation_open?={@page_assigns.confirmation_open?}
+            confirmation_action={@page_assigns.confirmation_action}
+            confirmation_state={@page_assigns.confirmation_state}
+            confirmation_form={@page_assigns.confirmation_form}
+            confirmation_result={@page_assigns.confirmation_result}
+            current_actor={@page_assigns.current_actor}
+            reason={@page_assigns.reason}
+            receipt={@page_assigns.receipt}
+          />
+        <% :limiters -> %>
+          <LimitersLive.page_content
+            resource_rows={@page_assigns.resource_rows}
+            selected_resource={@page_assigns.selected_resource}
+            detail_open?={@page_assigns.detail_open?}
+            detail_state={@page_assigns.detail_state}
+            detail_presentation={@page_assigns.detail_presentation}
+            read_only?={@page_assigns.read_only?}
+            error_message={@page_assigns.error_message}
+          />
+        <% :audit -> %>
+          <AuditLive.page_content
+            audit_page={@page_assigns.audit_page}
+            event_rows={@page_assigns.event_rows}
+            filter_form={@page_assigns.filter_form}
+            active_filters={@page_assigns.active_filters}
+            result_summary={@page_assigns.result_summary}
+            selected_event_id={@page_assigns.selected_event_id}
+            selected_detail={@page_assigns.selected_detail}
+            detail_state={@page_assigns.detail_state}
+            retention_summary={@page_assigns.retention_summary}
+            load_state={@page_assigns.load_state}
+            clear_filters_href={@page_assigns.clear_filters_href}
+            read_only_copy={@page_assigns.read_only_copy}
+          />
+      <% end %>
+      """
+    end
+
+    defp materialize_page_assigns(%{page: :overview, fixtures: fixtures}), do: fixtures
+
+    defp materialize_page_assigns(%{page: :cron} = story) do
+      story.fixtures
+      |> Map.put(:detail_open?, story.activation == :detail)
+      |> Map.put(:confirmation_open?, story.activation == :confirmation)
+      |> Map.update!(:confirmation_form, &to_form(&1, as: :confirmation))
+    end
+
+    defp materialize_page_assigns(%{page: :limiters} = story) do
+      Map.put(story.fixtures, :detail_open?, story.activation == :detail)
+    end
+
+    defp materialize_page_assigns(%{page: :audit} = story) do
+      detail_state =
+        if story.activation == :detail and story.fixtures.selected_detail do
+          :ready
+        else
+          story.fixtures.detail_state
+        end
+
+      story.fixtures
+      |> Map.put(:detail_state, detail_state)
+      |> Map.update!(:filter_form, &to_form(&1, as: :filters, id: "page-story-audit-filters"))
+    end
 
     attr(:story, :map, required: true)
     attr(:flash, :map, required: true)

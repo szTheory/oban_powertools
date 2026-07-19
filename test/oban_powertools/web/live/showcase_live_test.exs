@@ -110,13 +110,15 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
                        ObanPowertools.OperatorPatternStoryCatalog.stories(),
                        & &1.id
                      )
+    @page_story_ids Enum.map(ObanPowertools.PageStoryCatalog.stories(), & &1.id)
     @optional_catalog_modules [
       ObanPowertools.ShowcaseCatalog,
       ObanPowertools.PrimitiveStoryCatalog,
       ObanPowertools.FormStoryCatalog,
       ObanPowertools.ShellStoryCatalog,
       ObanPowertools.DataDisplayStoryCatalog,
-      ObanPowertools.OperatorPatternStoryCatalog
+      ObanPowertools.OperatorPatternStoryCatalog,
+      ObanPowertools.PageStoryCatalog
     ]
     @isolated_data_catalog_cases [
       %{
@@ -179,6 +181,20 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
       test "isolated package boundary fails closed for #{@group_package_case.id} group catalog" do
         assert_isolated_group_catalog_case!(@group_package_case)
+      end
+    end
+
+    @isolated_page_catalog_cases [
+      %{id: "absent", stub: nil},
+      %{id: "non-list", stub: :non_list},
+      %{id: "malformed-list", stub: :malformed_list}
+    ]
+
+    for package_case <- @isolated_page_catalog_cases do
+      @page_package_case package_case
+
+      test "isolated package boundary fails closed for #{@page_package_case.id} page catalog" do
+        assert_isolated_page_catalog_case!(@page_package_case)
       end
     end
 
@@ -645,6 +661,147 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       refute render(view) =~ "PHASE78-GROUP-SECRET-SENTINEL"
     end
 
+    test "pages section registers exactly 19 production-composition stories with no active tree",
+         %{conn: conn} do
+      {:ok, view, html} = mount_showcase!(conn)
+
+      assert_attribute_values(html, "data-obpt-page-story", @page_story_ids)
+
+      refute has_element?(
+               view,
+               "[data-obpt-section='pages'] .obpt-showcase-placeholder[data-obpt-page-index]"
+             )
+
+      for id <- @page_story_ids do
+        assert has_element?(
+                 view,
+                 "#obpt-page-story-#{id}[data-obpt-page-story='#{id}'][data-obpt-page][data-obpt-component][data-obpt-variant][data-obpt-state][data-obpt-activation][data-obpt-page-active='false'][data-obpt-a11y-target]"
+               )
+      end
+
+      refute has_element?(view, "[data-obpt-page-story][data-obpt-page-active='true']")
+      refute has_element?(view, "#overview-page, #cron-page, #limiters-page, #audit-page")
+      refute has_element?(view, "[role='dialog'], dialog[open]")
+    end
+
+    test "page activation calls each production composition and keeps one story and one overlay",
+         %{conn: conn} do
+      {:ok, view, _html} = mount_showcase!(conn)
+
+      render_hook(view, "activate-page-story", %{"id" => "page-overview-all-quiet"})
+      assert_active_page_story(view, "page-overview-all-quiet", "#overview-page")
+      assert has_element?(view, "#overview-page h1#overview-title", "Overview")
+      assert has_element?(view, "#overview-all-quiet", "No current follow-up identified")
+      assert active_page_overlay_count(view) == 0
+
+      render_hook(view, "activate-page-story", %{"id" => "page-cron-pause-confirmation"})
+      assert_active_page_story(view, "page-cron-pause-confirmation", "#cron-page")
+      assert has_element?(view, "#cron-page h1#cron-page-title", "Cron")
+      assert has_element?(view, "#cron-page table")
+      assert has_element?(view, "#cron-confirmation-dialog[role='dialog']")
+      refute has_element?(view, "#cron-entry-detail")
+      assert active_page_overlay_count(view) == 1
+
+      render_hook(view, "activate-page-story", %{
+        "id" => "page-limiters-blocked-evidence-layers"
+      })
+
+      assert_active_page_story(
+        view,
+        "page-limiters-blocked-evidence-layers",
+        "#limiters-page"
+      )
+
+      assert has_element?(view, "#limiters-page h1#limiters-page-title", "Limiters")
+      assert has_element?(view, "#limiters-page table")
+      assert has_element?(view, "#limiter-detail")
+      assert has_element?(view, "#limiter-current-blockers", "Current blockers")
+      assert active_page_overlay_count(view) == 1
+
+      render_hook(view, "activate-page-story", %{
+        "id" => "page-audit-selected-long-unicode"
+      })
+
+      assert_active_page_story(view, "page-audit-selected-long-unicode", "#audit-page")
+      assert has_element?(view, "#audit-page h1#audit-page-title", "Audit")
+      assert has_element?(view, "#audit-page table")
+      assert has_element?(view, "#audit-detail")
+      assert has_element?(view, "#audit-entry-42", "Recorded at")
+      assert active_page_overlay_count(view) == 1
+
+      render_hook(view, "activate-page-story", %{"id" => "missing-page-story"})
+      assert_active_page_story(view, "page-audit-selected-long-unicode", "#audit-page")
+      assert active_page_overlay_count(view) == 1
+    end
+
+    test "every page story renders one matching production tree within the overlay bound", %{
+      conn: conn
+    } do
+      {:ok, view, _html} = mount_showcase!(conn)
+
+      for story <- ObanPowertools.PageStoryCatalog.stories() do
+        render_hook(view, "activate-page-story", %{"id" => story.id})
+
+        root_selector = page_root_selector(story.page)
+        assert_active_page_story(view, story.id, root_selector)
+        assert has_element?(view, "#{root_selector} h1")
+
+        assert Enum.count(
+                 ~w[#overview-page #cron-page #limiters-page #audit-page],
+                 &has_element?(view, &1)
+               ) == 1
+
+        if story.page != :overview do
+          assert has_element?(view, "#{root_selector} table")
+        end
+
+        assert active_page_overlay_count(view) <= 1
+
+        case story.activation do
+          :confirmation ->
+            assert has_element?(view, "#cron-confirmation-dialog[role='dialog']")
+            refute has_element?(view, "#cron-entry-detail")
+
+          :detail ->
+            refute has_element?(view, "#cron-confirmation-dialog")
+
+          :none ->
+            assert active_page_overlay_count(view) == 0
+        end
+
+        if story.id in ["page-overview-long-unicode", "page-audit-selected-long-unicode"] do
+          assert render(view) =~ "&lt;script&gt;alert(&#39;page&#39;)&lt;/script&gt;"
+
+          refute has_element?(
+                   view,
+                   "[data-obpt-page-story='#{story.id}'][data-obpt-page-active='true'] script"
+                 )
+        end
+      end
+    end
+
+    test "showcase source delegates page markup to all four production page_content seams" do
+      source = File.read!("lib/oban_powertools/web/dev/showcase_live.ex")
+
+      for call <- [
+            "EngineOverviewLive.page_content",
+            "CronLive.page_content",
+            "LimitersLive.page_content",
+            "AuditLive.page_content"
+          ] do
+        assert source =~ call
+      end
+
+      for copied_markup <- [
+            ~s(<h1 id="overview-title">),
+            ~s(<h1 id="cron-page-title">),
+            ~s(<h1 id="limiters-page-title">),
+            ~s(<h1 id="audit-page-title">)
+          ] do
+        refute source =~ copied_markup
+      end
+    end
+
     test "default flash dismissal removes only the selected canonical Phoenix key", %{
       conn: conn
     } do
@@ -732,6 +889,37 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
         assert output =~ "GROUP_PACKAGE_CASE_OK #{package_case.id}",
                "isolated group package case #{package_case.id} omitted its success marker:\n#{output}"
+      after
+        File.rm_rf!(temp_dir)
+      end
+    end
+
+    defp assert_isolated_page_catalog_case!(package_case) do
+      temp_dir =
+        Path.join(
+          System.tmp_dir!(),
+          "oban-powertools-page-package-#{package_case.id}-#{System.unique_integer([:positive])}"
+        )
+
+      File.mkdir_p!(temp_dir)
+
+      try do
+        source = isolated_page_catalog_source(package_case, temp_dir)
+
+        {output, status} =
+          System.cmd(
+            "mix",
+            ["run", "--no-start", "--no-compile", "-e", source],
+            cd: File.cwd!(),
+            env: [{"MIX_ENV", "test"}],
+            stderr_to_stdout: true
+          )
+
+        assert status == 0,
+               "isolated page package case #{package_case.id} failed with status #{status}:\n#{output}"
+
+        assert output =~ "PAGE_PACKAGE_CASE_OK #{package_case.id}",
+               "isolated page package case #{package_case.id} omitted its success marker:\n#{output}"
       after
         File.rm_rf!(temp_dir)
       end
@@ -910,6 +1098,90 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       """
     end
 
+    defp isolated_page_catalog_source(package_case, temp_dir) do
+      excluded_beams =
+        Enum.map(@optional_catalog_modules, fn module -> "#{Atom.to_string(module)}.beam" end)
+
+      stub_source =
+        case package_case.stub do
+          nil ->
+            ""
+
+          :non_list ->
+            ~S'''
+            Code.compile_string("""
+            defmodule ObanPowertools.PageStoryCatalog do
+              def stories, do: :invalid_catalog_shape
+            end
+            """)
+            '''
+
+          :malformed_list ->
+            ~S'''
+            Code.compile_string("""
+            defmodule ObanPowertools.PageStoryCatalog do
+              def stories, do: [%{id: "incomplete-page-story"}]
+            end
+            """)
+            '''
+        end
+
+      """
+      original_ebin = :oban_powertools |> :code.lib_dir(:ebin) |> List.to_string()
+      isolated_ebin = Path.join(#{inspect(temp_dir)}, "ebin")
+      File.mkdir_p!(isolated_ebin)
+      excluded_beams = MapSet.new(#{inspect(excluded_beams)})
+
+      original_ebin
+      |> Path.join("*.beam")
+      |> Path.wildcard()
+      |> Enum.reject(&MapSet.member?(excluded_beams, Path.basename(&1)))
+      |> Enum.each(fn source -> File.cp!(source, Path.join(isolated_ebin, Path.basename(source))) end)
+
+      true = :code.del_path(String.to_charlist(original_ebin))
+      true = :code.add_patha(String.to_charlist(isolated_ebin))
+
+      for module <- #{inspect(@optional_catalog_modules)} do
+        :code.purge(module)
+        :code.delete(module)
+      end
+
+      #{stub_source}
+
+      socket = %Phoenix.LiveView.Socket{
+        assigns: %{__changed__: %{}, flash: %{}},
+        private: %{live_temp: %{}}
+      }
+
+      {:ok, mounted_socket} = ObanPowertools.Web.Dev.ShowcaseLive.mount(%{}, %{}, socket)
+      assigns = mounted_socket.assigns
+
+      unless assigns.page_catalog_available? == false do
+        raise "#{package_case.id}: malformed page catalog must fail closed"
+      end
+
+      unless assigns.page_stories == [] do
+        raise "#{package_case.id}: malformed page stories must be empty"
+      end
+
+      unless assigns.active_page_story == nil do
+        raise "#{package_case.id}: no page story may become active"
+      end
+
+      html =
+        assigns
+        |> ObanPowertools.Web.Dev.ShowcaseLive.render()
+        |> Phoenix.HTML.Safe.to_iodata()
+        |> IO.iodata_to_binary()
+
+      unless html =~ ~s(data-obpt-page-index="empty") do
+        raise "#{package_case.id}: page placeholder was not rendered"
+      end
+
+      IO.puts("PAGE_PACKAGE_CASE_OK #{package_case.id}")
+      """
+    end
+
     defp assert_attribute_values(html, attribute, expected_values) do
       assert Enum.sort(attribute_values(html, attribute)) == Enum.sort(expected_values)
     end
@@ -948,6 +1220,32 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       |> Regex.scan(render(view))
       |> length()
     end
+
+    defp assert_active_page_story(view, id, root_selector) do
+      assert has_element?(
+               view,
+               "[data-obpt-page-story='#{id}'][data-obpt-page-active='true'] #{root_selector}"
+             )
+
+      assert active_page_story_count(view) == 1
+      assert count(render(view), ~s(id="#{String.trim_leading(root_selector, "#")}")) == 1
+    end
+
+    defp active_page_story_count(view) do
+      ~r/data-obpt-page-story="[^"]+"[^>]*data-obpt-page-active="true"/
+      |> Regex.scan(render(view))
+      |> length()
+    end
+
+    defp active_page_overlay_count(view) do
+      html = render(view)
+      count(html, ~s(role="dialog")) + count(html, "<dialog")
+    end
+
+    defp page_root_selector(:overview), do: "#overview-page"
+    defp page_root_selector(:cron), do: "#cron-page"
+    defp page_root_selector(:limiters), do: "#limiters-page"
+    defp page_root_selector(:audit), do: "#audit-page"
 
     defp assert_in_order(html, values) do
       indexes = Enum.map(values, &(:binary.match(html, &1) |> elem(0)))
