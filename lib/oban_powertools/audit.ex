@@ -130,6 +130,29 @@ defmodule ObanPowertools.Audit do
     }
   end
 
+  @doc """
+  Fetches one audit event by ID inside the supplied exact filter scope.
+
+  The ID and every active filter are combined in one bounded query. Invalid IDs,
+  absent rows, and rows outside the active scope all return the same `:error`
+  result so callers cannot use the lookup to enumerate records across scopes.
+  """
+  def fetch_in_scope(filters, id, opts \\ []) when is_map(filters) and is_list(opts) do
+    with {:ok, id} <- normalize_event_id(id) do
+      repo = RuntimeConfig.repo(opts)
+
+      event =
+        __MODULE__
+        |> filter_query(filters)
+        |> where([event], event.id == ^id)
+        |> repo.one()
+
+      if event, do: {:ok, event}, else: :error
+    else
+      :error -> :error
+    end
+  end
+
   def event_principal(%__MODULE__{} = event) do
     metadata_principal = get_in(event.metadata || %{}, ["principal"])
 
@@ -258,6 +281,17 @@ defmodule ObanPowertools.Audit do
     do: min(page, total_pages)
 
   defp normalize_page(_page, _total_pages), do: 1
+
+  defp normalize_event_id(id) when is_integer(id) and id > 0, do: {:ok, id}
+
+  defp normalize_event_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {parsed, ""} when parsed > 0 -> {:ok, parsed}
+      _invalid -> :error
+    end
+  end
+
+  defp normalize_event_id(_id), do: :error
 
   defp filter_query(query, filters) do
     Enum.reduce(filters, query, fn

@@ -5,7 +5,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     use Phoenix.LiveView
 
     alias ObanPowertools.{Audit, DisplayPolicy, Lifeline}
-    alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth}
+    alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth, Selectors}
+
+    @filter_fields ~w[resource_type resource_id event_type]
 
     @impl true
     def mount(_params, _session, socket) do
@@ -17,6 +19,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
          socket
          |> assign(:events, [])
          |> assign(:filters, %{})
+         |> assign(:audit_page, empty_audit_page())
+         |> assign(:selected_event_id, nil)
+         |> assign(:selected_event, nil)
+         |> assign(:detail_state, :empty)
          |> assign(:retention, Lifeline.retention_status(repo()))}
       else
         {:error, socket} -> {:ok, socket}
@@ -25,16 +31,47 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     @impl true
     def handle_params(params, _uri, socket) do
-      filters = %{
-        "resource_type" => blank_to_nil(params["resource_type"]),
-        "resource_id" => blank_to_nil(params["resource_id"]),
-        "event_type" => blank_to_nil(params["event_type"])
-      }
+      filters = audit_filters(params)
+      audit_page = Audit.page(filters, repo: repo(), page: positive_page(params["page"]))
+      selected_event_id = blank_to_nil(params["event"])
+      {detail_state, selected_event} = selected_event(filters, selected_event_id)
 
       {:noreply,
        socket
        |> assign(:filters, filters)
-       |> assign(:events, filtered_events(filters))}
+       |> assign(:events, audit_page.events)
+       |> assign(:audit_page, audit_page)
+       |> assign(:selected_event_id, selected_event_id)
+       |> assign(:selected_event, selected_event)
+       |> assign(:detail_state, detail_state)}
+    end
+
+    @impl true
+    def handle_event("apply_filters", %{"filters" => submitted_filters}, socket) do
+      filters = audit_filters(submitted_filters)
+
+      {:noreply,
+       push_patch(socket,
+         to: audit_path(filters, 1, nil)
+       )}
+    end
+
+    def handle_event("select_event", %{"event" => event_id}, socket) do
+      replace? = not is_nil(socket.assigns.selected_event_id)
+
+      {:noreply,
+       push_patch(socket,
+         to: audit_path(socket.assigns.filters, socket.assigns.audit_page.page, event_id),
+         replace: replace?
+       )}
+    end
+
+    def handle_event("close_detail", _params, socket) do
+      {:noreply,
+       push_patch(socket,
+         to: audit_path(socket.assigns.filters, socket.assigns.audit_page.page, nil),
+         replace: true
+       )}
     end
 
     @impl true
@@ -166,7 +203,51 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> DisplayPolicy.reason(%{surface: :audit, section: :table, event: event.action})
     end
 
-    defp filtered_events(filters), do: Audit.list_all(filters, repo: repo())
+    defp selected_event(_filters, nil), do: {:empty, nil}
+
+    defp selected_event(filters, event_id) do
+      case Audit.fetch_in_scope(filters, event_id, repo: repo()) do
+        {:ok, event} -> {:ready, event}
+        :error -> {:unavailable, nil}
+      end
+    end
+
+    defp audit_filters(params) do
+      Map.new(@filter_fields, fn field -> {field, blank_to_nil(params[field])} end)
+    end
+
+    defp audit_path(filters, page, event_id) do
+      Selectors.audit_path([
+        {"resource_type", filters["resource_type"]},
+        {"resource_id", filters["resource_id"]},
+        {"event_type", filters["event_type"]},
+        {"page", if(page == 1, do: nil, else: page)},
+        {"event", event_id}
+      ])
+    end
+
+    defp positive_page(page) when is_integer(page) and page > 0, do: page
+
+    defp positive_page(page) when is_binary(page) do
+      case Integer.parse(page) do
+        {parsed, ""} when parsed > 0 -> parsed
+        _invalid -> 1
+      end
+    end
+
+    defp positive_page(_page), do: 1
+
+    defp empty_audit_page do
+      %{
+        events: [],
+        total_count: 0,
+        page: 1,
+        page_size: 20,
+        total_pages: 0,
+        previous?: false,
+        next?: false
+      }
+    end
 
     defp active_filters?(filters),
       do: Enum.any?(filters, fn {_key, value} -> value not in [nil, ""] end)
