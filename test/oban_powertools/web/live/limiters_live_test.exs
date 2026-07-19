@@ -370,6 +370,27 @@ defmodule ObanPowertools.Web.LimitersLiveTest do
   end
 
   @tag phase79_slice: "limiters"
+  test "complete empty current evidence visibly reports Runnable", %{conn: conn} do
+    resource = insert_resource!("runnable-evidence")
+    insert_state!(resource, tokens_used: 0, cooldown_until: nil)
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-runnable-79", permissions: [:view_limiters]}
+      )
+
+    {:ok, view, html} = live(conn, "/ops/jobs/limiters?resource=runnable-evidence")
+
+    assert has_element?(
+             view,
+             "#limiter-current-blockers .obpt-why-blocked__empty-truth",
+             "Runnable"
+           )
+
+    refute html =~ "No blockers"
+  end
+
+  @tag phase79_slice: "limiters"
   test "resource and state scans stay batched and the page exposes no mutation handler" do
     source = File.read!("lib/oban_powertools/web/limiters_live.ex")
 
@@ -439,7 +460,10 @@ defmodule ObanPowertools.Web.LimitersLiveTest do
       partition_key: "tenant-79",
       tokens_used: Keyword.fetch!(opts, :tokens_used),
       bucket_started_at: DateTime.utc_now(),
-      cooldown_until: DateTime.add(DateTime.utc_now(), 60, :second),
+      cooldown_until:
+        Keyword.get_lazy(opts, :cooldown_until, fn ->
+          DateTime.add(DateTime.utc_now(), 60, :second)
+        end),
       cooldown_reason: Keyword.get(opts, :cooldown_reason),
       reservation_snapshot: %{}
     })

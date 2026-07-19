@@ -936,7 +936,7 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
   defp blocker_kind_label(:block_start_snapshot), do: "Block-start snapshot"
 
   defp blocker_empty_truth(:current, :complete, []),
-    do: "No blockers are present in the complete current evidence."
+    do: "Runnable — complete current evidence contains no blocking conditions."
 
   defp blocker_empty_truth(_state, _completeness, _blockers), do: nil
 

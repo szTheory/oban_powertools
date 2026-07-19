@@ -279,6 +279,40 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
   end
 
   @tag phase79_slice: "shared"
+  test "WhyBlocked reserves Runnable truth for complete empty current evidence" do
+    complete_html =
+      render_pattern(:why_blocked,
+        id: "limiter-runnable",
+        title: "Current blockers",
+        summary: "Current limiter evidence is complete.",
+        impact: "No current limiter condition prevents new reservations.",
+        observed_at: "July 19, 2026 at 14:00 UTC",
+        observed_datetime: "2026-07-19T14:00:00Z",
+        evidence_state: :current,
+        completeness: :complete,
+        blockers: []
+      )
+
+    unavailable_html =
+      render_pattern(:why_blocked,
+        id: "limiter-unavailable",
+        title: "Current blockers",
+        summary: "Current limiter evidence is unavailable.",
+        impact: "Current availability cannot be determined.",
+        observed_at: "July 19, 2026 at 14:00 UTC",
+        observed_datetime: "2026-07-19T14:00:00Z",
+        evidence_state: :unavailable,
+        completeness: :unavailable,
+        blockers: []
+      )
+
+    assert complete_html =~ "Runnable"
+    refute complete_html =~ "No blockers"
+    refute unavailable_html =~ "Runnable"
+    refute unavailable_html =~ "No blockers"
+  end
+
+  @tag phase79_slice: "shared"
   test "AuditEntry visibly associates Recorded at with its absolute machine-readable time" do
     entry = %{
       sentence: "Operator One paused cron entry nightly.",
