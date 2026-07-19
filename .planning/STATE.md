@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 79
 current_phase_name: page-migration-wave-1-overview-cron-limiters-audit
 status: executing
-stopped_at: Completed 79-07-PLAN.md
-last_updated: "2026-07-19T21:44:39.739Z"
+stopped_at: Completed 79-10-PLAN.md
+last_updated: "2026-07-19T23:09:19.527Z"
 last_activity: 2026-07-19
 last_activity_desc: Completed Phase 79 Plan 07 deterministic page composition assets
 progress:
   total_phases: 15
   completed_phases: 9
   total_plans: 61
-  completed_plans: 57
-  percent: 93
+  completed_plans: 58
+  percent: 95
 ---
 
 # Project State
@@ -22,7 +22,7 @@ progress:
 ## Current Position
 
 Phase: 79 (page-migration-wave-1-overview-cron-limiters-audit) — EXECUTING
-Plan: 8 of 12
+Plan: 9 of 12
 Status: Ready to execute
 Last activity: 2026-07-19 — Completed Phase 79 Plan 07 deterministic page composition assets
 
@@ -69,6 +69,7 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 07 deterministic page comp
 | Phase 79 P05 | 14 min | 2 tasks | 4 files |
 | Phase 79 P06 | 22 min | 3 tasks | 4 files |
 | Phase 79 P07 | 11 min | 1 tasks | 4 files |
+| Phase 79 P10 | 79m | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -96,8 +97,8 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 07 deterministic page comp
 
 ## Session Continuity
 
-**Last session:** 2026-07-19T21:44:39.734Z
-**Stopped at:** Completed 79-07-PLAN.md
+**Last session:** 2026-07-19T23:08:28.684Z
+**Stopped at:** Completed 79-10-PLAN.md
 **Resume file:** None
 
 - **Last Action:** Completed Plan 79-07's token-owned responsive page composition and deterministic packaged CSS.
@@ -193,6 +194,9 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 07 deterministic page comp
 - [Phase 79]: Bind canonical page composition to stable production roots — Preserves the verified semantic DOM while giving all four pages one token-owned layout contract.
 - [Phase 79]: Keep page CSS limited to composition — Shared components retain chrome, modality, interaction, and bounded scroll ownership while the page layer owns only geometry and wrapping.
 - [Phase 79]: Require source/package equality and repeat-build hash equality together — Both checks are necessary to prove the distributed CSS is current and deterministically generated without JavaScript drift.
+- [Phase 79]: Use a unique launcher build path plus Mix recompile hooks so fixture routes and modules follow the explicit opt-in flag across back-to-back runs.
+- [Phase 79]: Keep fixture responses closed and public-only while carrying the ephemeral credential exclusively in a request header and Docker environment name.
+- [Phase 79]: Open the real Cron preview before applying recovery perturbations; use a future scheduled active job for deterministic skipped and partial evidence.
 
 ### Blockers
 

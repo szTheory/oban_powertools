@@ -76,7 +76,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 - [x] **A11Y-01**: Automated a11y checks (axe-core, WCAG 2.2 AA tags, open-state variants) run in CI against the showcase and pages; 0 critical/serious is merge-blocking.
 - [x] **A11Y-02**: All interactive elements are keyboard-reachable/operable with visible focus; color is never the sole information carrier; dialogs trap and restore focus and close on Esc.
 - [x] **A11Y-03**: Contrast meets AA in light/dark; high-contrast mode meets enhanced ratios; target sizes are comfortable (2.5.8) and focus is not obscured (2.4.11).
-- [ ] **A11Y-04**: Reduced-motion preference disables non-essential animation without hiding content; a manual checklist covers what automation can't (focus order, SR-announcement quality, APG patterns).
+- [x] **A11Y-04**: Reduced-motion preference disables non-essential animation without hiding content; a manual checklist covers what automation can't (focus order, SR-announcement quality, APG patterns).
 
 ### Motion (MOTION)
 
