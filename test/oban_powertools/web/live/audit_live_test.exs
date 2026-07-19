@@ -59,12 +59,12 @@ defmodule ObanPowertools.Web.AuditLiveTest do
     assert html =~ "job:123"
     assert html =~ "policy actor: Jane Operator"
     assert html =~ "policy reason: MAINTENANCE WINDOW RESCUE"
-    assert html =~ "Archive Activity"
-    assert html =~ "Event Time"
-    assert html =~ "Event Type"
-    assert html =~ "Resource Identity"
+    assert html =~ "Repair evidence retention"
+    assert html =~ "Recorded at"
+    assert html =~ "Event"
+    assert html =~ "Target"
     assert html =~ "Permission: read-only."
-    assert html =~ "cross-surface audit destination"
+    assert html =~ "Review recorded operator actions and the evidence available for each record."
 
     assert html =~
              "Powertools-native pages keep preview, reason, and local audit evidence close to the acted-on resource."
@@ -98,10 +98,13 @@ defmodule ObanPowertools.Web.AuditLiveTest do
         "/ops/jobs/audit?resource_type=job&resource_id=123&event_type=lifeline.repair_executed"
       )
 
-    assert html =~ "Scoped Audit Filter"
-    assert html =~ "resource_type=job"
-    assert html =~ "resource_id=123"
-    assert html =~ "event_type=lifeline.repair_executed"
+    assert html =~ ~s(id="audit-filters")
+    assert html =~ "Resource type"
+    assert html =~ "job"
+    assert html =~ "Resource ID"
+    assert html =~ "123"
+    assert html =~ "Event type"
+    assert html =~ "lifeline.repair_executed"
     assert html =~ "job:123"
     refute html =~ "cron_entry:nightly"
   end
@@ -136,13 +139,242 @@ defmodule ObanPowertools.Web.AuditLiveTest do
         "/ops/jobs/audit?resource_type=workflow&resource_id=#{workflow.id}&event_type=workflow.step_completed"
       )
 
-    assert audit_html =~ "Scoped Audit Filter"
-    assert audit_html =~ "resource_type=workflow"
-    assert audit_html =~ "event_type=workflow.step_completed"
+    assert audit_html =~ ~s(id="audit-filters")
+    assert audit_html =~ "Resource type"
+    assert audit_html =~ "workflow"
+    assert audit_html =~ "Event type"
+    assert audit_html =~ "workflow.step_completed"
   end
 
   test "redirects unauthorized viewers", %{conn: conn} do
     conn = Plug.Test.init_test_session(conn, current_actor: %{id: "ops-3", permissions: []})
     assert {:error, {:redirect, %{to: "/"}}} = live(conn, "/ops/jobs/audit")
+  end
+
+  @tag phase79_slice: "audit"
+  test "renders stable reachable 20-row pages with exact summary and tie-break order", %{
+    conn: conn
+  } do
+    inserted_at = ~N[2026-07-19 14:00:00]
+
+    events =
+      for index <- 1..45 do
+        record_audit!(
+          "job.reviewed",
+          %{type: :job, id: "audit-page-#{index}"},
+          %{"reason" => "page contract #{index}"},
+          inserted_at: inserted_at
+        )
+      end
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "audit-reader-79", permissions: [:view_audit]}
+      )
+
+    {:ok, view, html} = live(conn, "/ops/jobs/audit?page=2")
+
+    assert has_element?(view, "#audit-page")
+    assert has_element?(view, "#audit-retention", "Repair evidence retention")
+    assert has_element?(view, "#audit-records.obpt-data-table")
+    assert has_element?(view, "#audit-records caption", "Audit records")
+    assert html =~ "Records 21–40 of 45 · Page 2 of 3"
+    assert length(Regex.scan(~r/<tr[^>]+id="audit-record-\d+"/, html)) == 20
+    assert has_element?(view, "a[href='/ops/jobs/audit']", "Previous")
+    assert has_element?(view, "a[href='/ops/jobs/audit?page=3']", "Next")
+
+    expected_ids =
+      events
+      |> Enum.map(& &1.id)
+      |> Enum.sort(:desc)
+      |> Enum.slice(20, 20)
+
+    assert_occurs_in_order(html, Enum.map(expected_ids, &~s(id="audit-record-#{&1}")))
+  end
+
+  @tag phase79_slice: "audit"
+  test "filters reset page and event while selection composes with canonical URL history", %{
+    conn: conn
+  } do
+    first =
+      record_audit!(
+        "cron.paused",
+        %{type: :cron_entry, id: "nightly/sync ?&="},
+        %{"reason" => "first event"}
+      )
+
+    second =
+      record_audit!(
+        "cron.paused",
+        %{type: :cron_entry, id: "nightly/sync ?&="},
+        %{"reason" => "second event"}
+      )
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "audit-filter-79", permissions: [:view_audit]}
+      )
+
+    {:ok, view, _html} = live(conn, "/ops/jobs/audit?page=9&event=#{first.id}")
+
+    assert has_element?(view, "#audit-filters-form")
+
+    view
+    |> form("#audit-filters-form", %{
+      "filters" => %{
+        "resource_type" => "cron_entry",
+        "resource_id" => "nightly/sync ?&=",
+        "event_type" => "cron.paused"
+      }
+    })
+    |> render_submit()
+
+    base =
+      "/ops/jobs/audit?resource_type=cron_entry&resource_id=#{URI.encode_www_form("nightly/sync ?&=")}&event_type=cron.paused"
+
+    assert_patch(view, base)
+
+    render_hook(view, "select_event", %{"event" => Integer.to_string(first.id)})
+    assert_patch(view, "#{base}&event=#{first.id}")
+    assert has_element?(view, "#audit-detail")
+
+    render_hook(view, "select_event", %{"event" => Integer.to_string(second.id)})
+    assert_patch(view, "#{base}&event=#{second.id}")
+
+    render_hook(view, "close_detail", %{})
+    assert_patch(view, base)
+    refute has_element?(view, "#audit-detail")
+  end
+
+  @tag phase79_slice: "audit"
+  test "direct mismatched event selection fails closed without existence or secret leakage", %{
+    conn: conn
+  } do
+    event =
+      record_audit!(
+        "lifeline.repair_executed",
+        %{type: :job, id: "secret-job"},
+        %{
+          "reason" => "AUDIT-MISMATCH-SECRET-SENTINEL",
+          "preview_token" => "AUDIT-MISMATCH-TOKEN"
+        }
+      )
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "audit-scope-79", permissions: [:view_audit]}
+      )
+
+    {:ok, view, html} =
+      live(
+        conn,
+        "/ops/jobs/audit?resource_type=job&resource_id=other-job&event_type=lifeline.repair_executed&event=#{event.id}"
+      )
+
+    assert has_element?(view, "#audit-detail[data-obpt-detail-state='unavailable']")
+    assert html =~ "Audit evidence is unavailable"
+    refute html =~ "secret-job"
+    refute html =~ "AUDIT-MISMATCH-SECRET-SENTINEL"
+    refute html =~ "AUDIT-MISMATCH-TOKEN"
+    refute html =~ "exists outside the current filters"
+  end
+
+  @tag phase79_slice: "audit"
+  test "selected immutable evidence uses exact absence copy and structural allowlisting", %{
+    conn: conn
+  } do
+    event =
+      record_audit!(
+        "job.reviewed",
+        %{type: :job, id: "123"},
+        %{
+          "credential" => "AUDIT-CREDENTIAL-SENTINEL",
+          "preview_token" => "AUDIT-PREVIEW-TOKEN-SENTINEL",
+          "plan_hash" => "AUDIT-PLAN-HASH-SENTINEL",
+          "exception" => "AUDIT-EXCEPTION-SENTINEL",
+          "stacktrace" => "AUDIT-STACKTRACE-SENTINEL"
+        }
+      )
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "audit-detail-79", permissions: [:view_audit]}
+      )
+
+    {:ok, view, html} = live(conn, "/ops/jobs/audit?event=#{event.id}")
+
+    assert has_element?(view, "#audit-detail")
+    assert has_element?(view, "#audit-entry-#{event.id}")
+    assert html =~ "No operator reason recorded"
+    assert html =~ "Outcome not recorded"
+    assert html =~ "Source not recorded"
+    assert html =~ "Correlation not recorded"
+    assert html =~ "Recorded at"
+    assert html =~ "/ops/jobs/jobs/123"
+
+    for secret <- [
+          "AUDIT-CREDENTIAL-SENTINEL",
+          "AUDIT-PREVIEW-TOKEN-SENTINEL",
+          "AUDIT-PLAN-HASH-SENTINEL",
+          "AUDIT-EXCEPTION-SENTINEL",
+          "AUDIT-STACKTRACE-SENTINEL"
+        ] do
+      refute html =~ secret
+    end
+
+    refute html =~ "caused"
+    refute html =~ "currently"
+    refute html =~ ~s(role="alert")
+  end
+
+  @tag phase79_slice: "audit"
+  test "Audit remains a bounded read-only review surface with finite event handlers" do
+    source = File.read!("lib/oban_powertools/web/audit_live.ex")
+
+    assert source =~ "Audit.page"
+    assert source =~ "Audit.fetch_in_scope"
+    refute source =~ "Audit.list_all"
+
+    events =
+      Regex.scan(~r/def handle_event\("([^"]+)"/, source, capture: :all_but_first)
+      |> List.flatten()
+      |> MapSet.new()
+
+    assert MapSet.subset?(events, MapSet.new(["apply_filters", "select_event", "close_detail"]))
+
+    for forbidden <- ["pause", "resume", "run_now", "retry", "cancel", "delete", "execute"] do
+      refute MapSet.member?(events, forbidden)
+    end
+  end
+
+  defp record_audit!(action, resource, metadata, opts \\ []) do
+    {:ok, event} =
+      Audit.record(
+        action,
+        resource,
+        Map.put_new(metadata, "event_type", action),
+        repo: TestRepo,
+        actor_id: "audit-fixture-79"
+      )
+
+    case Keyword.get(opts, :inserted_at) do
+      nil ->
+        event
+
+      inserted_at ->
+        event |> Ecto.Changeset.change(inserted_at: inserted_at) |> TestRepo.update!()
+    end
+  end
+
+  defp assert_occurs_in_order(text, markers) do
+    indexes =
+      Enum.map(markers, fn marker ->
+        case :binary.match(text, marker) do
+          {index, _length} -> index
+          :nomatch -> flunk("expected #{inspect(marker)} in rendered Audit HTML")
+        end
+      end)
+
+    assert indexes == Enum.sort(indexes)
   end
 end

@@ -5,6 +5,7 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
   alias ObanPowertools.Forensics.LimiterHistoryFact
   alias ObanPowertools.Lifeline.Incident
   alias ObanPowertools.Limits.{Resource, State}
+  alias ObanPowertools.Web.OverviewReadModel
 
   test "renders diagnosis-first cards with native and bridge ownership labels", %{conn: conn} do
     seed_overview_fixture!()
@@ -16,12 +17,12 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
 
     {:ok, view, html} = live(conn, "/ops/jobs")
 
-    assert html =~ "Diagnosis-first overview"
+    assert html =~ "See what needs attention, why it matters, and where to continue."
     assert html =~ "Needs Review"
     assert html =~ "Blocked"
     assert html =~ "Waiting"
     assert html =~ "Runnable"
-    assert html =~ "Resolved Recently"
+    assert html =~ "Resolved continuity"
     assert html =~ "Bridge-only Follow-up"
     assert html =~ "Review Needs Review"
     assert html =~ "partial evidence"
@@ -105,13 +106,13 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
 
     {:ok, _view, html} = live(conn, "/ops/jobs")
 
-    assert html =~ "Diagnosis-first overview"
+    assert html =~ "See what needs attention, why it matters, and where to continue."
     assert html =~ "Needs Review"
     assert html =~ "Blocked"
     assert html =~ "Waiting"
     assert html =~ "Runnable"
     assert html =~ "Bridge-only Follow-up"
-    assert html =~ "Resolved Recently"
+    assert html =~ "Resolved continuity"
 
     assert html =~ "Blocked by policy cooldown for payments-api"
     assert html =~ "Recent cron history shows a missed fire while scheduler coverage was healthy."
@@ -178,13 +179,13 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
 
     {:ok, _view, html} = live(conn, "/ops/jobs")
 
-    assert html =~ "No historical attention needed"
+    assert html =~ "No current follow-up identified"
 
     assert html =~
-             "Current state and retained history do not identify a safe runbook path right now."
+             "Available evidence identifies no current native or bridge follow-up. Open Jobs to review individual job state."
   end
 
-  test "visual hierarchy proxy: bucket-grid headings precede historical exemplars and no feed-like section is rendered",
+  test "visual hierarchy proxy: stable triage headings precede historical exemplars and no feed-like section is rendered",
        %{conn: conn} do
     seed_overview_fixture!()
 
@@ -196,13 +197,13 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
     {:ok, _view, html} = live(conn, "/ops/jobs")
 
     assert_occurs_in_order(html, [
-      "Diagnosis-first overview",
+      "Current attention",
       "Needs Review",
       "Blocked",
       "Waiting",
-      "Runnable",
       "Bridge-only Follow-up",
-      "Resolved Recently"
+      "Runnable",
+      "Resolved continuity"
     ])
 
     first_bucket = byte_index(html, "Needs Review")
@@ -222,6 +223,106 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
       refute html =~ forbidden,
              "rendered overview contains forbidden feed-like section heading #{inspect(forbidden)}"
     end
+  end
+
+  @tag phase79_slice: "overview"
+  test "renders one static semantic tree in the immutable triage order", %{conn: conn} do
+    seed_overview_fixture!()
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-79", permissions: [:view_overview]}
+      )
+
+    {:ok, view, html} = live(conn, "/ops/jobs")
+
+    assert has_element?(view, "#overview-page")
+    assert length(Regex.scan(~r/<h1\b/, html)) == 1
+    assert has_element?(view, "h1", "Overview")
+    assert html =~ "See what needs attention, why it matters, and where to continue."
+    assert has_element?(view, "#overview-current-attention h2", "Current attention")
+
+    assert_occurs_in_order(html, [
+      ~s(id="overview-needs-review"),
+      ~s(id="overview-blocked"),
+      ~s(id="overview-waiting"),
+      ~s(id="overview-bridge-follow-up"),
+      ~s(id="overview-runnable"),
+      ~s(id="overview-resolved-continuity")
+    ])
+
+    assert html =~ "representative follow-ups"
+    assert html =~ "Oban Web"
+    assert has_element?(view, "#overview-bridge-follow-up a", "Inspect in Oban Web")
+    refute html =~ "Resolved Recently"
+    refute html =~ "recently"
+
+    for forbidden <- [
+          ~s(role="alert"),
+          "aria-live=",
+          "phx-update=\"stream\"",
+          "phx-hook=\"poll",
+          "Chart",
+          "Event Feed",
+          "preview_token",
+          "plan_hash",
+          "blocker_codes"
+        ] do
+      refute html =~ forbidden
+    end
+  end
+
+  @tag phase79_slice: "overview"
+  test "read model keeps semantic lanes bounded and selector destinations legal" do
+    seed_overview_fixture!()
+
+    buckets =
+      OverviewReadModel.build(
+        repo: TestRepo,
+        dashboard_path: "/oban",
+        now: ~U[2026-07-19 18:00:00Z]
+      )
+
+    assert Enum.map(buckets, &Map.get(&1, :id)) == [
+             :needs_review,
+             :blocked,
+             :waiting,
+             :bridge_follow_up,
+             :runnable,
+             :resolved_continuity
+           ]
+
+    assert Enum.all?(buckets, &(length(&1.exemplars) <= 3))
+
+    for bucket <- buckets, exemplar <- bucket.exemplars do
+      assert is_binary(exemplar.path)
+      assert String.starts_with?(exemplar.path, ["/ops/jobs", "/oban"])
+    end
+  end
+
+  @tag phase79_slice: "overview"
+  test "quiet overview uses compact available-evidence truth without live or mutation semantics",
+       %{
+         conn: conn
+       } do
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-quiet-79", permissions: [:view_overview]}
+      )
+
+    {:ok, view, html} = live(conn, "/ops/jobs")
+
+    assert html =~ "No current follow-up identified"
+
+    assert html =~
+             "Available evidence identifies no current native or bridge follow-up. Open Jobs to review individual job state."
+
+    assert has_element?(view, "#overview-needs-review")
+    assert has_element?(view, "#overview-blocked")
+    assert has_element?(view, "#overview-waiting")
+    refute html =~ ~r/phx-(click|submit|change)="(pause|resume|run|execute|repair)/
+    refute html =~ ~s(role="alert")
+    refute html =~ "aria-live="
   end
 
   defp seed_overview_fixture!(opts \\ []) do
