@@ -5,15 +5,15 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 78
 current_phase_name: component-groups-meta-components
 status: executing
-stopped_at: Completed 78-06-PLAN.md
-last_updated: "2026-07-19T00:02:03.857Z"
-last_activity: 2026-07-18
-last_activity_desc: Phase 78 Plan 06 deterministic operator-group showcase and schema-6 browser activation complete
+stopped_at: Completed 78-07-PLAN.md
+last_updated: "2026-07-19T00:45:22.315Z"
+last_activity: 2026-07-19
+last_activity_desc: Phase 78 Plan 07 connected operator-group behavior proof complete
 progress:
   total_phases: 15
   completed_phases: 8
   total_plans: 49
-  completed_plans: 47
+  completed_plans: 48
   percent: 53
 ---
 
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 78 (component-groups-meta-components) — EXECUTING
-Plan: 7 of 8
+Plan: 8 of 8
 Status: Ready to execute
-Last activity: 2026-07-18 — Phase 78 Plan 06 deterministic operator-group showcase and schema-6 browser activation complete
+Last activity: 2026-07-19 — Phase 78 Plan 07 connected operator-group behavior proof complete
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Last activity: 2026-07-18 — Phase 78 Plan 06 deterministic operator-group show
 | Phase 78 P04 | 15 min | 3 tasks | 7 files |
 | Phase 78 P05 | 16 min | 3 tasks | 9 files |
 | Phase 78 P06 | 24 min | 4 tasks | 12 files |
+| Phase 78 P07 | 39 min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -86,12 +87,12 @@ Last activity: 2026-07-18 — Phase 78 Plan 06 deterministic operator-group show
 
 ## Session Continuity
 
-**Last session:** 2026-07-19T00:01:41.353Z
-**Stopped at:** Completed 78-06-PLAN.md
+**Last session:** 2026-07-19T00:45:22.312Z
+**Stopped at:** Completed 78-07-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed the deterministic 23-story operator-group catalog, fail-closed connected showcase, schema-6/64-target manifest, and shared browser activation proof for Plan 78-06.
-- **Next Action:** Execute Plan 78-07 for connected operator-pattern behavior contracts.
+- **Last Action:** Completed connected confirmation, filter, detail, explanation, audit, responsive, confidentiality, and five-story mechanical zoom behavior proof for Plan 78-07.
+- **Next Action:** Execute Plan 78-08 for final group accessibility and visual evidence.
 
 ## Decisions
 
@@ -152,6 +153,11 @@ Last activity: 2026-07-18 — Phase 78 Plan 06 deterministic operator-group show
 - [Phase 78]: Keep the 23 group story IDs, ordering, fixtures, and activation metadata Elixir-owned; TypeScript and Node validate generated output without duplicating the registry. — Maintains one deterministic source of truth across showcase and browser discovery.
 - [Phase 78]: Load the support-only group catalog through a fail-closed optional seam while ShowcaseLive owns confirmation, filter, detail, URL/history, result, and receipt truth. — Prevents malformed or packaged-absent fixtures from leaking partial UI and keeps production components presentation-only.
 - [Phase 78]: Use one shared generated-target activation helper that dispatches the validated LiveView event and enforces one active overlay and at most one modal. — Allows native top-layer dialogs to switch safely while structure, axe, VRT, and behavior share the same path.
+- [Phase 78]: Resolve connected behavior fixtures from generated groupStories and shared activation — Preserves one Elixir-owned story registry and prevents browser drift
+- [Phase 78]: Use connected parent-result attributes and real LiveView events for history, duplicate suppression, receipts, and focus restoration — Keeps browser proof observational while parent state remains authoritative
+- [Phase 78]: Assert adaptive detail through native modal state and one persistent DOM identity — Proves constrained inertness and wide comparison behavior across responsive transitions
+- [Phase 78]: Measure 200 percent zoom with Chromium device metrics and mechanical geometry assertions — Makes wrapping, visible focus, one-tree rendering, and overflow objective
+- [Phase 78]: Scan complete document text, markup, URLs, values, titles, and attributes for confidentiality sentinels — Covers hidden and non-visible leak channels as well as rendered copy
 
 ### Blockers
 
