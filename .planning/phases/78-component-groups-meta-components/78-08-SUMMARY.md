@@ -11,6 +11,7 @@ provides:
   - zero-critical-or-serious axe evidence for all 276 group story/theme/viewport cases
   - exact group-only 276-file canonical Docker visual baseline set and compare-only proof
   - review-hardened audit confidentiality, confirmation submission, finite outcomes, and attention-matrix coverage
+  - full-surface visual capture for all 120 overlay story/theme/viewport cases
   - keyboard-accessible narrow DetailSurface scrolling with inline-mode tab-stop synchronization
   - final focused, package, asset, manifest, connected structure, zoom, and protected-boundary evidence
 affects: [79, 80, 81, 82]
@@ -33,16 +34,18 @@ key-files:
     - test/oban_powertools/web/components/operator_patterns_test.exs
     - scripts/playwright-docker.sh
     - scripts/with-showcase-server.sh
+    - test/browser/support/showcase.ts
 key-decisions:
   - "Keep the detail body keyboard-scrollable in the server-rendered narrow baseline, then remove its tab stop whenever the connected controller places the surface inline."
   - "Derive and audit the visual set exclusively from schema-6 group targets; retain the unrelated 108 scenario PNGs without treating them as Phase 78 evidence."
   - "Give screenshot stability 15 seconds for large deterministic story crops while preserving Playwright's ordinary pixel-comparison semantics."
   - "Treat the container launcher as evidence-bearing infrastructure: it must fail closed on unsupported shells and must own the connected server process it cleans up."
+  - "Capture activated confirmation and detail roots directly; a containing story card is not a valid visual proxy for a fixed or top-layer overlay."
 patterns-established:
   - "A new scroll owner must have a no-JavaScript keyboard baseline and a controller-owned responsive tab-stop policy."
   - "Canonical VRT completion requires manifest-derived exact-set verification, changed-scope verification, and a fresh compare-only run after updates."
 requirements-completed: [GROUP-01, GROUP-02, FORM-04, COPY-02, A11Y-02]
-duration: 2h 45m
+duration: 3h 30m active work
 completed: 2026-07-18
 status: complete
 ---
@@ -53,7 +56,7 @@ status: complete
 
 ## Performance
 
-- **Duration:** 2h 45m including code-review remediation and canonical revalidation
+- **Duration:** 3h 30m active work including review remediation, verification, and gap closure
 - **Started:** 2026-07-18T20:17:00-04:00
 - **Completed:** 2026-07-18T23:02:00-04:00
 - **Tasks:** 3
@@ -68,6 +71,7 @@ status: complete
 - Reconciled every Phase 78 task and RED-to-green seam in VALIDATION while preserving the 108 unrelated scenario baselines and Phase 82 manual/cross-page boundaries.
 - Closed every in-scope code-review finding: audit evidence now has an explicit presentation allowlist, submitting confirmations are locked, outcome states remain finite, and the attention fixture exercises the complete four-card matrix.
 - Corrected the macOS Bash 3.2 Docker-launch path, refreshed the 80 baselines that differed in the real container, and independently re-passed 276 VRT, 276 axe, 37 connected behavior, and 12 structure cases.
+- Closed the fresh verifier's sole blocker by capturing the 10 activated overlay roots directly, asserting headings and controls before every screenshot, refreshing exactly 120 overlay baselines, and passing a fresh 276-case no-update comparison.
 
 ## Task Commits
 
@@ -91,6 +95,7 @@ Post-plan review and remediation commits: `13a722b`, `89f687b`, `473df91`, `c960
 - `test/browser/specs/showcase.vrt.spec.ts` - Explicit 15-second stability allowance for large deterministic story crops.
 - `test/oban_powertools/web/assets_test.exs` and `test/oban_powertools/web/components/operator_patterns_test.exs` - Packaged-controller and server-baseline regressions.
 - `scripts/playwright-docker.sh` and `scripts/with-showcase-server.sh` - Bash-3.2-safe canonical container launch and listener-owning server cleanup.
+- `test/browser/support/showcase.ts` and `test/browser/specs/showcase.vrt.spec.ts` - Overlay-aware visual target selection plus heading/action/close assertions that prevent clipped-fragment baselines from passing.
 
 ## Decisions Made
 
@@ -132,9 +137,16 @@ Post-plan review and remediation commits: `13a722b`, `89f687b`, `473df91`, `c960
 - **Verification:** Exact inventory stayed 276, changed scope was 80/276 and group-only, and fresh Docker compare-only and axe matrices each passed 276/276.
 - **Committed in:** `1f1e4b5` plus the final evidence commit
 
+**5. Replaced clipped overlay fragments with complete visual targets**
+- **Found during:** Fresh goal-backward phase verification
+- **Issue:** VRT captured each overlay story's containing article even though confirmations are fixed and detail drawers use native top-layer dialogs. Ten overlay stories therefore had deterministic but clipped screenshots.
+- **Fix:** Added an overlay-aware visual locator for the active confirmation/native detail root and required its heading plus action/close control before pixel capture.
+- **Verification:** The pre-update 320 bulk regression failed 4/4 on the expected 224×305 → 320×900 dimension change; canonical update passed 276/276, changed scope was exactly 120 group paths, representative complete surfaces were inspected, and compare-only passed 276/276.
+- **Committed in:** the Phase 78 verification-gap closure commit
+
 ---
 
-**Total deviations:** 4 auto-fixed correctness, semantics, and evidence-infrastructure issues.
+**Total deviations:** 5 auto-fixed correctness, semantics, and evidence-infrastructure issues.
 **Impact on plan:** Both fixes were required to make the locked accessibility and visual contracts deterministic; no dependency, route, data, production-page, or authority scope expanded.
 
 ## Issues Encountered
@@ -144,6 +156,7 @@ Post-plan review and remediation commits: `13a722b`, `89f687b`, `473df91`, `c960
 - One early behavior run had a transient tablet LiveView connection miss; its exact case and then the complete suite passed on fresh reruns, and only the repeat green result is recorded.
 - Docker dependency resolution continued to print the repository's existing advisory set and expired local Hex-auth warning. Public dependencies resolved; Phase 78 changed no dependency manifest or lockfile.
 - The repository-wide ExUnit run completed 797 tests with 794 passes and three failures in pre-existing child-host compilation/migration lanes. The focused 157-test Phase 78 gate remained green; the residuals are documented rather than misreported as phase regressions or an aggregate green run.
+- Fresh verification initially scored 66/67 because stable overlay screenshots were clipped to story-card bounds. The capture seam—not the production overlays—was corrected and the full visual matrix re-proved before re-verification.
 
 ## User Setup Required
 
@@ -160,7 +173,7 @@ None - no external service configuration required.
 - All three task commits and the post-plan review-fix commits exist in order, all declared artifacts exist, and the cumulative phase diff contains 322 expected files.
 - Format, warnings-as-errors compile, 157 focused ExUnit tests, manifest smoke, exact 276-baseline verification, 12 connected structure cases, five exact zoom cases, 276 axe cases, and 276 compare-only VRT cases pass.
 - The immutable start SHA resolves; cumulative and final worktree/untracked protected audits are empty outside the five allowed production seams.
-- Exactly 276 group PNGs exist; the final canonical correction changed 80 group-only paths, a fresh compare-only Docker run passed 276/276, the unrelated 108 scenario PNGs remain preserved, and manual-only boundaries remain unclaimed.
+- Exactly 276 group PNGs exist; the environment correction changed 80 group paths and the subsequent overlay-framing closure changed exactly 120 group paths. Fresh compare-only Docker runs passed 276/276 after each correction, the unrelated 108 scenario PNGs remain preserved, and broader manual-only boundaries remain unclaimed.
 
 ---
 *Phase: 78-component-groups-meta-components*

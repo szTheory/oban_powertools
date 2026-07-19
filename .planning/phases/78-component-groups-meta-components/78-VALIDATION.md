@@ -1,7 +1,7 @@
 ---
 phase: 78
 slug: component-groups-meta-components
-status: passed
+status: pending_reverification
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-07-18
@@ -101,7 +101,7 @@ Every missing Wave 0 contract must first fail at its intended seam before produc
 - `node test/browser/support/verify-group-baselines.mjs` reported `group baselines ok: 276`.
 - Code review later exposed that Apple Bash 3.2 rejected the launcher's empty `NETWORK_ARGS` expansion under `set -u`; the earlier updater had therefore captured host Chromium despite being invoked through the Docker wrapper. The launcher now uses a non-empty portable Docker argument array, and the showcase wrapper `exec`s the BEAM server so cleanup owns the actual listener.
 - A fresh update in the confirmed container passed **276/276** and corrected **80** tracked PNGs. `node test/browser/support/verify-group-baselines.mjs --changed-scope` reported `80 paths, all within 276`; no non-group screenshot path was modified or added.
-- The required fresh canonical Docker **compare-only** run then passed **276/276** in 3.7 minutes with no update flag.
+- The required fresh canonical Docker **compare-only** run then passed **276/276** in 3.7 minutes with no update flag. That established runtime determinism, but fresh goal-backward verification later found that overlay screenshots were still framed to their containing story articles; the overlay-specific correction below supersedes those pixels.
 - The unrelated scenario baseline set remains exactly **108 PNGs** and is not counted as Phase 78 success. No manual representative-visual-review claim is made by this automated evidence.
 
 ### 78-08-03 — Final focused and protected-boundary gates
@@ -119,6 +119,15 @@ Every missing Wave 0 contract must first fail at its intended seam before produc
 - After the launcher correction, the complete connected Docker behavior suite passed **37** with **20 intentional project gates**, including the exact five wide `200% zoom` cases, and connected structure passed **12/12**. The complete group axe matrix passed **276/276** with zero critical or serious violations. The full group VRT update and independent compare-only matrix each passed **276/276**, with exactly **80** corrected group PNGs and zero non-group screenshot changes.
 - The repository-wide ExUnit command executed **797 tests**: **794 passed** and **3 failed** in pre-existing host/package lanes. Two child-host compilation failures require Phoenix UI dependencies already referenced by Phase-78-start modules, and the example-host reset failure timed out in an unrelated concurrent-index migration. These are recorded as out-of-phase residuals; they do not replace or weaken the green **157-test** focused Phase 78 gate.
 - The Docker dependency preflight continues to report the repository's existing vulnerable-dependency advisories and expired local Hex authentication warning. Phase 78 changed no dependency manifest or lockfile; dependency remediation remains outside this phase's allowed boundary.
+
+### Fresh verification gap closure — complete overlay VRT
+
+- Initial goal-backward verification resolved **66/67** must-haves and reported `gaps_found`: `showcase.vrt.spec.ts` always captured the story article returned by `activateTarget()`, so fixed/top-layer confirmation and detail overlays were stable but clipped. Representative committed images omitted dialog headings and required controls even though exact-set and compare-only checks were green.
+- The focused pre-update regression produced the expected **4 failures** for `group-confirm-bulk-count` on `chromium-320`: the old **224×305** story fragment was compared with the corrected **320×900** overlay root.
+- `visualTargetLocator()` now returns the exact active confirmation root or open native detail dialog for `activation: overlay`, while all non-overlay targets retain story framing. Every overlay VRT case asserts a visible heading plus a confirmation action or detail close control before screenshot comparison.
+- A confirmed Docker update passed **276/276** and changed exactly **120** PNGs: 10 overlay stories × 4 themes × 3 viewports. Exact-set verification remained **276**, changed-scope verification reported `120 paths, all within 276`, and no non-group screenshot changed.
+- Representative inspection confirmed complete 320/high-contrast bulk confirmation, tablet/dark modal detail, and wide/light long-detail surfaces with their headings and required close/actions. The mandatory fresh no-update Docker comparison then passed **276/276** in 3.8 minutes.
+- Independent re-verification remains the final status gate; the automated gap-closure evidence above is green, but this file intentionally stays `pending_reverification` until that fresh verdict is recorded.
 
 ---
 
@@ -160,4 +169,4 @@ Do not mark Phase 78 complete from discovery, static markup, axe, or baseline ex
 - [x] Fast feedback remains under 30 seconds for the component/presenter loop and under 120 seconds for the focused ExUnit/manifest loop.
 - [x] `wave_0_complete: true` and `nyquist_compliant: true` are set only after evidence is recorded.
 
-**Approval:** automated Phase 78 gate passed; manual-only screen-reader and representative visual inspection boundaries remain intentionally unclaimed for follow-up.
+**Approval:** automated Phase 78 gap-closure gate passed; independent re-verification is pending. Broader manual-only screen-reader and cross-page representative visual boundaries remain intentionally unclaimed for Phase 82.

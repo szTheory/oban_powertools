@@ -124,6 +124,24 @@ export async function activateTarget(page: Page, target: ShowcaseTarget): Promis
   return story;
 }
 
+export async function visualTargetLocator(
+  story: Locator,
+  target: ShowcaseTarget
+): Promise<Locator> {
+  if (target.kind !== 'group' || target.activation === 'none') {
+    return story;
+  }
+
+  const overlay = story.locator(
+    '[data-obpt-confirm-state][role="dialog"], dialog[data-obpt-detail-surface][open]'
+  );
+
+  await expect(overlay).toHaveCount(1);
+  await expect(overlay).toBeVisible();
+
+  return overlay;
+}
+
 export async function assertShowcaseStructure(page: Page): Promise<void> {
   await expect(page.locator('.obpt-root')).toHaveCount(1);
   await expect(page.locator('[data-obpt-showcase]')).toHaveCount(1);
