@@ -14,6 +14,7 @@ defmodule ObanPowertools.Web.OverviewReadModel do
   def build(opts) do
     repo = Keyword.fetch!(opts, :repo)
     dashboard_path = Keyword.fetch!(opts, :dashboard_path)
+    now = Keyword.get(opts, :now, DateTime.utc_now())
 
     resources = repo.all(from(resource in Resource, order_by: [asc: resource.name]))
     states = repo.all(State)
@@ -27,10 +28,12 @@ defmodule ObanPowertools.Web.OverviewReadModel do
     resolved_incidents =
       repo.all(from(incident in Incident, where: incident.status == "resolved"))
 
-    audit_events = Audit.list_all(repo: repo)
+    audit_events =
+      Audit.page(%{"event_type" => "lifeline.repair_executed"}, repo: repo, page: 1).events
+
     retention = Lifeline.retention_status(repo)
 
-    resource_rows = resource_rows(resources, states, explains)
+    resource_rows = resource_rows(resources, states, explains, now)
     blocked_resources = Enum.filter(resource_rows, &(ControlPlane.limiter_status(&1) == :blocked))
     waiting_resources = Enum.filter(resource_rows, &(ControlPlane.limiter_status(&1) == :waiting))
 
@@ -45,77 +48,141 @@ defmodule ObanPowertools.Web.OverviewReadModel do
 
     bridge_rows = bridge_rows(explains, dashboard_path)
 
+    needs_review_count = length(active_incidents)
+    blocked_count = length(blocked_resources)
+    waiting_count = length(waiting_resources) + length(paused_entries)
+    bridge_count = length(bridge_rows)
+    runnable_count = length(runnable_resources) + length(runnable_entries)
+    resolved_count = length(resolved_incidents)
+
     [
-      %{
-        status: "Needs Review",
-        count: length(active_incidents),
-        diagnosis: needs_review_diagnosis(active_incidents),
-        ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
-        venue: ControlPlanePresenter.venue_label(:powertools_native),
-        posture: ControlPlanePresenter.ownership_posture(:powertools_native),
-        next_step_label: "Review Needs Review",
-        next_step_path: needs_review_path(active_incidents),
-        exemplars: needs_review_exemplars(active_incidents)
-      },
-      %{
-        status: "Blocked",
-        count: length(blocked_resources),
-        diagnosis: blocked_diagnosis(blocked_resources),
-        ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
-        venue: ControlPlanePresenter.venue_label(:powertools_native),
-        posture: ControlPlanePresenter.ownership_posture(:powertools_native),
-        next_step_label: "Review Blocked Limiters",
-        next_step_path: first_resource_path(blocked_resources, "/ops/jobs/limiters"),
-        exemplars: limiter_exemplars(blocked_resources, repo, "Blocked")
-      },
-      %{
-        status: "Waiting",
-        count: length(waiting_resources) + length(paused_entries),
-        diagnosis: waiting_diagnosis(waiting_resources, paused_entries),
-        ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
-        venue: ControlPlanePresenter.venue_label(:powertools_native),
-        posture: ControlPlanePresenter.ownership_posture(:powertools_native),
-        next_step_label: waiting_next_step_label(waiting_resources, paused_entries),
-        next_step_path: waiting_next_step_path(waiting_resources, paused_entries),
-        exemplars: waiting_exemplars(waiting_resources, paused_entries, repo)
-      },
-      %{
-        status: "Runnable",
-        count: length(runnable_resources) + length(runnable_entries),
-        diagnosis: runnable_diagnosis(runnable_resources, runnable_entries),
-        ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
-        venue: ControlPlanePresenter.venue_label(:powertools_native),
-        posture: ControlPlanePresenter.ownership_posture(:powertools_native),
-        next_step_label: "Review Runnable Capacity",
-        next_step_path: first_resource_path(runnable_resources, "/ops/jobs/limiters"),
-        exemplars: runnable_exemplars(runnable_resources, runnable_entries, repo)
-      },
-      %{
-        status: "Bridge-only Follow-up",
-        count: length(bridge_rows),
-        diagnosis: bridge_diagnosis(bridge_rows),
-        ownership: ControlPlanePresenter.ownership_badge(:oban_web_bridge),
-        venue: ControlPlanePresenter.venue_label(:oban_web_bridge),
-        posture: ControlPlanePresenter.ownership_posture(:oban_web_bridge),
-        next_step_label: "Inspect Bridge Follow-up",
-        next_step_path: bridge_next_step_path(bridge_rows, dashboard_path),
-        exemplars: bridge_exemplars(bridge_rows)
-      },
-      %{
-        status: "Resolved Recently",
-        count: length(resolved_incidents),
-        diagnosis: resolved_diagnosis(resolved_incidents, retention.archived_repairs),
-        ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
-        venue: ControlPlanePresenter.venue_label(:powertools_native),
-        posture: "Continuity evidence",
-        next_step_label: "Review Resolved Continuity",
-        next_step_path: resolved_next_step_path(resolved_incidents, audit_events),
-        exemplars: resolved_exemplars(resolved_incidents, audit_events)
-      }
+      overview_bucket(
+        %{
+          id: :needs_review,
+          kind: :needs_review,
+          title: "Needs Review",
+          status: :needs_review,
+          severity: :warning,
+          count: needs_review_count,
+          diagnosis: needs_review_diagnosis(active_incidents),
+          summary: needs_review_diagnosis(active_incidents),
+          impact:
+            "#{needs_review_count} current native incident(s) may need an audited repair decision.",
+          ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
+          venue: ControlPlanePresenter.venue_label(:powertools_native),
+          posture: ControlPlanePresenter.ownership_posture(:powertools_native),
+          next_step_label: "Review Needs Review",
+          next_step_path: needs_review_path(active_incidents),
+          exemplars: needs_review_exemplars(active_incidents)
+        },
+        now
+      ),
+      overview_bucket(
+        %{
+          id: :blocked,
+          kind: :blocked,
+          title: "Blocked",
+          status: :blocked,
+          severity: :warning,
+          count: blocked_count,
+          diagnosis: blocked_diagnosis(blocked_resources),
+          summary: blocked_diagnosis(blocked_resources),
+          impact:
+            "#{blocked_count} limiter resource(s) cannot accept work under current limiter state.",
+          ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
+          venue: ControlPlanePresenter.venue_label(:powertools_native),
+          posture: ControlPlanePresenter.ownership_posture(:powertools_native),
+          next_step_label: "Review Blocked Limiters",
+          next_step_path: first_resource_path(blocked_resources, "/ops/jobs/limiters"),
+          exemplars: limiter_exemplars(blocked_resources, repo, "Blocked")
+        },
+        now
+      ),
+      overview_bucket(
+        %{
+          id: :waiting,
+          kind: :waiting,
+          title: "Waiting",
+          status: :waiting,
+          severity: :info,
+          count: waiting_count,
+          diagnosis: waiting_diagnosis(waiting_resources, paused_entries),
+          summary: waiting_diagnosis(waiting_resources, paused_entries),
+          impact:
+            "#{waiting_count} limiter or cron item(s) are waiting on cooldown or operator state.",
+          ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
+          venue: ControlPlanePresenter.venue_label(:powertools_native),
+          posture: ControlPlanePresenter.ownership_posture(:powertools_native),
+          next_step_label: waiting_next_step_label(waiting_resources, paused_entries),
+          next_step_path: waiting_next_step_path(waiting_resources, paused_entries),
+          exemplars: waiting_exemplars(waiting_resources, paused_entries, repo)
+        },
+        now
+      ),
+      overview_bucket(
+        %{
+          id: :bridge_follow_up,
+          kind: :bridge_only,
+          title: "Bridge-only Follow-up",
+          status: :bridge_only,
+          severity: :neutral,
+          count: bridge_count,
+          diagnosis: bridge_diagnosis(bridge_rows),
+          summary: bridge_diagnosis(bridge_rows),
+          impact: "These representative follow-ups remain inspection-only in Oban Web.",
+          ownership: ControlPlanePresenter.ownership_badge(:oban_web_bridge),
+          venue: ControlPlanePresenter.venue_label(:oban_web_bridge),
+          posture: ControlPlanePresenter.ownership_posture(:oban_web_bridge),
+          next_step_label: "Inspect in Oban Web",
+          next_step_path: bridge_next_step_path(bridge_rows, dashboard_path),
+          exemplars: bridge_exemplars(bridge_rows)
+        },
+        now
+      ),
+      overview_bucket(
+        %{
+          id: :runnable,
+          kind: :runnable,
+          title: "Runnable",
+          status: :runnable,
+          severity: :neutral,
+          count: runnable_count,
+          diagnosis: runnable_diagnosis(runnable_resources, runnable_entries),
+          summary: runnable_diagnosis(runnable_resources, runnable_entries),
+          impact: "Runnable counts describe current capacity, not future completion.",
+          ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
+          venue: ControlPlanePresenter.venue_label(:powertools_native),
+          posture: ControlPlanePresenter.ownership_posture(:powertools_native),
+          next_step_label: "Review Runnable Capacity",
+          next_step_path: first_resource_path(runnable_resources, "/ops/jobs/limiters"),
+          exemplars: runnable_exemplars(runnable_resources, runnable_entries, repo)
+        },
+        now
+      ),
+      overview_bucket(
+        %{
+          id: :resolved_continuity,
+          kind: :resolved_continuity,
+          title: "Resolved continuity",
+          status: :resolved_continuity,
+          severity: :neutral,
+          count: resolved_count,
+          diagnosis: resolved_diagnosis(resolved_incidents, retention.archived_repairs),
+          summary: resolved_diagnosis(resolved_incidents, retention.archived_repairs),
+          impact: "This retained evidence describes history, not current state.",
+          ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
+          venue: ControlPlanePresenter.venue_label(:powertools_native),
+          posture: "Continuity evidence",
+          next_step_label: "Review Resolved Continuity",
+          next_step_path: resolved_next_step_path(resolved_incidents, audit_events),
+          exemplars: resolved_exemplars(resolved_incidents, audit_events)
+        },
+        now
+      )
     ]
   end
 
-  defp resource_rows(resources, states, explains) do
+  defp resource_rows(resources, states, explains, now) do
     states_by_resource = Enum.group_by(states, & &1.resource_id)
     explain_by_resource = Map.new(explains, &{&1.scope_id, &1})
 
@@ -125,7 +192,7 @@ defmodule ObanPowertools.Web.OverviewReadModel do
       cooling_down? =
         Enum.any?(resource_states, fn state ->
           match?(%DateTime{}, state.cooldown_until) and
-            DateTime.compare(state.cooldown_until, DateTime.utc_now()) == :gt
+            DateTime.compare(state.cooldown_until, now) == :gt
         end)
 
       saturated? = Enum.any?(resource_states, &(&1.tokens_used >= resource.bucket_capacity))
@@ -250,7 +317,7 @@ defmodule ObanPowertools.Web.OverviewReadModel do
       incidents
       |> Enum.map(fn incident ->
         %{
-          bucket: "Resolved Recently",
+          bucket: "Resolved continuity",
           family: :lifeline,
           label: incident.summary || incident.incident_class,
           fact: "resolved incident",
@@ -273,7 +340,7 @@ defmodule ObanPowertools.Web.OverviewReadModel do
         identity = Audit.event_resource_identity(event)
 
         %{
-          bucket: "Resolved Recently",
+          bucket: "Resolved continuity",
           family: :audit,
           label: ControlPlanePresenter.audit_resource_label(event),
           fact: ControlPlanePresenter.audit_event_label(event),
@@ -292,8 +359,22 @@ defmodule ObanPowertools.Web.OverviewReadModel do
         }
       end)
 
-    AttentionProjection.project_bucket("Resolved Recently", resolved_rows ++ audit_rows)
+    AttentionProjection.project_bucket("Resolved continuity", resolved_rows ++ audit_rows)
   end
+
+  defp overview_bucket(bucket, now) do
+    observed_at = Calendar.strftime(now, "%B %-d, %Y at %H:%M UTC")
+
+    bucket
+    |> Map.put(:domain, :overview)
+    |> Map.put(:completeness, :complete)
+    |> Map.put(:observed_at, observed_at)
+    |> Map.put(:observed_datetime, DateTime.to_iso8601(now))
+    |> Map.put(:sample_count_label, sample_count_label(bucket.kind, bucket.count))
+  end
+
+  defp sample_count_label(:bridge_only, count), do: "#{count} representative follow-ups"
+  defp sample_count_label(_kind, count), do: "#{count} shown"
 
   defp limiter_candidates(bucket, resources, repo) do
     Enum.map(resources, fn resource ->

@@ -5,7 +5,7 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
   alias ObanPowertools.Forensics.LimiterHistoryFact
   alias ObanPowertools.Lifeline.Incident
   alias ObanPowertools.Limits.{Resource, State}
-  alias ObanPowertools.Web.OverviewReadModel
+  alias ObanPowertools.Web.{ControlPlanePresenter, OverviewReadModel}
 
   test "renders diagnosis-first cards with native and bridge ownership labels", %{conn: conn} do
     seed_overview_fixture!()
@@ -293,6 +293,17 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
            ]
 
     assert Enum.all?(buckets, &(length(&1.exemplars) <= 3))
+
+    assert buckets
+           |> Enum.map(&ControlPlanePresenter.present_overview_bucket/1)
+           |> Enum.map(& &1.id) == [
+             "needs_review",
+             "blocked",
+             "waiting",
+             "bridge_follow_up",
+             "runnable",
+             "resolved_continuity"
+           ]
 
     for bucket <- buckets, exemplar <- bucket.exemplars do
       assert is_binary(exemplar.path)
