@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 79
 current_phase_name: page-migration-wave-1-overview-cron-limiters-audit
 status: executing
-stopped_at: Completed 79-02-PLAN.md
-last_updated: "2026-07-19T19:59:21.726Z"
+stopped_at: Completed 79-03-PLAN.md
+last_updated: "2026-07-19T20:21:31.570Z"
 last_activity: 2026-07-19
-last_activity_desc: Completed Phase 79 Plan 02 bounded query and finite presentation foundations
+last_activity_desc: Completed Phase 79 Plan 03 stable Overview triage migration
 progress:
   total_phases: 15
   completed_phases: 9
   total_plans: 61
-  completed_plans: 52
-  percent: 85
+  completed_plans: 53
+  percent: 60
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 79 (page-migration-wave-1-overview-cron-limiters-audit) — EXECUTING
-Plan: 3 of 12
+Plan: 4 of 12
 Status: Ready to execute
-Last activity: 2026-07-19 — Completed Phase 79 Plan 02 bounded query and finite presentation foundations
+Last activity: 2026-07-19 — Completed Phase 79 Plan 03 stable Overview triage migration
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 02 bounded query and finit
 | Phase 79 P01 | 23 min | 2 tasks | 9 files |
 | Phase 79 P09 | 7 min | 1 tasks | 3 files |
 | Phase 79 P02 | 15 min | 3 tasks | 3 files |
+| Phase 79 P03 | 13 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -91,12 +92,12 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 02 bounded query and finit
 
 ## Session Continuity
 
-**Last session:** 2026-07-19T19:59:21.721Z
-**Stopped at:** Completed 79-02-PLAN.md
+**Last session:** 2026-07-19T20:19:51.597Z
+**Stopped at:** Completed 79-03-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed Plan 79-02's bounded Audit paging, finite cross-page presenters, structural redaction, and shared evidence-component refinements.
-- **Next Action:** Execute Plan 79-03 to migrate Overview onto the bounded presentation foundation.
+- **Last Action:** Completed Plan 79-03's deterministic bounded Overview read model and stable shared-component triage hierarchy.
+- **Next Action:** Execute Plan 79-04 to migrate Cron onto the bounded presentation foundation.
 
 ## Decisions
 
@@ -173,6 +174,9 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 02 bounded query and finit
 - [Phase 79]: Count and retrieve Audit rows from the same exact filtered query, then clamp page input before calculating a fixed-size offset. — Keeps count and rows in one exact scope while making every nonempty page reachable under a fixed SQL bound.
 - [Phase 79]: Treat page presenters as structural boundaries: accept only plain safe inputs, project fixed fields, and reject sensitive or provider-shaped Audit evidence before display policy or HEEx. — Prevents raw schemas, metadata, credentials, errors, and provider payloads from becoming visible or hidden DOM data.
 - [Phase 79]: Keep legacy blocker classifier normalization for callers while removing classifier values from shared HTML and Phase 79 limiter maps. — Preserves compatibility without exposing implementation-shaped technical codes to operators.
+- [Phase 79]: Normalize Overview buckets once after the mount-owned repository read so page_content/1 remains a pure reusable rendering boundary.
+- [Phase 79]: Treat all-quiet as absence of identified native current attention and bridge follow-up; runnable capacity and retained continuity do not turn quiet state into an alarm.
+- [Phase 79]: Use the shared limiter/control-plane status taxonomy for Overview attention lanes while preserving Overview-specific presentation IDs and copy.
 
 ### Blockers
 

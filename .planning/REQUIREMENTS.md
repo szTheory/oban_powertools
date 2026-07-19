@@ -60,7 +60,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 
 ### Pages & Flows (PAGE)
 
-- [ ] **PAGE-01**: Engine Overview migrated to shell + components, zero behavior regression.
+- [x] **PAGE-01**: Engine Overview migrated to shell + components, zero behavior regression.
 - [ ] **PAGE-02**: Jobs (list + detail, filter bar, big table) migrated; URL filter/search/bulk/deep-link behavior preserved.
 - [ ] **PAGE-03**: Batches (list + detail, chain steps) migrated; Lifeline-routed recovery unchanged.
 - [ ] **PAGE-04**: Workflows (list + detail, DAG/blocked state) migrated.
@@ -69,7 +69,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 - [ ] **PAGE-07**: Lifeline (incident triage, repair preview/reason/execute/audit) migrated with mutation flow unchanged.
 - [ ] **PAGE-08**: Audit migrated; filters/retention controls unchanged.
 - [ ] **PAGE-09**: Forensics (bundle inspection, timeline) migrated.
-- [ ] **PAGE-10**: Cross-page consistency — identical concepts look and behave identically across all surfaces.
+- [x] **PAGE-10**: Cross-page consistency — identical concepts look and behave identically across all surfaces.
 
 ### Accessibility (A11Y)
 
@@ -85,7 +85,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 
 ### Microcopy / Voice (COPY)
 
-- [ ] **COPY-01**: Empty/loading/error/confirmation copy across all surfaces follows the BRAND-04 voice and is centralized where avoidable (no scattered literals); the same term is used for the same concept everywhere.
+- [x] **COPY-01**: Empty/loading/error/confirmation copy across all surfaces follows the BRAND-04 voice and is centralized where avoidable (no scattered literals); the same term is used for the same concept everywhere.
 - [x] **COPY-02**: Danger/confirmation language is consistent and unambiguous (names the object, states consequence + scope); error copy says how to recover.
 
 ### Component Showcase (SHOW)
@@ -149,7 +149,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 | PAGE-02, PAGE-09 | Phase 80 | Pending |
 | FORM-03 | Phase 80 | Pending |
 | PAGE-03, PAGE-04, PAGE-07 | Phase 81 | Pending |
-| PAGE-10 | Phases 79–81 | Pending |
+| PAGE-10 | Phases 79–81 | Complete |
 | A11Y-02, A11Y-03, A11Y-04 | Phase 82 | Pending |
 | MOTION-02 | Phase 82 | Pending |
 | COPY-01, COPY-02 | Phase 82 | Pending |
