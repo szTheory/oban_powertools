@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 79
 current_phase_name: page-migration-wave-1-overview-cron-limiters-audit
 status: executing
-stopped_at: Completed 79-10-PLAN.md
-last_updated: "2026-07-19T23:09:19.527Z"
+stopped_at: Completed 79-11-PLAN.md
+last_updated: "2026-07-19T23:30:26.300Z"
 last_activity: 2026-07-19
-last_activity_desc: Completed Phase 79 Plan 07 deterministic page composition assets
+last_activity_desc: Completed Phase 79 Plan 11 production-composed page catalog
 progress:
   total_phases: 15
   completed_phases: 9
   total_plans: 61
-  completed_plans: 58
-  percent: 95
+  completed_plans: 59
+  percent: 97
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 79 (page-migration-wave-1-overview-cron-limiters-audit) — EXECUTING
-Plan: 9 of 12
+Plan: 10 of 12
 Status: Ready to execute
-Last activity: 2026-07-19 — Completed Phase 79 Plan 07 deterministic page composition assets
+Last activity: 2026-07-19 — Completed Phase 79 Plan 11 production-composed page catalog
 
 ## Performance Metrics
 
@@ -70,6 +70,7 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 07 deterministic page comp
 | Phase 79 P06 | 22 min | 3 tasks | 4 files |
 | Phase 79 P07 | 11 min | 1 tasks | 4 files |
 | Phase 79 P10 | 79m | 3 tasks | 8 files |
+| Phase 79 P11 | 13m | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -97,12 +98,12 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 07 deterministic page comp
 
 ## Session Continuity
 
-**Last session:** 2026-07-19T23:08:28.684Z
-**Stopped at:** Completed 79-10-PLAN.md
+**Last session:** 2026-07-19T23:29:52.478Z
+**Stopped at:** Completed 79-11-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed Plan 79-07's token-owned responsive page composition and deterministic packaged CSS.
-- **Next Action:** Execute Plan 79-10 to verify connected production-page behavior.
+- **Last Action:** Completed Plan 79-11's exact package-excluded page catalog through all four production page composition seams.
+- **Next Action:** Execute Plan 79-12 to generate and verify connected page accessibility and visual evidence.
 
 ## Decisions
 
@@ -197,6 +198,8 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 07 deterministic page comp
 - [Phase 79]: Use a unique launcher build path plus Mix recompile hooks so fixture routes and modules follow the explicit opt-in flag across back-to-back runs.
 - [Phase 79]: Keep fixture responses closed and public-only while carrying the ephemeral credential exclusively in a request header and Docker environment name.
 - [Phase 79]: Open the real Cron preview before applying recovery perturbations; use a future scheduled active job for deterministic skipped and partial evidence.
+- [Phase 79]: Keep raw page-story form maps in the package-excluded catalog and materialize Phoenix forms only at the Showcase rendering boundary. — Preserves normalized deterministic fixtures while satisfying production component inputs.
+- [Phase 79]: Store only one validated active page-story ID and mount only its matching production page_content tree. — Prevents duplicate page trees, overlays, IDs, and client-persisted fixture payloads.
 
 ### Blockers
 
