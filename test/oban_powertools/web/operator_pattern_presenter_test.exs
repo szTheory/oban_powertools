@@ -562,6 +562,8 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
   end
 
   defp normalize(function, input) do
+    Code.ensure_loaded!(Presenter)
+
     assert function_exported?(Presenter, function, 1),
            "GROUP-01 requires #{inspect(Presenter)}.#{function}/1"
 
@@ -569,6 +571,8 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
   end
 
   defp present(function, arguments) do
+    Code.ensure_loaded!(Presenter)
+
     assert function_exported?(Presenter, function, length(arguments)),
            "Phase 79 requires #{inspect(Presenter)}.#{function}/#{length(arguments)}"
 

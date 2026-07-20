@@ -91,28 +91,36 @@ defmodule ObanPowertools.Web.ControlPlaneCopyCoherenceTest do
 
     {:ok, cron_view, _cron_html} = live(conn, "/ops/jobs/cron")
 
+    cron_view
+    |> element("a[href='/ops/jobs/cron?entry=nightly-shared-copy']")
+    |> render_click()
+
     cron_preview_html =
       cron_view
-      |> element(
-        "button[phx-value-entry='nightly-shared-copy'][phx-value-action='pause_cron_entry']"
-      )
+      |> element("#cron-entry-detail button[phx-click='open_pause_confirmation']")
       |> render_click()
 
     assert_occurs_in_order(cron_preview_html, [
-      "Preview Action",
-      "Action:",
-      "Resource:",
-      "Intended Effect:",
-      "Audit Consequence:",
-      "Preview Status:",
-      "Rendered Reason:"
+      "Pause nightly-shared-copy",
+      "Scope",
+      "Cron entry nightly-shared-copy",
+      "Consequence",
+      "Future schedule claims stop. Work that is already running or enqueued is unaffected.",
+      "Reversibility",
+      "Resume the cron entry later to allow future schedule claims again.",
+      "Support boundary",
+      "One immutable operator event will be written.",
+      "Reason"
     ])
 
-    assert cron_preview_html =~ "policy reason: none provided"
+    cron_confirmed_html =
+      cron_view
+      |> form("#cron-confirmation-form", %{
+        "confirmation" => %{"reason" => "maintenance window"}
+      })
+      |> render_submit()
 
-    render_change(cron_view, "reason", %{"reason" => "maintenance window"})
-    cron_confirmed_html = render_click(cron_view, "confirm", %{})
-    assert cron_confirmed_html =~ "Open in Audit"
+    assert cron_confirmed_html =~ "Open audit evidence"
 
     {:ok, lifeline_view, _lifeline_html} = live(conn, "/ops/jobs/lifeline")
 
@@ -175,8 +183,8 @@ defmodule ObanPowertools.Web.ControlPlaneCopyCoherenceTest do
 
     assert audit_html =~ "cross-surface audit destination"
     assert audit_html =~ "Inspection only"
-    assert audit_html =~ "cron.paused"
-    assert audit_html =~ "lifeline.repair_executed"
+    assert audit_html =~ "Cron entry paused"
+    assert audit_html =~ "Repair executed"
     assert audit_html =~ "cron_entry:nightly-shared-copy"
     assert audit_html =~ "job:#{job.id}"
   end

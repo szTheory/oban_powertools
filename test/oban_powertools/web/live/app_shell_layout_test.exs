@@ -87,7 +87,7 @@ defmodule ObanPowertools.Web.Live.AppShellLayoutTest do
     workflow: workflow
   } do
     for {path, page_copy} <- [
-          {"/ops/jobs", "Unified /ops/jobs Control Plane"},
+          {"/ops/jobs", "Overview"},
           {"/ops/jobs/jobs", "Jobs"},
           {"/ops/jobs/jobs/123", "Job not found"},
           {"/ops/jobs/batches/batch-1", "Batch not found"},
