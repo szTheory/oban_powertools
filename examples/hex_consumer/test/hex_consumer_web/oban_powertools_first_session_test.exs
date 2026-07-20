@@ -9,36 +9,40 @@ defmodule HexConsumerWeb.ObanPowertoolsFirstSessionTest do
   alias ObanPowertools.Lifeline.RepairPreview
   alias HexConsumer.Repo
 
-  test "ops-demo pauses nightly_sync through the native cron page and writes durable audit evidence", %{
-    conn: conn
-  } do
+  test "ops-demo pauses nightly_sync through the native cron page and writes durable audit evidence",
+       %{
+         conn: conn
+       } do
     actor = HexConsumerWeb.ObanPowertoolsAuth.demo_actor()
 
     conn = Plug.Test.init_test_session(conn, %{"ops_actor" => actor})
 
-    {:ok, view, html} = live(conn, "/ops/jobs/cron")
+    {:ok, view, html} = live(conn, "/ops/jobs/cron?entry=nightly_sync")
 
     assert html =~ "Cron"
-    assert html =~ "Preview, reason, venue, and audit stay aligned for every cron entry mutation."
+
+    assert html =~
+             "Review schedules, inspect one cron entry, and take deliberate action with recorded evidence."
+
     assert html =~ "nightly_sync"
     assert html =~ "Runtime"
     assert html =~ "Queue One"
     assert html =~ "Latest Only"
-    refute html =~ "Oban Web"
+    assert html =~ "Oban Web bridge"
 
     html =
       view
-      |> element("button[phx-value-action='pause_cron_entry'][phx-value-entry='nightly_sync']")
+      |> element("button", "Pause cron entry")
       |> render_click()
 
-    assert html =~ "Preview Action"
-    assert html =~ "pause cron entry"
-    assert html =~ "cron_entry:nightly_sync"
-    assert html =~ "future claims stop until resumed"
+    assert html =~ "Pause nightly_sync"
+
+    assert html =~
+             "Future schedule claims stop. Work that is already running or enqueued is unaffected."
+
     assert html =~ "One immutable operator event will be written."
-    assert html =~ "ops-demo"
-    assert html =~ "Preview Status"
-    assert html =~ "ready"
+    assert html =~ "Actor: ops-demo"
+    assert html =~ "Do not enter secrets"
 
     preview =
       Repo.one!(
@@ -53,18 +57,21 @@ defmodule HexConsumerWeb.ObanPowertoolsFirstSessionTest do
 
     assert get_in(preview.metadata, ["resource", "id"]) == "nightly_sync"
     assert get_in(preview.metadata, ["resource", "source"]) == "fixture"
-    assert html =~ preview.preview_token
+    refute html =~ preview.preview_token
 
     reason = "fixture maintenance"
 
-    render_change(view, "reason", %{"reason" => reason})
-    html = render_click(view, "confirm", %{})
+    html =
+      view
+      |> form("#cron-confirmation-form", %{
+        "confirmation" => %{"reason" => reason}
+      })
+      |> render_submit()
 
     assert html =~ "Waiting"
-    assert html =~ "Resume Cron Entry"
-    assert html =~ "Recent Audit Evidence"
-    assert html =~ "Open in Audit"
-    assert html =~ "cron.paused"
+    assert html =~ "Resume cron entry"
+    assert html =~ "Cron entry nightly_sync paused. Audit evidence recorded."
+    assert html =~ "Open audit evidence"
 
     entry = Repo.get_by!(Entry, name: "nightly_sync")
     refute is_nil(entry.paused_at)
@@ -86,6 +93,9 @@ defmodule HexConsumerWeb.ObanPowertoolsFirstSessionTest do
     assert principal.id == "ops-demo"
     assert principal.type == :user
 
-    assert Enum.any?(Cron.list_entries(Repo), &(&1.name == "nightly_sync" and not is_nil(&1.paused_at)))
+    assert Enum.any?(
+             Cron.list_entries(Repo),
+             &(&1.name == "nightly_sync" and not is_nil(&1.paused_at))
+           )
   end
 end
