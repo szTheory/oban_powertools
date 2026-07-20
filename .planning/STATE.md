@@ -3,28 +3,28 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 79
-current_phase_name: page-migration-wave-1-overview-cron-limiters-audit
-status: executing
-stopped_at: Completed 79-12-PLAN.md
-last_updated: "2026-07-19T23:47:54.461Z"
-last_activity: 2026-07-19
-last_activity_desc: Completed Phase 79 Plan 12 schema-7 page showcase targets
+status: completed
+stopped_at: Completed 79-08-PLAN.md
+last_updated: "2026-07-20T03:41:19.411Z"
+last_activity: 2026-07-20
+last_activity_desc: Phase 79 marked complete
 progress:
   total_phases: 15
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 61
-  completed_plans: 60
-  percent: 98
+  completed_plans: 61
+  percent: 67
+current_phase_name: page-migration-wave-1-overview-cron-limiters-audit
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 79 (page-migration-wave-1-overview-cron-limiters-audit) — EXECUTING
-Plan: 11 of 12
-Status: Ready to execute
-Last activity: 2026-07-19 — Completed Phase 79 Plan 12 schema-7 page showcase targets
+Phase: 79 — COMPLETE
+Plan: 12 of 12
+Status: Phase 79 complete
+Last activity: 2026-07-20 — Phase 79 marked complete
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 12 schema-7 page showcase 
 | Phase 79 P10 | 79m | 3 tasks | 8 files |
 | Phase 79 P11 | 13m | 1 tasks | 4 files |
 | Phase 79 P12 | 13m | 1 tasks | 5 files |
+| Phase 79 P08 | 2h 57m | 3 tasks | 246 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,7 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 12 schema-7 page showcase 
 ### Known Technical Debt / Todos
 
 - Migrate `state_badge_class/1`, `state_tab_class/1`, and duplicated modal markup in the 9 LiveViews onto the new tokens/components (proof seam in Phase 71, full migration Phases 79–81).
+- Resolve the 423 measured non-page VRT baseline mismatches plus inherited Credo (260 findings), Dialyzer (62 errors), and dependency-advisory debt recorded by Plan 79-08.
 
 ### Blockers / Open Questions
 
@@ -99,12 +101,12 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 12 schema-7 page showcase 
 
 ## Session Continuity
 
-**Last session:** 2026-07-19T23:47:18.349Z
-**Stopped at:** Completed 79-12-PLAN.md
+**Last session:** 2026-07-20T03:40:01.669Z
+**Stopped at:** Completed 79-08-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed Plan 79-12's schema-7 page manifest, strict validators, and shared browser activation path.
-- **Next Action:** Execute Plan 79-08 to complete connected accessibility, motion, responsive, confidentiality, and visual evidence.
+- **Last Action:** Completed Plan 79-08's connected accessibility, motion, responsive, confidentiality, and page-only visual evidence.
+- **Next Action:** Record the five pending human validation observations, or begin Phase 80 while the repository-wide quality and non-page VRT debt remains tracked.
 
 ## Decisions
 
@@ -203,7 +205,10 @@ Last activity: 2026-07-19 — Completed Phase 79 Plan 12 schema-7 page showcase 
 - [Phase 79]: Store only one validated active page-story ID and mount only its matching production page_content tree. — Prevents duplicate page trees, overlays, IDs, and client-persisted fixture payloads.
 - [Phase 79]: Append page stories after the unchanged 64-target schema-6 prefix. — Existing scenario and component discovery remains byte-for-byte stable while schema 7 adds page evidence.
 - [Phase 79]: Close any active group overlay before page activation, then enforce one active page story and at most one dialog or modal. — The shared structure, axe, and VRT loops can traverse all generated targets without overlapping top-layer state.
+- [Phase 79]: Keep validation draft and Nyquist false until required human observations are recorded. — Automated axe, focus, reflow, motion, copy, and visual evidence cannot substitute for the five explicit human review rows.
+- [Phase 79]: Accept Phase 79 screenshots only after true-theme restoration, exact 228-file equality, page-only scope, and a fresh compare-only pass. — This prevents update-mode generation, theme reset, or unrelated baseline families from masquerading as visual evidence.
+- [Phase 79]: Record 423 measured non-page VRT mismatches instead of the planning-time estimate of 108. — The complete stable aggregate and focused non-VRT reconciliation provide the authoritative current repository measurement.
 
 ### Blockers
 
-- Aggregate visual:a11y retains 108 scenario-only VRT baseline failures; all Phase 75 form cases pass.
+- Phase 79 validation approval awaits five human observation rows; all automated Phase 79 gates pass.
