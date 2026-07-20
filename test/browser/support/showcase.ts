@@ -91,6 +91,9 @@ export async function activateTarget(page: Page, target: ShowcaseTarget): Promis
   const story = targetLocator(page, target);
 
   if (target.kind === 'page') {
+    const root = page.locator('.obpt-root');
+    const requestedTheme = (await root.getAttribute('data-obpt-theme')) ?? 'system';
+
     await closeActiveGroupOverlay(page);
 
     const stage = story.locator(`[data-obpt-page-story-stage="${target.id}"]`);
@@ -107,6 +110,18 @@ export async function activateTarget(page: Page, target: ShowcaseTarget): Promis
     await expect(page.locator('[data-obpt-page-story][data-obpt-page-active="true"]')).toHaveCount(
       1
     );
+
+    const themeRestored = await page.evaluate((theme) => {
+      if (!window.ObanPowertoolsTheme?.setTheme) {
+        return false;
+      }
+
+      window.ObanPowertoolsTheme.setTheme(theme);
+      return true;
+    }, requestedTheme);
+
+    expect(themeRestored).toBe(true);
+    await expect(root).toHaveAttribute('data-obpt-theme', requestedTheme);
 
     const pageDialog = story.locator('[role="dialog"], dialog[open]');
     const expectedOverlayCount = target.activation === 'none' ? 0 : 1;

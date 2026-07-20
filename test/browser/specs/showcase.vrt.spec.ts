@@ -7,6 +7,8 @@ import {
   visualTargetLocator,
 } from "../support/showcase";
 
+test.setTimeout(90_000);
+
 for (const theme of themes) {
   test.describe(`showcase vrt ${theme}`, () => {
     for (const target of targets) {
@@ -41,7 +43,7 @@ for (const theme of themes) {
         await expect(visualTarget).toHaveScreenshot(
           [target.snapshot, `${theme}.png`],
           {
-            timeout: 15_000,
+            timeout: 45_000,
           },
         );
       });

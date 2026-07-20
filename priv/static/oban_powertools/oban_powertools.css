@@ -1253,6 +1253,7 @@
 .obpt-root .obpt-status-pill-icon,
 .obpt-root .obpt-status-pill-label {
   min-width: 0;
+  white-space: nowrap;
 }
 
 .obpt-root .obpt-surface,
@@ -2622,6 +2623,7 @@
 .obpt-root .obpt-audit-entry__header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  justify-items: start;
 }
 
 .obpt-root .obpt-audit-entry__title {
@@ -2630,6 +2632,7 @@
 
 .obpt-root .obpt-audit-entry__time {
   align-self: center;
+  grid-column: 1 / -1;
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -3524,7 +3527,8 @@
   gap: var(--obpt-space-3);
 }
 
-.obpt-root [data-obpt-section="app-shell"] .obpt-showcase-story-grid {
+.obpt-root [data-obpt-section="app-shell"] .obpt-showcase-story-grid,
+.obpt-root [data-obpt-section="pages"] .obpt-showcase-story-grid {
   grid-template-columns: minmax(0, 1fr);
 }
 
