@@ -32,7 +32,14 @@ async function preparePrimitiveStory(
 async function tabUntilFocused(page: Page, locator: Locator, label: string): Promise<void> {
   await expect(locator).toBeVisible();
 
-  for (let index = 0; index < 80; index += 1) {
+  const tabBudget = await page.evaluate(
+    () =>
+      document.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])'
+      ).length + 1
+  );
+
+  for (let index = 0; index < tabBudget; index += 1) {
     if (await locator.evaluate((element) => element === document.activeElement)) {
       return;
     }

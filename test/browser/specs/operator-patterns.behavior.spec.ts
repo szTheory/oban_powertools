@@ -1040,12 +1040,12 @@ test.describe("group operator-pattern connected behavior contracts", () => {
       "The support sync must record a terminal result.",
     );
     await expect(rows.nth(0)).toContainText("Current workflow state");
-    await expect(rows.nth(0)).toContainText("step_retryable");
+    await expect(rows.nth(0)).not.toContainText("step_retryable");
     await expect(rows.nth(1)).toContainText(
       "Restore an executable predecessor connection.",
     );
     await expect(rows.nth(1)).toContainText("Current workflow graph");
-    await expect(rows.nth(1)).toContainText("predecessor_disconnected");
+    await expect(rows.nth(1)).not.toContainText("predecessor_disconnected");
     await expect(multiple).not.toContainText(/root cause/i);
 
     const mixed = await prepareGroupStory(
