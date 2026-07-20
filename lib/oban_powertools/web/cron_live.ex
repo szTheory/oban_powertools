@@ -205,8 +205,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               patch={Selectors.cron_path(entry: entry.name)}
               replace={not is_nil(@selected_entry)}
               class="obpt-link"
-              aria-expanded={to_string(@selected_entry && @selected_entry.name == entry.name)}
-              aria-controls="cron-entry-detail"
+              aria-expanded={
+                to_string(
+                  @detail_open? && !@confirmation_open? && @selected_entry &&
+                    @selected_entry.name == entry.name
+                )
+              }
+              aria-controls={
+                if @detail_open? && !@confirmation_open?, do: "cron-entry-detail"
+              }
             >
               {entry.name}
             </.link>

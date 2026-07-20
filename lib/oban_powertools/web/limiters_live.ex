@@ -275,7 +275,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                   </span>
                 </li>
               </ol>
-              <nav aria-label="Limiter evidence destinations">
+              <nav
+                class="obpt-page__actions"
+                aria-label="Limiter evidence destinations"
+              >
                 <Primitives.link
                   :if={@detail_presentation.destinations.forensics_path}
                   href={@detail_presentation.destinations.forensics_path}

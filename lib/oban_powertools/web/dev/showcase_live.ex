@@ -832,7 +832,8 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
         Code.ensure_loaded?(module) ->
           {:ok, module}
 
-        Mix.env() != :test and File.exists?(path) ->
+        (Mix.env() != :test or System.get_env("PHASE79_BROWSER_FIXTURES") == "1") and
+            File.exists?(path) ->
           Code.require_file(path)
 
           if Code.ensure_loaded?(module) do

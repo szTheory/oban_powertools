@@ -15,11 +15,11 @@ defmodule PhoenixHostWeb.ObanPowertoolsAuth do
   @impl true
   def authorize(nil, _action, _resource), do: {:error, :unauthorized}
 
-  def authorize(actor, _action, _resource) when is_map(actor) do
-    if Map.get(actor, :role, Map.get(actor, "role")) in [:ops, "ops"] do
-      :ok
-    else
-      {:error, :unauthorized}
+  def authorize(actor, action, _resource) when is_map(actor) do
+    case Map.get(actor, :role, Map.get(actor, "role")) do
+      role when role in [:ops, "ops"] -> :ok
+      role when role in [:read_only, "read_only"] and action in [:view_cron, :view_audit] -> :ok
+      _role -> {:error, :unauthorized}
     end
   end
 
