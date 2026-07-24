@@ -5,6 +5,7 @@ status: draft
 nyquist_compliant: false
 wave_0_complete: true
 created: 2026-07-19
+audited: 2026-07-24
 ---
 
 # Phase 79 — Validation Evidence Ledger
@@ -45,8 +46,8 @@ integrated run.
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure behavior / artifact | Automated command and result | Status |
 |---------|------|------|-------------|------------|----------------------------|------------------------------|--------|
-| 79-01-01 | 79-01 | 1 | PAGE-01/05/06/08/10, COPY-01 | T-79-08-DOS/LEAK | Pins bounded query, finite presenter, component, and canonical URL contracts | Targeted Phase 79 ExUnit gate: 151 tests, 0 failures | ✅ |
-| 79-01-02 | 79-01 | 1 | PAGE-01/05/06/08, A11Y-* | T-79-08-AUTH/REPLAY/FOCUS | Pins all four connected LiveView behavior contracts | Targeted Phase 79 ExUnit gate: 151 tests, 0 failures | ✅ |
+| 79-01-01 | 79-01 | 1 | PAGE-01/05/06/08/10, COPY-01 | T-79-08-DOS/LEAK | Pins bounded query, finite presenter, component, and canonical URL contracts | Targeted Phase 79 ExUnit gate: 189 tests, 0 failures | ✅ |
+| 79-01-02 | 79-01 | 1 | PAGE-01/05/06/08, A11Y-* | T-79-08-AUTH/REPLAY/FOCUS | Pins all four connected LiveView behavior contracts | Targeted Phase 79 ExUnit gate: 189 tests, 0 failures | ✅ |
 | 79-02-01 | 79-02 | 2 | PAGE-08, PAGE-10 | T-79-08-DOS/AUTH | Stable bounded Audit paging | `mix test test/oban_powertools/audit_test.exs --seed 0`: 4 tests, 0 failures | ✅ |
 | 79-02-02 | 79-02 | 2 | PAGE-01/05/06/08, COPY-01 | T-79-08-LEAK/INJECT | Finite cross-page presenters and structural redaction | Presenter + operator-pattern component gate: 36 tests, 0 failures | ✅ |
 | 79-02-03 | 79-02 | 2 | PAGE-06/08/10, A11Y-* | T-79-08-FOCUS/LEAK | Compatible blocker and Audit components | Focused shared Phase 79 slice: 10 tests, 0 failures | ✅ |
@@ -79,8 +80,8 @@ integrated run.
 
 | Gate | Exact command / evidence | Result |
 |------|--------------------------|--------|
-| Phase 79 ExUnit | `mix test` over the four page LiveViews, Audit, presenter, components, catalog, showcase, tokens, and assets with `--seed 0` | 151 tests, 0 failures |
-| Full ExUnit | `mix test --exclude host_contract` | 848 tests, 0 failures, 7 excluded |
+| Phase 79 ExUnit | `mix test` over the four page LiveViews, Audit, presenter, components, catalog, showcase, tokens, and assets with `--seed 0` | 189 tests, 0 failures |
+| Full ExUnit | `mix test --exclude host_contract --seed 0` | 850 tests, 0 failures, 7 excluded |
 | Formatting | `mix format --check-formatted` and cumulative `git diff --check "$PHASE79_BASE" --` | Green |
 | Credo | `mix credo --strict` | Inherited repository debt: 9 warnings, 88 refactoring, 54 readability, 109 design findings; not introduced by Phase 79 |
 | Dialyzer | `mix dialyzer` | Inherited repository debt: 62 errors, including Mix-task PLT gaps and longstanding opaque/type findings; no Phase 79-specific finding identified |
@@ -160,6 +161,34 @@ recorded above and is not presented as green.
 Executor-side representative inspection found no squeeze, overlap, clipping, unreadable theme,
 duplicate tree, or unrelated screenshot-family change. That mechanical inspection does not replace
 the five human rows above.
+
+---
+
+## Validation Audit 2026-07-24
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 5 |
+| Resolved | 0 |
+| Escalated | 5 |
+
+The Nyquist auditor classified all five remaining rows as irreducibly human-only. Axe, semantic
+DOM, focus-containment, reflow, motion, exact-copy, manifest, and VRT checks can detect mechanical
+regressions, but they cannot honestly supply assistive-technology usability, perceived visual and
+motion quality, operator-semantic judgment, or human approval.
+
+Fresh automated re-audit evidence:
+
+| Gate | Result |
+|------|--------|
+| Focused Phase 79 ExUnit | 189 tests, 0 failures |
+| Full root ExUnit excluding host contracts | 850 tests, 0 failures, 7 excluded |
+| Schema-7 manifest smoke | 19 page stories, 83 targets, 4 themes, 3 viewports |
+| Exact page baseline verifier | 228 baselines verified |
+| Formatting and whitespace | Green |
+
+No test file was generated because doing so would duplicate existing mechanical coverage without
+closing any human-observation requirement. The five rows remain manual-only and blocking.
 
 ---
 
