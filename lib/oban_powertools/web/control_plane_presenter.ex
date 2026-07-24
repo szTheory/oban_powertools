@@ -991,8 +991,35 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
   defp audit_presentation_data(metadata, key, name) do
     value = presentation_value(metadata, key)
     ensure_audit_presentation_data!(value, name)
-    value
+    redact_sensitive_audit_presentation_data(value)
   end
+
+  defp redact_sensitive_audit_presentation_data(value) when is_map(value) do
+    if sensitive_audit_identifier?(presentation_value(value, :field)) or
+         sensitive_audit_identifier?(presentation_value(value, :label)) do
+      nil
+    else
+      Enum.reduce(value, %{}, fn {key, nested}, redacted ->
+        case redact_sensitive_audit_presentation_data(nested) do
+          nil -> redacted
+          safe -> Map.put(redacted, key, safe)
+        end
+      end)
+    end
+  end
+
+  defp redact_sensitive_audit_presentation_data(value) when is_list(value) do
+    value
+    |> Enum.map(&redact_sensitive_audit_presentation_data/1)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp redact_sensitive_audit_presentation_data(value), do: value
+
+  defp sensitive_audit_identifier?(value) when is_binary(value) or is_atom(value),
+    do: value |> normalize_presentation_source_key() |> sensitive_presentation_source_key?()
+
+  defp sensitive_audit_identifier?(_value), do: false
 
   defp first_metadata_text(metadata, keys) do
     Enum.find_value(keys, fn key ->

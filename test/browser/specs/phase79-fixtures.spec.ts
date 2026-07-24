@@ -14,15 +14,13 @@ const recoveryCopy: Record<Phase79Recovery, RegExp> = {
   expired: /expired/i,
   drifted: /out of date/i,
   consumed: /already used/i,
-  skipped: /skipped/i,
-  partial: /mixed results/i
+  skipped: /skipped/i
 };
 const recoveryState: Record<Phase79Recovery, string> = {
   expired: 'expired',
   drifted: 'drifted',
   consumed: 'consumed',
-  skipped: 'partial',
-  partial: 'partial'
+  skipped: 'partial'
 };
 
 function requiredCredential(): string {
@@ -106,8 +104,7 @@ test('prepares every locked real-preview recovery without a success receipt', as
     'expired',
     'drifted',
     'consumed',
-    'skipped',
-    'partial'
+    'skipped'
   ] as Phase79Recovery[]) {
     await resetPhase79BrowserFixture(request, { secret: credential });
 

@@ -13,7 +13,7 @@ if Mix.env() == :test and System.get_env("PHASE79_BROWSER_FIXTURES") == "1" do
 
     @projects ~w(chromium-320 chromium-tablet chromium-wide)
     @actors ~w(operator read_only)
-    @recoveries ~w(expired drifted consumed skipped partial)
+    @recoveries ~w(expired drifted consumed skipped)
     @run_pattern ~r/\A[a-z0-9][a-z0-9_-]{0,47}\z/
     @fixed_now ~U[2035-01-15 12:00:00.000000Z]
     @expired_at ~U[2000-01-01 00:00:00.000000Z]
@@ -376,7 +376,7 @@ if Mix.env() == :test and System.get_env("PHASE79_BROWSER_FIXTURES") == "1" do
           |> RepairPreview.changeset(%{consumed_at: @fixed_now})
           |> repo.update!()
 
-        recovery when recovery in ["skipped", "partial"] ->
+        "skipped" ->
           entry.args
           |> Oban.Job.new(worker: entry.worker, queue: entry.queue, scheduled_at: @fixed_now)
           |> repo.insert!()

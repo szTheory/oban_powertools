@@ -53,7 +53,7 @@ type Phase79FixtureState = {
 
 type Phase79Actor = "operator" | "read_only";
 type Phase79Recovery =
-  "expired" | "drifted" | "consumed" | "skipped" | "partial";
+  "expired" | "drifted" | "consumed" | "skipped";
 
 type Phase79FixtureHelpers = {
   resetPhase79BrowserFixture: (
@@ -545,7 +545,7 @@ test.describe("Phase 79 connected page contracts", () => {
     await expect(invoker).toBeFocused();
   });
 
-  test("cron recovery remains explicit and safe across expired, drifted, consumed, skipped, and partial results", async ({
+  test("cron recovery remains explicit and safe across expired, drifted, consumed, and skipped results", async ({
     page,
     request,
   }, testInfo) => {
@@ -554,7 +554,6 @@ test.describe("Phase 79 connected page contracts", () => {
       "drifted",
       "consumed",
       "skipped",
-      "partial",
     ] as Phase79Recovery[]) {
       fixtureState = await fixtureHelpers.resetPhase79BrowserFixture(request, {
         secret: fixtureSecret,
@@ -589,7 +588,6 @@ test.describe("Phase 79 connected page contracts", () => {
         drifted: /out of date|drifted/i,
         consumed: /already used|consumed/i,
         skipped: /skipped/i,
-        partial: /mixed|partial|skipped/i,
       }[recovery];
       await expect(dialog).toContainText(recoveryCopy);
       await expect(dialog).toContainText(

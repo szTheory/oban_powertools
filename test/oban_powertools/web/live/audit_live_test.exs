@@ -230,6 +230,18 @@ defmodule ObanPowertools.Web.AuditLiveTest do
           "outcome" => "Repair recorded",
           "outcome_state" => "success",
           "correlation_id" => "request-79",
+          "changes" => [
+            %{
+              "field" => "password",
+              "before" => "AUDIT-SEMANTIC-OLD-PASSWORD-SENTINEL",
+              "after" => "AUDIT-SEMANTIC-NEW-PASSWORD-SENTINEL"
+            },
+            %{"field" => "accessToken", "value" => "AUDIT-SEMANTIC-ACCESS-TOKEN-SENTINEL"},
+            %{"label" => "APIKey", "value" => "AUDIT-SEMANTIC-API-KEY-SENTINEL"},
+            %{"field" => "plan_hash", "value" => "AUDIT-SEMANTIC-PLAN-HASH-SENTINEL"},
+            %{"label" => "credential", "value" => "AUDIT-SEMANTIC-CREDENTIAL-SENTINEL"},
+            %{"field" => "queue", "before" => "default", "after" => "critical"}
+          ],
           "evidence" => %{
             "items" => [%{"label" => "Affected jobs", "value" => "1"}],
             "preview_token" => "AUDIT-NESTED-TOKEN-SENTINEL"
@@ -258,12 +270,19 @@ defmodule ObanPowertools.Web.AuditLiveTest do
     assert html =~ "lifeline"
     assert html =~ "request-79"
     assert html =~ "Affected jobs"
+    assert html =~ "critical"
 
     for secret <- [
           "AUDIT-NESTED-TOKEN-SENTINEL",
           "AUDIT-PRINCIPAL-CREDENTIAL-SENTINEL",
           "AUDIT-COMMAND-SENTINEL",
-          "AUDIT-RAW-ERROR-SENTINEL"
+          "AUDIT-RAW-ERROR-SENTINEL",
+          "AUDIT-SEMANTIC-OLD-PASSWORD-SENTINEL",
+          "AUDIT-SEMANTIC-NEW-PASSWORD-SENTINEL",
+          "AUDIT-SEMANTIC-ACCESS-TOKEN-SENTINEL",
+          "AUDIT-SEMANTIC-API-KEY-SENTINEL",
+          "AUDIT-SEMANTIC-PLAN-HASH-SENTINEL",
+          "AUDIT-SEMANTIC-CREDENTIAL-SENTINEL"
         ] do
       refute html =~ secret
     end

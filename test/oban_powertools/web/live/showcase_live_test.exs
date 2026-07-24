@@ -734,6 +734,26 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       assert active_page_overlay_count(view) == 1
     end
 
+    test "group and page activation atomically replace the opposite active surface", %{
+      conn: conn
+    } do
+      {:ok, view, _html} = mount_showcase!(conn)
+
+      render_hook(view, "activate-group-story", %{"id" => "group-confirm-bulk-count"})
+      assert active_group_overlay_count(view) == 1
+      assert active_page_story_count(view) == 0
+
+      render_hook(view, "activate-page-story", %{"id" => "page-cron-pause-confirmation"})
+      assert active_group_overlay_count(view) == 0
+      assert active_page_story_count(view) == 1
+      assert active_page_overlay_count(view) == 1
+
+      render_hook(view, "activate-group-story", %{"id" => "group-detail-modal"})
+      assert active_group_overlay_count(view) == 1
+      assert active_page_story_count(view) == 0
+      assert active_page_overlay_count(view) == 1
+    end
+
     test "every page story renders one matching production tree within the overlay bound", %{
       conn: conn
     } do

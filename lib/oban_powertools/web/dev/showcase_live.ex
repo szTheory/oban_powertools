@@ -161,8 +161,14 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
     def handle_event("activate-page-story", %{"id" => id}, socket) do
       case Enum.find(socket.assigns.page_stories, &(&1.id == id)) do
-        nil -> {:noreply, socket}
-        story -> {:noreply, assign(socket, :active_page_story, story.id)}
+        nil ->
+          {:noreply, socket}
+
+        story ->
+          {:noreply,
+           socket
+           |> deactivate_group_story()
+           |> assign(:active_page_story, story.id)}
       end
     end
 
@@ -1693,6 +1699,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
         %{fixtures: fixture} = story ->
           socket =
             socket
+            |> assign(:active_page_story, nil)
             |> assign(:active_group_overlay, story.id)
             |> assign(:group_receipt, nil)
 
@@ -1701,6 +1708,20 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
             detail_story?(story.id) -> reset_group_detail(socket, story, fixture)
           end
       end
+    end
+
+    defp deactivate_group_story(socket) do
+      socket
+      |> assign(:active_group_overlay, nil)
+      |> assign(:group_confirmation_story_id, nil)
+      |> assign(:group_confirmation_state, :preview)
+      |> assign(:group_confirmation_form, group_confirmation_form())
+      |> assign(:group_confirmation_errors, %{})
+      |> assign(:group_confirmation_results, [])
+      |> assign(:group_confirmation_mutation_count, 0)
+      |> assign(:group_confirmation_receipt_count, 0)
+      |> assign(:group_receipt, nil)
+      |> assign(:group_detail_state, initial_group_detail_state())
     end
 
     defp reset_group_confirmation(socket, story) do

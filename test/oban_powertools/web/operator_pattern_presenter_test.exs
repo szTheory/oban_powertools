@@ -240,6 +240,46 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
   end
 
   @tag phase79_slice: "shared"
+  test "Audit detail redacts sensitive semantic change identifiers and preserves safe siblings" do
+    event = %Audit{
+      id: 42,
+      actor_id: "operator-1",
+      action: "cron.reconfigured",
+      event_type: "cron.reconfigured",
+      resource: "cron_entry:nightly",
+      resource_type: "cron_entry",
+      resource_id: "nightly",
+      metadata: %{
+        "changes" => [
+          %{
+            "field" => "accessToken",
+            "before" => "SYNTHETIC_OLD_ACCESS_TOKEN",
+            "after" => "SYNTHETIC_NEW_ACCESS_TOKEN"
+          },
+          %{"label" => "APIKey", "value" => "SYNTHETIC_API_KEY"},
+          %{"field" => "password", "value" => "SYNTHETIC_PASSWORD"},
+          %{"field" => "plan_hash", "value" => "SYNTHETIC_PLAN_HASH"},
+          %{"label" => "credentials", "value" => "SYNTHETIC_CREDENTIAL"},
+          %{"field" => "queue", "before" => "default", "after" => "critical"}
+        ]
+      },
+      inserted_at: ~N[2026-07-19 14:45:00.000000]
+    }
+
+    detail =
+      present(:present_audit_detail, [
+        event,
+        %{surface: :audit, section: :selected_evidence}
+      ])
+
+    refute inspect(detail) =~ "SYNTHETIC_"
+
+    assert detail.changes == [
+             %{"field" => "queue", "before" => "default", "after" => "critical"}
+           ]
+  end
+
+  @tag phase79_slice: "shared"
   test "Audit presentation rejects secret metadata and implementation-shaped evidence" do
     base = %Audit{
       id: 42,

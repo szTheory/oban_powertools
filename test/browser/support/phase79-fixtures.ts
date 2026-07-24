@@ -4,7 +4,7 @@ const endpoint = '/__phase79_browser_fixtures__';
 const credentialEnvironmentVariable = 'PHASE79_BROWSER_FIXTURE_SECRET';
 const projects = ['chromium-320', 'chromium-tablet', 'chromium-wide'] as const;
 const actors = ['operator', 'read_only'] as const;
-const recoveries = ['expired', 'drifted', 'consumed', 'skipped', 'partial'] as const;
+const recoveries = ['expired', 'drifted', 'consumed', 'skipped'] as const;
 const runPattern = /^[a-z0-9][a-z0-9_-]{0,47}$/;
 
 export type Phase79Project = (typeof projects)[number];

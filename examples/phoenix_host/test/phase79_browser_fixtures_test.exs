@@ -155,7 +155,7 @@ defmodule PhoenixHostWeb.Phase79BrowserFixturesTest do
       other_entry = Repo.get_by!(Entry, name: other["cron"]["recoveryEntry"])
       other_preview = Repo.get_by!(RepairPreview, target_id: other_entry.id)
 
-      for recovery <- ~w(expired drifted consumed skipped partial) do
+      for recovery <- ~w(expired drifted consumed skipped) do
         response =
           post_json(
             "/recovery",
@@ -167,6 +167,40 @@ defmodule PhoenixHostWeb.Phase79BrowserFixturesTest do
         assert decode(response) == %{"recovery" => recovery, "state" => "prepared"}
         assert Repo.get!(RepairPreview, other_preview.id).status == other_preview.status
       end
+    end
+
+    test "recovery fixture exposes only truthful backend conditions and rejects nominal partial",
+         %{
+           secret: secret
+         } do
+      state = reset("chromium-wide", "truthful-recovery", secret)
+      entry_name = state["cron"]["recoveryEntry"]
+
+      partial =
+        post_json(
+          "/recovery",
+          %{"entry" => entry_name, "recovery" => "partial"},
+          secret
+        )
+
+      assert {partial.status, partial.resp_body} == {404, ""}
+
+      skipped =
+        post_json(
+          "/recovery",
+          %{"entry" => entry_name, "recovery" => "skipped"},
+          secret
+        )
+
+      assert skipped.status == 200
+      assert decode(skipped) == %{"recovery" => "skipped", "state" => "prepared"}
+
+      entry = Repo.get_by!(Entry, name: entry_name)
+
+      assert Repo.aggregate(
+               from(job in Oban.Job, where: job.worker == ^entry.worker),
+               :count
+             ) == 1
     end
 
     test "missing and wrong secrets receive the same empty 404 before parameter validation", %{

@@ -94,8 +94,6 @@ export async function activateTarget(page: Page, target: ShowcaseTarget): Promis
     const root = page.locator('.obpt-root');
     const requestedTheme = (await root.getAttribute('data-obpt-theme')) ?? 'system';
 
-    await closeActiveGroupOverlay(page);
-
     const stage = story.locator(`[data-obpt-page-story-stage="${target.id}"]`);
     const trigger = story.locator(
       `[phx-click="activate-page-story"][phx-value-id="${target.id}"]`
@@ -208,26 +206,6 @@ export async function visualTargetLocator(
   await expect(overlay).toBeVisible();
 
   return overlay;
-}
-
-async function closeActiveGroupOverlay(page: Page): Promise<void> {
-  const activeGroup = page.locator(
-    '[data-obpt-group-story][data-obpt-overlay-active="true"]'
-  );
-
-  if ((await activeGroup.count()) === 0) {
-    return;
-  }
-
-  const close = activeGroup
-    .locator(
-      '[data-obpt-detail-close], .obpt-confirm-action__actions button[type="button"]'
-    )
-    .first();
-
-  await expect(close).toHaveCount(1);
-  await close.dispatchEvent('click');
-  await expect(activeGroup).toHaveCount(0);
 }
 
 export async function assertShowcaseStructure(page: Page): Promise<void> {
