@@ -35,14 +35,13 @@ Source: `80-CONTEXT.md` D-01..D-08, D-68, D-73..D-81; `80-RESEARCH.md` Recommend
 
 ## Spacing Scale
 
-Phase 80 uses the complete shipped 4px-base scale. HEEx and page CSS reference tokens, not raw spacing values when a shipped token exists.
+Phase 80 uses the approved 4, 8, 16, 24, 32, and 48px subset of the shipped 4px-base scale. HEEx and page CSS reference tokens, not raw spacing values when a shipped token exists.
 
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--obpt-space-1` | 4px | Icon/text micro-gaps, status markers, compact metadata, timeline marker offsets. |
-| `--obpt-space-2` | 8px | Dense table internals, label/value gaps, chip content, inline evidence/actions, result-row internals. |
-| `--obpt-space-3` | 12px | Compact stacked-row groups, related filter controls, selection-summary internals. |
-| `--obpt-space-4` | 16px | Narrow page/overlay inset, ordinary component internals, stacked form fields and actions. |
+| `--obpt-space-2` | 8px | Dense table internals, label/value gaps, chip content, inline evidence/actions, compact stacked-row groups, and result-row internals. |
+| `--obpt-space-4` | 16px | Narrow page/overlay inset, ordinary component internals, related filter groups, selection-summary internals, stacked form fields, and actions. |
 | `--obpt-space-5` | 24px | Default section separation, surface padding, explanation-to-action rhythm. |
 | `--obpt-space-6` | 32px | Wide page gutter, Jobs master/detail gutter, major section separation. |
 | `--obpt-space-7` | 48px | Major showcase/page-story separation only; avoid inside tables, timelines, and result rows. |
