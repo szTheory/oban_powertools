@@ -4,8 +4,8 @@ milestone: v2.0
 milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 79
 status: completed
-stopped_at: Completed 79-08-PLAN.md
-last_updated: "2026-07-20T03:41:19.411Z"
+stopped_at: Phase 80 context gathered
+last_updated: "2026-07-27T21:59:34.265Z"
 last_activity: 2026-07-20
 last_activity_desc: Phase 79 marked complete
 progress:
@@ -101,9 +101,9 @@ Last activity: 2026-07-20 — Phase 79 marked complete
 
 ## Session Continuity
 
-**Last session:** 2026-07-20T03:40:01.669Z
-**Stopped at:** Completed 79-08-PLAN.md
-**Resume file:** None
+**Last session:** 2026-07-27T21:59:34.258Z
+**Stopped at:** Phase 80 context gathered
+**Resume file:** .planning/phases/80-page-migration-wave-2-jobs-forensics/80-CONTEXT.md
 
 - **Last Action:** Completed Plan 79-08's connected accessibility, motion, responsive, confidentiality, and page-only visual evidence.
 - **Next Action:** Record the five pending human validation observations, or begin Phase 80 while the repository-wide quality and non-page VRT debt remains tracked.
