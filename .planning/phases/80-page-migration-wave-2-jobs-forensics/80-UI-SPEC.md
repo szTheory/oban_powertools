@@ -1,10 +1,11 @@
 ---
 phase: 80
 slug: page-migration-wave-2-jobs-forensics
-status: draft
+status: approved
 shadcn_initialized: false
 preset: not applicable
 created: 2026-07-27
+reviewed_at: 2026-07-27T23:05:49Z
 ---
 
 # Phase 80 — UI Design Contract
