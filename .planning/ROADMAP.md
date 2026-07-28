@@ -343,7 +343,7 @@
 - [x] 80-03-PLAN.md
 - [x] 80-04-PLAN.md
 - [x] 80-05-PLAN.md
-- [ ] 80-06-PLAN.md
+- [x] 80-06-PLAN.md
 - [ ] 80-07-PLAN.md
 - [ ] 80-08-PLAN.md
 - [ ] 80-09-PLAN.md
