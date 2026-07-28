@@ -43,6 +43,8 @@ defmodule ObanPowertools.Web.Selectors do
     jobs: "/ops/jobs/jobs",
     batches: "/ops/jobs/batches"
   }
+  @jobs_keys ~w(state queue worker tags args meta page job)
+  @job_detail_return_keys ~w(state queue worker tags args meta page)
 
   @doc """
   Encodes `params` for the given `destination` atom and returns the full path.
@@ -80,15 +82,43 @@ defmodule ObanPowertools.Web.Selectors do
   @doc "Returns the `/ops/jobs/cron` path with the given params encoded."
   def cron_path(params), do: encode(:cron, params)
 
-  @doc "Returns the `/ops/jobs/jobs` path with the given params encoded."
-  def jobs_path(params \\ []), do: encode(:jobs, params)
+  @doc """
+  Returns the `/ops/jobs/jobs` path with closed Jobs params in canonical order.
+  """
+  def jobs_path(params \\ []) do
+    encode(:jobs, ordered_params(params, @jobs_keys))
+  end
 
   @doc "Returns the path for a specific job detail page."
-  def job_detail_path(id), do: "#{@canonical_paths.jobs}/#{id}"
+  def job_detail_path(id), do: job_detail_path(id, [])
+
+  @doc """
+  Returns a job detail path with only canonical list return context.
+
+  Quick review, opaque `return_to`, and unknown values are never propagated.
+  """
+  def job_detail_path(id, params) do
+    base = "#{@canonical_paths.jobs}/#{id}"
+    encode_path(base, ordered_params(params, @job_detail_return_keys))
+  end
 
   @doc "Returns the `/ops/jobs/batches` path with the given params encoded."
   def batches_path(params \\ []), do: encode(:batches, params)
 
   @doc "Returns the path for a specific batch detail page."
   def batch_detail_path(id), do: "#{@canonical_paths.batches}/#{id}"
+
+  defp ordered_params(params, keys) do
+    values = Map.new(params, fn {key, value} -> {to_string(key), value} end)
+    Enum.map(keys, &{&1, Map.get(values, &1)})
+  end
+
+  defp encode_path(base, params) do
+    query =
+      params
+      |> Enum.reject(fn {_key, value} -> is_nil(value) or value == "" end)
+      |> URI.encode_query()
+
+    if query == "", do: base, else: "#{base}?#{query}"
+  end
 end

@@ -9,6 +9,8 @@ defmodule ObanPowertools.Web.SelectorsTest do
     assert Selectors.audit_path([]) == "/ops/jobs/audit"
     assert Selectors.limiter_path([]) == "/ops/jobs/limiters"
     assert Selectors.cron_path([]) == "/ops/jobs/cron"
+    assert Selectors.jobs_path([]) == "/ops/jobs/jobs"
+    assert Selectors.job_detail_path(42) == "/ops/jobs/jobs/42"
     assert Selectors.batches_path([]) == "/ops/jobs/batches"
     assert Selectors.batch_detail_path("batch-1") == "/ops/jobs/batches/batch-1"
   end
@@ -153,5 +155,57 @@ defmodule ObanPowertools.Web.SelectorsTest do
     refute closed =~ "event="
     refute previous =~ "event="
     refute next =~ "event="
+  end
+
+  test "Jobs list URLs emit only the closed allowlist in canonical order" do
+    path =
+      Selectors.jobs_path(%{
+        "job" => "42",
+        "page" => "3",
+        "meta" => ~s({"region":"us"}),
+        "args" => ~s({"account_id":123}),
+        "tags" => "alpha,beta",
+        "worker" => "MyApp.Worker",
+        "queue" => "critical",
+        "state" => "retryable",
+        "return_to" => "/ops/jobs/audit",
+        "unknown" => "discarded"
+      })
+
+    assert path ==
+             "/ops/jobs/jobs?state=retryable&queue=critical&worker=MyApp.Worker&tags=alpha%2Cbeta&args=%7B%22account_id%22%3A123%7D&meta=%7B%22region%22%3A%22us%22%7D&page=3&job=42"
+
+    refute path =~ "return_to"
+    refute path =~ "unknown"
+  end
+
+  test "Jobs values remain literal and delimiter-safe without injecting selector keys" do
+    literal = "critical&job=999&return_to=/evil?state=executing#fragment"
+    path = Selectors.jobs_path([{"state", "available"}, {"queue", literal}])
+    decoded = path |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query()
+
+    assert decoded == %{"state" => "available", "queue" => literal}
+    refute Map.has_key?(decoded, "job")
+    refute Map.has_key?(decoded, "return_to")
+  end
+
+  test "job detail return context drops review, opaque return targets, and unknown keys" do
+    path =
+      Selectors.job_detail_path(42, [
+        {"job", "41"},
+        {"unknown", "value"},
+        {"meta", ~s({"region":"us"})},
+        {"state", "retryable"},
+        {"return_to", "/ops/jobs/audit"},
+        {"page", "3"},
+        {"queue", "critical"}
+      ])
+
+    assert path ==
+             "/ops/jobs/jobs/42?state=retryable&queue=critical&meta=%7B%22region%22%3A%22us%22%7D&page=3"
+
+    refute path =~ "job="
+    refute path =~ "return_to"
+    refute path =~ "unknown"
   end
 end
