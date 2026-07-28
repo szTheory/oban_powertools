@@ -358,6 +358,159 @@ defmodule ObanPowertools.Web.JobsLiveTest do
   # ---------------------------------------------------------------------------
 
   describe "Detail page" do
+    test "pure detail composition is incident-first and uses shared data components" do
+      job = %Oban.Job{
+        id: 88,
+        state: "retryable",
+        worker: "MyApp.PureDetailWorker",
+        queue: "critical",
+        attempt: 2,
+        max_attempts: 10,
+        priority: 1,
+        inserted_at: ~U[2026-07-28 01:00:00Z],
+        scheduled_at: ~U[2026-07-28 01:05:00Z],
+        attempted_at: ~U[2026-07-28 01:10:00Z],
+        errors: [
+          %{
+            "attempt" => 2,
+            "at" => "2026-07-28T01:10:00Z",
+            "error" => "** (RuntimeError) safe failure summary"
+          }
+        ],
+        meta: %{"__redacted_fields__" => ["credential"]}
+      }
+
+      detail =
+        ObanPowertools.Web.ControlPlanePresenter.present_job_detail(job, %{
+          args_display: {:raw_json, ~s({"account_id":"[redacted]"})},
+          meta_display: {:string, "Metadata hidden by host policy."},
+          recorded_output_display: %{
+            available?: false,
+            summary: "No recorded output found for this job.",
+            status: nil,
+            payload: "No recorded output found for this job.",
+            redacted?: false
+          },
+          audit_href: "/ops/jobs/audit?resource_type=job&resource_id=88"
+        })
+
+      html =
+        render_component(&JobsLive.page_content/1, %{
+          page_mode: :detail,
+          detail: detail,
+          detail_unavailable?: false,
+          back_path: "/ops/jobs/jobs?state=retryable&page=2",
+          read_only?: false,
+          confirmation: nil,
+          receipt: nil
+        })
+
+      assert count(html, "<h1") == 1
+      assert html =~ "Job #88"
+      assert html =~ ~s(id="job-current-state")
+      assert html =~ ~s(id="job-actions")
+      assert html =~ ~s(id="job-identity")
+      assert html =~ ~s(id="job-timing")
+      assert html =~ ~s(id="job-errors")
+      assert html =~ ~s(id="job-arguments")
+      assert html =~ ~s(id="job-metadata")
+      assert html =~ ~s(id="job-recorded-output")
+      assert html =~ ~s(id="job-destinations")
+      assert html =~ ~s(class="obpt-description-list")
+      assert html =~ ~s(class="obpt-args-viewer")
+
+      assert ordered?(html, [
+               ~s(id="job-current-state"),
+               ~s(id="job-actions"),
+               ~s(id="job-identity"),
+               ~s(id="job-timing"),
+               ~s(id="job-errors"),
+               ~s(id="job-arguments"),
+               ~s(id="job-destinations")
+             ])
+
+      refute html =~ "__redacted_fields__"
+      refute html =~ "credential"
+    end
+
+    test "detail return context is reconstructed from allowlisted list params", %{conn: conn} do
+      job = insert_job!(worker: "MyApp.ReturnWorker", queue: :default)
+
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{id: "ops-1", permissions: [:view_job_detail]}
+        )
+
+      {:ok, _view, html} =
+        live(
+          conn,
+          "/ops/jobs/jobs/#{job.id}?state=retryable&queue=critical%26urgent&page=2&job=77&return_to=https%3A%2F%2Fattacker.invalid%2F%3Ftoken%3DSYNTHETIC_TOKEN&surprise=true"
+        )
+
+      assert html =~
+               "/ops/jobs/jobs?state=retryable&amp;queue=critical%26urgent&amp;page=2"
+
+      refute html =~ "return_to"
+      refute html =~ "attacker.invalid"
+      refute html =~ "SYNTHETIC_TOKEN"
+      refute html =~ "job=77"
+    end
+
+    test "malformed and missing detail targets render the same unavailable content", %{conn: conn} do
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{id: "ops-1", permissions: [:view_job_detail]}
+        )
+
+      {:ok, _missing_view, missing_html} = live(conn, "/ops/jobs/jobs/999999999")
+      {:ok, _malformed_view, malformed_html} = live(conn, "/ops/jobs/jobs/not-an-id")
+
+      for html <- [missing_html, malformed_html] do
+        assert html =~ "Job unavailable"
+
+        assert html =~
+                 "It may not exist, may no longer be available, or you may not have access. Return to Jobs and choose another job."
+
+        refute html =~ "pruned"
+        refute html =~ "invalid"
+      end
+
+      assert body_text(missing_html) == body_text(malformed_html)
+    end
+
+    test "detail renders bounded error summaries without raw failures or manufactured Forensics",
+         %{conn: conn} do
+      job = insert_job!(worker: "MyApp.SafeErrorWorker", queue: :default)
+
+      job
+      |> Ecto.Changeset.change(
+        state: "retryable",
+        errors: [
+          %{
+            "at" => "2026-07-28T10:00:00Z",
+            "attempt" => 1,
+            "error" =>
+              "** (RuntimeError) request failed at https://secret.invalid/?token=RAW_ERROR_SENTINEL"
+          }
+        ],
+        attempt: 1
+      )
+      |> TestRepo.update!()
+
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{id: "ops-1", permissions: [:view_job_detail]}
+        )
+
+      {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
+
+      assert html =~ "Failure details are redacted."
+      assert html =~ "View matching audit evidence"
+      refute html =~ "RAW_ERROR_SENTINEL"
+      refute html =~ "secret.invalid"
+      refute html =~ "Open job forensics"
+    end
+
     test "redirects unauthorized viewers from detail page", %{conn: conn} do
       conn = Plug.Test.init_test_session(conn, current_actor: %{id: "ops-2", permissions: []})
 
@@ -499,7 +652,7 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       assert html =~ "meta ok"
     end
 
-    test "renders 'Job not found' message for unknown id", %{conn: conn} do
+    test "renders uniform unavailable message for unknown id", %{conn: conn} do
       conn =
         Plug.Test.init_test_session(conn,
           current_actor: %{id: "ops-1", permissions: [:view_job_detail]}
@@ -507,7 +660,11 @@ defmodule ObanPowertools.Web.JobsLiveTest do
 
       {:ok, _view, html} = live(conn, "/ops/jobs/jobs/999999999")
 
-      assert html =~ "Job not found. It may have been pruned or the ID is invalid."
+      assert html =~ "Job unavailable"
+
+      assert html =~
+               "It may not exist, may no longer be available, or you may not have access. Return to Jobs and choose another job."
+
       assert html =~ "Back to Jobs"
     end
 
@@ -536,7 +693,7 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
 
       assert html =~ "Attempt 1"
-      assert html =~ "some failure"
+      assert html =~ "Failure details are unavailable."
     end
 
     test "renders 'No errors recorded' empty state", %{conn: conn} do
@@ -980,6 +1137,25 @@ defmodule ObanPowertools.Web.JobsLiveTest do
     |> String.split(needle)
     |> length()
     |> Kernel.-(1)
+  end
+
+  defp ordered?(html, needles) do
+    {positions, _offset} =
+      Enum.map_reduce(needles, 0, fn needle, offset ->
+        case :binary.match(html, needle, scope: {offset, byte_size(html) - offset}) do
+          {position, _length} -> {position, position + byte_size(needle)}
+          :nomatch -> {-1, offset}
+        end
+      end)
+
+    Enum.all?(positions, &(&1 >= 0)) and positions == Enum.sort(positions)
+  end
+
+  defp body_text(html) do
+    case Regex.run(~r/<section id="job-unavailable".*?<\/section>/s, html) do
+      [fragment] -> fragment |> String.replace(~r/\s+/, " ") |> String.trim()
+      nil -> ""
+    end
   end
 
   defp jobs_conn(conn, extra_permissions \\ []) do
