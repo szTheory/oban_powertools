@@ -65,7 +65,7 @@ defmodule ObanPowertools.PageStoryCatalogTest do
   @detail_ids Enum.slice(@ids, 3, 2) ++
                 Enum.slice(@ids, 11, 4) ++
                 Enum.slice(@ids, 17, 2) ++
-                [Enum.at(@jobs_ids, 1), Enum.at(@jobs_ids, 17)]
+                [Enum.at(@jobs_ids, 1)]
 
   @story_fields ~w[
     id kind page name description components variant state fixtures activation test_targets
@@ -257,7 +257,7 @@ defmodule ObanPowertools.PageStoryCatalogTest do
            |> Enum.filter(&(&1.activation == :detail))
            |> Enum.map(& &1.id) == @detail_ids
 
-    assert Enum.count(stories, &(&1.activation == :none)) == 26
+    assert Enum.count(stories, &(&1.activation == :none)) == 27
 
     for story <- stories do
       refute story.fixtures[:detail_open] == true and story.fixtures[:confirmation_open] == true

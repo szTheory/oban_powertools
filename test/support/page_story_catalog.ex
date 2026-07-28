@@ -1037,7 +1037,7 @@ defmodule ObanPowertools.PageStoryCatalog do
         [:stale],
         :confirmation,
         jobs_fixture(:bulk_drifted),
-        ["Jobs", "The preview is out of date"]
+        ["Jobs", "This preview is out of date."]
       ),
       phase80_story(
         "page-jobs-bulk-disconnected",
@@ -1071,7 +1071,7 @@ defmodule ObanPowertools.PageStoryCatalog do
         [:surface, :button, :description_list, :code_block],
         [:full_detail, :redacted],
         [:ready],
-        :detail,
+        :none,
         jobs_fixture(:full_detail),
         ["Job 8077", "Failure details are redacted."]
       ),
