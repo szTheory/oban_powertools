@@ -4,7 +4,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     use Phoenix.LiveView
 
-    alias ObanPowertools.{DisplayPolicy, JobRecord, Jobs, Lifeline}
+    alias ObanPowertools.{DisplayPolicy, JobRecord, Jobs, Lifeline, RuntimeConfig}
+    alias ObanPowertools.Jobs.BatchCoordinator
     alias ObanPowertools.Web.Components.{DataDisplay, Forms, OperatorPatterns, Primitives}
     alias ObanPowertools.Web.{ControlPlanePresenter, JobsParams, LiveAuth, Selectors}
 
@@ -19,6 +20,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       discard: ~w(available scheduled executing retryable)
     }
     @job_action_preview_private :oban_powertools_job_action_preview
+    @jobs_bulk_handle_private :oban_powertools_jobs_bulk_handle
 
     @impl true
     def mount(params, %{"oban_dashboard_path" => dashboard_path}, socket) do
@@ -168,7 +170,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 MapSet.put(selected_jobs, id)
               end
 
-            {:noreply, refresh_selection(socket, selected_jobs, false)}
+            {:noreply, refresh_selection(socket, selected_jobs)}
           else
             {:noreply, socket}
           end
@@ -190,18 +192,18 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           Enum.reduce(job_ids, selected_jobs, &MapSet.put(&2, &1))
         end
 
-      {:noreply, refresh_selection(socket, selected_jobs, false)}
+      {:noreply, refresh_selection(socket, selected_jobs)}
     end
 
     def handle_event("toggle_all", params, socket),
       do: handle_event("toggle_page", params, socket)
 
-    def handle_event("select_all_global", _, socket) do
-      {:noreply, refresh_selection(socket, socket.assigns.selected_jobs, true)}
+    def handle_event("select_all_matching", _params, socket) do
+      {:noreply, freeze_all_matching_selection(socket)}
     end
 
     def handle_event("clear_selection", _, socket) do
-      {:noreply, refresh_selection(socket, MapSet.new(), false)}
+      {:noreply, refresh_selection(socket, MapSet.new())}
     end
 
     def handle_event("paginate", %{"page" => page_str}, socket) do
@@ -307,79 +309,40 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     def handle_event("preview_bulk", %{"action" => action}, socket)
         when action in @allowed_preview_actions do
-      {:noreply,
-       socket
-       |> assign(:bulk_preview_action, action)
-       |> assign(:reason, "")
-       |> assign(:error_message, nil)}
+      {:noreply, start_bulk_preview(socket, action)}
     end
 
     def handle_event("preview_bulk", _params, socket), do: {:noreply, socket}
 
     def handle_event("close_preview", _, socket) do
-      {:noreply,
-       assign(socket,
-         preview: nil,
-         preview_action: nil,
-         bulk_preview_action: nil,
-         reason: "",
-         error_message: nil
-       )}
+      {:noreply, clear_bulk_confirmation(socket)}
     end
 
-    def handle_event("reason", %{"reason" => r}, socket) do
-      {:noreply, assign(socket, :reason, r)}
-    end
+    def handle_event("new_bulk_preview", _params, socket) do
+      case Map.get(socket.assigns, :bulk_action_kind) do
+        action when action in [:retry, :cancel, :discard] ->
+          {:noreply,
+           socket
+           |> assign(:frozen_scope, nil)
+           |> start_bulk_preview(Map.fetch!(@job_action_values, action))}
 
-    def handle_event("execute_bulk", params, socket) do
-      reason_from_params = Map.get(params, "reason")
-      reason = String.trim(reason_from_params || socket.assigns.reason)
-      action = socket.assigns.bulk_preview_action
-
-      if reason == "" or is_nil(action) do
-        {:noreply, socket}
-      else
-        actor = socket.assigns.current_actor
-        filter = socket.assigns.filter
-
-        job_ids =
-          if socket.assigns.global_select do
-            Jobs.list_ids(repo(), filter)
-          else
-            socket.assigns.selected_jobs
-          end
-
-        {successes, failures} =
-          Enum.reduce(job_ids, {0, 0}, fn job_id, {succ, fail} ->
-            case Lifeline.preview_repair(repo(), actor, %{
-                   incident_id: nil,
-                   action: action,
-                   target_type: "job",
-                   target_id: job_id
-                 }) do
-              {:ok, preview} ->
-                case Lifeline.execute_repair(repo(), actor, preview.preview_token, reason) do
-                  {:ok, _} -> {succ + 1, fail}
-                  _ -> {succ, fail + 1}
-                end
-
-              _ ->
-                {succ, fail + 1}
-            end
-          end)
-
-        socket =
-          socket
-          |> put_flash(
-            :info,
-            "Bulk action complete: #{successes} successes, #{failures} failures."
-          )
-          |> assign(:selected_jobs, MapSet.new())
-          |> assign(:global_select, false)
-          |> assign(:bulk_preview_action, nil)
-
-        {:noreply, load_jobs(socket, socket.assigns.filter)}
+        _missing ->
+          {:noreply, socket}
       end
+    end
+
+    def handle_event(
+          "execute_bulk",
+          %{"confirmation" => confirmation},
+          socket
+        ) do
+      {:noreply, validate_and_start_bulk_execution(socket, confirmation)}
+    end
+
+    def handle_event("execute_bulk", _params, socket), do: {:noreply, socket}
+
+    def handle_event("bulk_result_page", %{"page" => page}, socket) do
+      {:noreply, assign_bulk_result_page(socket, page)}
     end
 
     @impl true
@@ -390,6 +353,44 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     def handle_info({:notification, :metrics, _payload}, socket) do
       {:noreply, update_live_counts(socket)}
+    end
+
+    def handle_info({:jobs_batch_progress, run_ref, progress}, socket) do
+      if current_bulk_run_ref(socket) == run_ref do
+        {:noreply, assign(socket, :bulk_progress, progress)}
+      else
+        {:noreply, socket}
+      end
+    end
+
+    def handle_info(
+          {:jobs_batch_complete, run_ref, %{receipt: %{stage: :preview}} = display},
+          socket
+        ) do
+      if current_bulk_run_ref(socket) == run_ref do
+        {:noreply, assign_bulk_preview(socket, display)}
+      else
+        {:noreply, socket}
+      end
+    end
+
+    def handle_info(
+          {:jobs_batch_complete, run_ref, %{receipt: %{stage: :execution}} = display},
+          socket
+        ) do
+      if current_bulk_run_ref(socket) == run_ref do
+        {:noreply, finalize_bulk_execution(socket, display)}
+      else
+        {:noreply, socket}
+      end
+    end
+
+    def handle_info({:jobs_batch_failed, run_ref, safe_reason}, socket) do
+      if current_bulk_run_ref(socket) == run_ref do
+        {:noreply, assign_bulk_failure(socket, safe_reason)}
+      else
+        {:noreply, socket}
+      end
     end
 
     def handle_info(_, socket), do: {:noreply, socket}
@@ -452,15 +453,26 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     attr(:page_selection_state, :atom, required: true)
     attr(:selected_count, :integer, default: 0)
     attr(:selected_jobs, :any, default: MapSet.new())
-    attr(:global_select, :boolean, default: false)
+    attr(:all_matching_offer?, :boolean, default: false)
+    attr(:selection_scope_copy, :string, default: nil)
+    attr(:bulk_action_enabled, :map, default: %{retry: false, cancel: false, discard: false})
     attr(:read_only?, :boolean, default: true)
     attr(:url_notice, :string, default: nil)
     attr(:review_notice, :string, default: nil)
     attr(:quick_review, :map, default: nil)
     attr(:quick_review_id, :integer, default: nil)
-    attr(:bulk_preview_action, :string, default: nil)
-    attr(:reason, :string, default: "")
+    attr(:bulk_action_kind, :atom, default: nil)
+    attr(:bulk_confirmation_action, :map, default: nil)
+    attr(:bulk_confirmation_state, :atom, default: :preview)
+    attr(:bulk_confirmation_form, :any, default: nil)
+    attr(:bulk_preview, :map, default: nil)
+    attr(:bulk_progress, :map, default: nil)
+    attr(:bulk_results, :list, default: [])
+    attr(:bulk_result_page, :map, default: nil)
+    attr(:bulk_result_summary, :string, default: nil)
+    attr(:bulk_announcement, :string, default: nil)
     attr(:error_message, :string, default: nil)
+    attr(:success_message, :string, default: nil)
 
     def page_content(assigns) do
       if Map.get(assigns, :page_mode) == :detail do
@@ -490,6 +502,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <h2>Job unavailable</h2>
             <p>{@review_notice}</p>
           </Primitives.surface>
+
+          <DataDisplay.toast :if={@success_message} id="jobs-bulk-receipt" tone={:success}>
+            <p>{@success_message}</p>
+          </DataDisplay.toast>
 
           <nav class="obpt-jobs-page__states" aria-label="Job state">
             <Primitives.button
@@ -565,10 +581,30 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             aria-live="polite"
           >
             <p>{selection_count_copy(@selected_count)}</p>
+            <p :if={@selection_scope_copy}>{@selection_scope_copy}</p>
+            <Primitives.button
+              :if={@all_matching_offer?}
+              id="jobs-select-all-matching"
+              phx-click="select_all_matching"
+              variant={:primary}
+            >
+              Select all {@exact_count} jobs matching these filters
+            </Primitives.button>
+            <p :if={@error_message} id="jobs-bulk-scope-error" role="alert">
+              {@error_message}
+            </p>
             <Primitives.button phx-click="clear_selection">Clear selection</Primitives.button>
             <div :if={!@read_only?} class="obpt-jobs-page__selection-actions">
               <Primitives.button
-                :if={to_string(@filter.state) in ["retryable", "cancelled", "discarded", "completed"]}
+                :if={
+                  @bulk_action_enabled.retry &&
+                    to_string(@filter.state) in [
+                      "retryable",
+                      "cancelled",
+                      "discarded",
+                      "completed"
+                    ]
+                }
                 phx-click="preview_bulk"
                 phx-value-action="job_retry"
                 variant={:warning}
@@ -576,7 +612,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 Retry jobs
               </Primitives.button>
               <Primitives.button
-                :if={to_string(@filter.state) in ["available", "scheduled", "executing", "retryable"]}
+                :if={
+                  @bulk_action_enabled.cancel &&
+                    to_string(@filter.state) in [
+                      "available",
+                      "scheduled",
+                      "executing",
+                      "retryable"
+                    ]
+                }
                 phx-click="preview_bulk"
                 phx-value-action="job_cancel"
                 variant={:danger}
@@ -584,7 +628,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 Cancel jobs
               </Primitives.button>
               <Primitives.button
-                :if={to_string(@filter.state) in ["available", "scheduled", "executing", "retryable"]}
+                :if={
+                  @bulk_action_enabled.discard &&
+                    to_string(@filter.state) in [
+                      "available",
+                      "scheduled",
+                      "executing",
+                      "retryable"
+                    ]
+                }
                 phx-click="preview_bulk"
                 phx-value-action="job_discard"
                 variant={:danger}
@@ -744,27 +796,87 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             </:actions>
           </OperatorPatterns.detail_surface>
 
-          <%= if @bulk_preview_action do %>
-            <div class="obpt-modal-backdrop">
-              <div class="obpt-modal">
-                <h2>{bulk_preview_title(@bulk_preview_action, @selected_count)}</h2>
-                <p>Each job is processed independently.</p>
-                <form phx-change="reason" phx-submit="execute_bulk">
-                  <label for="jobs-bulk-reason">Reason (required)</label>
-                  <input id="jobs-bulk-reason" type="text" name="reason" value={@reason} />
-                  <p :if={@error_message}>{@error_message}</p>
-                  <Primitives.button phx-click="close_preview">Cancel</Primitives.button>
-                  <Primitives.button
-                    type="submit"
-                    variant={if(@bulk_preview_action == "job_retry", do: :warning, else: :danger)}
-                    disabled={String.trim(@reason) == ""}
-                  >
-                    {bulk_confirm_label(@bulk_preview_action)}
-                  </Primitives.button>
-                </form>
-              </div>
-            </div>
-          <% end %>
+          <p
+            :if={@bulk_announcement}
+            id="jobs-bulk-announcement"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {@bulk_announcement}
+          </p>
+
+          <OperatorPatterns.confirm_action_dialog
+            :if={@bulk_confirmation_action && @bulk_confirmation_form && @bulk_preview}
+            id="jobs-bulk-confirmation"
+            intent={@bulk_confirmation_action.intent}
+            state={@bulk_confirmation_state}
+            title={@bulk_confirmation_action.title}
+            object_label={@bulk_confirmation_action.object_label}
+            scope={@bulk_confirmation_action.scope}
+            consequence={@bulk_confirmation_action.consequence}
+            reversibility={@bulk_confirmation_action.reversibility}
+            support_boundary={@bulk_confirmation_action.support_boundary}
+            form={@bulk_confirmation_form}
+            bulk_count={bulk_ready_count(@bulk_preview)}
+            bulk_scope={@bulk_confirmation_action.bulk_scope}
+            confirm_label={@bulk_confirmation_action.confirm_label}
+            dismiss_label={@bulk_confirmation_action.dismiss_label}
+            pending_copy={@bulk_confirmation_action.pending_copy}
+            logical_fallback_id="jobs-selection-summary"
+            submit_event="execute_bulk"
+            dismiss_event="close_preview"
+            progress={bulk_progress_presentation(@bulk_progress)}
+            results={bulk_visible_results(@bulk_result_page)}
+          >
+            <:support_details>
+              <p>
+                Each job is processed independently. Some actions may succeed while others are skipped or fail.
+              </p>
+              <p>
+                Closing this page will not stop work already started. A service restart may interrupt unfinished jobs; completed actions remain in the Audit log.
+              </p>
+            </:support_details>
+            <:recovery>
+              <p :if={@bulk_result_summary}>{@bulk_result_summary}</p>
+              <p>
+                Review the Audit log for completed actions before creating a fresh preview.
+              </p>
+              <Primitives.button
+                :if={@bulk_confirmation_state in [:partial, :failed]}
+                id="jobs-bulk-fresh-preview"
+                type="button"
+                variant={:primary}
+                phx-click="new_bulk_preview"
+              >
+                Create fresh preview
+              </Primitives.button>
+              <nav
+                :if={@bulk_result_page && @bulk_result_page.total_pages > 1}
+                aria-label="Bulk result pages"
+              >
+                <Primitives.button
+                  type="button"
+                  phx-click="bulk_result_page"
+                  phx-value-page={@bulk_result_page.page - 1}
+                  disabled={!@bulk_result_page.previous?}
+                >
+                  Previous results
+                </Primitives.button>
+                <span>
+                  Result page {@bulk_result_page.page} of {@bulk_result_page.total_pages}
+                </span>
+                <Primitives.button
+                  type="button"
+                  phx-click="bulk_result_page"
+                  phx-value-page={@bulk_result_page.page + 1}
+                  disabled={!@bulk_result_page.next?}
+                >
+                  Next results
+                </Primitives.button>
+              </nav>
+            </:recovery>
+          </OperatorPatterns.confirm_action_dialog>
         </section>
         """
       end
@@ -1249,6 +1361,552 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       )
     end
 
+    defp freeze_all_matching_selection(socket) do
+      if socket.assigns.all_matching_offer? do
+        do_freeze_all_matching_selection(socket)
+      else
+        socket
+      end
+    end
+
+    defp do_freeze_all_matching_selection(socket) do
+      limit = RuntimeConfig.jobs_bulk_target_limit()
+      observed_at = DateTime.utc_now() |> DateTime.truncate(:second)
+
+      candidates =
+        repo()
+        |> Jobs.ordered_ids_window(socket.assigns.filter, limit)
+        |> Map.put(:selected_count, socket.assigns.exact_count)
+
+      case BatchCoordinator.freeze_scope(
+             :all_matching,
+             candidates,
+             bulk_filter_identity(socket.assigns.filter),
+             observed_at
+           ) do
+        {:ok, scope} ->
+          socket
+          |> cancel_bulk_preview()
+          |> assign_bulk_defaults()
+          |> assign(:frozen_scope, scope)
+          |> assign(:selected_jobs, MapSet.new(scope.ids))
+          |> assign(
+            :selection_scope_copy,
+            "All #{scope.selected_count} jobs matching the applied filters"
+          )
+          |> assign_selection_state()
+
+        {:error, {:too_many_targets, ^limit}} ->
+          assign(
+            socket,
+            :error_message,
+            "This action is limited to #{limit} jobs. Narrow the applied filters before continuing."
+          )
+
+        {:error, _safe_reason} ->
+          assign(socket, :error_message, "The matching job scope could not be frozen.")
+      end
+    end
+
+    defp start_bulk_preview(socket, action_value) do
+      with {:ok, action_kind} <- bulk_action_kind(action_value),
+           {:ok, scope} <- bulk_scope_for_preview(socket),
+           {:ok, handle} <-
+             BatchCoordinator.start_preview(
+               self(),
+               repo(),
+               socket.assigns.current_actor,
+               action_kind,
+               scope,
+               []
+             ) do
+        socket
+        |> cancel_bulk_preview()
+        |> put_private(@jobs_bulk_handle_private, handle)
+        |> assign(:frozen_scope, scope)
+        |> assign(:bulk_action_kind, action_kind)
+        |> assign(:bulk_preview, nil)
+        |> assign(:bulk_confirmation_action, nil)
+        |> assign(:bulk_confirmation_form, nil)
+        |> assign(:bulk_confirmation_state, :preview)
+        |> assign(:bulk_progress, nil)
+        |> assign(:bulk_results, [])
+        |> assign(:bulk_result_page, nil)
+        |> assign(:bulk_result_summary, nil)
+        |> assign(:bulk_announcement, "Creating a fresh bulk preview.")
+        |> assign(:error_message, nil)
+      else
+        {:error, :empty_scope} ->
+          assign(socket, :error_message, "Select at least one job before creating a preview.")
+
+        {:error, {:too_many_targets, limit}} ->
+          assign(
+            socket,
+            :error_message,
+            "This action is limited to #{limit} jobs. Narrow the applied filters before continuing."
+          )
+
+        {:error, _safe_reason} ->
+          assign(socket, :error_message, "The bulk preview could not be started.")
+      end
+    end
+
+    defp bulk_scope_for_preview(socket) do
+      case Map.get(socket.assigns, :frozen_scope) do
+        %BatchCoordinator.Scope{} = scope ->
+          {:ok, scope}
+
+        nil ->
+          ids =
+            socket.assigns.selected_jobs
+            |> MapSet.to_list()
+            |> Enum.sort()
+
+          if ids == [] do
+            {:error, :empty_scope}
+          else
+            BatchCoordinator.freeze_scope(
+              :explicit,
+              ids,
+              bulk_filter_identity(socket.assigns.filter),
+              DateTime.utc_now() |> DateTime.truncate(:second)
+            )
+          end
+      end
+    end
+
+    defp assign_bulk_preview(socket, %{receipt: receipt, results: results}) do
+      scope = socket.assigns.frozen_scope
+      ready_count = receipt.ready
+      excluded_count = receipt.excluded
+      off_page_count = Enum.count(scope.ids, &(&1 not in socket.assigns.page_job_ids))
+      action_kind = receipt.action
+
+      preview = %{
+        receipt: receipt,
+        results: results,
+        scope: scope,
+        off_page_count: off_page_count
+      }
+
+      confirmation_state = if ready_count == 0, do: :failed, else: :preview
+
+      socket =
+        socket
+        |> assign(:bulk_preview, preview)
+        |> assign(
+          :bulk_confirmation_action,
+          bulk_confirmation_action(
+            socket,
+            action_kind,
+            scope,
+            ready_count,
+            excluded_count,
+            off_page_count
+          )
+        )
+        |> assign(:bulk_confirmation_state, confirmation_state)
+        |> assign(:bulk_confirmation_form, bulk_confirmation_form("", ""))
+        |> assign(
+          :bulk_announcement,
+          "#{ready_count} jobs are ready and #{excluded_count} are excluded."
+        )
+
+      if ready_count == 0 do
+        safe_results = Enum.map(results, &preview_result_for_display/1)
+
+        socket
+        |> assign(
+          :bulk_result_summary,
+          "No jobs are ready for this action. Review the excluded jobs or create a fresh preview after the jobs change."
+        )
+        |> assign(:bulk_results, safe_results)
+        |> assign_bulk_result_page(1)
+      else
+        socket
+      end
+    end
+
+    defp validate_and_start_bulk_execution(socket, confirmation) do
+      if socket.assigns.bulk_confirmation_state == :preview do
+        do_validate_and_start_bulk_execution(socket, confirmation)
+      else
+        socket
+      end
+    end
+
+    defp do_validate_and_start_bulk_execution(socket, confirmation) do
+      reason = confirmation |> Map.get("reason", "") |> String.trim()
+      confirmation_count = confirmation |> Map.get("confirmation_count", "") |> String.trim()
+      ready_count = bulk_ready_count(socket.assigns.bulk_preview)
+
+      errors =
+        []
+        |> maybe_add_bulk_error(
+          String.length(reason) < 8,
+          :reason,
+          "Enter at least 8 characters."
+        )
+        |> maybe_add_bulk_error(
+          confirmation_count != Integer.to_string(ready_count || 0),
+          :confirmation_count,
+          "Type exactly #{ready_count || 0} to confirm."
+        )
+
+      cond do
+        ready_count in [nil, 0] ->
+          socket
+
+        errors != [] ->
+          assign(
+            socket,
+            :bulk_confirmation_form,
+            bulk_confirmation_form(reason, confirmation_count, errors)
+          )
+
+        true ->
+          handle = Map.get(socket.private, @jobs_bulk_handle_private)
+
+          case BatchCoordinator.start_execution(
+                 self(),
+                 repo(),
+                 socket.assigns.current_actor,
+                 handle,
+                 reason,
+                 []
+               ) do
+            {:ok, _run_ref} ->
+              socket
+              |> assign(:bulk_confirmation_state, :submitting)
+              |> assign(:bulk_progress, %{
+                processed: 0,
+                total: ready_count,
+                success: 0,
+                skipped: 0,
+                failed: 0
+              })
+              |> assign(
+                :bulk_confirmation_form,
+                bulk_confirmation_form(reason, confirmation_count)
+              )
+              |> assign(
+                :bulk_announcement,
+                "#{bulk_action_noun(socket.assigns.bulk_action_kind)} for #{ready_count} jobs started."
+              )
+
+            {:error, _safe_reason} ->
+              assign_bulk_failure(socket, :execution_unavailable)
+          end
+      end
+    end
+
+    defp finalize_bulk_execution(socket, %{receipt: receipt, results: execution_results}) do
+      preview = socket.assigns.bulk_preview
+      scope = preview.scope
+
+      if valid_bulk_receipt?(receipt, preview, socket.assigns.bulk_action_kind) do
+        execution_by_position = Map.new(execution_results, &{&1.position, &1})
+
+        combined_results =
+          Enum.map(preview.results, fn result ->
+            case result.outcome do
+              :ready -> Map.fetch!(execution_by_position, result.position)
+              :excluded -> preview_result_for_display(result)
+            end
+          end)
+
+        successful_positions =
+          execution_results
+          |> Enum.filter(&(&1.outcome == :success))
+          |> MapSet.new(& &1.position)
+
+        unresolved_ids =
+          scope.ids
+          |> Enum.with_index()
+          |> Enum.reject(fn {_id, position} ->
+            MapSet.member?(successful_positions, position)
+          end)
+          |> Enum.map(&elem(&1, 0))
+
+        all_success? =
+          preview.receipt.excluded == 0 and
+            receipt.all_success? and
+            receipt.total == scope.selected_count
+
+        if all_success? do
+          action = bulk_action_noun(socket.assigns.bulk_action_kind)
+
+          socket
+          |> clear_bulk_confirmation()
+          |> assign(:selected_jobs, MapSet.new())
+          |> assign(
+            :success_message,
+            "#{action} requested for #{receipt.success} jobs. Audit evidence was recorded per job."
+          )
+          |> assign_selection_state()
+          |> load_jobs(socket.assigns.filter)
+        else
+          confirmation_state = if receipt.success > 0, do: :partial, else: :failed
+          action = bulk_action_noun(socket.assigns.bulk_action_kind)
+
+          socket
+          |> assign(:selected_jobs, MapSet.new(unresolved_ids))
+          |> assign(:selection_scope_copy, "Unresolved jobs retained for a fresh preview")
+          |> assign(:bulk_confirmation_state, confirmation_state)
+          |> assign(:bulk_results, combined_results)
+          |> assign(
+            :bulk_result_summary,
+            "#{action} finished with mixed results. Review skipped and failed jobs before trying again."
+          )
+          |> assign(
+            :bulk_announcement,
+            "#{action} finished: #{receipt.success} succeeded, #{receipt.skipped + preview.receipt.excluded} skipped, and #{receipt.failed} failed."
+          )
+          |> load_jobs(socket.assigns.filter)
+          |> assign_bulk_result_page(1)
+        end
+      else
+        assign_bulk_failure(socket, :execution_unavailable)
+      end
+    end
+
+    defp valid_bulk_receipt?(receipt, preview, action_kind) do
+      receipt.action == action_kind and
+        receipt.total == preview.receipt.ready and
+        receipt.success + receipt.skipped + receipt.failed == receipt.total
+    end
+
+    defp assign_bulk_failure(socket, safe_reason) do
+      if Map.get(socket.assigns, :bulk_preview) do
+        interrupted? = socket.assigns.bulk_confirmation_state == :submitting
+
+        summary =
+          if interrupted? do
+            "This run may have been interrupted. Review the Audit log for completed actions before creating a fresh preview."
+          else
+            bulk_failure_copy(safe_reason)
+          end
+
+        socket
+        |> assign(:bulk_confirmation_state, :failed)
+        |> assign(:bulk_result_summary, summary)
+        |> assign(:bulk_announcement, summary)
+      else
+        assign(socket, :error_message, bulk_failure_copy(safe_reason))
+      end
+    end
+
+    defp assign_bulk_result_page(socket, requested_page) do
+      page =
+        case requested_page do
+          value when is_integer(value) ->
+            value
+
+          value when is_binary(value) ->
+            case Integer.parse(value) do
+              {integer, ""} -> integer
+              _invalid -> 1
+            end
+
+          _invalid ->
+            1
+        end
+
+      safe_page = BatchCoordinator.result_page(socket.assigns.bulk_results, page)
+      scope = Map.get(socket.assigns, :frozen_scope)
+      actor = Map.get(socket.assigns, :current_actor)
+
+      visible_results =
+        Enum.map(safe_page.results, &decorate_bulk_result(&1, scope, actor))
+
+      assign(socket, :bulk_result_page, %{safe_page | results: visible_results})
+    end
+
+    defp decorate_bulk_result(result, %BatchCoordinator.Scope{} = scope, actor) do
+      job_id = Enum.at(scope.ids, result.position)
+
+      %{
+        id: "bulk-result-#{result.position}",
+        object_label: "Job #{job_id}",
+        outcome: result.outcome,
+        message: result.message,
+        recovery: result.recovery,
+        audit_href: authorized_job_audit_href(actor, job_id)
+      }
+    end
+
+    defp preview_result_for_display(result) do
+      %{result | outcome: :skipped}
+    end
+
+    defp bulk_confirmation_action(
+           socket,
+           action_kind,
+           scope,
+           ready_count,
+           excluded_count,
+           off_page_count
+         ) do
+      observed_time = Calendar.strftime(scope.observed_at, "%H:%M:%S")
+      action = bulk_action_noun(action_kind)
+      action_lower = String.downcase(action)
+
+      %{
+        intent: if(action_kind == :retry, do: :warning, else: :danger),
+        title: "#{action} #{ready_count} ready jobs",
+        object_label: "#{scope.selected_count} selected jobs",
+        scope:
+          "#{scope.selected_count} selected, #{ready_count} ready, #{excluded_count} excluded, #{off_page_count} off-page. " <>
+            "This selection was captured at #{observed_time} UTC. New matching jobs will not be included.",
+        bulk_scope:
+          "#{bulk_scope_label(scope.mode)}. #{human_filter_identity(socket.assigns.filter)}.",
+        consequence: bulk_consequence(action_kind),
+        reversibility: bulk_reversibility(action_kind),
+        support_boundary:
+          "Each Lifeline action records independent per-job evidence; the batch is not atomic.",
+        confirm_label: "#{action} #{ready_count} jobs",
+        dismiss_label: bulk_dismiss_label(action_kind),
+        pending_copy: "#{String.capitalize(action_lower)}ing #{ready_count} jobs…"
+      }
+    end
+
+    defp bulk_confirmation_form(reason, confirmation_count, errors \\ []) do
+      options =
+        if errors == [] do
+          []
+        else
+          [errors: errors, action: :validate]
+        end
+
+      Phoenix.Component.to_form(
+        %{"reason" => reason, "confirmation_count" => confirmation_count},
+        [as: :confirmation, id: "jobs-bulk-confirmation-form"] ++ options
+      )
+    end
+
+    defp maybe_add_bulk_error(errors, true, field, message),
+      do: errors ++ [{field, {message, []}}]
+
+    defp maybe_add_bulk_error(errors, false, _field, _message), do: errors
+
+    defp bulk_action_kind(action_value) do
+      case Enum.find(@job_action_values, fn {_kind, value} -> value == action_value end) do
+        {kind, _value} -> {:ok, kind}
+        nil -> {:error, :unsupported_action}
+      end
+    end
+
+    defp bulk_ready_count(%{receipt: %{ready: ready}}) when ready > 0, do: ready
+    defp bulk_ready_count(_preview), do: nil
+
+    defp bulk_progress_presentation(%{processed: processed, total: total}) when total > 0,
+      do: %{value: processed, max: total}
+
+    defp bulk_progress_presentation(_progress), do: nil
+
+    defp bulk_visible_results(%{results: results}), do: results
+    defp bulk_visible_results(_page), do: []
+
+    defp current_bulk_run_ref(socket) do
+      case Map.get(socket.private, @jobs_bulk_handle_private) do
+        %{run_ref: run_ref} -> run_ref
+        _missing -> nil
+      end
+    end
+
+    defp cancel_bulk_preview(socket) do
+      case Map.get(socket.private, @jobs_bulk_handle_private) do
+        %{run_ref: run_ref, coordinator: coordinator}
+        when is_reference(run_ref) and is_pid(coordinator) ->
+          send(coordinator, {:cancel, run_ref})
+
+        _missing ->
+          :ok
+      end
+
+      put_private(socket, @jobs_bulk_handle_private, nil)
+    end
+
+    defp clear_bulk_confirmation(socket) do
+      socket
+      |> cancel_bulk_preview()
+      |> assign_bulk_defaults()
+      |> assign_selection_state()
+    end
+
+    defp assign_bulk_defaults(socket) do
+      socket
+      |> put_private(@jobs_bulk_handle_private, nil)
+      |> assign(:frozen_scope, nil)
+      |> assign(:bulk_action_kind, nil)
+      |> assign(:bulk_confirmation_action, nil)
+      |> assign(:bulk_confirmation_state, :preview)
+      |> assign(:bulk_confirmation_form, nil)
+      |> assign(:bulk_preview, nil)
+      |> assign(:bulk_progress, nil)
+      |> assign(:bulk_results, [])
+      |> assign(:bulk_result_page, nil)
+      |> assign(:bulk_result_summary, nil)
+      |> assign(:bulk_announcement, nil)
+      |> assign(:selection_scope_copy, nil)
+      |> assign(:error_message, nil)
+    end
+
+    defp bulk_filter_identity(filter) do
+      filter
+      |> canonical_params()
+      |> URI.encode_query()
+    end
+
+    defp human_filter_identity(filter) do
+      optional =
+        [
+          {"queue", filter.queue},
+          {"worker", filter.worker},
+          {"tags", if(filter.tags, do: Enum.join(filter.tags, ", "))}
+        ]
+        |> Enum.reject(fn {_label, value} -> is_nil(value) or value == "" end)
+        |> Enum.map_join(", ", fn {label, value} -> "#{label} #{value}" end)
+
+      base = "#{state_label(to_string(filter.state))} jobs matching the applied filters"
+      if optional == "", do: base, else: "#{base}: #{optional}"
+    end
+
+    defp bulk_scope_label(:all_matching), do: "All matching frozen scope"
+    defp bulk_scope_label(:explicit), do: "Explicit frozen selection"
+
+    defp bulk_action_noun(:retry), do: "Retry"
+    defp bulk_action_noun(:cancel), do: "Cancel"
+    defp bulk_action_noun(:discard), do: "Discard"
+
+    defp bulk_consequence(:retry),
+      do:
+        "Powertools requests a retry for each ready job. A retry request does not mean the job completed."
+
+    defp bulk_consequence(:cancel),
+      do: "Each ready job stops and will not retry. This cannot be undone."
+
+    defp bulk_consequence(:discard),
+      do: "Each ready job is marked discarded and will not retry. This cannot be undone."
+
+    defp bulk_reversibility(:retry), do: "A retry request cannot be undone."
+    defp bulk_reversibility(:cancel), do: "Cancellation cannot be undone."
+    defp bulk_reversibility(:discard), do: "Discarding cannot be undone."
+
+    defp bulk_dismiss_label(:cancel), do: "Keep running"
+    defp bulk_dismiss_label(_action), do: "Keep current state"
+
+    defp bulk_failure_copy(:nothing_ready),
+      do:
+        "No jobs are ready for this action. Review the excluded jobs or create a fresh preview after the jobs change."
+
+    defp bulk_failure_copy(:not_authorized),
+      do: "The bulk action is no longer authorized. Create a fresh preview after access changes."
+
+    defp bulk_failure_copy(_safe_reason),
+      do:
+        "The bulk action is unavailable. Review current job truth before creating a fresh preview."
+
     defp normalize_detail_job_id(value) when is_integer(value) and value > 0, do: {:ok, value}
 
     defp normalize_detail_job_id(value) when is_binary(value) do
@@ -1337,6 +1995,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> assign(:clear_filters_href, Selectors.jobs_path(state: "available"))
       |> assign(:page_selection_state, :unchecked)
       |> assign(:selected_count, 0)
+      |> assign(:all_matching_offer?, false)
+      |> assign(:selection_scope_copy, nil)
       |> assign(:url_notice, nil)
       |> assign(:review_notice, nil)
       |> assign(:quick_review, nil)
@@ -1353,21 +2013,13 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> assign(:preview_action, nil)
       |> assign(:confirmation, nil)
       |> assign(:receipt, nil)
-      |> assign(:bulk_preview_action, nil)
       |> assign(:selected_jobs, MapSet.new())
-      |> assign(:global_select, false)
-      |> assign(:reason, "")
-      |> assign(:error_message, nil)
+      |> assign_bulk_defaults()
       |> assign(:success_message, nil)
       |> assign(:back_path, Selectors.jobs_path([]))
-      |> assign(
-        :read_only?,
-        not LiveAuth.authorized?(
-          Map.get(socket.assigns, :current_actor),
-          :retry_job,
-          %{type: :page, id: "jobs"}
-        )
-      )
+      |> assign(:bulk_action_enabled, %{retry: false, cancel: false, discard: false})
+      |> assign(:read_only?, true)
+      |> assign_read_only()
     end
 
     defp load_jobs(socket, filter, quick_review_id \\ nil) do
@@ -1574,16 +2226,18 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       "#{count} #{state} #{if(count == 1, do: "job", else: "jobs")}"
     end
 
-    defp refresh_selection(socket, selected_jobs, global_select) do
+    defp refresh_selection(socket, selected_jobs) do
       rows =
         Enum.map(socket.assigns.rows, fn row ->
           put_in(row, [:selection, :checked?], MapSet.member?(selected_jobs, row.id))
         end)
 
       socket
+      |> cancel_bulk_preview()
       |> assign(:rows, rows)
       |> assign(:selected_jobs, selected_jobs)
-      |> assign(:global_select, global_select)
+      |> assign(:success_message, nil)
+      |> assign_bulk_defaults()
       |> assign_selection_state()
     end
 
@@ -1593,9 +2247,6 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
       page_selection_state =
         cond do
-          socket.assigns.global_select and job_ids != [] ->
-            :checked
-
           job_ids == [] ->
             :unchecked
 
@@ -1609,35 +2260,35 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             :unchecked
         end
 
-      selected_count =
-        if socket.assigns.global_select do
-          socket.assigns.exact_count
-        else
-          MapSet.size(selected_jobs)
-        end
+      selected_count = MapSet.size(selected_jobs)
+      frozen_scope = Map.get(socket.assigns, :frozen_scope)
+
+      all_matching_offer? =
+        page_selection_state == :checked and
+          socket.assigns.exact_count > selected_count and
+          is_nil(frozen_scope)
 
       assign(socket,
         page_selection_state: page_selection_state,
-        selected_count: selected_count
+        selected_count: selected_count,
+        all_matching_offer?: all_matching_offer?
       )
     end
 
     defp reset_browse_transients(socket) do
       socket
+      |> cancel_bulk_preview()
       |> assign(:selected_jobs, MapSet.new())
-      |> assign(:global_select, false)
       |> assign(:selected_count, 0)
+      |> assign(:all_matching_offer?, false)
+      |> assign(:selection_scope_copy, nil)
       |> assign(:page_selection_state, :unchecked)
       |> assign(:quick_review, nil)
       |> assign(:quick_review_id, nil)
       |> assign(:preview, nil)
-      |> assign(:bulk_preview_action, nil)
-      |> assign(:reason, "")
-      |> assign(:error_message, nil)
       |> assign(:success_message, nil)
-      |> assign(:frozen_scope, nil)
-      |> assign(:bulk_results, nil)
       |> assign(:confirmation, nil)
+      |> assign_bulk_defaults()
     end
 
     defp maybe_assign_url_notice(socket, []), do: socket
@@ -1662,26 +2313,18 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp selection_count_copy(1), do: "1 job selected"
     defp selection_count_copy(count), do: "#{count} jobs selected"
 
-    defp bulk_preview_title("job_retry", count), do: "Bulk Retry #{count} Jobs"
-    defp bulk_preview_title("job_cancel", count), do: "Bulk Cancel #{count} Jobs"
-    defp bulk_preview_title("job_discard", count), do: "Bulk Discard #{count} Jobs"
-    defp bulk_preview_title(_action, count), do: "Bulk Action for #{count} Jobs"
-
-    defp bulk_confirm_label("job_retry"), do: "Confirm Bulk Retry"
-    defp bulk_confirm_label("job_cancel"), do: "Confirm Bulk Cancel"
-    defp bulk_confirm_label("job_discard"), do: "Confirm Bulk Discard"
-    defp bulk_confirm_label(_action), do: "Confirm Bulk Action"
-
     defp assign_read_only(socket) do
-      assign(
-        socket,
-        :read_only?,
-        not LiveAuth.authorized?(
-          Map.get(socket.assigns, :current_actor),
-          :retry_job,
-          %{type: :page, id: "jobs"}
-        )
-      )
+      actor = Map.get(socket.assigns, :current_actor)
+      resource = %{type: :page, id: "jobs"}
+
+      enabled =
+        Map.new(@job_action_permissions, fn {action_kind, permission} ->
+          {action_kind, LiveAuth.authorized?(actor, permission, resource)}
+        end)
+
+      socket
+      |> assign(:bulk_action_enabled, enabled)
+      |> assign(:read_only?, not Enum.any?(enabled, fn {_action, allowed?} -> allowed? end))
     end
 
     defp repo, do: Application.fetch_env!(:oban_powertools, :repo)

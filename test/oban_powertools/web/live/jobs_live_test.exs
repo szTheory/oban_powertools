@@ -1576,6 +1576,14 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       {:ok, view, _html} = live(conn, "/ops/jobs/jobs?state=retryable")
       refute has_element?(view, "#jobs-select-all-matching")
 
+      {html, queries} =
+        capture_job_queries(fn ->
+          render_hook(view, "select_all_matching", %{})
+        end)
+
+      assert queries == []
+      refute html =~ "All 21 jobs matching the applied filters"
+
       html = view |> element("#jobs-page-selection") |> render_click()
       assert html =~ "20 jobs selected"
       assert html =~ "Select all 21 jobs matching these filters"

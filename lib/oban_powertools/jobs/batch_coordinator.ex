@@ -200,6 +200,9 @@ defmodule ObanPowertools.Jobs.BatchCoordinator do
         repo = repo || original_repo
         opts = Keyword.merge(preview_opts, execution_opts)
         run_execution(owner, run_ref, repo, actor, preview, reason, opts, supervisor)
+
+      {:cancel, ^run_ref} ->
+        :ok
     after
       @preview_wait_timeout_ms -> :ok
     end
