@@ -646,87 +646,95 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             </div>
           </section>
 
-          <DataDisplay.data_table
-            id="jobs-results"
-            caption="Jobs"
-            rows={@rows}
-            row_id={& &1.id}
-            state={:ready}
-            resource="jobs"
-            row_count={@pagination.total_count}
-            pagination_summary={@pagination.summary}
+          <div
+            id="jobs-results-region"
+            class="obpt-jobs-page__results-region"
+            role="region"
+            aria-label="Jobs results"
+            tabindex="0"
           >
-            <:toolbar>
-              <label for="jobs-page-selection">
-                <input
-                  id="jobs-page-selection"
-                  type="checkbox"
-                  phx-click="toggle_page"
-                  checked={@page_selection_state == :checked}
-                  aria-checked={page_selection_aria(@page_selection_state)}
-                  data-obpt-page-selection={@page_selection_state}
+            <DataDisplay.data_table
+              id="jobs-results"
+              caption="Jobs"
+              rows={@rows}
+              row_id={& &1.id}
+              state={:ready}
+              resource="jobs"
+              row_count={@pagination.total_count}
+              pagination_summary={@pagination.summary}
+            >
+              <:toolbar>
+                <label for="jobs-page-selection">
+                  <input
+                    id="jobs-page-selection"
+                    type="checkbox"
+                    phx-click="toggle_page"
+                    checked={@page_selection_state == :checked}
+                    aria-checked={page_selection_aria(@page_selection_state)}
+                    data-obpt-page-selection={@page_selection_state}
+                  />
+                  <span>Select current page</span>
+                </label>
+              </:toolbar>
+              <:selection :let={row}>
+                <label for={"job-select-#{row.id}"}>
+                  <input
+                    id={"job-select-#{row.id}"}
+                    type="checkbox"
+                    checked={row.selection.checked?}
+                    phx-click="toggle_job"
+                    phx-value-id={row.id}
+                    aria-label={row.selection.label}
+                  />
+                  <span class="obpt-sr-only">{row.selection.label}</span>
+                </label>
+              </:selection>
+              <:col :let={row} label="Worker" value_kind={:module}>
+                <DataDisplay.machine_value
+                  id={"job-worker-#{row.id}"}
+                  value={row.worker}
+                  kind={:module}
+                  truncate={false}
                 />
-                <span>Select current page</span>
-              </label>
-            </:toolbar>
-            <:selection :let={row}>
-              <label for={"job-select-#{row.id}"}>
-                <input
-                  id={"job-select-#{row.id}"}
-                  type="checkbox"
-                  checked={row.selection.checked?}
-                  phx-click="toggle_job"
+              </:col>
+              <:col :let={row} label="State">
+                <DataDisplay.status_pill domain={:job} state={row.state} />
+              </:col>
+              <:col :let={row} label="Queue" value_kind={:literal}>
+                <DataDisplay.machine_value
+                  id={"job-queue-#{row.id}"}
+                  value={row.queue}
+                  kind={:literal}
+                  truncate={false}
+                />
+              </:col>
+              <:col :let={row} label="Scheduled">
+                <time datetime={row.scheduled.datetime}>{row.scheduled.label}</time>
+              </:col>
+              <:col :let={row} label="Attempts">{row.attempts}</:col>
+              <:col :let={row} label="Job ID" value_kind={:id}>
+                <DataDisplay.machine_value
+                  id={"job-id-#{row.id}"}
+                  value={to_string(row.id)}
+                  kind={:id}
+                  truncate={false}
+                />
+              </:col>
+              <:col :let={row} label="Review job">
+                <Primitives.button
+                  id={"job-review-#{row.id}"}
+                  phx-click="select_review"
                   phx-value-id={row.id}
-                  aria-label={row.selection.label}
-                />
-                <span class="obpt-sr-only">{row.selection.label}</span>
-              </label>
-            </:selection>
-            <:col :let={row} label="Worker" value_kind={:module}>
-              <DataDisplay.machine_value
-                id={"job-worker-#{row.id}"}
-                value={row.worker}
-                kind={:module}
-                truncate={false}
-              />
-            </:col>
-            <:col :let={row} label="State">
-              <DataDisplay.status_pill domain={:job} state={row.state} />
-            </:col>
-            <:col :let={row} label="Queue" value_kind={:literal}>
-              <DataDisplay.machine_value
-                id={"job-queue-#{row.id}"}
-                value={row.queue}
-                kind={:literal}
-                truncate={false}
-              />
-            </:col>
-            <:col :let={row} label="Scheduled">
-              <time datetime={row.scheduled.datetime}>{row.scheduled.label}</time>
-            </:col>
-            <:col :let={row} label="Attempts">{row.attempts}</:col>
-            <:col :let={row} label="Job ID" value_kind={:id}>
-              <DataDisplay.machine_value
-                id={"job-id-#{row.id}"}
-                value={to_string(row.id)}
-                kind={:id}
-                truncate={false}
-              />
-            </:col>
-            <:col :let={row} label="Review job">
-              <Primitives.button
-                id={"job-review-#{row.id}"}
-                phx-click="select_review"
-                phx-value-id={row.id}
-                variant={if(row.review.current?, do: :primary, else: :neutral)}
-                aria-label={row.review.label}
-                aria-expanded={to_string(row.review.current?)}
-                aria-controls={if(row.review.current?, do: "job-quick-review")}
-              >
-                {if(row.review.current?, do: "Reviewing", else: "Review job")}
-              </Primitives.button>
-            </:col>
-          </DataDisplay.data_table>
+                  variant={if(row.review.current?, do: :primary, else: :neutral)}
+                  aria-label={row.review.label}
+                  aria-expanded={to_string(row.review.current?)}
+                  aria-controls={if(row.review.current?, do: "job-quick-review")}
+                >
+                  {if(row.review.current?, do: "Reviewing", else: "Review job")}
+                </Primitives.button>
+              </:col>
+            </DataDisplay.data_table>
+          </div>
 
           <DataDisplay.empty_state
             :if={@rows == []}

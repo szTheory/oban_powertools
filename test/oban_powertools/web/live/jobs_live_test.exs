@@ -119,6 +119,10 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       assert count(html, "<h1") == 1
       assert count(html, "<table") == 1
       refute html =~ "role=\"grid\""
+
+      assert html =~
+               ~r/<div(?=[^>]*id="jobs-results-region")(?=[^>]*role="region")(?=[^>]*aria-label="Jobs results")(?=[^>]*tabindex="0")[^>]*>/s
+
       assert html =~ "Review current job state, apply precise filters"
       assert html =~ ~s(data-obpt-filter-bar)
       assert html =~ ~s(phx-change="validate_filters")
