@@ -2,6 +2,7 @@ defmodule ObanPowertools.AuditTest do
   use ObanPowertools.DataCase, async: false
 
   alias ObanPowertools.{Audit, TestRepo}
+  alias ObanPowertools.Forensics.Scope
 
   @page_fields ~w[events total_count page page_size total_pages previous? next?]a
 
@@ -181,6 +182,214 @@ defmodule ObanPowertools.AuditTest do
     end
   end
 
+  @tag phase80_slice: "forensics"
+  test "forensic_window/2 returns an exact bounded workflow-step window with stable ties" do
+    inserted_at = ~N[2026-07-28 12:00:00]
+
+    matching =
+      for index <- 1..55 do
+        insert_audit!(
+          if(rem(index, 2) == 0,
+            do: "workflow.step_completed",
+            else: "workflow.step_unblocked"
+          ),
+          %{type: :workflow_step, id: "step-1"},
+          inserted_at
+        )
+      end
+
+    for index <- 1..4 do
+      insert_audit!(
+        "workflow.step_completed",
+        %{type: :workflow_step, id: "unrelated-#{index}"},
+        inserted_at
+      )
+    end
+
+    scope = %Scope{
+      kind: :workflow,
+      resource_type: "workflow_step",
+      resource_id: "step-1",
+      workflow_id: "workflow-1",
+      step: "charge"
+    }
+
+    {window, queries} =
+      capture_audit_query_metadata(fn ->
+        Audit.forensic_window(scope, repo: TestRepo)
+      end)
+
+    expected_ids =
+      matching
+      |> Enum.map(& &1.id)
+      |> Enum.sort(:desc)
+      |> Enum.take(50)
+
+    assert %{
+             shown_count: 50,
+             total_count: 55,
+             has_more?: true
+           } = window
+
+    assert Enum.map(window.events, & &1.id) == expected_ids
+    assert Enum.all?(window.events, &(&1.resource_id == "step-1"))
+
+    assert Enum.map(Audit.forensic_window(scope, repo: TestRepo).events, & &1.id) ==
+             expected_ids
+
+    assert length(queries) == 2
+
+    assert Enum.any?(queries, fn metadata ->
+             metadata.query =~ "LIMIT" and 50 in metadata.params
+           end)
+
+    refute Enum.any?(queries, &String.contains?(&1.query, "OFFSET"))
+  end
+
+  @tag phase80_slice: "forensics"
+  test "forensic_window/2 bounds incident evidence with a 51-row SQL probe" do
+    inserted_at = ~N[2026-07-28 12:30:00]
+
+    matching =
+      for index <- 1..55 do
+        insert_audit!(
+          if(rem(index, 2) == 0,
+            do: "lifeline.repair_executed",
+            else: "lifeline.host_follow_up"
+          ),
+          %{type: :job, id: "job-#{index}"},
+          inserted_at,
+          metadata: %{"incident_fingerprint" => "incident:α/?&="}
+        )
+      end
+
+    for index <- 1..4 do
+      insert_audit!(
+        "lifeline.repair_executed",
+        %{type: :job, id: "unrelated-job-#{index}"},
+        inserted_at,
+        metadata: %{"incident_fingerprint" => "another-incident"}
+      )
+    end
+
+    scope = %Scope{
+      kind: :incident,
+      incident_fingerprint: "incident:α/?&=",
+      view: "active"
+    }
+
+    {window, [query]} =
+      capture_audit_query_metadata(fn ->
+        Audit.forensic_window(scope, repo: TestRepo)
+      end)
+
+    expected_ids =
+      matching
+      |> Enum.map(& &1.id)
+      |> Enum.sort(:desc)
+      |> Enum.take(50)
+
+    assert %{
+             shown_count: 50,
+             total_count: nil,
+             has_more?: true
+           } = window
+
+    assert Enum.map(window.events, & &1.id) == expected_ids
+    assert Enum.all?(window.events, &(&1.metadata["incident_fingerprint"] == "incident:α/?&="))
+
+    assert query.query =~ "metadata"
+    assert query.query =~ "incident_fingerprint"
+    assert query.query =~ "LIMIT"
+    assert 51 in query.params
+    refute String.contains?(query.query, "OFFSET")
+  end
+
+  @tag phase80_slice: "forensics"
+  test "forensic_window/2 keeps finite event restrictions in SQL and rejects unknown values" do
+    inserted_at = ~N[2026-07-28 13:00:00]
+
+    matching =
+      insert_audit!(
+        "workflow.step_completed",
+        %{type: :workflow, id: "workflow-1"},
+        inserted_at
+      )
+
+    insert_audit!(
+      "workflow.cancel_requested",
+      %{type: :workflow, id: "workflow-1"},
+      inserted_at
+    )
+
+    scope = %Scope{kind: :workflow, workflow_id: "workflow-1"}
+
+    {window, queries} =
+      capture_audit_query_metadata(fn ->
+        Audit.forensic_window(scope,
+          repo: TestRepo,
+          event_types: ["workflow.step_completed"]
+        )
+      end)
+
+    assert Enum.map(window.events, & &1.id) == [matching.id]
+    assert window.total_count == 1
+
+    assert Enum.all?(queries, fn metadata ->
+             "workflow.step_completed" in List.flatten(metadata.params)
+           end)
+
+    assert {error, []} =
+             capture_audit_query_metadata(fn ->
+               assert_raise ArgumentError, fn ->
+                 Audit.forensic_window(scope,
+                   repo: TestRepo,
+                   event_types: ["arbitrary.unbounded_event"]
+                 )
+               end
+             end)
+
+    assert %ArgumentError{} = error
+  end
+
+  @tag phase80_slice: "forensics"
+  test "incident forensic query has recorded local EXPLAIN evidence for its unindexed JSONB predicate" do
+    for index <- 1..5 do
+      insert_audit!(
+        "lifeline.repair_executed",
+        %{type: :job, id: "job-#{index}"},
+        ~N[2026-07-28 13:30:00],
+        metadata: %{"incident_fingerprint" => "explain-incident"}
+      )
+    end
+
+    scope = %Scope{kind: :incident, incident_fingerprint: "explain-incident"}
+
+    {_window, [metadata]} =
+      capture_audit_query_metadata(fn ->
+        Audit.forensic_window(scope, repo: TestRepo)
+      end)
+
+    plan =
+      TestRepo
+      |> Ecto.Adapters.SQL.query!(
+        "EXPLAIN (ANALYZE, BUFFERS) " <> metadata.query,
+        metadata.params
+      )
+      |> Map.fetch!(:rows)
+      |> List.flatten()
+      |> Enum.join("\n")
+
+    assert plan =~ "oban_powertools_audit_events"
+
+    IO.puts("""
+    Phase 80-05 incident EXPLAIN (ANALYZE, BUFFERS):
+    #{plan}
+    Evidence note: metadata->>'incident_fingerprint' is an unindexed JSONB predicate.
+    Limitation: this deterministic local-cardinality plan is not a production latency claim.
+    """)
+  end
+
   defp page(filters, opts \\ []) do
     assert function_exported?(Audit, :page, 2),
            "Phase 79 requires Audit.page/2 bounded pagination"
@@ -196,45 +405,57 @@ defmodule ObanPowertools.AuditTest do
   end
 
   defp capture_audit_queries(fun) do
+    {result, queries} = capture_audit_query_metadata(fun)
+    {result, length(queries)}
+  end
+
+  defp capture_audit_query_metadata(fun) do
     handler_id = {__MODULE__, make_ref()}
     event = TestRepo.config() |> Keyword.fetch!(:telemetry_prefix) |> Kernel.++([:query])
     test_pid = self()
+    query_ref = make_ref()
 
     :telemetry.attach(
       handler_id,
       event,
-      fn _event, _measurements, metadata, pid ->
+      fn _event, _measurements, metadata, {pid, ref} ->
         if metadata[:source] == "oban_powertools_audit_events" do
-          send(pid, :audit_query)
+          send(pid, {ref, metadata})
         end
       end,
-      test_pid
+      {test_pid, query_ref}
     )
 
     try do
       result = fun.()
-      {result, collect_audit_queries(0)}
+      {result, collect_audit_queries(query_ref, [])}
     after
       :telemetry.detach(handler_id)
     end
   end
 
-  defp collect_audit_queries(count) do
+  defp collect_audit_queries(query_ref, queries) do
     receive do
-      :audit_query -> collect_audit_queries(count + 1)
+      {^query_ref, metadata} -> collect_audit_queries(query_ref, [metadata | queries])
     after
-      0 -> count
+      0 -> Enum.reverse(queries)
     end
   end
 
   defp insert_audit!(action, resource, inserted_at, opts \\ []) do
     actor_id = Keyword.get(opts, :actor_id, "operator-1")
 
+    metadata =
+      opts
+      |> Keyword.get(:metadata, %{})
+      |> Map.put("event_type", action)
+      |> Map.put_new("reason", "bounded page contract")
+
     {:ok, event} =
       Audit.record(
         action,
         resource,
-        %{"event_type" => action, "reason" => "bounded page contract"},
+        metadata,
         repo: TestRepo,
         actor_id: actor_id
       )
