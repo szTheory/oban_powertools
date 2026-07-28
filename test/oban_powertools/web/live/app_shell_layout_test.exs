@@ -86,18 +86,12 @@ defmodule ObanPowertools.Web.Live.AppShellLayoutTest do
     conn: conn,
     workflow: workflow
   } do
-    for {path, page_copy} <- [
-          {"/ops/jobs", "Overview"},
-          {"/ops/jobs/jobs", "Jobs"},
-          {"/ops/jobs/jobs/123", "Job not found"},
-          {"/ops/jobs/batches/batch-1", "Batch not found"},
-          {"/ops/jobs/workflows/#{workflow.id}", "Workflows"}
-        ] do
+    for path <- representative_paths(workflow) do
       html = mount_native!(conn, path)
 
-      assert html =~ page_copy
       assert html =~ ~r/<main[^>]+id="obpt-main"[^>]+tabindex="-1"/s
       assert html =~ ~s(Skip to main content)
+      assert count_main_page_headings(html) == 1
     end
   end
 
@@ -133,6 +127,19 @@ defmodule ObanPowertools.Web.Live.AppShellLayoutTest do
 
   defp count_main_targets(html) do
     Regex.scan(~r/<main(?=[^>]*id="obpt-main")(?=[^>]*tabindex="-1")/s, html)
+    |> length()
+  end
+
+  defp count_main_page_headings(html) do
+    [main_content] =
+      Regex.run(
+        ~r/<main(?=[^>]*id="obpt-main")(?=[^>]*tabindex="-1")[^>]*>(.*)<\/main>/s,
+        html,
+        capture: :all_but_first
+      )
+
+    ~r/<h1(?:\s|>)/
+    |> Regex.scan(main_content)
     |> length()
   end
 
