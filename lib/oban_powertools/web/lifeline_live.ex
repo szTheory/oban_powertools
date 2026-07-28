@@ -7,6 +7,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     import Ecto.Query
 
     alias ObanPowertools.{Audit, DisplayPolicy, Explain, Lifeline}
+    alias ObanPowertools.Forensics.Scope
     alias ObanPowertools.Lifeline.{ArchiveRun, Incident, RepairPreview, TargetType}
     alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth, Selectors}
     alias ObanPowertools.Workflow.{Step, Workflow}
@@ -1303,13 +1304,53 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp forensic_path(row, current_view) do
-      Selectors.forensic_path([
-        {"incident_fingerprint", row.incident.incident_fingerprint},
-        {"view", current_view},
-        {"resource_type", row.target_type},
-        {"resource_id", row.target_id}
-      ])
+      params =
+        forensic_context_params(row) ++
+          [
+            {"incident_fingerprint", row.incident.incident_fingerprint},
+            {"view", current_view}
+          ]
+
+      case Scope.parse(params) do
+        {:ok, scope, _canonical_params} -> Selectors.forensic_path(scope)
+        _invalid -> Selectors.forensic_path([])
+      end
     end
+
+    defp forensic_context_params(%{
+           target_type: "workflow_step",
+           target_id: target_id,
+           workflow_id: workflow_id,
+           step_name: step_name
+         })
+         when is_binary(target_id) and is_binary(workflow_id) and is_binary(step_name) do
+      [
+        {"resource_type", "workflow_step"},
+        {"resource_id", target_id},
+        {"workflow_id", workflow_id},
+        {"step", step_name}
+      ]
+    end
+
+    defp forensic_context_params(%{
+           target_type: "workflow",
+           target_id: target_id,
+           workflow_id: workflow_id
+         })
+         when is_binary(target_id) and target_id == workflow_id do
+      [
+        {"resource_type", "workflow"},
+        {"resource_id", target_id},
+        {"workflow_id", workflow_id}
+      ]
+    end
+
+    defp forensic_context_params(%{target_type: "job", target_id: target_id})
+         when is_binary(target_id) do
+      [{"resource_type", "job"}, {"resource_id", target_id}]
+    end
+
+    defp forensic_context_params(_row), do: []
 
     defp follow_up_variant(path_or_venue) do
       path_or_venue

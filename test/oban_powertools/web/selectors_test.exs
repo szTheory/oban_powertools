@@ -1,6 +1,7 @@
 defmodule ObanPowertools.Web.SelectorsTest do
   use ExUnit.Case, async: true
 
+  alias ObanPowertools.Forensics.Scope
   alias ObanPowertools.Web.Selectors
 
   test "maps each named destination to its canonical path" do
@@ -62,6 +63,33 @@ defmodule ObanPowertools.Web.SelectorsTest do
              {"view", ""},
              {"conflicting_secret", "do-not-retain"}
            ]) == "/ops/jobs/forensics"
+  end
+
+  test "encodes only revalidated typed Forensics scopes" do
+    fingerprint = "dead_executor:node/α?mode=full&attempt=1"
+
+    assert {:ok, scope, _canonical_params} =
+             Scope.parse(%{
+               "resource_type" => "job",
+               "resource_id" => "job:42/attempt?one=1",
+               "incident_fingerprint" => fingerprint,
+               "view" => "active"
+             })
+
+    path = Selectors.forensic_path(scope)
+
+    assert path ==
+             "/ops/jobs/forensics?resource_type=job&resource_id=job%3A42%2Fattempt%3Fone%3D1&incident_fingerprint=dead_executor%3Anode%2F%CE%B1%3Fmode%3Dfull%26attempt%3D1&view=active"
+
+    assert URI.decode_query(URI.parse(path).query) == %{
+             "resource_type" => "job",
+             "resource_id" => "job:42/attempt?one=1",
+             "incident_fingerprint" => fingerprint,
+             "view" => "active"
+           }
+
+    assert Selectors.forensic_path(%Scope{kind: :limiter, resource_type: "job"}) ==
+             "/ops/jobs/forensics"
   end
 
   test "preserves keyword-list ordering in the encoded query" do

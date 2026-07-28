@@ -118,7 +118,7 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     assert html =~ "host-owned follow-up"
 
     assert html =~
-             "/ops/jobs/forensics?incident_fingerprint=#{URI.encode_www_form(incident.incident_fingerprint)}&amp;view=active"
+             "/ops/jobs/forensics?resource_type=job&amp;resource_id=#{job.id}&amp;incident_fingerprint=#{URI.encode_www_form(incident.incident_fingerprint)}&amp;view=active"
 
     assert html =~ "Preview Ready"
     assert html =~ "Preview Status"

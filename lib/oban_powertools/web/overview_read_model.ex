@@ -5,7 +5,7 @@ defmodule ObanPowertools.Web.OverviewReadModel do
 
   alias ObanPowertools.{Audit, ControlPlane, Explain}
   alias ObanPowertools.Cron.Entry
-  alias ObanPowertools.Forensics.{AttentionProjection, CronHistory, LimiterHistory}
+  alias ObanPowertools.Forensics.{AttentionProjection, CronHistory, LimiterHistory, Scope}
   alias ObanPowertools.Lifeline
   alias ObanPowertools.Lifeline.Incident
   alias ObanPowertools.Limits.{Resource, State}
@@ -390,7 +390,10 @@ defmodule ObanPowertools.Web.OverviewReadModel do
         evidence_completeness: summary.completeness.state,
         path: Selectors.limiter_path([{"resource", resource.name}]),
         evidence_path:
-          Selectors.forensic_path([{"resource_id", resource.name}, {"resource_type", "limiter"}]),
+          typed_forensic_path([
+            {"resource_type", "limiter"},
+            {"resource_id", resource.name}
+          ]),
         venue: ControlPlanePresenter.venue_label(:powertools_native),
         ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
         source: "limiter-history"
@@ -416,7 +419,10 @@ defmodule ObanPowertools.Web.OverviewReadModel do
         evidence_completeness: summary.completeness.state,
         path: Selectors.cron_path([{"entry", entry.name}]),
         evidence_path:
-          Selectors.forensic_path([{"resource_id", entry.name}, {"resource_type", "cron_entry"}]),
+          typed_forensic_path([
+            {"resource_type", "cron_entry"},
+            {"resource_id", entry.name}
+          ]),
         venue: ControlPlanePresenter.venue_label(:powertools_native),
         ownership: ControlPlanePresenter.ownership_badge(:powertools_native),
         source: "cron-history"
@@ -515,6 +521,13 @@ defmodule ObanPowertools.Web.OverviewReadModel do
   end
 
   defp forensic_incident_path(incident) do
-    Selectors.forensic_path([{"incident_fingerprint", incident.incident_fingerprint}])
+    typed_forensic_path([{"incident_fingerprint", incident.incident_fingerprint}])
+  end
+
+  defp typed_forensic_path(params) do
+    case Scope.parse(params) do
+      {:ok, scope, _canonical_params} -> Selectors.forensic_path(scope)
+      _invalid -> Selectors.forensic_path([])
+    end
   end
 end

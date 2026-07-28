@@ -34,6 +34,8 @@ defmodule ObanPowertools.Web.Selectors do
   When all params are `nil` or `""`, the helper returns the bare path without a trailing `?`.
   """
 
+  alias ObanPowertools.Forensics.Scope
+
   @canonical_paths %{
     lifeline: "/ops/jobs/lifeline",
     forensics: "/ops/jobs/forensics",
@@ -74,6 +76,15 @@ defmodule ObanPowertools.Web.Selectors do
   @doc """
   Returns the `/ops/jobs/forensics` path with exactly six keys in canonical order.
   """
+  def forensic_path(%Scope{} = scope) do
+    canonical_params = Scope.canonical_params(scope)
+
+    case Scope.parse(canonical_params) do
+      {:ok, ^scope, ^canonical_params} -> encode(:forensics, canonical_params)
+      _invalid -> encode(:forensics, [])
+    end
+  end
+
   def forensic_path(params), do: encode(:forensics, ordered_params(params, @forensic_keys))
 
   @doc "Returns the `/ops/jobs/audit` path with the given params encoded."

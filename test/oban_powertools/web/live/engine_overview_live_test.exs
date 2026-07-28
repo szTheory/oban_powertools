@@ -154,7 +154,7 @@ defmodule ObanPowertools.Web.EngineOverviewLiveTest do
 
     assert has_element?(
              view,
-             "a[href='/ops/jobs/forensics?resource_id=payments-api&resource_type=limiter']",
+             "a[href='/ops/jobs/forensics?resource_type=limiter&resource_id=payments-api']",
              "Open forensic timeline"
            )
 
