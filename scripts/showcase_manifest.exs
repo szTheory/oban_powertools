@@ -166,14 +166,15 @@ page_stories =
       variant: stringify_list.(Map.fetch!(story, :variant)),
       state: stringify_list.(Map.fetch!(story, :state)),
       activation: stringify.(Map.fetch!(story, :activation)),
+      acceptance: Map.fetch!(story, :acceptance),
       story: Map.fetch!(test_targets, :story),
       snapshot: PageStoryCatalog.snapshot_name(id),
       a11y: PageStoryCatalog.a11y_target(id)
     }
   end)
 
-unless length(page_stories) == 19 do
-  raise "expected exactly 19 page stories, got #{length(page_stories)}"
+unless length(page_stories) == 49 do
+  raise "expected exactly 49 page stories, got #{length(page_stories)}"
 end
 
 targets =
@@ -181,12 +182,12 @@ targets =
     primitive_stories ++
     form_stories ++ shell_stories ++ data_stories ++ group_stories ++ page_stories
 
-unless length(targets) == 83 do
-  raise "expected exactly 83 showcase targets, got #{length(targets)}"
+unless length(targets) == 113 do
+  raise "expected exactly 113 showcase targets, got #{length(targets)}"
 end
 
 manifest = %{
-  schema_version: 7,
+  schema_version: 8,
   themes: themes,
   viewports: viewports,
   scenarios: scenarios,
