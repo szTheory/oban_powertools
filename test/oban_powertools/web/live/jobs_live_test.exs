@@ -866,12 +866,15 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       assert html =~ "/ops/jobs/jobs"
     end
 
-    test "renders action buttons depending on state when operator has retry permission", %{
+    test "renders action buttons depending on state when operator has action permissions", %{
       conn: conn
     } do
       conn =
         Plug.Test.init_test_session(conn,
-          current_actor: %{id: "ops-1", permissions: [:view_job_detail, :retry_job]}
+          current_actor: %{
+            id: "ops-1",
+            permissions: [:view_job_detail, :retry_job, :cancel_job, :discard_job]
+          }
         )
 
       # Executing job
@@ -889,48 +892,119 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       assert html =~ "Retry job"
     end
 
-    test "executing an action opens preview, accepts reason, and executes", %{conn: conn} do
+    test "all three actions open one shared confirmation with finite safe presentation", %{
+      conn: conn
+    } do
       conn =
         Plug.Test.init_test_session(conn,
           current_actor: %{
             id: "ops-1",
-            permissions: [:view_job_detail, :retry_job, :preview_repair, :execute_repair]
+            permissions: [
+              :view_job_detail,
+              :view_audit,
+              :retry_job,
+              :cancel_job,
+              :discard_job,
+              :preview_repair,
+              :execute_repair
+            ]
+          }
+        )
+
+      for {kind, intent, title, consequence, dismiss_label} <- [
+            {:retry, :warning, "Retry this job",
+             "Powertools requests a retry for each ready job. A retry request does not mean the job completed.",
+             "Keep current state"},
+            {:cancel, :danger, "Cancel this job",
+             "Each ready job stops and will not retry. This cannot be undone.", "Keep running"},
+            {:discard, :danger, "Discard this job",
+             "Each ready job is marked discarded and will not retry. This cannot be undone.",
+             "Keep current state"}
+          ] do
+        job = insert_job!(worker: "W", queue: :default, state: "retryable")
+
+        {:ok, view, _html} = live(conn, "/ops/jobs/jobs/#{job.id}")
+
+        html =
+          view
+          |> element("button[phx-click=\"preview_action\"][phx-value-kind=\"#{kind}\"]")
+          |> render_click()
+
+        assert count(html, ~s(role="dialog")) == 1
+        assert html =~ ~s(data-obpt-confirm-state="preview")
+        assert html =~ ~s(data-obpt-confirm-intent="#{intent}")
+        assert html =~ title
+        assert html =~ consequence
+        assert html =~ dismiss_label
+        assert html =~ "Explain why this action is needed. Do not enter secrets."
+        refute html =~ "preview_token"
+        refute html =~ "plan_hash"
+        refute html =~ "job_#{kind}"
+
+        html =
+          view
+          |> form("#job-action-confirmation-form", %{
+            "confirmation" => %{"reason" => "short"}
+          })
+          |> render_submit()
+
+        assert html =~ "Enter at least 8 characters."
+        assert html =~ ~s(data-obpt-confirm-state="preview")
+      end
+    end
+
+    test "clean action success closes the dialog, reloads truth, and links exact Audit receipt",
+         %{
+           conn: conn
+         } do
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{
+            id: "ops-1",
+            permissions: [
+              :view_job_detail,
+              :view_audit,
+              :retry_job,
+              :preview_repair,
+              :execute_repair
+            ]
           }
         )
 
       job = insert_job!(worker: "W", queue: :default, state: "retryable")
+      {:ok, view, _html} = live(conn, "/ops/jobs/jobs/#{job.id}")
 
-      {:ok, view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
-
-      assert html =~ "Cancel job"
+      view
+      |> element("button[phx-click=\"preview_action\"][phx-value-kind=\"retry\"]")
+      |> render_click()
 
       html =
         view
-        |> element("button[phx-click=\"preview\"][phx-value-action=\"job_cancel\"]")
-        |> render_click()
+        |> form("#job-action-confirmation-form", %{
+          "confirmation" => %{"reason" => "Retry after dependency recovery"}
+        })
+        |> render_submit()
 
-      assert html =~ "Cancel this job for job ##{job.id}"
-      assert html =~ "Reason"
-      assert html =~ "obpt-modal-backdrop"
-      assert html =~ "obpt-modal"
-      assert html =~ "obpt-modal-summary"
-
-      # Execute with reason
-      view
-      |> form("form[phx-submit=\"execute\"]", %{"reason" => "Operator requested cancellation"})
-      |> render_submit()
-
-      # Should flash success and reload (modal closes, state updates)
-      assert_patch(view, "/ops/jobs/jobs/#{job.id}")
-      assert view |> render() |> String.contains?("cancelled")
+      refute html =~ ~s(data-obpt-confirm-state=)
+      assert html =~ "Retry requested for job #{job.id}. Audit evidence recorded."
+      assert html =~ "Open audit evidence"
+      assert html =~ "/ops/jobs/audit?resource_type=job&amp;resource_id=#{job.id}"
+      assert html =~ "Available"
     end
 
-    test "concurrent modification displays drift error in modal", %{conn: conn} do
+    test "drifted action stays in shared recovery and needs an explicit fresh preview", %{
+      conn: conn
+    } do
       conn =
         Plug.Test.init_test_session(conn,
           current_actor: %{
             id: "ops-1",
-            permissions: [:view_job_detail, :retry_job, :preview_repair, :execute_repair]
+            permissions: [
+              :view_job_detail,
+              :discard_job,
+              :preview_repair,
+              :execute_repair
+            ]
           }
         )
 
@@ -939,19 +1013,108 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       {:ok, view, _html} = live(conn, "/ops/jobs/jobs/#{job.id}")
 
       view
-      |> element("button[phx-click=\"preview\"][phx-value-action=\"job_discard\"]")
+      |> element("button[phx-click=\"preview_action\"][phx-value-kind=\"discard\"]")
       |> render_click()
 
       # Drift the state
-      job |> Ecto.Changeset.change(state: "cancelled") |> TestRepo.update!()
+      job |> Ecto.Changeset.change(state: "executing") |> TestRepo.update!()
 
       html =
         view
-        |> form("form[phx-submit=\"execute\"]", %{"reason" => "Discard it"})
+        |> form("#job-action-confirmation-form", %{
+          "confirmation" => %{"reason" => "Discard after operator review"}
+        })
         |> render_submit()
 
       assert html =~
-               "Could not execute action. The job&#39;s state was changed by another process or operator."
+               "This preview is out of date because the job changed. Create a new preview before retrying."
+
+      assert html =~ ~s(data-obpt-confirm-state="drifted")
+      assert html =~ "Create new preview"
+      refute html =~ "Audit evidence recorded."
+      refute has_element?(view, "#job-action-confirmation-form")
+
+      html = view |> element("button[phx-click=\"new_action_preview\"]") |> render_click()
+
+      assert html =~ ~s(data-obpt-confirm-state="preview")
+      refute html =~ "Audit evidence recorded."
+    end
+
+    test "expired and consumed action previews stay recoverable and cannot replay", %{conn: conn} do
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{
+            id: "ops-1",
+            permissions: [
+              :view_job_detail,
+              :retry_job,
+              :preview_repair,
+              :execute_repair
+            ]
+          }
+        )
+
+      for {status, expected_state, expected_copy} <- [
+            {:expired, "expired",
+             "This preview expired. Create a new preview before continuing."},
+            {:consumed, "consumed",
+             "This preview was already used. Create a new preview to run the action again."}
+          ] do
+        job = insert_job!(worker: "W", queue: :default, state: "retryable")
+        {:ok, view, _html} = live(conn, "/ops/jobs/jobs/#{job.id}")
+
+        view
+        |> element("button[phx-click=\"preview_action\"][phx-value-kind=\"retry\"]")
+        |> render_click()
+
+        preview =
+          TestRepo.get_by!(
+            ObanPowertools.Lifeline.RepairPreview,
+            target_id: Integer.to_string(job.id),
+            status: "ready"
+          )
+
+        preview_attrs =
+          case status do
+            :expired -> %{expires_at: DateTime.add(DateTime.utc_now(), -60, :second)}
+            :consumed -> %{status: "consumed", consumed_at: DateTime.utc_now()}
+          end
+
+        preview
+        |> ObanPowertools.Lifeline.RepairPreview.changeset(preview_attrs)
+        |> TestRepo.update!()
+
+        html =
+          view
+          |> form("#job-action-confirmation-form", %{
+            "confirmation" => %{"reason" => "Retry after operator review"}
+          })
+          |> render_submit()
+
+        assert html =~ ~s(data-obpt-confirm-state="#{expected_state}")
+        assert html =~ expected_copy
+        assert html =~ "Create new preview"
+        refute html =~ "Audit evidence recorded."
+        refute has_element?(view, "#job-action-confirmation-form")
+      end
+    end
+
+    test "single action source reauthorizes current truth and uses only Lifeline mutation APIs" do
+      source = File.read!("lib/oban_powertools/web/jobs_live.ex")
+
+      assert source =~ ~s(handle_event("preview_action")
+      assert source =~ ~s(handle_event("execute_action")
+      assert source =~ "authorize_job_action"
+      assert source =~ "Lifeline.preview_repair("
+      assert source =~ "Lifeline.execute_repair("
+
+      for permission <- [:retry_job, :cancel_job, :discard_job] do
+        assert source =~ inspect(permission)
+      end
+
+      refute source =~ "Oban.cancel_job("
+      refute source =~ "Oban.retry_job("
+      refute source =~ "Oban.discard_job("
     end
   end
 
