@@ -1,0 +1,74 @@
+- region "Jobs":
+  - heading "Jobs" [level=1]
+  - paragraph: Review current job state, apply precise filters, and take deliberate action with recorded evidence.
+  - navigation "Job state":
+    - button "Available (0)"
+    - button "Scheduled (0)"
+    - button "Executing (0)"
+    - button "Retryable (0)"
+    - button "Cancelled (0)"
+    - button "Discarded (0)"
+    - button "Completed (0)"
+  - region "Filters":
+    - button "Filters (0 applied)"
+    - status: 0 retryable jobs
+  - paragraph: 12 jobs selected
+  - paragraph: 12 jobs selected. This selection was captured at 14:05:00 UTC.
+  - button "Clear selection"
+  - button "Retry jobs"
+  - region "Jobs results":
+    - checkbox "Select current page"
+    - text: Select current page
+    - table "Jobs 0 jobs Showing 0–0 of 0":
+      - caption: Jobs 0 jobs Showing 0–0 of 0
+      - rowgroup:
+        - row "Selection Worker State Queue Scheduled Attempts Job ID Review job":
+          - columnheader "Selection"
+          - columnheader "Worker"
+          - columnheader "State"
+          - columnheader "Queue"
+          - columnheader "Scheduled"
+          - columnheader "Attempts"
+          - columnheader "Job ID"
+          - columnheader "Review job"
+      - rowgroup
+  - heading "No jobs match the applied filters" [level=2]
+  - paragraph: Remove a filter or clear all filters to widen the review.
+  - navigation "Jobs pages":
+    - button "Previous" [disabled]
+    - text: Showing 0–0 of 0
+    - button "Next" [disabled]
+  - dialog "Retry 12 ready jobs":
+    - paragraph: 12 selected jobs
+    - heading "Retry 12 ready jobs" [level=2]
+    - region "Scope":
+      - heading "Scope" [level=3]
+      - paragraph: 12 selected, 12 ready, 0 excluded, 0 off-page. This selection was captured at 14:05:00 UTC. New matching jobs will not be included.
+      - paragraph: All matching frozen scope. State Retryable.
+    - region "Consequence":
+      - heading "Consequence" [level=3]
+      - paragraph: Powertools requests a retry for each ready job. A retry request does not mean the job completed.
+    - region "Reversibility":
+      - heading "Reversibility" [level=3]
+      - paragraph: A retry request cannot be undone.
+    - region "Support boundary":
+      - heading "Support boundary" [level=3]
+      - paragraph: Each Lifeline action records independent per-job evidence; the batch is not atomic.
+      - paragraph: Each job is processed independently. Some actions may succeed while others are skipped or fail.
+      - paragraph: Closing this page will not stop work already started. A service restart may interrupt unfinished jobs; completed actions remain in the Audit log.
+    - region "Retry requests finished with mixed results. Review failed and skipped jobs before trying again.":
+      - heading "Retry requests finished with mixed results. Review failed and skipped jobs before trying again." [level=3]
+      - list:
+        - listitem:
+          - text: "Operator result: Success"
+          - paragraph: Job 8001
+          - paragraph: Retry request recorded.
+        - listitem:
+          - text: "Operator result: Failed"
+          - paragraph: Job 8002
+          - paragraph: Completion could not be established.
+          - paragraph: Review matching Audit evidence.
+      - paragraph: This run may have been interrupted. Review the Audit log for completed actions before creating a fresh preview.
+      - paragraph: Review the Audit log for completed actions before creating a fresh preview.
+      - button "Create fresh preview"
+      - button "Keep current state"

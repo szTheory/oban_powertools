@@ -1,0 +1,300 @@
+- region "Jobs":
+  - heading "Jobs" [level=1]
+  - paragraph: Review current job state, apply precise filters, and take deliberate action with recorded evidence.
+  - navigation "Job state":
+    - button "Available (0)"
+    - button "Scheduled (0)"
+    - button "Executing (0)"
+    - button "Retryable (0)"
+    - button "Cancelled (0)"
+    - button "Discarded (0)"
+    - button "Completed (0)"
+  - region "Filters":
+    - button "Filters (0 applied)"
+    - status: 143 retryable jobs
+  - paragraph: 23 jobs selected
+  - paragraph: 23 jobs selected, including 20 jobs from other pages.
+  - button "Clear selection"
+  - button "Retry jobs"
+  - button "Cancel jobs"
+  - button "Discard jobs"
+  - region "Jobs results":
+    - checkbox "Select current page" [checked=mixed]
+    - text: Select current page
+    - table "Jobs 143 jobs Showing 1–20 of 143":
+      - caption: Jobs 143 jobs Showing 1–20 of 143
+      - rowgroup:
+        - row "Selection Worker State Queue Scheduled Attempts Job ID Review job":
+          - columnheader "Selection"
+          - columnheader "Worker"
+          - columnheader "State"
+          - columnheader "Queue"
+          - columnheader "Scheduled"
+          - columnheader "Attempts"
+          - columnheader "Job ID"
+          - columnheader "Review job"
+      - rowgroup:
+        - 'row "Select job 8001 Select job 8001 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8001 Review job 8001"':
+          - cell "Select job 8001 Select job 8001":
+            - checkbox "Select job 8001" [checked]
+            - text: Select job 8001
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8001"
+          - cell "Review job 8001":
+            - button "Review job 8001": Review job
+        - 'row "Select job 8002 Select job 8002 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8002 Review job 8002"':
+          - cell "Select job 8002 Select job 8002":
+            - checkbox "Select job 8002" [checked]
+            - text: Select job 8002
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8002"
+          - cell "Review job 8002":
+            - button "Review job 8002": Review job
+        - 'row "Select job 8003 Select job 8003 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8003 Review job 8003"':
+          - cell "Select job 8003 Select job 8003":
+            - checkbox "Select job 8003"
+            - text: Select job 8003
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8003"
+          - cell "Review job 8003":
+            - button "Review job 8003": Review job
+        - 'row "Select job 8004 Select job 8004 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8004 Review job 8004"':
+          - cell "Select job 8004 Select job 8004":
+            - checkbox "Select job 8004"
+            - text: Select job 8004
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8004"
+          - cell "Review job 8004":
+            - button "Review job 8004": Review job
+        - 'row "Select job 8005 Select job 8005 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8005 Review job 8005"':
+          - cell "Select job 8005 Select job 8005":
+            - checkbox "Select job 8005" [checked]
+            - text: Select job 8005
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8005"
+          - cell "Review job 8005":
+            - button "Review job 8005": Review job
+        - 'row "Select job 8006 Select job 8006 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8006 Review job 8006"':
+          - cell "Select job 8006 Select job 8006":
+            - checkbox "Select job 8006"
+            - text: Select job 8006
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8006"
+          - cell "Review job 8006":
+            - button "Review job 8006": Review job
+        - 'row "Select job 8007 Select job 8007 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8007 Review job 8007"':
+          - cell "Select job 8007 Select job 8007":
+            - checkbox "Select job 8007"
+            - text: Select job 8007
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8007"
+          - cell "Review job 8007":
+            - button "Review job 8007": Review job
+        - 'row "Select job 8008 Select job 8008 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8008 Review job 8008"':
+          - cell "Select job 8008 Select job 8008":
+            - checkbox "Select job 8008"
+            - text: Select job 8008
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8008"
+          - cell "Review job 8008":
+            - button "Review job 8008": Review job
+        - 'row "Select job 8009 Select job 8009 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8009 Review job 8009"':
+          - cell "Select job 8009 Select job 8009":
+            - checkbox "Select job 8009"
+            - text: Select job 8009
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8009"
+          - cell "Review job 8009":
+            - button "Review job 8009": Review job
+        - 'row "Select job 8010 Select job 8010 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8010 Review job 8010"':
+          - cell "Select job 8010 Select job 8010":
+            - checkbox "Select job 8010"
+            - text: Select job 8010
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8010"
+          - cell "Review job 8010":
+            - button "Review job 8010": Review job
+        - 'row "Select job 8011 Select job 8011 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8011 Review job 8011"':
+          - cell "Select job 8011 Select job 8011":
+            - checkbox "Select job 8011"
+            - text: Select job 8011
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8011"
+          - cell "Review job 8011":
+            - button "Review job 8011": Review job
+        - 'row "Select job 8012 Select job 8012 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8012 Review job 8012"':
+          - cell "Select job 8012 Select job 8012":
+            - checkbox "Select job 8012"
+            - text: Select job 8012
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8012"
+          - cell "Review job 8012":
+            - button "Review job 8012": Review job
+        - 'row "Select job 8013 Select job 8013 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8013 Review job 8013"':
+          - cell "Select job 8013 Select job 8013":
+            - checkbox "Select job 8013"
+            - text: Select job 8013
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8013"
+          - cell "Review job 8013":
+            - button "Review job 8013": Review job
+        - 'row "Select job 8014 Select job 8014 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8014 Review job 8014"':
+          - cell "Select job 8014 Select job 8014":
+            - checkbox "Select job 8014"
+            - text: Select job 8014
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8014"
+          - cell "Review job 8014":
+            - button "Review job 8014": Review job
+        - 'row "Select job 8015 Select job 8015 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8015 Review job 8015"':
+          - cell "Select job 8015 Select job 8015":
+            - checkbox "Select job 8015"
+            - text: Select job 8015
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8015"
+          - cell "Review job 8015":
+            - button "Review job 8015": Review job
+        - 'row "Select job 8016 Select job 8016 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8016 Review job 8016"':
+          - cell "Select job 8016 Select job 8016":
+            - checkbox "Select job 8016"
+            - text: Select job 8016
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8016"
+          - cell "Review job 8016":
+            - button "Review job 8016": Review job
+        - 'row "Select job 8017 Select job 8017 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8017 Review job 8017"':
+          - cell "Select job 8017 Select job 8017":
+            - checkbox "Select job 8017"
+            - text: Select job 8017
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8017"
+          - cell "Review job 8017":
+            - button "Review job 8017": Review job
+        - 'row "Select job 8018 Select job 8018 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8018 Review job 8018"':
+          - cell "Select job 8018 Select job 8018":
+            - checkbox "Select job 8018"
+            - text: Select job 8018
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8018"
+          - cell "Review job 8018":
+            - button "Review job 8018": Review job
+        - 'row "Select job 8019 Select job 8019 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8019 Review job 8019"':
+          - cell "Select job 8019 Select job 8019":
+            - checkbox "Select job 8019"
+            - text: Select job 8019
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8019"
+          - cell "Review job 8019":
+            - button "Review job 8019": Review job
+        - 'row "Select job 8020 Select job 8020 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8020 Review job 8020"':
+          - cell "Select job 8020 Select job 8020":
+            - checkbox "Select job 8020"
+            - text: Select job 8020
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8020"
+          - cell "Review job 8020":
+            - button "Review job 8020": Review job
+  - navigation "Jobs pages":
+    - button "Previous" [disabled]
+    - text: Showing 1–20 of 143
+    - button "Next"

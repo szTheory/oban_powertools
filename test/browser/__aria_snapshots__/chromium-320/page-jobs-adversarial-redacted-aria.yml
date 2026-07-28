@@ -1,0 +1,47 @@
+- region "Jobs":
+  - heading "Jobs" [level=1]
+  - paragraph: Review current job state, apply precise filters, and take deliberate action with recorded evidence.
+  - navigation "Job state":
+    - button "Available (0)"
+    - button "Scheduled (0)"
+    - button "Executing (0)"
+    - button "Retryable (0)"
+    - button "Cancelled (0)"
+    - button "Discarded (0)"
+    - button "Completed (0)"
+  - region "Filters":
+    - button "Filters (0 applied)"
+    - status: 1 retryable job
+  - region "Jobs results":
+    - checkbox "Select current page"
+    - text: Select current page
+    - table "Jobs 1 jobs Showing 1–1 of 1":
+      - caption: Jobs 1 jobs Showing 1–1 of 1
+      - rowgroup:
+        - row "Selection Worker State Queue Scheduled Attempts Job ID Review job":
+          - columnheader "Selection"
+          - columnheader "Worker"
+          - columnheader "State"
+          - columnheader "Queue"
+          - columnheader "Scheduled"
+          - columnheader "Attempts"
+          - columnheader "Job ID"
+          - columnheader "Review job"
+      - rowgroup:
+        - 'row "Select job 8061 Select job 8061 MyApp.Workers.ReconcileInternationalCustomerNotificationDeliveryWithLongIdentifier Job state: Retryable לקוחות مرحبا ✅ July 19, 2026 at 14:05 UTC 20 of 20 8061 Review job 8061"':
+          - cell "Select job 8061 Select job 8061":
+            - checkbox "Select job 8061"
+            - text: Select job 8061
+          - cell "MyApp.Workers.ReconcileInternationalCustomerNotificationDeliveryWithLongIdentifier"
+          - 'cell "Job state: Retryable"'
+          - cell "לקוחות مرحبا ✅"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "20 of 20"
+          - cell "8061"
+          - cell "Review job 8061":
+            - button "Review job 8061": Review job
+  - navigation "Jobs pages":
+    - button "Previous" [disabled]
+    - text: Showing 1–1 of 1
+    - button "Next" [disabled]

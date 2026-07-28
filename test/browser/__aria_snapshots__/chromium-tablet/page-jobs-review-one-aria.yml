@@ -1,0 +1,90 @@
+- region "Jobs":
+  - heading "Jobs" [level=1]
+  - paragraph: Review current job state, apply precise filters, and take deliberate action with recorded evidence.
+  - navigation "Job state":
+    - button "Available (0)"
+    - button "Scheduled (0)"
+    - button "Executing (0)"
+    - button "Retryable (0)"
+    - button "Cancelled (0)"
+    - button "Discarded (0)"
+    - button "Completed (0)"
+  - region "Filters":
+    - text: Queue
+    - textbox "Queue":
+      - /placeholder: All queues
+    - text: Worker module
+    - textbox "Worker module":
+      - /placeholder: All worker modules
+    - text: Tags
+    - textbox "Tags":
+      - /placeholder: All tags
+    - paragraph: Separate tags with commas. Jobs must contain every listed tag.
+    - text: Args contain
+    - textbox "Args contain":
+      - /placeholder: JSON object
+    - paragraph: Enter a JSON object. Filter values are stored in the URL; do not enter secrets.
+    - text: Meta contain
+    - textbox "Meta contain":
+      - /placeholder: JSON object
+    - paragraph: Enter a JSON object. Filter values are stored in the URL; do not enter secrets.
+    - button "Apply filters"
+    - status: 1 retryable job
+  - region "Jobs results":
+    - checkbox "Select current page"
+    - text: Select current page
+    - table "Jobs 1 jobs Showing 1–1 of 1":
+      - caption: Jobs 1 jobs Showing 1–1 of 1
+      - rowgroup:
+        - row "Selection Worker State Queue Scheduled Attempts Job ID Review job":
+          - columnheader "Selection"
+          - columnheader "Worker"
+          - columnheader "State"
+          - columnheader "Queue"
+          - columnheader "Scheduled"
+          - columnheader "Attempts"
+          - columnheader "Job ID"
+          - columnheader "Review job"
+      - rowgroup:
+        - 'row "Select job 8001 Select job 8001 MyApp.Workers.DeliverNotification Job state: Retryable critical-mailer July 19, 2026 at 14:05 UTC 3 of 20 8001 Review job 8001"':
+          - cell "Select job 8001 Select job 8001":
+            - checkbox "Select job 8001"
+            - text: Select job 8001
+          - cell "MyApp.Workers.DeliverNotification"
+          - 'cell "Job state: Retryable"'
+          - cell "critical-mailer"
+          - cell "July 19, 2026 at 14:05 UTC":
+            - time: July 19, 2026 at 14:05 UTC
+          - cell "3 of 20"
+          - cell "8001"
+          - cell "Review job 8001":
+            - button "Review job 8001" [expanded]: Reviewing
+  - navigation "Jobs pages":
+    - button "Previous" [disabled]
+    - text: Showing 1–1 of 1
+    - button "Next" [disabled]
+  - dialog "Job 8001":
+    - heading "Job 8001" [level=2]
+    - button "Close job review"
+    - term: Job ID
+    - definition: "8001"
+    - term: State
+    - definition: "Job state: Retryable"
+    - term: Worker
+    - definition: MyApp.Workers.DeliverNotification
+    - term: Queue
+    - definition: critical-mailer
+    - term: Attempts
+    - definition: 3 of 20
+    - term: Attempted
+    - definition:
+      - time: July 19, 2026 at 14:05 UTC
+    - term: Latest failure
+    - definition: Failure details are redacted.
+    - term: Recorded output
+    - definition: Not recorded
+    - term: Enqueue redaction
+    - definition: Sensitive values are [redacted].
+    - status: Job 8001 review loaded
+    - link "Open full job details":
+      - /url: /ops/jobs/jobs/8001

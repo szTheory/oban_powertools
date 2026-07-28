@@ -1,0 +1,101 @@
+- main:
+  - heading "Forensics" [level=1]
+  - paragraph: Inspect a supported evidence scope, review the current diagnosis, and follow the retained record.
+  - region "Read-only evidence":
+    - heading "Read-only evidence" [level=2]
+    - paragraph: Forensics summarizes retained Powertools evidence and does not prove root cause.
+  - region "Filters":
+    - text: Evidence type Required
+    - combobox "Evidence type Required":
+      - option "Choose evidence type"
+      - option "Workflow"
+      - option "Lifeline incident"
+      - option "Cron entry" [selected]
+      - option "Limiter"
+    - text: Cron entry ID Required
+    - textbox "Cron entry ID Required": cron-critical-mailer
+    - paragraph: Enter the stable cron entry identifier.
+    - button "Inspect evidence"
+    - status: Choose one supported evidence scope.
+  - region "Investigation summary":
+    - heading "Investigation summary" [level=2]
+    - term: Subject
+    - definition: Cron schedule evidence · nightly-notifications
+    - term: Evidence type
+    - definition: Cron entry
+    - term: Ownership
+    - definition: Powertools-native retained evidence
+    - term: Current diagnosis
+    - definition: Scheduled
+    - term: Detail
+    - definition: The retained schedule shows the latest bounded claims.
+    - term: Provenance
+    - definition: Durable evidence
+    - term: Completeness
+    - definition: Complete
+    - term: Coverage
+    - definition: Showing 5 of 12 retained events.
+  - region "What to do next":
+    - heading "What to do next" [level=2]
+    - link "Open cron entry":
+      - /url: /ops/jobs/cron?entry=nightly-notifications
+    - paragraph: Review current schedule evidence before taking any action.
+  - region "Event log":
+    - heading "Event log" [level=2]
+    - list:
+      - listitem:
+        - time: 2026-07-19T14:59:00Z
+        - paragraph: Cron evidence 1 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 1.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:58:00Z
+        - paragraph: Cron evidence 2 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 2.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:57:00Z
+        - paragraph: Cron evidence 3 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 3.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:56:00Z
+        - paragraph: Cron evidence 4 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 4.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:55:00Z
+        - paragraph: Cron evidence 5 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 5.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+  - region "Evidence limits and sources":
+    - heading "Evidence limits and sources" [level=2]
+    - paragraph: Showing 5 of 12 retained events.
+    - paragraph: Only the retained evidence available to this bounded source is shown.
+    - term: Completeness
+    - definition: Complete
+    - term: Bounded window
+    - definition: "Yes"
+    - list:
+      - listitem:
+        - heading "Cron entry source" [level=3]
+        - paragraph: All 5 available events in this source window.
+        - paragraph: Durable evidence · Complete
+        - paragraph: Newest retained evidence first; bounded to 50 events.
+    - link "View matching audit evidence":
+      - /url: /ops/jobs/audit?resource_type=cron

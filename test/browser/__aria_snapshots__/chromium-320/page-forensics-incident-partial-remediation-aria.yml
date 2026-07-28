@@ -1,0 +1,111 @@
+- main:
+  - heading "Forensics" [level=1]
+  - paragraph: Inspect a supported evidence scope, review the current diagnosis, and follow the retained record.
+  - region "Read-only evidence":
+    - heading "Read-only evidence" [level=2]
+    - paragraph: Forensics summarizes retained Powertools evidence and does not prove root cause.
+  - region "Filters":
+    - button "Filters (0 applied)" [expanded]
+    - text: Evidence type Required
+    - combobox "Evidence type Required":
+      - option "Choose evidence type"
+      - option "Workflow"
+      - option "Lifeline incident" [selected]
+      - option "Cron entry"
+      - option "Limiter"
+    - text: Incident fingerprint Required
+    - textbox "Incident fingerprint Required": payments-timeout
+    - paragraph: Enter the stable Lifeline incident fingerprint.
+    - text: Incident view
+    - combobox "Incident view":
+      - option "Any retained incident"
+      - option "Active" [selected]
+      - option "Resolved"
+    - paragraph: Optional Lifeline incident state.
+    - button "Inspect evidence"
+    - status: Choose one supported evidence scope.
+  - region "Investigation summary":
+    - heading "Investigation summary" [level=2]
+    - term: Subject
+    - definition: Lifeline incident payments-timeout
+    - term: Evidence type
+    - definition: Lifeline incident
+    - term: Ownership
+    - definition: Powertools-native retained evidence
+    - term: Current diagnosis
+    - definition: Needs review
+    - term: Detail
+    - definition: Current incident evidence remains partial after historical remediation.
+    - term: Provenance
+    - definition: Durable evidence
+    - term: Completeness
+    - definition: Partial evidence
+    - term: Coverage
+    - definition: Showing 4 of 7 retained events.
+  - region "What to do next":
+    - heading "What to do next" [level=2]
+    - link "Review incident in Lifeline":
+      - /url: /ops/jobs/lifeline?incident=payments-timeout
+    - paragraph: Review current evidence and reauthorize the incident before taking any action.
+  - region "Latest remediation evidence":
+    - heading "Latest remediation evidence" [level=2]
+    - paragraph: Historical evidence only. It does not replace the current investigation summary.
+    - paragraph: Historical Lifeline repair evidence was recorded. It does not change the current diagnosis.
+    - term: Status
+    - definition: Success
+    - term: Recorded at
+    - definition:
+      - time: July 19, 2026 at 13:55 UTC
+    - term: Provenance
+    - definition: Durable evidence
+  - region "Event log":
+    - heading "Event log" [level=2]
+    - list:
+      - listitem:
+        - time: 2026-07-19T14:59:00Z
+        - paragraph: Lifeline evidence 1 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 1.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:58:00Z
+        - paragraph: Lifeline evidence 2 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 2.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:57:00Z
+        - paragraph: Lifeline evidence 3 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 3.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:56:00Z
+        - paragraph: Lifeline evidence 4 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 4.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+  - region "Evidence limits and sources":
+    - heading "Evidence limits and sources" [level=2]
+    - paragraph: Showing 4 of 7 retained events.
+    - paragraph: Only the retained evidence available to this bounded source is shown.
+    - term: Completeness
+    - definition: Partial evidence
+    - term: Bounded window
+    - definition: "Yes"
+    - list:
+      - listitem:
+        - heading "Lifeline incident source" [level=3]
+        - paragraph: All 4 available events in this source window.
+        - paragraph: Durable evidence · Partial evidence
+        - paragraph: Newest retained evidence first; bounded to 50 events.
+    - link "View matching audit evidence":
+      - /url: /ops/jobs/audit?resource_type=incident

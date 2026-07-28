@@ -1,0 +1,69 @@
+- main:
+  - heading "Forensics" [level=1]
+  - paragraph: Inspect a supported evidence scope, review the current diagnosis, and follow the retained record.
+  - region "Read-only evidence":
+    - heading "Read-only evidence" [level=2]
+    - paragraph: Forensics summarizes retained Powertools evidence and does not prove root cause.
+  - region "Filters":
+    - button "Filters (0 applied)" [expanded]
+    - text: Evidence type Required
+    - combobox "Evidence type Required":
+      - option "Choose evidence type"
+      - option "Workflow"
+      - option "Lifeline incident" [selected]
+      - option "Cron entry"
+      - option "Limiter"
+    - text: Incident fingerprint Required
+    - textbox "Incident fingerprint Required": payments-timeout
+    - paragraph: Enter the stable Lifeline incident fingerprint.
+    - text: Incident view
+    - combobox "Incident view":
+      - option "Any retained incident"
+      - option "Active" [selected]
+      - option "Resolved"
+    - paragraph: Optional Lifeline incident state.
+    - button "Inspect evidence"
+    - status: Choose one supported evidence scope.
+  - region "Investigation summary":
+    - heading "Investigation summary" [level=2]
+    - term: Subject
+    - definition: Lifeline incident history-unavailable
+    - term: Evidence type
+    - definition: Lifeline incident
+    - term: Ownership
+    - definition: Powertools-native retained evidence
+    - term: Current diagnosis
+    - definition: Needs review
+    - term: Detail
+    - definition: Current diagnosis is available without retained event history.
+    - term: Provenance
+    - definition: Durable evidence
+    - term: Completeness
+    - definition: History unavailable
+    - term: Coverage
+    - definition: Showing 0 retained events; total availability is unknown.
+  - region "What to do next":
+    - heading "What to do next" [level=2]
+    - paragraph: No authorized follow-up destination is available for this evidence.
+  - region "Event log":
+    - heading "Event log" [level=2]
+    - paragraph:
+      - strong: Event history unavailable.
+      - text: Current evidence may still be available, but this source cannot provide retained history.
+    - list
+  - region "Evidence limits and sources":
+    - heading "Evidence limits and sources" [level=2]
+    - paragraph: Showing 0 retained events; total availability is unknown.
+    - paragraph: Only the retained evidence available to this bounded source is shown.
+    - term: Completeness
+    - definition: History unavailable
+    - term: Bounded window
+    - definition: "Yes"
+    - list:
+      - listitem:
+        - heading "Lifeline incident source" [level=3]
+        - paragraph: All 0 available events in this source window.
+        - paragraph: Durable evidence · History unavailable
+        - paragraph: Newest retained evidence first; bounded to 50 events.
+    - link "View matching audit evidence":
+      - /url: /ops/jobs/audit?resource_type=incident

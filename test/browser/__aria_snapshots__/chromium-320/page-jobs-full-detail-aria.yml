@@ -1,0 +1,86 @@
+- 'region "Job #8077"':
+  - 'heading "Job #8077" [level=1]'
+  - paragraph: Review current job truth, bounded failure evidence, and redacted data.
+  - link "Back to Jobs":
+    - /url: /ops/jobs/jobs?state=retryable&page=2
+  - paragraph: Current job state
+  - heading "Retryable" [level=2]
+  - paragraph: This job may be retried after operator review.
+  - paragraph: Current state was observed at July 19, 2026 at 14:05 UTC.
+  - heading "Legal actions" [level=2]
+  - button "Retry job"
+  - button "Cancel job"
+  - heading "Identity" [level=2]
+  - term: Job ID
+  - definition: "8077"
+  - term: Worker
+  - definition: MyApp.Workers.DeliverInternationalNotification
+  - term: Queue
+  - definition: critical-mailer
+  - term: State
+  - definition: "Job state: Retryable"
+  - term: Attempts
+  - definition: 20 of 20
+  - term: Priority
+  - definition: "0"
+  - heading "Timing" [level=2]
+  - term: Inserted
+  - definition:
+    - time: July 19, 2026 at 13:55 UTC
+  - term: Scheduled
+  - definition:
+    - time: July 19, 2026 at 14:05 UTC
+  - term: Attempted
+  - definition:
+    - time: July 19, 2026 at 14:05 UTC
+  - term: Completed
+  - definition: Unavailable
+  - term: Cancelled
+  - definition: Unavailable
+  - term: Discarded
+  - definition: Unavailable
+  - heading "Errors and Attempt History" [level=2]
+  - list:
+    - listitem:
+      - paragraph: Attempt 20
+      - paragraph: Failure class unavailable
+      - paragraph: Failure details are redacted.
+      - time: July 19, 2026 at 14:05 UTC
+  - heading "Arguments, metadata, and recorded output" [level=2]
+  - heading "Arguments" [level=3]
+  - paragraph: Arguments hidden by display policy.
+  - text: Redacted Hidden by display policy Sensitive value hidden
+  - heading "Metadata" [level=3]
+  - paragraph: Metadata hidden by display policy.
+  - text: Redacted Hidden by display policy Sensitive value hidden
+  - heading "Recorded output" [level=3]
+  - paragraph: Recorded output is [redacted].
+  - text: Redacted Hidden by display policy Sensitive value hidden
+  - term: Availability
+  - definition: Available
+  - term: Summary
+  - definition: Recorded output is [redacted].
+  - term: Status
+  - definition: Redacted
+  - term: Attempt
+  - definition: "20"
+  - term: Payload Bytes
+  - definition: "384"
+  - term: Recorded At
+  - definition: 2026-07-19T14:05:00Z
+  - term: Retention
+  - definition: Retained for 7 days.
+  - term: Expires At
+  - definition: 2026-07-26T14:05:00Z
+  - term: Redacted Metadata
+  - definition: Stored redaction metadata present
+  - paragraph: 2 argument fields were redacted at enqueue.
+  - paragraph: Sensitive arguments, metadata, output, and errors remain [redacted].
+  - heading "Related evidence" [level=2]
+  - list:
+    - listitem:
+      - link "View matching audit evidence":
+        - /url: /ops/jobs/audit?resource_type=job&resource_id=8077
+    - listitem:
+      - link "Open job forensics":
+        - /url: /ops/jobs/forensics?evidence_type=workflow&workflow_id=job-8077

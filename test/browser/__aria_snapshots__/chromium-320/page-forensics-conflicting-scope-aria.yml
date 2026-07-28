@@ -1,0 +1,23 @@
+- main:
+  - heading "Forensics" [level=1]
+  - paragraph: Inspect a supported evidence scope, review the current diagnosis, and follow the retained record.
+  - region "Read-only evidence":
+    - heading "Read-only evidence" [level=2]
+    - paragraph: Forensics summarizes retained Powertools evidence and does not prove root cause.
+  - alert:
+    - heading "Choose one evidence type" [level=2]
+    - paragraph: Conflicting scope values were not applied. Select one evidence type and inspect it again.
+  - region "Filters":
+    - button "Filters (0 applied)" [expanded]
+    - text: Evidence type Required
+    - combobox "Evidence type Required":
+      - option "Choose evidence type" [selected]
+      - option "Workflow"
+      - option "Lifeline incident"
+      - option "Cron entry"
+      - option "Limiter"
+    - button "Inspect evidence"
+    - status: Choose one supported evidence scope.
+  - region "Choose evidence to inspect.":
+    - heading "Choose evidence to inspect." [level=2]
+    - paragraph: Select Workflow, Lifeline incident, Cron entry, or Limiter, then enter its identifier.

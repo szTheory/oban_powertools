@@ -1,0 +1,462 @@
+- main:
+  - heading "Forensics" [level=1]
+  - paragraph: Inspect a supported evidence scope, review the current diagnosis, and follow the retained record.
+  - region "Read-only evidence":
+    - heading "Read-only evidence" [level=2]
+    - paragraph: Forensics summarizes retained Powertools evidence and does not prove root cause.
+  - region "Filters":
+    - text: Evidence type Required
+    - combobox "Evidence type Required":
+      - option "Choose evidence type"
+      - option "Workflow" [selected]
+      - option "Lifeline incident"
+      - option "Cron entry"
+      - option "Limiter"
+    - text: Workflow ID Required
+    - textbox "Workflow ID Required": wf-nightly
+    - paragraph: Enter the stable workflow identifier.
+    - text: Step
+    - textbox "Step": deliver
+    - paragraph: Optional workflow step name.
+    - button "Inspect evidence"
+    - status: Choose one supported evidence scope.
+  - region "Investigation summary":
+    - heading "Investigation summary" [level=2]
+    - term: Subject
+    - definition: Workflow deep-history
+    - term: Evidence type
+    - definition: Workflow
+    - term: Ownership
+    - definition: Powertools-native retained evidence
+    - term: Current diagnosis
+    - definition: Waiting
+    - term: Detail
+    - definition: The newest retained evidence is shown in a bounded timeline.
+    - term: Provenance
+    - definition: Durable evidence
+    - term: Completeness
+    - definition: Partial evidence
+    - term: Coverage
+    - definition: Showing the newest 50 of 80 retained events.
+  - region "What to do next":
+    - heading "What to do next" [level=2]
+    - paragraph: No authorized follow-up destination is available for this evidence.
+  - region "Event log":
+    - heading "Event log" [level=2]
+    - list:
+      - listitem:
+        - time: 2026-07-19T14:59:00Z
+        - paragraph: Workflow evidence 1 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 1.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:58:00Z
+        - paragraph: Workflow evidence 2 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 2.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:57:00Z
+        - paragraph: Workflow evidence 3 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 3.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:56:00Z
+        - paragraph: Workflow evidence 4 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 4.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:55:00Z
+        - paragraph: Workflow evidence 5 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 5.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:54:00Z
+        - paragraph: Workflow evidence 6 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 6.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:53:00Z
+        - paragraph: Workflow evidence 7 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 7.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:52:00Z
+        - paragraph: Workflow evidence 8 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 8.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:51:00Z
+        - paragraph: Workflow evidence 9 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 9.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:50:00Z
+        - paragraph: Workflow evidence 10 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 10.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:49:00Z
+        - paragraph: Workflow evidence 11 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 11.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:48:00Z
+        - paragraph: Workflow evidence 12 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 12.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:47:00Z
+        - paragraph: Workflow evidence 13 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 13.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:46:00Z
+        - paragraph: Workflow evidence 14 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 14.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:45:00Z
+        - paragraph: Workflow evidence 15 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 15.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:44:00Z
+        - paragraph: Workflow evidence 16 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 16.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:43:00Z
+        - paragraph: Workflow evidence 17 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 17.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:42:00Z
+        - paragraph: Workflow evidence 18 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 18.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:41:00Z
+        - paragraph: Workflow evidence 19 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 19.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:40:00Z
+        - paragraph: Workflow evidence 20 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 20.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:39:00Z
+        - paragraph: Workflow evidence 21 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 21.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:38:00Z
+        - paragraph: Workflow evidence 22 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 22.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:37:00Z
+        - paragraph: Workflow evidence 23 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 23.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:36:00Z
+        - paragraph: Workflow evidence 24 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 24.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:35:00Z
+        - paragraph: Workflow evidence 25 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 25.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:34:00Z
+        - paragraph: Workflow evidence 26 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 26.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:33:00Z
+        - paragraph: Workflow evidence 27 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 27.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:32:00Z
+        - paragraph: Workflow evidence 28 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 28.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:31:00Z
+        - paragraph: Workflow evidence 29 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 29.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:30:00Z
+        - paragraph: Workflow evidence 30 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 30.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:29:00Z
+        - paragraph: Workflow evidence 31 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 31.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:28:00Z
+        - paragraph: Workflow evidence 32 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 32.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:27:00Z
+        - paragraph: Workflow evidence 33 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 33.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:26:00Z
+        - paragraph: Workflow evidence 34 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 34.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:25:00Z
+        - paragraph: Workflow evidence 35 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 35.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:24:00Z
+        - paragraph: Workflow evidence 36 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 36.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:23:00Z
+        - paragraph: Workflow evidence 37 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 37.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:22:00Z
+        - paragraph: Workflow evidence 38 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 38.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:21:00Z
+        - paragraph: Workflow evidence 39 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 39.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:20:00Z
+        - paragraph: Workflow evidence 40 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 40.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:19:00Z
+        - paragraph: Workflow evidence 41 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 41.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:18:00Z
+        - paragraph: Workflow evidence 42 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 42.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:17:00Z
+        - paragraph: Workflow evidence 43 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 43.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:16:00Z
+        - paragraph: Workflow evidence 44 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 44.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:15:00Z
+        - paragraph: Workflow evidence 45 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 45.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:14:00Z
+        - paragraph: Workflow evidence 46 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 46.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:13:00Z
+        - paragraph: Workflow evidence 47 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 47.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:12:00Z
+        - paragraph: Workflow evidence 48 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 48.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:11:00Z
+        - paragraph: Workflow evidence 49 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 49.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:10:00Z
+        - paragraph: Workflow evidence 50 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 50.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+  - region "Evidence limits and sources":
+    - heading "Evidence limits and sources" [level=2]
+    - paragraph: Showing the newest 50 of 80 retained events.
+    - paragraph: Only the retained evidence available to this bounded source is shown.
+    - term: Completeness
+    - definition: Partial evidence
+    - term: Bounded window
+    - definition: "Yes"
+    - list:
+      - listitem:
+        - heading "Workflow source" [level=3]
+        - paragraph: Newest 50 retained events; more evidence exists.
+        - paragraph: Durable evidence · Partial evidence
+        - paragraph: Newest retained evidence first; bounded to 50 events.
+    - link "View matching audit evidence":
+      - /url: /ops/jobs/audit?resource_type=workflow

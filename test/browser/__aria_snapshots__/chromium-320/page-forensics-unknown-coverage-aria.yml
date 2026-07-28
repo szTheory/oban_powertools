@@ -1,0 +1,87 @@
+- main:
+  - heading "Forensics" [level=1]
+  - paragraph: Inspect a supported evidence scope, review the current diagnosis, and follow the retained record.
+  - region "Read-only evidence":
+    - heading "Read-only evidence" [level=2]
+    - paragraph: Forensics summarizes retained Powertools evidence and does not prove root cause.
+  - region "Filters":
+    - button "Filters (0 applied)" [expanded]
+    - text: Evidence type Required
+    - combobox "Evidence type Required":
+      - option "Choose evidence type"
+      - option "Workflow" [selected]
+      - option "Lifeline incident"
+      - option "Cron entry"
+      - option "Limiter"
+    - text: Workflow ID Required
+    - textbox "Workflow ID Required": wf-nightly
+    - paragraph: Enter the stable workflow identifier.
+    - text: Step
+    - textbox "Step": deliver
+    - paragraph: Optional workflow step name.
+    - button "Inspect evidence"
+    - status: Choose one supported evidence scope.
+  - region "Investigation summary":
+    - heading "Investigation summary" [level=2]
+    - term: Subject
+    - definition: Workflow unknown-coverage
+    - term: Evidence type
+    - definition: Workflow
+    - term: Ownership
+    - definition: Powertools-native retained evidence
+    - term: Current diagnosis
+    - definition: Waiting
+    - term: Detail
+    - definition: Current evidence is retained, but complete source coverage cannot be established.
+    - term: Provenance
+    - definition: Durable evidence
+    - term: Completeness
+    - definition: Unknown
+    - term: Coverage
+    - definition: Total availability is unknown.
+  - region "What to do next":
+    - heading "What to do next" [level=2]
+    - paragraph: No authorized follow-up destination is available for this evidence.
+  - region "Event log":
+    - heading "Event log" [level=2]
+    - list:
+      - listitem:
+        - time: 2026-07-19T14:59:00Z
+        - paragraph: Workflow evidence 1 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 1.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:58:00Z
+        - paragraph: Workflow evidence 2 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 2.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+      - listitem:
+        - time: 2026-07-19T14:57:00Z
+        - paragraph: Workflow evidence 3 recorded
+        - text: Durable evidence
+        - paragraph: Bounded retained evidence 3.
+        - paragraph:
+          - strong: "Status:"
+          - text: Recorded
+  - region "Evidence limits and sources":
+    - heading "Evidence limits and sources" [level=2]
+    - paragraph: Total availability is unknown.
+    - paragraph: Only the retained evidence available to this bounded source is shown.
+    - term: Completeness
+    - definition: Unknown
+    - term: Bounded window
+    - definition: "Yes"
+    - list:
+      - listitem:
+        - heading "Workflow source" [level=3]
+        - paragraph: All 3 available events in this source window.
+        - paragraph: Durable evidence · Unknown
+        - paragraph: Newest retained evidence first; bounded to 50 events.
+    - link "View matching audit evidence":
+      - /url: /ops/jobs/audit?resource_type=workflow
