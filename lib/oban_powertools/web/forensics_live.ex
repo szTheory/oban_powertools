@@ -155,7 +155,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         |> assign(:additional_steps, additional_steps)
 
       ~H"""
-      <main class="obpt-page obpt-page--forensics">
+      <main id="forensics-page" class="obpt-page obpt-forensics-page">
         <header class="obpt-page-header">
           <h1>Forensics</h1>
           <p>
@@ -400,7 +400,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             >
               <:event
                 :for={event <- @events}
-                timestamp={event.timestamp}
+                timestamp={event.datetime}
                 title={event.title}
                 source={event.source}
               >

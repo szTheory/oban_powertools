@@ -264,7 +264,9 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
           assert count(html, "<h1") == 1
           assert count(html, ~s(class="obpt-timeline")) == 1
           assert count(html, "<ol") == 1
+          assert html =~ ~s(id="forensics-page" class="obpt-page obpt-forensics-page")
           assert html =~ ~s(class="obpt-description-list)
+          assert html =~ ~s(<time class="obpt-timeline__time" datetime="#{now_iso()}">)
           assert html =~ "Inspect evidence"
           assert html =~ "Read-only evidence"
 
@@ -608,5 +610,6 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
   defp truncate_minute(%DateTime{} = dt),
     do: %DateTime{dt | second: 0, microsecond: {0, 0}}
 
+  defp now_iso, do: "2026-07-28T16:00:00Z"
   defp count(text, needle), do: length(String.split(text, needle)) - 1
 end
