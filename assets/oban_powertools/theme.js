@@ -18,6 +18,7 @@
   const FILTER_BAR_SELECTOR = "[data-obpt-filter-bar]";
   const FILTER_TOGGLE_SELECTOR = "[data-obpt-filter-toggle]";
   const FILTER_FIELDS_SELECTOR = "[data-obpt-filter-fields]";
+  const PAGE_SELECTION_SELECTOR = "[data-obpt-page-selection]";
   const DETAIL_SURFACE_SELECTOR = "[data-obpt-detail-surface]";
   const DETAIL_BODY_SELECTOR = "[data-obpt-detail-body]";
   const DETAIL_CLOSE_SELECTOR = "[data-obpt-detail-close]";
@@ -73,6 +74,7 @@
     syncThemeControls(root, requestedTheme);
     syncNavDisclosures(root);
     syncFilterDisclosures(root);
+    syncPageSelections(root);
     syncOwnedInvokers(root);
     syncDetailSurfaces(root);
   }
@@ -248,6 +250,33 @@
     Array.from(root.querySelectorAll(FILTER_BAR_SELECTOR)).forEach((filterBar) => {
       setFilterState(filterBar, filterBar.getAttribute(ATTR_FILTER_STATE));
     });
+  }
+
+  function syncPageSelection(control) {
+    const root = rootForElement(control);
+
+    if (
+      !root ||
+      !control ||
+      !control.matches ||
+      !control.matches(PAGE_SELECTION_SELECTOR) ||
+      control.tagName !== "INPUT" ||
+      control.type !== "checkbox" ||
+      !root.contains(control)
+    ) {
+      return;
+    }
+
+    const state = control.getAttribute("data-obpt-page-selection");
+    control.indeterminate = state === "mixed";
+  }
+
+  function syncPageSelections(root) {
+    if (!root || !root.matches || !root.matches(ROOT_SELECTOR)) {
+      return;
+    }
+
+    Array.from(root.querySelectorAll(PAGE_SELECTION_SELECTOR)).forEach(syncPageSelection);
   }
 
   function ownedElementWithId(root, id) {
@@ -640,6 +669,7 @@
       attributes: true,
       attributeFilter: [
         "aria-controls",
+        "data-obpt-page-selection",
         "data-obpt-detail-requested",
         "data-obpt-detail-variant",
         "data-obpt-focus-fallback"
@@ -810,6 +840,8 @@
     effectiveTheme,
     setFilterState,
     syncFilterDisclosures,
+    syncPageSelection,
+    syncPageSelections,
     effectiveDetailMode,
     syncDetailSurface,
     syncDetailSurfaces,

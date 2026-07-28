@@ -491,10 +491,28 @@ test.describe("Phase 80 connected production page contracts", () => {
     await expect(page.locator("#jobs-selection-summary")).toContainText(
       "21 jobs selected",
     );
+    await expect(page.locator("#jobs-page-selection")).toHaveAttribute(
+      "data-obpt-page-selection",
+      "mixed",
+    );
+    await expect
+      .poll(() =>
+        page
+          .locator("#jobs-page-selection")
+          .evaluate((element) => (element as HTMLInputElement).indeterminate),
+      )
+      .toBe(true);
     await page.locator("#jobs-page-selection").check();
     await expect(page.locator("#jobs-selection-summary")).toContainText(
       "40 jobs selected",
     );
+    await expect
+      .poll(() =>
+        page
+          .locator("#jobs-page-selection")
+          .evaluate((element) => (element as HTMLInputElement).indeterminate),
+      )
+      .toBe(false);
 
     await page.getByRole("button", { name: "Clear selection" }).click();
     await page.locator("#jobs-previous-page").click();
