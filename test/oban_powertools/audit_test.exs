@@ -350,6 +350,15 @@ defmodule ObanPowertools.AuditTest do
              end)
 
     assert %ArgumentError{} = error
+
+    assert {missing_repo, []} =
+             capture_audit_query_metadata(fn ->
+               assert_raise KeyError, fn ->
+                 Audit.forensic_window(scope, [])
+               end
+             end)
+
+    assert %KeyError{} = missing_repo
   end
 
   @tag phase80_slice: "forensics"

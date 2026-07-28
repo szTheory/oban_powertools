@@ -7,10 +7,20 @@ defmodule ObanPowertools.Audit do
   import Ecto.Changeset
   import Ecto.Query
 
+  alias ObanPowertools.Forensics.Scope
   alias ObanPowertools.RuntimeConfig
 
   @primary_key {:id, :id, autogenerate: true}
   @page_size 20
+  @forensic_event_limit 50
+  @forensic_event_types ~w(
+    lifeline.host_follow_up
+    lifeline.repair_executed
+    workflow.cancel_requested
+    workflow.recovery_completed
+    workflow.step_completed
+    workflow.step_unblocked
+  )
 
   schema "oban_powertools_audit_events" do
     field(:actor_id, :string)
@@ -153,6 +163,33 @@ defmodule ObanPowertools.Audit do
     end
   end
 
+  @doc """
+  Returns one stable, database-bounded Audit window for a typed forensic scope.
+
+  Workflow scopes use their authoritative relational resource identity and
+  include an exact total. Incident scopes use the retained Audit metadata
+  fingerprint and probe one extra row, so their total remains deliberately
+  unknown while `has_more?` remains truthful.
+
+  A repository must be supplied explicitly. Optional `:event_types` are
+  validated against the finite forensic allowlist before any query runs.
+  """
+  @spec forensic_window(Scope.t(), keyword()) :: %{
+          events: [%__MODULE__{}],
+          shown_count: non_neg_integer(),
+          total_count: non_neg_integer() | nil,
+          has_more?: boolean()
+        }
+  def forensic_window(%Scope{} = supplied_scope, opts) when is_list(opts) do
+    scope = validate_forensic_scope!(supplied_scope)
+    repo = Keyword.fetch!(opts, :repo)
+
+    scope
+    |> forensic_query()
+    |> restrict_forensic_event_types(opts)
+    |> load_forensic_window(scope.kind, repo)
+  end
+
   def event_principal(%__MODULE__{} = event) do
     metadata_principal = get_in(event.metadata || %{}, ["principal"])
 
@@ -292,6 +329,106 @@ defmodule ObanPowertools.Audit do
   end
 
   defp normalize_event_id(_id), do: :error
+
+  defp validate_forensic_scope!(%Scope{} = scope) do
+    scope
+    |> Scope.canonical_params()
+    |> Scope.parse()
+    |> case do
+      {:ok, ^scope, _params} ->
+        scope
+
+      _invalid ->
+        raise ArgumentError, "forensic_window/2 requires a valid parsed forensic scope"
+    end
+  end
+
+  defp forensic_query(%Scope{kind: :workflow} = scope) do
+    {resource_type, resource_id} = forensic_workflow_identity(scope)
+
+    from(event in __MODULE__,
+      where:
+        event.resource_type == ^resource_type and
+          event.resource_id == ^resource_id
+    )
+  end
+
+  defp forensic_query(%Scope{kind: :incident, incident_fingerprint: fingerprint}) do
+    from(event in __MODULE__,
+      where: fragment("?->>'incident_fingerprint' = ?", event.metadata, ^fingerprint)
+    )
+  end
+
+  defp forensic_query(%Scope{kind: kind}) do
+    raise ArgumentError, "Audit evidence is unavailable for #{kind} forensic scopes"
+  end
+
+  defp forensic_workflow_identity(%Scope{
+         resource_type: resource_type,
+         resource_id: resource_id
+       })
+       when resource_type in ["workflow", "workflow_step"] and is_binary(resource_id) do
+    {resource_type, resource_id}
+  end
+
+  defp forensic_workflow_identity(%Scope{workflow_id: workflow_id}) do
+    {"workflow", workflow_id}
+  end
+
+  defp restrict_forensic_event_types(query, opts) do
+    case Keyword.fetch(opts, :event_types) do
+      :error ->
+        query
+
+      {:ok, event_types} when is_list(event_types) ->
+        if Enum.all?(event_types, &(&1 in @forensic_event_types)) do
+          where(query, [event], event.event_type in ^event_types)
+        else
+          raise ArgumentError, "event_types contains a value outside the forensic allowlist"
+        end
+
+      {:ok, _invalid} ->
+        raise ArgumentError, "event_types must be a list of forensic event type strings"
+    end
+  end
+
+  defp load_forensic_window(query, :workflow, repo) do
+    total_count = repo.aggregate(query, :count, :id)
+
+    events =
+      query
+      |> order_by([event], desc: event.inserted_at, desc: event.id)
+      |> limit(^@forensic_event_limit)
+      |> repo.all()
+
+    shown_count = length(events)
+
+    %{
+      events: events,
+      shown_count: shown_count,
+      total_count: total_count,
+      has_more?: total_count > shown_count
+    }
+  end
+
+  defp load_forensic_window(query, :incident, repo) do
+    probe_limit = @forensic_event_limit + 1
+
+    probed_events =
+      query
+      |> order_by([event], desc: event.inserted_at, desc: event.id)
+      |> limit(^probe_limit)
+      |> repo.all()
+
+    events = Enum.take(probed_events, @forensic_event_limit)
+
+    %{
+      events: events,
+      shown_count: length(events),
+      total_count: nil,
+      has_more?: length(probed_events) > @forensic_event_limit
+    }
+  end
 
   defp filter_query(query, filters) do
     Enum.reduce(filters, query, fn
