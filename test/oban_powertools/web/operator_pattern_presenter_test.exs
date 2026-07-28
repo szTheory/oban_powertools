@@ -17,6 +17,10 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
     present_audit_row present_audit_detail
   ]a
 
+  @phase80_job_presenters ~w[
+    present_job_row present_job_quick_review
+  ]a
+
   test "exports all five finite Phase 78 presenter seams" do
     assert Code.ensure_loaded?(Presenter), "Phase 78 requires #{Presenter}"
 
@@ -35,6 +39,180 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
 
       assert function_exported?(Presenter, presenter, arity),
              "Phase 79 requires #{inspect(Presenter)}.#{presenter}/#{arity}"
+    end
+  end
+
+  test "exports the two finite Phase 80 Jobs browse presentation seams" do
+    assert Code.ensure_loaded?(Presenter), "Phase 80 requires #{Presenter}"
+
+    for presenter <- @phase80_job_presenters do
+      assert function_exported?(Presenter, presenter, 2),
+             "Phase 80 requires #{inspect(Presenter)}.#{presenter}/2"
+    end
+  end
+
+  test "Jobs row projects exactly eight grammatical table and control facts" do
+    job = job_fixture()
+
+    row =
+      present(:present_job_row, [
+        job,
+        %{selected?: true, reviewing?: true}
+      ])
+
+    assert Map.keys(row) |> Enum.sort() ==
+             Enum.sort([
+               :id,
+               :worker,
+               :state,
+               :queue,
+               :scheduled,
+               :attempts,
+               :selection,
+               :review
+             ])
+
+    assert row.id == 42
+    assert row.worker == "Acme.Workers.ReconcileCustomerLedger"
+    assert row.state == "retryable"
+    assert row.queue == "critical"
+
+    assert row.scheduled == %{
+             label: "July 28, 2026 at 02:00 UTC",
+             datetime: "2026-07-28T02:00:00Z"
+           }
+
+    assert row.attempts == "3 of 20"
+    assert row.selection == %{label: "Select job 42", checked?: true}
+    assert row.review == %{label: "Review job 42", current?: true}
+  end
+
+  test "Jobs quick review exposes only bounded identity and availability truth" do
+    review =
+      present(:present_job_quick_review, [
+        job_fixture(),
+        %{
+          recorded_output_available?: true,
+          list_params: [
+            {"state", "retryable"},
+            {"page", "2"},
+            {"job", "42"},
+            {"return_to", "https://attacker.invalid/?token=SYNTHETIC_TOKEN"}
+          ]
+        }
+      ])
+
+    assert Map.keys(review) |> Enum.sort() ==
+             Enum.sort([
+               :id,
+               :title,
+               :state,
+               :worker,
+               :queue,
+               :attempts,
+               :relevant_time,
+               :failure_summary,
+               :recorded_output_available?,
+               :enqueue_redaction,
+               :full_details_href
+             ])
+
+    assert review.id == 42
+    assert review.title == "Review job 42"
+    assert review.state == %{value: "retryable", label: "Retryable"}
+    assert review.worker == "Acme.Workers.ReconcileCustomerLedger"
+    assert review.queue == "critical"
+    assert review.attempts == "3 of 20"
+
+    assert review.relevant_time == %{
+             label: "Attempted",
+             value: "July 28, 2026 at 02:05 UTC",
+             datetime: "2026-07-28T02:05:00Z"
+           }
+
+    assert review.failure_summary ==
+             "Latest failure recorded. Open full job details for the redacted error summary."
+
+    assert review.recorded_output_available?
+
+    assert review.enqueue_redaction == %{
+             redacted?: true,
+             summary: "2 argument fields were redacted at enqueue."
+           }
+
+    assert review.full_details_href ==
+             "/ops/jobs/jobs/42?state=retryable&page=2"
+  end
+
+  test "Jobs browse presenters drop nested sensitive aliases and source sentinels" do
+    sensitive_sources = [
+      {"token", %{"preview_token" => "SYNTHETIC_TOKEN"}},
+      {"secret", %{"clientSecret" => "SYNTHETIC_SECRET"}},
+      {"password", %{"password" => "SYNTHETIC_PASSWORD"}},
+      {"credential", %{"credentials" => ["SYNTHETIC_CREDENTIAL"]}},
+      {"authorization", %{"authorization" => "SYNTHETIC_AUTHORIZATION"}},
+      {"cookie", %{"cookie" => "SYNTHETIC_COOKIE"}},
+      {"header", %{"headers" => [%{"x-api-key" => "SYNTHETIC_HEADER"}]}},
+      {"url query", %{"url" => "https://example.test/?key=SYNTHETIC_URL_QUERY"}},
+      {"metadata", %{"metadata" => %{"provider" => "SYNTHETIC_METADATA"}}},
+      {"payload", %{"payload" => %{"body" => "SYNTHETIC_PAYLOAD"}}},
+      {"reason", %{"reason" => "SYNTHETIC_REASON"}},
+      {"exception", %{"exception" => %{"message" => "SYNTHETIC_EXCEPTION"}}},
+      {"stacktrace", %{"stacktrace" => ["SYNTHETIC_STACKTRACE"]}}
+    ]
+
+    forbidden_keys =
+      ~w[
+        args meta metadata payload stacktrace exception reason token secret password credential
+        credentials authorization cookie header headers audit_history attempt_history actions
+        mutation
+      ]
+
+    for {alias_name, nested} <- sensitive_sources do
+      job = %{
+        job_fixture()
+        | args: %{"nested" => nested},
+          meta: %{
+            "__redacted_fields__" => ["password"],
+            "nested" => nested
+          },
+          errors: [
+            %{
+              "attempt" => 3,
+              "at" => "2026-07-28T02:05:00Z",
+              "error" => nested
+            }
+          ],
+          unsaved_error: nested
+      }
+
+      context = %{
+        selected?: false,
+        reviewing?: false,
+        recorded_output_available?: true,
+        list_params: [{"state", "retryable"}],
+        provider_metadata: nested
+      }
+
+      outputs = [
+        present(:present_job_row, [job, context]),
+        present(:present_job_quick_review, [job, context])
+      ]
+
+      for output <- outputs do
+        serialized = inspect(output, printable_limit: :infinity, limit: :infinity)
+
+        refute serialized =~ "SYNTHETIC_",
+               "#{alias_name} sentinel survived Jobs presentation"
+
+        output
+        |> nested_keys()
+        |> Enum.map(&normalize_key/1)
+        |> Enum.each(fn key ->
+          refute key in forbidden_keys,
+                 "#{alias_name} projected forbidden key #{inspect(key)}"
+        end)
+      end
     end
   end
 
@@ -620,4 +798,40 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
   end
 
   defp count(text, needle), do: length(String.split(text, needle)) - 1
+
+  defp job_fixture do
+    %Oban.Job{
+      id: 42,
+      state: "retryable",
+      queue: "critical",
+      worker: "Acme.Workers.ReconcileCustomerLedger",
+      args: %{"customer_id" => "cust-42"},
+      meta: %{"__redacted_fields__" => ["authorization", "password"]},
+      errors: [
+        %{
+          "attempt" => 3,
+          "at" => "2026-07-28T02:05:00Z",
+          "error" => "** (RuntimeError) provider request failed"
+        }
+      ],
+      attempt: 3,
+      max_attempts: 20,
+      inserted_at: ~U[2026-07-28 01:55:00Z],
+      scheduled_at: ~U[2026-07-28 02:00:00Z],
+      attempted_at: ~U[2026-07-28 02:05:00Z]
+    }
+  end
+
+  defp nested_keys(value) when is_map(value) do
+    Enum.flat_map(value, fn {key, nested} -> [key | nested_keys(nested)] end)
+  end
+
+  defp nested_keys(value) when is_list(value), do: Enum.flat_map(value, &nested_keys/1)
+  defp nested_keys(_value), do: []
+
+  defp normalize_key(key) do
+    key
+    |> to_string()
+    |> Macro.underscore()
+  end
 end
