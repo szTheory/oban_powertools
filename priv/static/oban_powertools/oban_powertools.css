@@ -3818,6 +3818,28 @@
   overflow-wrap: anywhere;
 }
 
+.obpt-root #jobs-results-region {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-margin-block: var(--obpt-space-5);
+}
+
+.obpt-root #jobs-results-region:focus-visible {
+  outline: calc(var(--obpt-space-1) / 2) solid var(--obpt-color-focus);
+  outline-offset: calc(var(--obpt-space-1) / 2);
+}
+
+.obpt-root #jobs-results-region > #jobs-results {
+  min-inline-size: calc(var(--obpt-space-7) * 22);
+  max-width: none;
+}
+
+.obpt-root #jobs-results-region > #jobs-results > table {
+  table-layout: auto;
+}
+
 .obpt-root .obpt-forensics-guidance-disclosure > ul,
 .obpt-root .obpt-forensics-sources {
   margin: 0;
@@ -3934,9 +3956,14 @@
   .obpt-root #limiters-table,
   .obpt-root #audit-records,
   .obpt-root .obpt-audit-page__pagination,
-  .obpt-root #jobs-results,
+  .obpt-root #jobs-results-region,
   .obpt-root .obpt-jobs-page__pagination {
     grid-column: 1;
+  }
+
+  .obpt-root #jobs-page:not(:has(> #job-quick-review)) > #jobs-results-region,
+  .obpt-root #jobs-page:not(:has(> #job-quick-review)) > .obpt-jobs-page__pagination {
+    grid-column: 1 / -1;
   }
 
   .obpt-root #cron-entry-detail,
@@ -3988,6 +4015,19 @@
   .obpt-root .obpt-jobs-page,
   .obpt-root .obpt-forensics-page {
     gap: var(--obpt-space-5);
+  }
+
+  .obpt-root #jobs-results-region {
+    overflow-x: visible;
+  }
+
+  .obpt-root #jobs-results-region > #jobs-results {
+    min-inline-size: 0;
+    max-width: 100%;
+  }
+
+  .obpt-root #jobs-results-region > #jobs-results > table {
+    table-layout: fixed;
   }
 
   .obpt-root .obpt-page__actions,

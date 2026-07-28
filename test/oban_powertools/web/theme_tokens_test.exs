@@ -742,7 +742,31 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     assert css =~ ".obpt-root .obpt-forensics-guidance-disclosure"
     assert css =~ ".obpt-root .obpt-forensics-sources"
     assert css =~ ".obpt-root #jobs-results"
+    assert css =~ ".obpt-root #jobs-results-region"
+    assert css =~ ".obpt-root #jobs-results-region:focus-visible"
+    assert css =~ ".obpt-root #jobs-results-region > #jobs-results > table"
     assert css =~ ".obpt-root #job-quick-review"
+
+    jobs_result_blocks = blocks_for(css, ".obpt-root #jobs-results-region")
+
+    assert Enum.any?(jobs_result_blocks, fn {selector, body} ->
+             selector == ".obpt-root #jobs-results-region" and
+               {"overflow-x", "auto"} in declarations(body) and
+               {"overscroll-behavior-inline", "contain"} in declarations(body)
+           end)
+
+    assert Enum.any?(jobs_result_blocks, fn {selector, body} ->
+             selector == ".obpt-root #jobs-results-region > #jobs-results" and
+               {"min-inline-size", "calc(var(--obpt-space-7) * 22)"} in declarations(body)
+           end)
+
+    assert Enum.any?(jobs_result_blocks, fn {selector, body} ->
+             selector == ".obpt-root #jobs-results-region > #jobs-results > table" and
+               {"table-layout", "auto"} in declarations(body)
+           end)
+
+    assert css =~
+             ".obpt-root #jobs-page:not(:has(> #job-quick-review)) > #jobs-results-region"
 
     assert css =~
              "min-block-size: calc(var(--obpt-space-7) - var(--obpt-space-1))"
@@ -765,11 +789,13 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
       refute body =~ ~r/#[0-9a-fA-F]{3,8}/,
              "page selector #{selector} contains a raw color value"
 
-      refute body =~ ~r/overflow-x\s*:\s*(auto|scroll)/,
-             "ordinary page selector #{selector} introduces horizontal scrolling"
+      unless selector == ".obpt-root #jobs-results-region" do
+        refute body =~ ~r/overflow-x\s*:\s*(auto|scroll)/,
+               "ordinary page selector #{selector} introduces horizontal scrolling"
 
-      refute body =~ ~r/overflow\s*:\s*(auto|scroll)/,
-             "ordinary page selector #{selector} takes general scroll ownership"
+        refute body =~ ~r/overflow\s*:\s*(auto|scroll)/,
+               "ordinary page selector #{selector} takes general scroll ownership"
+      end
 
       for shared_class <- @shared_component_chrome_classes do
         refute String.contains?(selector, shared_class),

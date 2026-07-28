@@ -147,6 +147,10 @@ defmodule ObanPowertools.Web.AssetsTest do
           ".obpt-root #jobs-page-title",
           ".obpt-root #job-detail-title",
           ".obpt-root #jobs-results",
+          ".obpt-root #jobs-results-region",
+          ".obpt-root #jobs-results-region:focus-visible",
+          ".obpt-root #jobs-results-region > #jobs-results > table",
+          ".obpt-root #jobs-page:not(:has(> #job-quick-review)) > #jobs-results-region",
           ".obpt-root #job-quick-review",
           ".obpt-root .obpt-forensics-page > .obpt-page-header > h1",
           ".obpt-root[data-obpt-motion=\"reduce\"] .obpt-page"
