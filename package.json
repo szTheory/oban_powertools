@@ -6,6 +6,8 @@
     "visual:a11y": "npm run showcase:manifest && scripts/with-showcase-server.sh npm run visual:a11y:docker --",
     "visual:a11y:host": "npx playwright test",
     "visual:a11y:docker": "scripts/playwright-docker.sh npx playwright test",
+    "verify:pages:host": "PAGE_QUALITY_ONLY=1 npx playwright test test/browser/specs/page.acceptance.spec.ts test/browser/specs/page-migration-wave-1.spec.ts test/browser/specs/page-migration-wave-2.spec.ts test/browser/specs/showcase.a11y.spec.ts test/browser/specs/showcase.vrt.spec.ts",
+    "verify:pages:docker": "PAGE_QUALITY_ONLY=1 scripts/playwright-docker.sh npx playwright test test/browser/specs/page.acceptance.spec.ts test/browser/specs/page-migration-wave-1.spec.ts test/browser/specs/page-migration-wave-2.spec.ts test/browser/specs/showcase.a11y.spec.ts test/browser/specs/showcase.vrt.spec.ts",
     "vrt:update": "npm run showcase:manifest && scripts/with-showcase-server.sh scripts/playwright-docker.sh npx playwright test test/browser/specs/showcase.vrt.spec.ts --update-snapshots=changed"
   },
   "devDependencies": {

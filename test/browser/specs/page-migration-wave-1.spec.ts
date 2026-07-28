@@ -108,7 +108,50 @@ const expectedPageFamilyCounts = {
   limiters: 4,
   audit: 4,
 } as const;
-const pageFamilyCounts = allPageStories.reduce<Record<string, number>>(
+const wave1PageFamilies = [
+  "overview",
+  "cron",
+  "limiters",
+  "audit",
+] as const;
+const expectedWave1PageStoryIds = [
+  "page-overview-all-quiet",
+  "page-overview-fixed-order-nonzero",
+  "page-overview-long-unicode",
+  "page-cron-selected-detail",
+  "page-cron-permission-denied",
+  "page-cron-pause-confirmation",
+  "page-cron-resume-confirmation",
+  "page-cron-run-now-confirmation",
+  "page-cron-expired-recovery",
+  "page-cron-drifted-recovery",
+  "page-cron-skipped-partial-recovery",
+  "page-limiters-runnable-empty-current",
+  "page-limiters-blocked-evidence-layers",
+  "page-limiters-unavailable",
+  "page-limiters-forensics-unavailable",
+  "page-audit-empty",
+  "page-audit-filtered-boundary-page",
+  "page-audit-selected-long-unicode",
+  "page-audit-selected-missing-fields",
+] as const;
+
+function isWave1PageStory(story: ManifestPageStory): story is PageStory {
+  return wave1PageFamilies.some((page) => page === story.page);
+}
+
+const wave1PageStories = allPageStories.filter(isWave1PageStory);
+
+if (
+  JSON.stringify(wave1PageStories.map((story) => story.id)) !==
+  JSON.stringify(expectedWave1PageStoryIds)
+) {
+  throw new Error(
+    `Phase 79 compatibility requires the exact ordered 19-story Wave 1 set, got ${JSON.stringify(wave1PageStories.map((story) => story.id))}`,
+  );
+}
+
+const pageFamilyCounts = wave1PageStories.reduce<Record<string, number>>(
   (counts, story) => {
     counts[story.page] = (counts[story.page] ?? 0) + 1;
     return counts;
@@ -464,6 +507,12 @@ test.describe("Phase 79 connected page contracts", () => {
     await openConnectedPage(page, `/ops/jobs/audit?page=${pageNumber}`);
     await expect(page.locator("#audit-records")).toBeVisible();
 
+    await page
+      .getByRole("textbox", { name: "Resource type" })
+      .fill("cron_entry");
+    await page
+      .getByRole("textbox", { name: "Resource ID" })
+      .fill(fixtureState.cron.firstEntry);
     await page.getByRole("button", { name: "Apply filters" }).click();
     await expect(page).not.toHaveURL(/[?&]page=/);
     await expect(page).not.toHaveURL(/[?&]event=/);
