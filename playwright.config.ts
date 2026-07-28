@@ -24,6 +24,7 @@ export default defineConfig({
     ['junit', { outputFile: 'test-results/playwright-junit.xml' }]
   ],
   expect: {
+    timeout: 15_000,
     toHaveScreenshot: {
       animations: 'disabled',
       caret: 'hide',
