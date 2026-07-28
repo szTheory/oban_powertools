@@ -20,6 +20,10 @@ type PageStory = {
   a11y: string;
 };
 
+type ManifestPageStory = Omit<PageStory, "page"> & {
+  page: PageStory["page"] | "jobs" | "forensics";
+};
+
 type Phase79FixtureState = {
   project: "chromium-320" | "chromium-tablet" | "chromium-wide";
   run: string;
@@ -71,22 +75,22 @@ type Phase79FixtureHelpers = {
 };
 
 type FutureManifestSupport = typeof manifestSupport & {
-  pageStories?: PageStory[];
+  pageStories?: ManifestPageStory[];
 };
 
 const schemaVersion = Number(
   (manifestSupport as unknown as { manifest?: { schema_version?: unknown } })
     .manifest?.schema_version,
 );
-const pageStories = (manifestSupport as FutureManifestSupport).pageStories;
+const allPageStories = (manifestSupport as FutureManifestSupport).pageStories;
 
 if (
-  schemaVersion !== 7 ||
-  !Array.isArray(pageStories) ||
-  pageStories.length !== 19
+  schemaVersion !== 8 ||
+  !Array.isArray(allPageStories) ||
+  allPageStories.length !== 49
 ) {
   throw new Error(
-    "Phase 79 requires schema-7 generated pageStories with exactly 19 page targets",
+    "Phase 79 compatibility requires schema-8 generated pageStories with exactly 49 page targets",
   );
 }
 
@@ -104,7 +108,7 @@ const expectedPageFamilyCounts = {
   limiters: 4,
   audit: 4,
 } as const;
-const pageFamilyCounts = pageStories.reduce<Record<string, number>>(
+const pageFamilyCounts = allPageStories.reduce<Record<string, number>>(
   (counts, story) => {
     counts[story.page] = (counts[story.page] ?? 0) + 1;
     return counts;
