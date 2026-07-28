@@ -9,9 +9,12 @@ defmodule ObanPowertools.Application do
 
   @impl true
   def start(_type, _args) do
+    _ = RuntimeConfig.jobs_bulk_target_limit()
+
     children =
       []
       |> maybe_add_pubsub()
+      |> add_jobs_task_supervisor()
       |> maybe_add_workflow_coordinator()
       |> maybe_add_heartbeat_writer()
 
@@ -27,6 +30,10 @@ defmodule ObanPowertools.Application do
     else
       children
     end
+  end
+
+  defp add_jobs_task_supervisor(children) do
+    children ++ [{Task.Supervisor, name: ObanPowertools.Jobs.TaskSupervisor}]
   end
 
   defp maybe_add_workflow_coordinator(children) do

@@ -11,16 +11,20 @@ defmodule ObanPowertools.ApplicationTest do
     child_ids = Enum.map(children, fn {id, _pid, _type, _modules} -> id end)
 
     assert HeartbeatWriter in child_ids
-    assert Task.Supervisor in child_ids
-    assert Enum.count(child_ids, &(&1 == Task.Supervisor)) == 1
+    assert ObanPowertools.Jobs.TaskSupervisor in child_ids
+    assert Enum.count(child_ids, &(&1 == ObanPowertools.Jobs.TaskSupervisor)) == 1
 
     task_supervisor = Process.whereis(ObanPowertools.Jobs.TaskSupervisor)
 
     assert is_pid(task_supervisor)
 
     assert Enum.any?(children, fn
-             {Task.Supervisor, ^task_supervisor, :supervisor, [Task.Supervisor]} -> true
-             _child -> false
+             {ObanPowertools.Jobs.TaskSupervisor, ^task_supervisor, :supervisor,
+              [Task.Supervisor]} ->
+               true
+
+             _child ->
+               false
            end)
   end
 
@@ -49,7 +53,7 @@ defmodule ObanPowertools.ApplicationTest do
     child_ids = Enum.map(children, fn {id, _child, _type, _modules} -> id end)
 
     refute HeartbeatWriter in child_ids
-    assert Task.Supervisor in child_ids
+    assert ObanPowertools.Jobs.TaskSupervisor in child_ids
 
     task_supervisor = Process.whereis(ObanPowertools.Jobs.TaskSupervisor)
     assert is_pid(task_supervisor)

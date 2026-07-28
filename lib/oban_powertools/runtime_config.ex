@@ -4,6 +4,8 @@ defmodule ObanPowertools.RuntimeConfig do
   """
 
   @app :oban_powertools
+  @default_jobs_bulk_target_limit 100
+  @maximum_jobs_bulk_target_limit 1000
 
   def repo(opts \\ []) do
     Keyword.get(opts, :repo) || configured(:repo, opts)
@@ -39,6 +41,22 @@ defmodule ObanPowertools.RuntimeConfig do
 
   def host_escalation_handler(opts \\ []) do
     Keyword.get(opts, :host_escalation_handler) || configured(:host_escalation_handler, opts)
+  end
+
+  def jobs_bulk_target_limit do
+    case Application.fetch_env(@app, :jobs_bulk_target_limit) do
+      :error ->
+        @default_jobs_bulk_target_limit
+
+      {:ok, value}
+      when is_integer(value) and value >= 1 and value <= @maximum_jobs_bulk_target_limit ->
+        value
+
+      {:ok, value} ->
+        raise ArgumentError,
+              "Oban Powertools :jobs_bulk_target_limit must be an integer from 1 through " <>
+                "#{@maximum_jobs_bulk_target_limit}; received #{safe_inspect(value)}"
+    end
   end
 
   defp configured(key, opts) do
@@ -78,6 +96,10 @@ defmodule ObanPowertools.RuntimeConfig do
     "Oban Powertools requires :host_escalation_handler in config :oban_powertools, " <>
       "host_escalation_handler: MyApp.ObanPowertoolsEscalationHandler before dispatching " <>
       "host escalation callbacks."
+  end
+
+  defp safe_inspect(value) do
+    inspect(value, limit: 20, printable_limit: 100)
   end
 end
 
