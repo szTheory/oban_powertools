@@ -5,6 +5,7 @@ defmodule ObanPowertools.AuthTest do
 
   @repo_error "Oban Powertools requires :repo in config :oban_powertools, repo: MyApp.Repo before using persistence-backed features."
   @auth_error "Oban Powertools requires :auth_module in config :oban_powertools, auth_module: MyAppWeb.ObanPowertoolsAuth before mounting native operator pages."
+  @bulk_limit_error "Oban Powertools :jobs_bulk_target_limit must be an integer from 1 through 1000"
 
   test "defines expected callbacks" do
     Code.ensure_loaded(ObanPowertools.Auth)
@@ -101,6 +102,30 @@ defmodule ObanPowertools.AuthTest do
              {:error, :policy_denied}
   end
 
+  test "validates the bounded Jobs bulk target limit" do
+    restore_application_env(:jobs_bulk_target_limit)
+    Application.delete_env(:oban_powertools, :jobs_bulk_target_limit)
+
+    assert RuntimeConfig.jobs_bulk_target_limit() == 100
+
+    for limit <- [1, 1000] do
+      Application.put_env(:oban_powertools, :jobs_bulk_target_limit, limit)
+      assert RuntimeConfig.jobs_bulk_target_limit() == limit
+    end
+
+    for invalid <- [nil, 0, -1, 1001, "100", 100.0, %{limit: 100}] do
+      Application.put_env(:oban_powertools, :jobs_bulk_target_limit, invalid)
+
+      error =
+        assert_raise ArgumentError, fn ->
+          RuntimeConfig.jobs_bulk_target_limit()
+        end
+
+      assert error.message =~ @bulk_limit_error
+      assert error.message =~ inspect(invalid)
+    end
+  end
+
   test "fails explicitly when an authorized actor has no valid audit principal" do
     restore_runtime_config()
 
@@ -138,6 +163,17 @@ defmodule ObanPowertools.AuthTest do
     on_exit(fn ->
       Application.put_env(:oban_powertools, :repo, original_repo)
       Application.put_env(:oban_powertools, :auth_module, original_auth_module)
+    end)
+  end
+
+  defp restore_application_env(key) do
+    original = Application.fetch_env(:oban_powertools, key)
+
+    on_exit(fn ->
+      case original do
+        {:ok, value} -> Application.put_env(:oban_powertools, key, value)
+        :error -> Application.delete_env(:oban_powertools, key)
+      end
     end)
   end
 end
