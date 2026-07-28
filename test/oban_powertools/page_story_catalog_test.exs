@@ -209,6 +209,22 @@ defmodule ObanPowertools.PageStoryCatalogTest do
     assert "Evidence unavailable" in unavailable.acceptance.required_text
   end
 
+  test "locks drifted recovery copy and full-detail page-mode contracts" do
+    drifted = PageStoryCatalog.story!("page-jobs-bulk-drifted")
+    full_detail = PageStoryCatalog.story!("page-jobs-full-detail")
+
+    assert drifted.activation == :confirmation
+    assert drifted.acceptance.required_text == ["Jobs", "This preview is out of date"]
+
+    assert full_detail.activation == :none
+    assert full_detail.fixtures.page_mode == :detail
+    assert full_detail.acceptance.required_text == ["Job #8077", "Failure details are redacted."]
+
+    assert full_detail.acceptance.roles == [
+             %{role: "heading", name: "Job #8077", level: 1, states: %{}}
+           ]
+  end
+
   test "keeps Phase 80 confidentiality sentinels out of serialized story data" do
     serialized = inspect(stories!(), limit: :infinity, printable_limit: :infinity)
 
