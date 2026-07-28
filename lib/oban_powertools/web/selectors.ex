@@ -43,6 +43,7 @@ defmodule ObanPowertools.Web.Selectors do
     jobs: "/ops/jobs/jobs",
     batches: "/ops/jobs/batches"
   }
+  @forensic_keys ~w(resource_type resource_id workflow_id step incident_fingerprint view)
   @jobs_keys ~w(state queue worker tags args meta page job)
   @job_detail_return_keys ~w(state queue worker tags args meta page)
 
@@ -70,8 +71,10 @@ defmodule ObanPowertools.Web.Selectors do
   @doc "Returns the `/ops/jobs/lifeline` path with the given params encoded."
   def lifeline_path(params), do: encode(:lifeline, params)
 
-  @doc "Returns the `/ops/jobs/forensics` path with the given params encoded."
-  def forensic_path(params), do: encode(:forensics, params)
+  @doc """
+  Returns the `/ops/jobs/forensics` path with exactly six keys in canonical order.
+  """
+  def forensic_path(params), do: encode(:forensics, ordered_params(params, @forensic_keys))
 
   @doc "Returns the `/ops/jobs/audit` path with the given params encoded."
   def audit_path(params), do: encode(:audit, params)
