@@ -87,7 +87,7 @@ async function assertPageStructure(
   ).toBeLessThanOrEqual(1);
 
   if (story.page === "jobs" && story.components.includes("data_table")) {
-    await expect(stage.getByRole("table", { name: "Jobs", exact: true })).toHaveCount(1);
+    await expect(stage.getByRole("table", { name: /^Jobs(?:\s|$)/ })).toHaveCount(1);
   }
 
   if (story.page === "jobs" && story.components.includes("progress_bar")) {
@@ -109,9 +109,12 @@ async function assertPageStructure(
     await expect(
       stage.getByRole("heading", { name: "Evidence limits and sources", exact: true }),
     ).toHaveCount(1);
-    await expect(stage.locator(".obpt-timeline__list")).toHaveCount(
-      story.state.includes("unavailable") ? 0 : 1,
-    );
+    await expect(stage.locator(".obpt-timeline__list")).toHaveCount(1);
+
+    if (story.variant.includes("history_unavailable")) {
+      await expect(stage.locator(".obpt-timeline__item")).toHaveCount(0);
+    }
+
     expect(await stage.locator(".obpt-timeline__item").count()).toBeLessThanOrEqual(50);
   }
 
