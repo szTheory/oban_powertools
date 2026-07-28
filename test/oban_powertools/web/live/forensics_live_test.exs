@@ -24,7 +24,10 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
       assert count(html, "<h1") == 1
       assert html =~ "Forensics"
       assert html =~ "Choose evidence to inspect."
-      assert html =~ "Select one evidence type and enter its stable identifier."
+
+      assert html =~
+               "Select Workflow, Lifeline incident, Cron entry, or Limiter, then enter its identifier."
+
       assert html =~ ~s(data-obpt-filter-bar)
       assert html =~ ~s(phx-change="validate_scope")
       assert html =~ ~s(phx-submit="inspect_evidence")
@@ -92,7 +95,12 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
       })
 
       refute_patch(view)
-      assert has_element?(view, ~s(input[name="scope[resource_id]"]), "nightly-export")
+
+      assert has_element?(
+               view,
+               ~s(input[name="scope[resource_id]"][value="nightly-export"])
+             )
+
       refute has_element?(view, ~s(input[name="scope[workflow_id]"]))
       refute has_element?(view, ~s(input[name="scope[incident_fingerprint]"]))
 
@@ -101,7 +109,7 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
       })
 
       refute_patch(view)
-      assert has_element?(view, ~s(input[name="scope[resource_id]"]), "billing-api")
+      assert has_element?(view, ~s(input[name="scope[resource_id]"][value="billing-api"]))
       refute has_element?(view, ~s(input[name="scope[workflow_id]"]))
       refute has_element?(view, ~s(input[name="scope[incident_fingerprint]"]))
     end
@@ -159,7 +167,7 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
       assert html =~ ~s(tabindex="-1")
       assert has_element?(view, ~s(input[name="scope[workflow_id]"][aria-invalid="true"]))
       assert has_element?(view, ~s(input[name="scope[workflow_id]"][aria-describedby]))
-      assert has_element?(view, ~s(input[name="scope[step]"]), "billing")
+      assert has_element?(view, ~s(input[name="scope[step]"][value="billing"]))
     end
 
     test "invalid, conflicting, unknown, and oversized direct scopes replace to bare before reads",
@@ -173,8 +181,10 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
       ]
 
       Enum.each(paths, fn path ->
-        {{:ok, view, _html}, queries} =
-          capture_select_queries(fn -> live(forensics_conn(conn), path) end)
+        {:ok, view, _html} = live(forensics_conn(conn), @bare_path)
+
+        {_html, queries} =
+          capture_select_queries(fn -> render_patch(view, path) end)
 
         assert queries == []
         assert_patch(view, @bare_path)
@@ -184,7 +194,7 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
 
     test "authorized-missing and unauthorized scopes have byte-equivalent unavailable output",
          %{conn: conn} do
-      id = "missing-workflow-80-07"
+      id = Ecto.UUID.generate()
       path = "#{@bare_path}?workflow_id=#{id}"
 
       {{:ok, authorized_view, _html}, authorized_queries} =
@@ -203,7 +213,10 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
 
       assert authorized_html == unauthorized_html
       assert authorized_html =~ "Evidence unavailable"
-      assert authorized_html =~ "The requested evidence is unavailable or you do not have access."
+
+      assert authorized_html =~
+               "It may not exist, may no longer be retained, or you may not have access."
+
       refute authorized_html =~ "<a "
     end
 

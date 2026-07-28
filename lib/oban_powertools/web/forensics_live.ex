@@ -5,18 +5,39 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     use Phoenix.LiveView
 
     alias ObanPowertools.Forensics
-    alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth}
+    alias ObanPowertools.Forensics.Scope
+    alias ObanPowertools.Web.Components.{Forms, OperatorPatterns}
+    alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth, Selectors}
+    alias Phoenix.LiveView.JS
 
-    @allowed_params ~w(resource_type resource_id workflow_id step incident_fingerprint view)
+    @bare_path "/ops/jobs/forensics"
+    @draft_keys ~w(evidence_type workflow_id step incident_fingerprint view resource_id)
+    @evidence_types ~w(workflow incident cron limiter)
+    @support %{
+      state: :ready,
+      heading: "Read-only evidence",
+      copy: "Forensics summarizes retained Powertools evidence and does not prove root cause."
+    }
+    @empty_notice %{
+      heading: "Choose evidence to inspect.",
+      copy:
+        "Select Workflow, Lifeline incident, Cron entry, or Limiter, then enter its identifier."
+    }
+    @unavailable_notice %{
+      heading: "Evidence unavailable",
+      copy: "It may not exist, may no longer be retained, or you may not have access."
+    }
+    @error_notice %{
+      heading: "Evidence did not load",
+      copy:
+        "Retry the request. If the problem continues, review the matching Audit log or check the host logs."
+    }
 
     @impl true
     def mount(_params, _session, socket) do
       with {:ok, socket} <-
              LiveAuth.authorize_page(socket, :view_forensics, %{type: :page, id: "forensics"}) do
-        {:ok,
-         socket
-         |> assign(:bundle, Forensics.bundle(%{}, repo: repo()))
-         |> assign(:selectors, %{})}
+        {:ok, assign_empty(socket)}
       else
         {:error, socket} -> {:ok, socket}
       end
@@ -24,402 +45,497 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     @impl true
     def handle_params(params, _uri, socket) do
-      selectors =
-        params
-        |> Map.take(@allowed_params)
-        |> Forensics.selectors()
+      case Scope.parse(params) do
+        {:empty, [], _notice} ->
+          {:noreply, assign_empty(socket)}
+
+        {:invalid, [], _notice} ->
+          socket =
+            socket
+            |> assign_empty()
+            |> assign(:scope_notice, %{
+              heading: "Choose one evidence type",
+              copy:
+                "Conflicting scope values were not applied. Select one evidence type and inspect it again.",
+              focus?: true
+            })
+            |> assign(:invalid_replacement?, true)
+
+          if connected?(socket) do
+            {:noreply, push_patch(socket, to: @bare_path, replace: true)}
+          else
+            {:noreply, socket}
+          end
+
+        {:ok, %Scope{} = scope, _canonical_params} ->
+          {:noreply, load_scope(socket, scope)}
+      end
+    end
+
+    @impl true
+    def handle_event("validate_scope", %{"scope" => params}, socket) do
+      draft = normalize_draft(params)
+      errors = validate_draft(draft)
 
       {:noreply,
        socket
-       |> assign(:selectors, selectors)
-       |> assign(:bundle, Forensics.bundle(selectors, repo: repo()))}
+       |> assign(:scope_form, scope_form(draft, errors))
+       |> assign(:scope_notice, nil)}
+    end
+
+    def handle_event("validate_scope", _params, socket) do
+      {:noreply,
+       socket
+       |> assign(:scope_form, scope_form(%{}, %{evidence_type: ["Choose one evidence type."]}))
+       |> assign(:scope_notice, nil)}
+    end
+
+    @impl true
+    def handle_event("inspect_evidence", %{"scope" => params}, socket) do
+      draft = normalize_draft(params)
+
+      case draft_scope(draft) do
+        {:ok, scope} ->
+          {:noreply,
+           socket
+           |> assign(:scope_notice, nil)
+           |> push_patch(to: Selectors.forensic_path(scope))}
+
+        {:error, errors} ->
+          {:noreply,
+           socket
+           |> assign(:scope_form, scope_form(draft, errors))
+           |> assign(:scope_notice, %{
+             heading: "Choose evidence to inspect",
+             copy: "Correct the highlighted field, then inspect the evidence again.",
+             focus?: true
+           })}
+      end
+    end
+
+    def handle_event("inspect_evidence", _params, socket) do
+      handle_event("inspect_evidence", %{"scope" => %{}}, socket)
     end
 
     @impl true
     def render(assigns) do
       ~H"""
-      <div class="space-y-6 p-6">
-        <div>
-          <h1 class="text-2xl font-semibold">Forensics</h1>
-          <p class="text-sm text-zinc-600">
-            One diagnosis-first forensic story for Powertools-native workflow and Lifeline investigations. Limiter and cron context remains supporting evidence, while audit follow-up stays Inspection only.
+      <main class="obpt-page obpt-page--forensics">
+        <header class="obpt-page-header">
+          <h1>Forensics</h1>
+          <p>
+            Inspect a supported evidence scope, review the current diagnosis, and follow the retained record.
           </p>
-        </div>
+        </header>
 
-        <p class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <%= LiveAuth.page_read_only_banner(:forensics) %>
-        </p>
+        <section
+          id="forensics-support"
+          class="obpt-surface"
+          data-obpt-support-state={@support.state}
+          aria-labelledby="forensics-support-heading"
+        >
+          <h2 id="forensics-support-heading">{@support.heading}</h2>
+          <p>{@support.copy}</p>
+        </section>
 
-        <div class="rounded-lg border bg-white p-4">
-          <h2 class="text-base font-semibold">Diagnosis Summary</h2>
-          <p class="mt-2 text-sm text-zinc-600">
-            Subject: <%= @bundle.subject.label %> (<%= @bundle.subject.entry_surface || "unknown" %>)
-          </p>
-          <p class="mt-1 text-sm text-zinc-600">
-            Current diagnosis: <%= @bundle.diagnosis_summary.current %>
-          </p>
-          <p class="mt-1 text-sm text-zinc-600"><%= @bundle.diagnosis_summary.detail %></p>
-        </div>
+        <section
+          :if={@scope_notice}
+          id="forensics-scope-errors"
+          class="obpt-notice"
+          role="alert"
+          tabindex="-1"
+          phx-mounted={if(@scope_notice[:focus?], do: JS.focus(to: "#forensics-scope-errors"))}
+        >
+          <h2>{@scope_notice.heading}</h2>
+          <p>{@scope_notice.copy}</p>
+        </section>
 
-        <div class="rounded-lg border bg-white p-4">
-          <%= if @bundle[:runbook_entry] do %>
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 class="text-base font-semibold"><%= @bundle.runbook_entry.title %></h2>
-                <p class="mt-1 text-xs text-zinc-500">Advisory runbook guidance from the current evidence bundle.</p>
-              </div>
-              <a
-                :if={@bundle.runbook_entry.evidence_path}
-                href={@bundle.runbook_entry.evidence_path}
-                class="rounded border border-indigo-200 px-3 py-2 text-sm text-indigo-700"
-              >
-                Evidence link
-              </a>
-            </div>
+        <OperatorPatterns.filter_bar
+          id="forensics-scope"
+          form={@scope_form}
+          mode={:submit}
+          result_summary="Choose one supported evidence scope."
+          results_target_id="forensics-result-state"
+          filters_expanded
+          change_event="validate_scope"
+          submit_event="inspect_evidence"
+        >
+          <:fields>
+            <Forms.select
+              field={@scope_form[:evidence_type]}
+              label="Evidence type"
+              options={[
+                {"Choose evidence type", ""},
+                {"Workflow", "workflow"},
+                {"Lifeline incident", "incident"},
+                {"Cron entry", "cron"},
+                {"Limiter", "limiter"}
+              ]}
+              required
+            />
 
-            <div :if={continuity = runbook_continuity(@bundle)} class="mt-4 rounded border border-slate-200 bg-slate-50 p-3">
-              <p class="text-sm font-semibold">Latest runbook continuity</p>
-              <p class="mt-1 text-sm text-zinc-600"><strong>Diagnosis:</strong> <%= continuity_diagnosis(@bundle, continuity) %></p>
-              <p class="mt-1 text-sm text-zinc-600"><strong>Legal next path:</strong> <%= continuity_legal_next_path(continuity) %></p>
-              <p class="mt-1 text-sm text-zinc-600"><strong>Venue:</strong> <%= continuity_venue(continuity) %></p>
-              <p class="mt-1 text-sm text-zinc-600"><strong>Attempt state:</strong> <%= continuity_attempt_state(continuity) %></p>
-              <p class="mt-1 text-sm text-zinc-600">
-                <strong>host-owned follow-up status:</strong> <%= continuity_host_follow_up_status(continuity) %>
-              </p>
-              <p :if={detail = continuity_host_follow_up_detail(continuity)} class="mt-1 text-xs text-zinc-500">
-                <%= detail %>
-              </p>
-              <p class="mt-1 text-sm text-zinc-600"><strong>Reason:</strong> <%= continuity_reason(continuity) %></p>
-              <p class="mt-2 text-sm text-zinc-600">
-                <strong>Evidence link:</strong>
-                <a
-                  :if={@bundle.runbook_entry.evidence_path}
-                  href={@bundle.runbook_entry.evidence_path}
-                  class="text-indigo-700 underline"
-                >
-                  Open forensic evidence
-                </a>
-                <span :if={is_nil(@bundle.runbook_entry.evidence_path)}>No evidence link available</span>
-              </p>
-              <p class="mt-1 text-sm text-zinc-600">
-                <strong>Audit follow-up:</strong>
-                <a :if={path = continuity_audit_follow_up_path(@bundle)} href={path} class="text-indigo-700 underline">
-                  Open in Audit
-                </a>
-                <span :if={is_nil(continuity_audit_follow_up_path(@bundle))}>No audit follow-up available</span>
-              </p>
-            </div>
+            <Forms.input
+              :if={scope_type(@scope_form) == "workflow"}
+              field={@scope_form[:workflow_id]}
+              label="Workflow ID"
+              hint="Enter the stable workflow identifier."
+              required
+            />
+            <Forms.input
+              :if={scope_type(@scope_form) == "workflow"}
+              field={@scope_form[:step]}
+              label="Step"
+              hint="Optional workflow step name."
+            />
 
-            <div class="mt-4 grid gap-4 md:grid-cols-2">
-              <div class="rounded border bg-slate-50 p-3">
-                <h3 class="text-sm font-semibold">Diagnosis state</h3>
-                <p class="mt-1 text-sm text-zinc-600"><%= @bundle.runbook_entry.diagnosis_state %></p>
-              </div>
+            <Forms.input
+              :if={scope_type(@scope_form) == "incident"}
+              field={@scope_form[:incident_fingerprint]}
+              label="Incident fingerprint"
+              hint="Enter the stable Lifeline incident fingerprint."
+              required
+            />
+            <Forms.select
+              :if={scope_type(@scope_form) == "incident"}
+              field={@scope_form[:view]}
+              label="Incident view"
+              hint="Optional Lifeline incident state."
+              options={[
+                {"Any retained incident", ""},
+                {"Active", "active"},
+                {"Resolved", "resolved"}
+              ]}
+            />
 
-              <div class="rounded border bg-slate-50 p-3">
-                <h3 class="text-sm font-semibold">Why it matters now</h3>
-                <p class="mt-1 text-sm text-zinc-600"><%= @bundle.runbook_entry.why_now %></p>
-              </div>
-            </div>
+            <Forms.input
+              :if={scope_type(@scope_form) == "cron"}
+              field={@scope_form[:resource_id]}
+              label="Cron entry ID"
+              hint="Enter the stable cron entry identifier."
+              required
+            />
 
-            <div class="mt-4">
-              <h3 class="text-sm font-semibold">Prerequisites</h3>
-              <div class="mt-2 space-y-2">
-                <div :for={item <- @bundle.runbook_entry.prerequisites} class="rounded border bg-slate-50 p-3">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <span class="font-medium"><%= item.label %></span>
-                    <span class="rounded border px-2 py-1 text-xs text-zinc-600"><%= item.state %></span>
-                  </div>
-                  <p class="mt-1 text-sm text-zinc-600"><%= item.detail %></p>
-                </div>
-              </div>
-            </div>
+            <Forms.input
+              :if={scope_type(@scope_form) == "limiter"}
+              field={@scope_form[:resource_id]}
+              label="Limiter ID"
+              hint="Enter the stable limiter identifier."
+              required
+            />
+          </:fields>
+        </OperatorPatterns.filter_bar>
 
-            <div class="mt-4">
-              <h3 class="text-sm font-semibold">Cautions</h3>
-              <div class="mt-2 space-y-2">
-                <div :for={item <- @bundle.runbook_entry.cautions} class={caution_class(item)}>
-                  <div class="flex flex-wrap items-center gap-2">
-                    <span class="font-medium"><%= item.label %></span>
-                    <span class="rounded border px-2 py-1 text-xs"><%= item.severity %></span>
-                  </div>
-                  <p class="mt-1 text-sm"><%= item.detail %></p>
-                </div>
-              </div>
-            </div>
+        <section
+          :if={@scope_state == :empty}
+          id="forensics-result-state"
+          class="obpt-state-message"
+          data-obpt-state="empty"
+          aria-labelledby="forensics-result-heading"
+        >
+          <h2 id="forensics-result-heading">{empty_notice().heading}</h2>
+          <p>{empty_notice().copy}</p>
+        </section>
 
-            <div class="mt-4">
-              <h3 class="text-sm font-semibold">Recommended order</h3>
-              <div class="mt-2 space-y-2">
-                <div
-                  :for={item <- @bundle.runbook_entry.ordered_next_paths}
-                  data-runbook-ownership={item.ownership}
-                  data-runbook-variant={follow_up_variant(item)}
-                  class={runbook_path_class(item)}
-                >
-                  <div class="flex flex-wrap items-center gap-2">
-                    <span class="rounded border px-2 py-1 text-xs"><%= item.ownership %></span>
-                    <span class="text-xs text-zinc-500"><%= item.venue %></span>
-                    <span class="text-xs text-zinc-500"><%= item.intent %></span>
-                  </div>
-                  <div class="mt-2 flex flex-wrap items-center gap-3">
-                    <span class="text-sm font-medium"><%= item.order %>. <%= item.label %></span>
-                    <a :if={item.path} href={item.path} class={runbook_path_link_class(item)}>
-                      Open path
-                    </a>
-                  </div>
-                </div>
-              </div>
-              <div class="mt-3 space-y-1 text-xs text-zinc-600">
-                <p><%= ControlPlanePresenter.runbook_ownership_label("Powertools-native") %></p>
-                <p><%= ControlPlanePresenter.runbook_ownership_label("Oban Web bridge") %></p>
-                <p><%= ControlPlanePresenter.runbook_ownership_label("host-owned follow-up") %></p>
-              </div>
-            </div>
+        <section
+          :if={@scope_state == :unavailable}
+          id="forensics-result-state"
+          class="obpt-state-message"
+          data-obpt-state="unavailable"
+          aria-labelledby="forensics-result-heading"
+        >
+          <h2 id="forensics-result-heading">{unavailable_notice().heading}</h2>
+          <p>{unavailable_notice().copy}</p>
+        </section>
 
-            <div class="mt-4">
-              <h3 class="text-sm font-semibold">Unsupported boundaries</h3>
-              <div class="mt-2 space-y-2">
-                <p :for={boundary <- @bundle.runbook_entry.unsupported_boundaries} class="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                  <%= boundary %>
-                </p>
-              </div>
-            </div>
+        <section
+          :if={@scope_state == :error}
+          id="forensics-result-state"
+          class="obpt-state-message"
+          data-obpt-state="error"
+          aria-labelledby="forensics-result-heading"
+        >
+          <h2 id="forensics-result-heading">{error_notice().heading}</h2>
+          <p>{error_notice().copy}</p>
+        </section>
 
-            <div class="mt-4 rounded border bg-slate-50 p-3">
-              <h3 class="text-sm font-semibold">Evidence completeness</h3>
-              <p class="mt-1 text-sm text-zinc-600">
-                <%= ControlPlanePresenter.forensic_completeness_label(@bundle.runbook_entry.evidence_completeness.state) %>
-              </p>
-              <p class="mt-1 text-sm text-zinc-600"><%= completeness_details(@bundle.runbook_entry.evidence_completeness) %></p>
-            </div>
-          <% else %>
-            <h2 class="text-base font-semibold">Open runbook entry</h2>
-            <p class="mt-2 text-sm text-zinc-600">
-              Runbook guidance is unavailable because the evidence bundle could not be assembled. Refresh the page, then open the forensic timeline for the same resource.
-            </p>
-          <% end %>
-        </div>
-
-        <div class="rounded-lg border bg-white p-4">
-          <h2 class="text-base font-semibold">Timeline</h2>
-          <%= if @bundle.chronology == [] do %>
-            <p class="mt-2 text-sm text-zinc-600">
-              No chronology evidence is available yet. <%= completeness_details(@bundle.completeness) %>
-            </p>
-          <% else %>
-            <div class="mt-3 space-y-3">
-              <div :for={item <- @bundle.chronology} class="rounded border bg-slate-50 p-3">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p class="font-medium"><%= item.label %></p>
-                    <p class="text-xs text-zinc-500">
-                      <%= item.source_family %> • <%= ControlPlanePresenter.forensic_provenance_label(item.strength) %>
-                    </p>
-                  </div>
-                  <a
-                    :if={item.resource_type && item.resource_id}
-                    href={audit_follow_up_path(item)}
-                    class="text-sm text-indigo-700 underline"
-                  >
-                    Audit follow-up
-                  </a>
-                </div>
-                <p class="mt-2 text-sm text-zinc-600"><%= item.notes || "No additional notes." %></p>
-                <p class="mt-1 text-xs text-zinc-500">
-                  <%= format_timestamp(item.occurred_at) %> • <%= item.resource_type %>:<%= item.resource_id %>
-                </p>
-              </div>
-            </div>
-          <% end %>
-        </div>
-
-        <div class="rounded-lg border bg-white p-4">
-          <h2 class="text-base font-semibold">Related Evidence</h2>
-          <div class="mt-3 space-y-3">
-            <div :for={item <- @bundle.related_evidence} class="rounded border bg-slate-50 p-3">
-              <p class="font-medium"><%= item.title %></p>
-              <p class="mt-1 text-sm text-zinc-600"><%= item.summary %></p>
-              <p class="mt-1 text-xs text-zinc-500">
-                <%= ControlPlanePresenter.forensic_provenance_label(item.provenance) %>
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div class="rounded-lg border bg-white p-4">
-          <h2 class="text-base font-semibold">Linked Resources</h2>
-          <div class="mt-3 space-y-2 text-sm">
-            <div :for={item <- @bundle.linked_resources}>
-              <a href={item.path} class="text-indigo-700 underline"><%= item.label %></a>
-              <span class="text-zinc-500"> — <%= item.venue %></span>
-            </div>
-          </div>
-        </div>
-
-        <div class="rounded-lg border bg-white p-4">
-          <h2 class="text-base font-semibold">Legal Next Paths</h2>
-          <div class="mt-3 space-y-2 text-sm">
-            <div :for={item <- @bundle.legal_next_paths}>
-              <a href={item.path} class="text-indigo-700 underline"><%= item.label %></a>
-              <span class="text-zinc-500"> — <%= item.venue %></span>
-            </div>
-          </div>
-        </div>
-
-        <div class="rounded-lg border bg-white p-4">
-          <h2 class="text-base font-semibold">Evidence Completeness</h2>
-          <p class="mt-2 text-sm text-zinc-600">
-            <%= ControlPlanePresenter.forensic_completeness_label(@bundle.completeness.state) %>
-          </p>
-          <p class="mt-1 text-sm text-zinc-600"><%= completeness_details(@bundle.completeness) %></p>
-        </div>
-
-        <div class="rounded-lg border bg-slate-50 p-4 text-xs text-zinc-500">
-          Selectors:
-          <%= @selectors |> Enum.reject(fn {_key, value} -> is_nil(value) end) |> Enum.map_join(", ", fn {key, value} -> "#{key}=#{value}" end) %>
-        </div>
-      </div>
+        <section
+          :if={@scope_state == :ready}
+          id="forensics-result-state"
+          class="obpt-surface"
+          data-obpt-state="ready"
+        >
+          <h2>Evidence loaded</h2>
+          <p>The retained evidence is ready for diagnosis-first presentation.</p>
+        </section>
+      </main>
       """
     end
 
-    defp audit_follow_up_path(item) do
-      [
-        {"resource_type", item.resource_type},
-        {"resource_id", item.resource_id},
-        {"event_type", item.event_type}
-      ]
-      |> Enum.reject(fn {_key, value} -> is_nil(value) or value == "" end)
-      |> URI.encode_query()
-      |> then(&"/ops/jobs/audit?#{&1}")
+    defp assign_empty(socket) do
+      preserved_notice =
+        if Map.get(socket.assigns, :invalid_replacement?, false) do
+          Map.get(socket.assigns, :scope_notice)
+        end
+
+      socket
+      |> assign(:scope_form, scope_form(%{}))
+      |> assign(:scope_state, :empty)
+      |> assign(:scope_notice, preserved_notice)
+      |> assign(:support, @support)
+      |> assign(:summary, nil)
+      |> assign(:next_steps, [])
+      |> assign(:latest_remediation, nil)
+      |> assign(:events, [])
+      |> assign(:coverage, nil)
+      |> assign(:audit_href, nil)
+      |> assign(:invalid_replacement?, false)
     end
 
-    defp format_timestamp(nil), do: "Unknown"
+    defp load_scope(socket, %Scope{} = scope) do
+      socket =
+        socket
+        |> assign(:scope_form, scope |> scope_draft() |> scope_form())
+        |> assign(:scope_notice, nil)
+        |> assign(:invalid_replacement?, false)
 
-    defp format_timestamp(%NaiveDateTime{} = timestamp) do
-      timestamp
-      |> DateTime.from_naive!("Etc/UTC")
-      |> format_timestamp()
+      if scope_authorized?(socket.assigns.current_actor, scope) do
+        case Forensics.bundle(scope, repo: repo()) do
+          {:ok, bundle} ->
+            presentation =
+              ControlPlanePresenter.present_forensics(bundle, %{
+                authorized_hrefs:
+                  authorized_destination_hrefs(socket.assigns.current_actor, bundle)
+              })
+
+            assign_ready(socket, presentation)
+
+          {:unavailable, _safe_reason} ->
+            assign_unavailable(socket)
+
+          {:error, _safe_reason} ->
+            assign_error(socket)
+        end
+      else
+        assign_unavailable(socket)
+      end
+    rescue
+      _error -> assign_error(socket)
     end
 
-    defp format_timestamp(%DateTime{} = timestamp) do
-      Calendar.strftime(timestamp, "%Y-%m-%d %H:%M:%S UTC")
+    defp assign_ready(socket, presentation) do
+      socket
+      |> assign(:scope_state, :ready)
+      |> assign(:support, presentation.support)
+      |> assign(:summary, Map.put(presentation.summary, :scope, presentation.scope))
+      |> assign(:next_steps, presentation.next_steps)
+      |> assign(:latest_remediation, presentation.latest_remediation)
+      |> assign(:events, presentation.events)
+      |> assign(:coverage, presentation.coverage)
+      |> assign(:audit_href, presentation.audit_href)
     end
 
-    defp completeness_details(%{details: details}), do: details
-    defp completeness_details(_), do: "No completeness details available."
+    defp assign_unavailable(socket) do
+      socket
+      |> assign(:scope_state, :unavailable)
+      |> assign(:support, @support)
+      |> assign(:summary, nil)
+      |> assign(:next_steps, [])
+      |> assign(:latest_remediation, nil)
+      |> assign(:events, [])
+      |> assign(:coverage, nil)
+      |> assign(:audit_href, nil)
+    end
 
-    defp caution_class(%{severity: :warning}),
-      do: "rounded border border-amber-200 bg-amber-50 p-3 text-amber-800"
+    defp assign_error(socket) do
+      socket
+      |> assign(:scope_state, :error)
+      |> assign(:support, @support)
+      |> assign(:summary, nil)
+      |> assign(:next_steps, [])
+      |> assign(:latest_remediation, nil)
+      |> assign(:events, [])
+      |> assign(:coverage, nil)
+      |> assign(:audit_href, nil)
+    end
 
-    defp caution_class(_item), do: "rounded border bg-slate-50 p-3 text-zinc-600"
+    defp scope_form(draft, errors \\ %{}) do
+      Phoenix.Component.to_form(normalize_draft(draft),
+        as: :scope,
+        id: "forensics-scope-form",
+        errors: form_errors(errors)
+      )
+    end
 
-    defp runbook_path_class(item) do
-      case ControlPlanePresenter.follow_up_render_variant(item) do
-        :native_primary -> "rounded border border-indigo-200 bg-indigo-50 p-3"
-        :bridge_guidance -> "rounded border border-slate-200 bg-white p-3"
-        :host_guidance -> "rounded border border-amber-200 bg-amber-50 p-3"
+    defp form_errors(errors) do
+      Enum.flat_map(errors, fn {field, messages} ->
+        Enum.map(messages, &{field, {&1, []}})
+      end)
+    end
+
+    defp normalize_draft(params) when is_map(params) do
+      Map.new(@draft_keys, fn key ->
+        value = Map.get(params, key, Map.get(params, String.to_existing_atom(key), ""))
+        {key, if(is_binary(value), do: value, else: "")}
+      end)
+    end
+
+    defp normalize_draft(_params), do: normalize_draft(%{})
+
+    defp validate_draft(draft) do
+      type = draft["evidence_type"]
+
+      %{}
+      |> add_error(type not in @evidence_types, :evidence_type, "Choose one evidence type.")
+      |> add_error(
+        type == "workflow" and blank?(draft["workflow_id"]),
+        :workflow_id,
+        "Enter a workflow ID."
+      )
+      |> add_error(
+        type == "incident" and blank?(draft["incident_fingerprint"]),
+        :incident_fingerprint,
+        "Enter an incident fingerprint."
+      )
+      |> add_error(
+        type == "incident" and draft["view"] not in ["", "active", "resolved"],
+        :view,
+        "Choose Active, Resolved, or any retained incident."
+      )
+      |> add_error(
+        type == "cron" and blank?(draft["resource_id"]),
+        :resource_id,
+        "Enter a cron entry ID."
+      )
+      |> add_error(
+        type == "limiter" and blank?(draft["resource_id"]),
+        :resource_id,
+        "Enter a limiter ID."
+      )
+    end
+
+    defp add_error(errors, true, field, message),
+      do: Map.update(errors, field, [message], &(&1 ++ [message]))
+
+    defp add_error(errors, false, _field, _message), do: errors
+
+    defp draft_scope(draft) do
+      errors = validate_draft(draft)
+
+      if errors == %{} do
+        draft
+        |> draft_selectors()
+        |> Scope.parse()
+        |> case do
+          {:ok, scope, _canonical} -> {:ok, scope}
+          _invalid -> {:error, %{evidence_type: ["Choose one evidence type."]}}
+        end
+      else
+        {:error, errors}
       end
     end
 
-    defp runbook_path_link_class(item) do
-      case ControlPlanePresenter.follow_up_render_variant(item) do
-        :native_primary -> "rounded bg-indigo-700 px-3 py-2 text-sm text-white"
-        _guidance -> "text-sm text-indigo-700 underline"
+    defp draft_selectors(%{"evidence_type" => "workflow"} = draft) do
+      %{"workflow_id" => draft["workflow_id"], "step" => blank_to_nil(draft["step"])}
+    end
+
+    defp draft_selectors(%{"evidence_type" => "incident"} = draft) do
+      %{
+        "incident_fingerprint" => draft["incident_fingerprint"],
+        "view" => blank_to_nil(draft["view"])
+      }
+    end
+
+    defp draft_selectors(%{"evidence_type" => "cron"} = draft) do
+      %{"resource_type" => "cron_entry", "resource_id" => draft["resource_id"]}
+    end
+
+    defp draft_selectors(%{"evidence_type" => "limiter"} = draft) do
+      %{"resource_type" => "limiter", "resource_id" => draft["resource_id"]}
+    end
+
+    defp scope_draft(%Scope{kind: :workflow} = scope) do
+      %{
+        "evidence_type" => "workflow",
+        "workflow_id" => scope.workflow_id,
+        "step" => scope.step
+      }
+    end
+
+    defp scope_draft(%Scope{kind: :incident} = scope) do
+      %{
+        "evidence_type" => "incident",
+        "incident_fingerprint" => scope.incident_fingerprint,
+        "view" => scope.view
+      }
+    end
+
+    defp scope_draft(%Scope{kind: :cron_entry} = scope) do
+      %{"evidence_type" => "cron", "resource_id" => scope.resource_id}
+    end
+
+    defp scope_draft(%Scope{kind: :limiter} = scope) do
+      %{"evidence_type" => "limiter", "resource_id" => scope.resource_id}
+    end
+
+    defp scope_type(form), do: form[:evidence_type].value || ""
+
+    defp scope_authorized?(actor, %Scope{} = scope) do
+      LiveAuth.authorized?(actor, scope_action(scope.kind), %{
+        type: scope.kind,
+        id: scope_identity(scope)
+      })
+    end
+
+    defp scope_action(:workflow), do: :view_workflows
+    defp scope_action(:incident), do: :view_lifeline
+    defp scope_action(:cron_entry), do: :view_cron
+    defp scope_action(:limiter), do: :view_limiters
+
+    defp scope_identity(%Scope{kind: :workflow, workflow_id: id}), do: id
+    defp scope_identity(%Scope{kind: :incident, incident_fingerprint: id}), do: id
+    defp scope_identity(%Scope{resource_id: id}), do: id
+
+    defp authorized_destination_hrefs(actor, bundle) do
+      bundle
+      |> destination_candidates()
+      |> Enum.filter(fn href ->
+        case destination_action(href) do
+          nil -> false
+          action -> LiveAuth.authorized?(actor, action, %{type: :destination, id: href})
+        end
+      end)
+    end
+
+    defp destination_candidates(bundle) do
+      [:legal_next_paths, :linked_resources]
+      |> Enum.flat_map(fn key ->
+        bundle
+        |> Map.get(key, [])
+        |> Enum.flat_map(fn
+          %{path: path} when is_binary(path) -> [path]
+          %{"path" => path} when is_binary(path) -> [path]
+          _unsupported -> []
+        end)
+      end)
+      |> Enum.uniq()
+    end
+
+    defp destination_action(href) do
+      case URI.parse(href).path do
+        "/ops/jobs/lifeline" -> :view_lifeline
+        "/ops/jobs/cron" -> :view_cron
+        "/ops/jobs/limiters" -> :view_limiters
+        "/ops/jobs/audit" -> :view_audit
+        "/ops/jobs/workflows/" <> _id -> :view_workflows
+        _unsupported -> nil
       end
     end
 
-    defp runbook_continuity(bundle) do
-      case get_in(bundle, [:subject, :continuity]) || get_in(bundle, [:subject, "continuity"]) do
-        %{} = continuity -> continuity
-        _missing -> nil
-      end
-    end
-
-    defp continuity_attempt_state(continuity) do
-      Map.get(continuity, "attempt_state") || Map.get(continuity, :attempt_state) || "unknown"
-    end
-
-    defp continuity_diagnosis(bundle, continuity) do
-      Map.get(continuity, "diagnosis_state") ||
-        Map.get(continuity, :diagnosis_state) ||
-        get_in(bundle, [:runbook_entry, :diagnosis_state]) ||
-        "unknown"
-    end
-
-    defp continuity_legal_next_path(continuity) do
-      intent = Map.get(continuity, "action") || Map.get(continuity, :action) || "investigate"
-      ownership = follow_up_ownership_label(continuity)
-      "#{intent} via #{ownership}"
-    end
-
-    defp continuity_venue(continuity) do
-      Map.get(continuity, "venue") ||
-        Map.get(continuity, :venue) ||
-        follow_up_ownership_label(continuity)
-    end
-
-    defp continuity_reason(continuity) do
-      Map.get(continuity, "reason") || Map.get(continuity, :reason) || "none provided"
-    end
-
-    defp continuity_host_follow_up_status(continuity) do
-      case Map.get(continuity, "host_follow_up_status") do
-        nil -> "Host-owned follow-up unavailable"
-        status -> ControlPlanePresenter.host_follow_up_status_label(status)
-      end
-    end
-
-    defp continuity_host_follow_up_detail(continuity) do
-      details = Map.get(continuity, "host_follow_up_details") || %{}
-      status = Map.get(continuity, "host_follow_up_status")
-
-      case status do
-        "host_owned_follow_up_unconfigured" ->
-          details["configuration"] || "No host escalation hook configured"
-
-        "host_owned_follow_up_callback_failed" ->
-          details["reason"] || "Host-owned follow-up callback failed"
-
-        _other ->
-          nil
-      end
-    end
-
-    defp continuity_audit_follow_up_path(bundle) do
-      [
-        {"resource_type",
-         get_in(bundle, [:subject, :resource_type]) || get_in(bundle, [:subject, "resource_type"])},
-        {"resource_id",
-         get_in(bundle, [:subject, :resource_id]) || get_in(bundle, [:subject, "resource_id"])}
-      ]
-      |> Enum.reject(fn {_key, value} -> is_nil(value) or value == "" end)
-      |> case do
-        [] -> nil
-        params -> "/ops/jobs/audit?" <> URI.encode_query(params)
-      end
-    end
-
-    defp follow_up_variant(item) do
-      item
-      |> ControlPlanePresenter.follow_up_render_variant()
-      |> Atom.to_string()
-    end
-
-    defp follow_up_ownership_label(continuity) do
-      continuity
-      |> Map.get("ownership")
-      |> case do
-        nil ->
-          continuity
-          |> Map.get("venue")
-          |> ControlPlanePresenter.runbook_ownership_label()
-
-        ownership ->
-          ControlPlanePresenter.runbook_ownership_label(ownership)
-      end
-    end
-
+    defp empty_notice, do: @empty_notice
+    defp unavailable_notice, do: @unavailable_notice
+    defp error_notice, do: @error_notice
+    defp blank?(value), do: not is_binary(value) or String.trim(value) == ""
+    defp blank_to_nil(value), do: if(blank?(value), do: nil, else: value)
     defp repo, do: Application.fetch_env!(:oban_powertools, :repo)
   end
 end
