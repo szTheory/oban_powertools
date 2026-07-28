@@ -43,6 +43,17 @@ defmodule PhoenixHostWeb.Router do
     end
   end
 
+  if Mix.env() == :test and System.get_env("PHASE80_BROWSER_FIXTURES") == "1" do
+    scope "/__phase80_browser_fixtures__", PhoenixHostWeb do
+      pipe_through :api
+
+      post "/reset", Phase80BrowserFixturesController, :reset
+      post "/actor", Phase80BrowserFixturesController, :actor
+      post "/batch", Phase80BrowserFixturesController, :batch
+      post "/evidence", Phase80BrowserFixturesController, :evidence
+    end
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", PhoenixHostWeb do
   #   pipe_through :api

@@ -60,14 +60,17 @@ defmodule PhoenixHostWeb.Phase80BrowserFixturesTest do
                  :count
                ) == 2_500
 
-        assert Repo.all(
-                 from(job in Oban.Job,
-                   where: fragment("?->>'phase80_key' = ?", job.meta, ^key),
-                   distinct: job.state,
-                   select: job.state,
-                   order_by: job.state
-                 )
-               ) == Enum.sort(@states)
+        states =
+          Repo.all(
+            from(job in Oban.Job,
+              where: fragment("?->>'phase80_key' = ?", job.meta, ^key),
+              distinct: job.state,
+              select: job.state,
+              order_by: job.state
+            )
+          )
+
+        assert Enum.sort(states) == Enum.sort(@states)
 
         boundary_filter = %Jobs{
           state: :retryable,
@@ -210,6 +213,34 @@ defmodule PhoenixHostWeb.Phase80BrowserFixturesTest do
              ).status == 404
     end
 
+    test "a held batch releases after observer disconnect and evidence reports individual audits",
+         %{secret: secret} do
+      state = reset("chromium-wide", "disconnect", secret)
+      assert batch("chromium-wide", "disconnect", "hold", secret)["state"] == "held"
+
+      observer = spawn(fn -> receive do: (:disconnect -> :ok) end)
+      monitor = Process.monitor(observer)
+      send(observer, :disconnect)
+      assert_receive {:DOWN, ^monitor, :process, ^observer, :normal}
+
+      assert batch("chromium-wide", "disconnect", "release", secret)["state"] == "released"
+
+      for target <- ~w(eligible success) do
+        assert {:ok, _event} =
+                 Audit.record(
+                   "lifeline.repair_executed",
+                   %{type: :job, id: state["jobs"]["targets"][target]},
+                   %{"event_type" => "lifeline.repair_executed"},
+                   repo: Repo,
+                   actor_id: "phase80-operator"
+                 )
+      end
+
+      evidence = poll_evidence("chromium-wide", "disconnect", secret, 1_000)
+      assert evidence["counts"]["auditedEffects"] == 2
+      assert evidence["audit"] == %{"complete" => true}
+    end
+
     test "missing and wrong secrets are identical empty 404s before JSON schema validation", %{
       secret: secret
     } do
@@ -284,6 +315,26 @@ defmodule PhoenixHostWeb.Phase80BrowserFixturesTest do
       |> post_json(%{"project" => project, "run" => run}, secret)
       |> assert_ok()
       |> decode()
+    end
+
+    defp poll_evidence(project, run, secret, timeout_ms) do
+      deadline = System.monotonic_time(:millisecond) + timeout_ms
+      do_poll_evidence(project, run, secret, deadline)
+    end
+
+    defp do_poll_evidence(project, run, secret, deadline) do
+      current = evidence(project, run, secret)
+
+      cond do
+        current["audit"]["complete"] ->
+          current
+
+        System.monotonic_time(:millisecond) >= deadline ->
+          flunk("fixture evidence did not become complete before the finite timeout")
+
+        true ->
+          do_poll_evidence(project, run, secret, deadline)
+      end
     end
 
     defp assert_ok(conn) do
