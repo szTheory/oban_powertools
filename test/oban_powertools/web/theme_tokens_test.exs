@@ -222,6 +222,16 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     .obpt-cron-page
     .obpt-limiters-page
     .obpt-audit-page
+    .obpt-jobs-page
+    .obpt-forensics-page
+  ]
+
+  @shared_component_chrome_classes ~w[
+    .obpt-data-table
+    .obpt-filter-bar
+    .obpt-detail-surface
+    .obpt-confirm-action
+    .obpt-timeline
   ]
 
   @proof_seam_classes ~w[
@@ -711,16 +721,32 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
       assert css =~ ".obpt-root #{seam}", "missing production page seam #{seam}"
     end
 
-    for title <- ~w[#overview-title #cron-page-title #limiters-page-title #audit-page-title] do
+    for title <-
+          ~w[#overview-title #cron-page-title #limiters-page-title #audit-page-title #jobs-page-title #job-detail-title] do
       assert css =~ ".obpt-root #{title}",
              "page title does not use the title token family: #{title}"
     end
 
+    assert css =~ ".obpt-root .obpt-forensics-page > .obpt-page-header > h1"
     assert css =~ "font-size: var(--obpt-font-size-page-title)"
     assert css =~ "@media (min-width: 64rem)"
     assert css =~ "@media (max-width: 24rem)"
     assert css =~ "grid-template-columns: repeat(2, minmax(0, 1fr))"
     assert css =~ ".obpt-root .obpt-audit-page__pagination"
+    assert css =~ ".obpt-root .obpt-jobs-page__states"
+    assert css =~ ".obpt-root .obpt-jobs-page__selection-summary"
+    assert css =~ ".obpt-root .obpt-jobs-page__selection-actions"
+    assert css =~ ".obpt-root .obpt-jobs-page__pagination"
+    assert css =~ ".obpt-root .obpt-forensics-results"
+    assert css =~ ".obpt-root .obpt-forensics-guidance"
+    assert css =~ ".obpt-root .obpt-forensics-guidance-disclosure"
+    assert css =~ ".obpt-root .obpt-forensics-sources"
+    assert css =~ ".obpt-root #jobs-results"
+    assert css =~ ".obpt-root #job-quick-review"
+
+    assert css =~
+             "min-block-size: calc(var(--obpt-space-7) - var(--obpt-space-1))"
+
     assert css =~ ~s(.obpt-root[data-obpt-effective-theme="high-contrast"] :is(.obpt-page,)
     assert css =~ ":focus-visible"
     assert css =~ "scroll-margin-block: var(--obpt-space-5)"
@@ -741,6 +767,14 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
 
       refute body =~ ~r/overflow-x\s*:\s*(auto|scroll)/,
              "ordinary page selector #{selector} introduces horizontal scrolling"
+
+      refute body =~ ~r/overflow\s*:\s*(auto|scroll)/,
+             "ordinary page selector #{selector} takes general scroll ownership"
+
+      for shared_class <- @shared_component_chrome_classes do
+        refute String.contains?(selector, shared_class),
+               "page composition selector #{selector} recreates shared component chrome for #{shared_class}"
+      end
 
       for {property, value} <- declarations(body),
           page_visual_property?(property),
