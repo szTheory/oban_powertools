@@ -58,6 +58,7 @@ defmodule ObanPowertools.Web.JobsLiveTest do
 
   alias ObanPowertools.JobRecord
   alias ObanPowertools.TestRepo
+  alias ObanPowertools.Web.JobsLive
 
   setup do
     original_display_policy = Application.get_env(:oban_powertools, :display_policy)
@@ -85,334 +86,257 @@ defmodule ObanPowertools.Web.JobsLiveTest do
     assert {:error, {:redirect, %{to: "/"}}} = live(conn, "/ops/jobs/jobs")
   end
 
-  # ---------------------------------------------------------------------------
-  # Test 2: Redirects when no state param then loads default state
-  # ---------------------------------------------------------------------------
-
-  test "redirects when no state param then loads default state", %{conn: conn} do
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_jobs]}
-      )
-
-    # When no state param is provided, the live (connected) phase's handle_params fires
-    # push_patch during mount, causing handle_params to be called again with state=available.
-    # The view is fully mounted at ?state=available by the time live/2 returns.
-    {:ok, _view, html} = live(conn, "/ops/jobs/jobs")
-    assert html =~ "Jobs"
-    assert html =~ "Browse and inspect Oban jobs by state."
-    # The state tab bar is rendered — available is in the tab bar
-    assert html =~ "available"
-    # The active state tab contract is semantic and token-backed.
-    assert html =~ "obpt-tab--active"
-  end
-
-  # ---------------------------------------------------------------------------
-  # Test 3: Renders list page with state tabs and headings
-  # ---------------------------------------------------------------------------
-
-  test "renders list page with state tabs and headings", %{conn: conn} do
-    insert_job!(worker: "MyApp.AvailableWorker", queue: :default)
-    insert_job!(worker: "MyApp.AvailableWorker2", queue: :default)
-    insert_job!(worker: "MyApp.ExecutingWorker", queue: :default, state: "executing")
-
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_jobs]}
-      )
-
-    {:ok, _view, html} = live(conn, "/ops/jobs/jobs?state=available")
-
-    assert html =~ "Jobs"
-    assert html =~ "Browse and inspect Oban jobs by state."
-    assert html =~ "available"
-    assert html =~ "scheduled"
-    assert html =~ "executing"
-    assert html =~ "retryable"
-    assert html =~ "cancelled"
-    assert html =~ "discarded"
-    assert html =~ "completed"
-    assert html =~ "available (2)"
-    assert html =~ "executing (1)"
-
-    # 2 rows for available state
-    assert html =~ "AvailableWorker"
-    assert html =~ "AvailableWorker2"
-  end
-
-  test "renders the scoped Powertools theme shell on the jobs list", %{conn: conn} do
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_jobs]}
-      )
-
-    {:ok, _view, html} = live(conn, "/ops/jobs/jobs?state=available")
-
-    assert count(html, "obpt-root") == 1
-    assert html =~ ~s(data-obpt-theme="system")
-    assert html =~ ~r|/ops/jobs/_assets/oban_powertools-[a-f0-9]{32}\.css|
-    assert html =~ ~r|/ops/jobs/_assets/oban_powertools-[a-f0-9]{32}\.js|
-  end
-
-  test "state tabs use token-backed classes while preserving navigation behavior", %{conn: conn} do
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_jobs]}
-      )
-
-    {:ok, view, html} = live(conn, "/ops/jobs/jobs?state=available")
-
-    assert html =~ "obpt-tab"
-    assert html =~ "obpt-tab--active"
-
-    view
-    |> element("button[phx-value-state=executing]")
-    |> render_click()
-
-    assert_patch(view, "/ops/jobs/jobs?state=executing")
-  end
-
-  test "job state badges expose semantic classes and non-color tones", %{conn: conn} do
-    insert_job!(worker: "MyApp.AvailableWorker", queue: :default)
-    insert_job!(worker: "MyApp.ExecutingWorker", queue: :default, state: "executing")
-
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_jobs]}
-      )
-
-    {:ok, _view, available_html} = live(conn, "/ops/jobs/jobs?state=available")
-    assert available_html =~ "obpt-badge"
-    assert available_html =~ ~s(data-obpt-tone="neutral")
-
-    {:ok, _view, executing_html} = live(conn, "/ops/jobs/jobs?state=executing")
-    assert executing_html =~ "obpt-badge"
-    assert executing_html =~ ~s(data-obpt-tone="info")
-  end
-
-  # ---------------------------------------------------------------------------
-  # Test 4: Filters by queue via push_patch
-  # ---------------------------------------------------------------------------
-
-  test "filters by queue via push_patch", %{conn: conn} do
-    insert_job!(worker: "MyApp.Worker", queue: :default)
-    insert_job!(worker: "MyApp.Worker", queue: :alpha)
-
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_jobs]}
-      )
-
-    {:ok, view, _html} = live(conn, "/ops/jobs/jobs?state=available")
-
-    html =
-      view
-      |> form("form[phx-change=filter]", filter: %{queue: "alpha", worker: "", tags: ""})
-      |> render_change()
-
-    # After filter change, only the alpha queue job should be in the rendered HTML.
-    # The patch URL includes queue=alpha.
-    assert_patch(view, "/ops/jobs/jobs?state=available&queue=alpha")
-    assert html =~ "alpha"
-    refute html =~ ">default<"
-  end
-
-  # ---------------------------------------------------------------------------
-  # Test 5: Filters by worker
-  # ---------------------------------------------------------------------------
-
-  test "filters by worker", %{conn: conn} do
-    insert_job!(worker: "MyApp.TargetWorker", queue: :default)
-    insert_job!(worker: "MyApp.OtherWorker", queue: :default)
-
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_jobs]}
-      )
-
-    {:ok, view, _html} = live(conn, "/ops/jobs/jobs?state=available")
-
-    html =
-      view
-      |> form("form[phx-change=filter]",
-        filter: %{queue: "", worker: "MyApp.TargetWorker", tags: ""}
-      )
-      |> render_change()
-
-    # After filter change, only the TargetWorker job should appear.
-    assert_patch(view, "/ops/jobs/jobs?state=available&worker=MyApp.TargetWorker")
-    assert html =~ "TargetWorker"
-    refute html =~ "OtherWorker"
-  end
-
-  # ---------------------------------------------------------------------------
-  # Test 6: Filters by tags
-  # ---------------------------------------------------------------------------
-
-  test "filters by tags", %{conn: conn} do
-    insert_job!(worker: "MyApp.Worker", queue: :default, tags: ["foo"])
-    insert_job!(worker: "MyApp.OtherWorker", queue: :default, tags: ["bar"])
-
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_jobs]}
-      )
-
-    {:ok, _view, html} = live(conn, "/ops/jobs/jobs?state=available&tags=foo")
-
-    assert html =~ "Worker"
-    refute html =~ "OtherWorker"
-  end
-
-  # ---------------------------------------------------------------------------
-  # Test 6b: Filters by JSON args/meta
-  # ---------------------------------------------------------------------------
-
-  test "filters by args/meta JSON", %{conn: conn} do
-    insert_job!(
-      worker: "MyApp.Worker1",
-      queue: :default,
-      args: %{"user_id" => 123},
-      meta: %{"batch_id" => 1}
-    )
-
-    insert_job!(
-      worker: "MyApp.Worker2",
-      queue: :default,
-      args: %{"user_id" => 456},
-      meta: %{"batch_id" => 2}
-    )
-
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_jobs]}
-      )
-
-    {:ok, view, _html} = live(conn, "/ops/jobs/jobs?state=available")
-
-    html =
-      view
-      |> form("form[phx-change=filter]",
-        filter: %{queue: "", worker: "", tags: "", args: "{\"user_id\": 123}", meta: ""}
-      )
-      |> render_change()
-
-    assert_patch(view, "/ops/jobs/jobs?state=available&args=%7B%22user_id%22%3A123%7D")
-    assert html =~ "Worker1"
-    refute html =~ "Worker2"
-
-    html =
-      view
-      |> form("form[phx-change=filter]",
-        filter: %{queue: "", worker: "", tags: "", args: "", meta: "{\"batch_id\": 2}"}
-      )
-      |> render_change()
-
-    assert_patch(view, "/ops/jobs/jobs?state=available&meta=%7B%22batch_id%22%3A2%7D")
-    assert html =~ "Worker2"
-    refute html =~ "Worker1"
-  end
-
-  # ---------------------------------------------------------------------------
-  # Test 6c: Invalid JSON args/meta blocks filter application
-  # ---------------------------------------------------------------------------
-
-  test "invalid JSON args/meta blocks filter application and shows error", %{conn: conn} do
-    insert_job!(worker: "MyApp.Worker1", queue: :default)
-
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_jobs]}
-      )
-
-    {:ok, view, _html} = live(conn, "/ops/jobs/jobs?state=available")
-
-    html =
-      view
-      |> form("form[phx-change=filter]",
-        filter: %{queue: "", worker: "", tags: "", args: "{invalid", meta: ""}
-      )
-      |> render_change()
-
-    assert html =~ "Invalid JSON"
-    assert html =~ "border-red-500"
-
-    html =
-      view
-      |> form("form[phx-change=filter]",
-        filter: %{queue: "", worker: "", tags: "", args: "", meta: "[1,2,"}
-      )
-      |> render_change()
-
-    assert html =~ "Invalid JSON"
-  end
-
-  # ---------------------------------------------------------------------------
-  # Test 7: Navigates state via tab click
-  # ---------------------------------------------------------------------------
-
-  test "navigates state via tab click", %{conn: conn} do
-    insert_job!(worker: "MyApp.ExecutingWorker", queue: :default, state: "executing")
-
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_jobs]}
-      )
-
-    {:ok, view, _html} = live(conn, "/ops/jobs/jobs?state=available")
-
-    view
-    |> element("button[phx-value-state=executing]")
-    |> render_click()
-
-    assert_patch(view, "/ops/jobs/jobs?state=executing")
-    html = render(view)
-    assert html =~ "ExecutingWorker"
-  end
-
-  # ---------------------------------------------------------------------------
-  # Test 8: Read-only banner renders when actor lacks mutation permissions
-  # ---------------------------------------------------------------------------
-
-  test "read-only banner renders when actor lacks mutation permissions", %{conn: conn} do
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_jobs]}
-      )
-
-    {:ok, _view, html} = live(conn, "/ops/jobs/jobs?state=available")
-
-    assert html =~ "Permission: read-only. Job list stays visible"
-  end
-
-  # ---------------------------------------------------------------------------
-  # Test 9: Hides read-only banner when actor has retry_job permission
-  # ---------------------------------------------------------------------------
-
-  test "hides read-only banner when actor has retry_job permission", %{conn: conn} do
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_jobs, :retry_job]}
-      )
-
-    {:ok, _view, html} = live(conn, "/ops/jobs/jobs?state=available")
-
-    refute html =~ "Job list stays visible"
-  end
-
-  # ---------------------------------------------------------------------------
-  # Test 10: Renders empty state when no jobs match the filter
-  # ---------------------------------------------------------------------------
-
-  test "renders empty state when no jobs match the filter", %{conn: conn} do
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_jobs]}
-      )
-
-    {:ok, _view, html} = live(conn, "/ops/jobs/jobs?state=available")
-
-    assert html =~ "No jobs found"
+  describe "bounded browse and quick review" do
+    test "canonicalizes missing and invalid URL values before loading", %{conn: conn} do
+      conn = jobs_conn(conn)
+
+      {:ok, view, html} =
+        live(
+          conn,
+          "/ops/jobs/jobs?state=unknown&page=nope&args=%7Bbad&job=not-an-id&surprise=true"
+        )
+
+      assert_patch(view, "/ops/jobs/jobs?state=available")
+      assert html =~ "Some filters were not applied"
+
+      assert html =~
+               "The invalid filter values were removed. Review the applied filters and try again."
+
+      assert html =~ "0 available jobs"
+      assert html =~ "Showing 0 of 0"
+    end
+
+    test "renders the shared filter, semantic table, exact hierarchy, and empty truth", %{
+      conn: conn
+    } do
+      insert_job!(worker: "MyApp.Full.AvailableWorker", queue: :default)
+      insert_job!(worker: "MyApp.ExecutingWorker", queue: :default, state: "executing")
+
+      {:ok, _view, html} = live(jobs_conn(conn), "/ops/jobs/jobs?state=available")
+
+      assert count(html, "<h1") == 1
+      assert count(html, "<table") == 1
+      refute html =~ "role=\"grid\""
+      assert html =~ "Review current job state, apply precise filters"
+      assert html =~ ~s(data-obpt-filter-bar)
+      assert html =~ ~s(phx-change="validate_filters")
+      assert html =~ ~s(phx-submit="apply_filters")
+
+      for label <- [
+            "Selection",
+            "Worker",
+            "State",
+            "Queue",
+            "Scheduled",
+            "Attempts",
+            "Job ID",
+            "Review job"
+          ] do
+        assert html =~ label
+      end
+
+      assert html =~ "MyApp.Full.AvailableWorker"
+      assert html =~ "1 available job"
+      assert html =~ "Showing 1–1 of 1"
+      refute html =~ "sort"
+      refute html =~ "cursor"
+
+      {:ok, _view, empty_html} =
+        live(jobs_conn(conn), "/ops/jobs/jobs?state=discarded")
+
+      assert empty_html =~ "No jobs match the applied filters"
+      assert empty_html =~ "Remove a filter or clear all filters to widen the review."
+    end
+
+    test "draft change validates without queries or navigation and apply patches once", %{
+      conn: conn
+    } do
+      insert_job!(worker: "MyApp.AlphaWorker", queue: :alpha)
+      insert_job!(worker: "MyApp.DefaultWorker", queue: :default)
+      {:ok, view, _html} = live(jobs_conn(conn), "/ops/jobs/jobs?state=available")
+
+      {html, queries} =
+        capture_job_queries(fn ->
+          view
+          |> form("#jobs-filter-form",
+            filter: %{
+              queue: "alpha",
+              worker: "",
+              tags: "",
+              args: "",
+              meta: ""
+            }
+          )
+          |> render_change()
+        end)
+
+      assert queries == []
+      assert html =~ "Changes not applied."
+      assert html =~ ~s(value="alpha")
+      assert html =~ "2 available jobs"
+      assert html =~ "MyApp.DefaultWorker"
+
+      {_html, queries} =
+        capture_job_queries(fn ->
+          view
+          |> form("#jobs-filter-form",
+            filter: %{
+              queue: "alpha",
+              worker: "",
+              tags: "",
+              args: "",
+              meta: ""
+            }
+          )
+          |> render_submit()
+        end)
+
+      assert_patch(view, "/ops/jobs/jobs?state=available&queue=alpha")
+      assert length(queries) == 3
+      html = render(view)
+      assert html =~ "<strong>Queue:</strong> alpha"
+      assert html =~ "MyApp.AlphaWorker"
+      refute html =~ "MyApp.DefaultWorker"
+    end
+
+    test "retains invalid JSON draft with exact help and errors without a load", %{conn: conn} do
+      {:ok, view, _html} = live(jobs_conn(conn), "/ops/jobs/jobs?state=available")
+
+      {html, queries} =
+        capture_job_queries(fn ->
+          view
+          |> form("#jobs-filter-form",
+            filter: %{
+              queue: "",
+              worker: "status:executing",
+              tags: "urgent, billing",
+              args: "{invalid",
+              meta: "[]"
+            }
+          )
+          |> render_change()
+        end)
+
+      assert queries == []
+      assert html =~ "status:executing"
+      assert html =~ "{invalid"
+      assert html =~ "Separate tags with commas. Jobs must contain every listed tag."
+
+      assert html =~
+               "Enter a JSON object. Filter values are stored in the URL; do not enter secrets."
+
+      assert count(html, "Enter a valid JSON object.") == 2
+    end
+
+    test "renders human applied filters with canonical remove and clear destinations", %{
+      conn: conn
+    } do
+      url =
+        "/ops/jobs/jobs?state=retryable&queue=alpha&worker=MyApp.Worker&tags=urgent%2Cbilling&page=2"
+
+      {:ok, _view, html} = live(jobs_conn(conn), url)
+
+      assert html =~ "<strong>Queue:</strong> alpha"
+      assert html =~ "<strong>Worker module:</strong> MyApp.Worker"
+      assert html =~ "<strong>Tags:</strong> urgent, billing"
+
+      assert html =~
+               "/ops/jobs/jobs?state=retryable&amp;worker=MyApp.Worker&amp;tags=urgent%2Cbilling"
+
+      assert html =~ "/ops/jobs/jobs?state=retryable"
+    end
+
+    test "uses exact counts to disable Next on a full final page", %{conn: conn} do
+      for index <- 1..40 do
+        insert_job!(worker: "MyApp.PageWorker#{index}", queue: :default)
+      end
+
+      {:ok, _view, html} = live(jobs_conn(conn), "/ops/jobs/jobs?state=available&page=2")
+
+      assert html =~ "40 available jobs"
+      assert html =~ "Showing 21–40 of 40"
+      assert html =~ ~r/id="jobs-next-page"[^>]*disabled/
+      assert html =~ ~r/id="jobs-previous-page"[^>]*phx-click="paginate"/
+    end
+
+    test "explicit selection persists across pagination and exposes page tri-state", %{conn: conn} do
+      jobs =
+        for index <- 1..21 do
+          insert_job!(worker: "MyApp.SelectionWorker#{index}", queue: :default)
+        end
+
+      selected = List.last(jobs)
+      {:ok, view, _html} = live(jobs_conn(conn), "/ops/jobs/jobs?state=available")
+
+      html =
+        view
+        |> element("#job-select-#{selected.id}")
+        |> render_click()
+
+      assert html =~ "1 job selected"
+      assert html =~ ~s(data-obpt-page-selection="mixed")
+
+      view |> element("#jobs-next-page") |> render_click()
+      assert_patch(view, "/ops/jobs/jobs?state=available&page=2")
+      assert render(view) =~ "1 job selected"
+
+      view |> element("#jobs-previous-page") |> render_click()
+      assert_patch(view, "/ops/jobs/jobs?state=available")
+      assert render(view) =~ ~r/id="job-select-#{selected.id}"[^>]*checked/
+    end
+
+    test "opens, switches, closes, and reloads one redacted quick review", %{conn: conn} do
+      first =
+        insert_job!(
+          worker: "MyApp.FirstWorker",
+          queue: :default,
+          args: %{"secret" => "QUICK_REVIEW_SENTINEL"}
+        )
+
+      second = insert_job!(worker: "MyApp.SecondWorker", queue: :default)
+      conn = jobs_conn(conn, [:view_job_detail])
+      {:ok, view, _html} = live(conn, "/ops/jobs/jobs?state=available")
+
+      html = view |> element("#job-review-#{first.id}") |> render_click()
+      assert_patch(view, "/ops/jobs/jobs?state=available&job=#{first.id}")
+      assert html =~ "Review job #{first.id}"
+      assert html =~ "Open full job details"
+      assert html =~ "MyApp.FirstWorker"
+      refute html =~ "QUICK_REVIEW_SENTINEL"
+
+      view |> element("#job-review-#{second.id}") |> render_click()
+      assert_patch(view, "/ops/jobs/jobs?state=available&job=#{second.id}")
+      assert render(view) =~ "MyApp.SecondWorker"
+
+      view |> element("button[phx-click=close_review]") |> render_click()
+      assert_patch(view, "/ops/jobs/jobs?state=available")
+      refute render(view) =~ ~s(data-obpt-detail-surface)
+
+      {:ok, _view, deep_link_html} =
+        live(conn, "/ops/jobs/jobs?state=available&job=#{first.id}")
+
+      assert deep_link_html =~ "Review job #{first.id}"
+    end
+
+    test "missing and unauthorized review IDs have one unavailable outcome", %{conn: conn} do
+      job = insert_job!(worker: "MyApp.PrivateWorker", queue: :default)
+
+      {:ok, unauthorized_view, unauthorized_html} =
+        live(jobs_conn(conn), "/ops/jobs/jobs?state=available&job=#{job.id}")
+
+      assert_patch(unauthorized_view, "/ops/jobs/jobs?state=available")
+      assert unauthorized_html =~ "Job unavailable"
+      refute unauthorized_html =~ "PrivateWorker"
+
+      {:ok, missing_view, missing_html} =
+        live(jobs_conn(conn, [:view_job_detail]), "/ops/jobs/jobs?state=available&job=999999999")
+
+      assert_patch(missing_view, "/ops/jobs/jobs?state=available")
+      assert missing_html =~ "Job unavailable"
+    end
+
+    test "exports pure index composition",
+      do: assert(function_exported?(JobsLive, :page_content, 1))
   end
 
   # ---------------------------------------------------------------------------
@@ -1044,6 +968,47 @@ defmodule ObanPowertools.Web.JobsLiveTest do
     |> Kernel.-(1)
   end
 
+  defp jobs_conn(conn, extra_permissions \\ []) do
+    Plug.Test.init_test_session(conn,
+      current_actor: %{
+        id: "ops-1",
+        permissions: [:view_jobs | extra_permissions]
+      }
+    )
+  end
+
+  defp capture_job_queries(fun) do
+    handler_id = {__MODULE__, make_ref()}
+    event = TestRepo.config() |> Keyword.fetch!(:telemetry_prefix) |> Kernel.++([:query])
+    test_pid = self()
+
+    :telemetry.attach(
+      handler_id,
+      event,
+      fn _event, _measurements, metadata, pid ->
+        if metadata[:source] == "oban_jobs" do
+          send(pid, {:job_query, metadata.query})
+        end
+      end,
+      test_pid
+    )
+
+    try do
+      result = fun.()
+      {result, collect_job_queries([])}
+    after
+      :telemetry.detach(handler_id)
+    end
+  end
+
+  defp collect_job_queries(queries) do
+    receive do
+      {:job_query, query} -> collect_job_queries([query | queries])
+    after
+      0 -> Enum.reverse(queries)
+    end
+  end
+
   # ---------------------------------------------------------------------------
   # Test 11: Bulk Job Selection and Execution
   # ---------------------------------------------------------------------------
@@ -1076,7 +1041,7 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       assert html =~ "1 jobs selected"
 
       # Toggle all jobs
-      html = view |> element("input[phx-click=\"toggle_all\"]") |> render_click()
+      html = view |> element("input[phx-click=\"toggle_page\"]") |> render_click()
       assert html =~ "2 jobs selected"
 
       # Change state to clear selection
@@ -1100,7 +1065,7 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       {:ok, view, _html} = live(conn, "/ops/jobs/jobs?state=retryable")
 
       # Select all
-      view |> element("input[phx-click=\"toggle_all\"]") |> render_click()
+      view |> element("input[phx-click=\"toggle_page\"]") |> render_click()
 
       # Click preview
       html =
@@ -1118,7 +1083,7 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       |> render_submit()
 
       html = render(view)
-      assert html =~ "No jobs found"
+      assert html =~ "No jobs match the applied filters"
 
       # Selection should be cleared
       refute html =~ "jobs selected"
