@@ -30,6 +30,40 @@ defmodule ObanPowertools.Web.SelectorsTest do
     assert Selectors.forensic_path([]) == "/ops/jobs/forensics"
   end
 
+  test "Forensics URLs use exactly the six-key allowlist in canonical order" do
+    path =
+      Selectors.forensic_path(%{
+        "view" => "resolved",
+        "incident_fingerprint" => "incident:α/path?mode=full#one&two=three",
+        "step" => "sync",
+        "workflow_id" => "workflow-7",
+        "resource_id" => "step-row-9",
+        "resource_type" => "workflow_step",
+        "seventh" => "discarded"
+      })
+
+    assert path ==
+             "/ops/jobs/forensics?resource_type=workflow_step&resource_id=step-row-9&workflow_id=workflow-7&step=sync&incident_fingerprint=incident%3A%CE%B1%2Fpath%3Fmode%3Dfull%23one%26two%3Dthree&view=resolved"
+
+    decoded = path |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query()
+
+    assert Map.keys(decoded) |> MapSet.new() ==
+             MapSet.new(~w(resource_type resource_id workflow_id step incident_fingerprint view))
+
+    refute path =~ "seventh"
+  end
+
+  test "Forensics URLs drop unknown and empty keys without retaining invalid selector values" do
+    assert Selectors.forensic_path([
+             {"resource_type", ""},
+             {"resource_id", nil},
+             {"workflow_id", ""},
+             {"incident_fingerprint", ""},
+             {"view", ""},
+             {"conflicting_secret", "do-not-retain"}
+           ]) == "/ops/jobs/forensics"
+  end
+
   test "preserves keyword-list ordering in the encoded query" do
     result = Selectors.lifeline_path([{"view", "active"}, {"incident_fingerprint", "fp-123"}])
     assert result == "/ops/jobs/lifeline?view=active&incident_fingerprint=fp-123"

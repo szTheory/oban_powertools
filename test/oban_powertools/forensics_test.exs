@@ -9,7 +9,8 @@ defmodule ObanPowertools.ForensicsTest do
     EvidenceBundle,
     LimiterHistoryFact,
     Provenance,
-    RunbookEntry
+    RunbookEntry,
+    Scope
   }
 
   alias ObanPowertools.Lifeline.Incident
@@ -28,6 +29,173 @@ defmodule ObanPowertools.ForensicsTest do
                            "incident_fingerprint",
                            "view"
                          ])
+
+  describe "typed forensic scope grammar" do
+    test "returns the real empty chooser for absent and blank selectors" do
+      assert Scope.parse(%{}) == {:empty, [], "Choose evidence to inspect."}
+
+      assert Scope.parse(%{
+               "resource_type" => "",
+               "resource_id" => "  ",
+               "workflow_id" => nil,
+               "step" => "",
+               "incident_fingerprint" => " ",
+               "view" => nil
+             }) == {:empty, [], "Choose evidence to inspect."}
+    end
+
+    test "accepts exactly the four typed families and canonicalizes them in six-key order" do
+      cases = [
+        {
+          %{"workflow_id" => "workflow-1"},
+          :workflow,
+          [{"workflow_id", "workflow-1"}]
+        },
+        {
+          %{
+            "resource_type" => "workflow_step",
+            "resource_id" => "step-row-7",
+            "workflow_id" => "workflow-1",
+            "step" => "sync_billing"
+          },
+          :workflow,
+          [
+            {"resource_type", "workflow_step"},
+            {"resource_id", "step-row-7"},
+            {"workflow_id", "workflow-1"},
+            {"step", "sync_billing"}
+          ]
+        },
+        {
+          %{
+            "resource_type" => "job",
+            "resource_id" => "42",
+            "incident_fingerprint" => "dead_executor:alpha",
+            "view" => "active"
+          },
+          :incident,
+          [
+            {"resource_type", "job"},
+            {"resource_id", "42"},
+            {"incident_fingerprint", "dead_executor:alpha"},
+            {"view", "active"}
+          ]
+        },
+        {
+          %{"incident_fingerprint" => "workflow_stuck:1", "view" => "resolved"},
+          :incident,
+          [{"incident_fingerprint", "workflow_stuck:1"}, {"view", "resolved"}]
+        },
+        {
+          %{"resource_type" => "cron_entry", "resource_id" => "nightly"},
+          :cron_entry,
+          [{"resource_type", "cron_entry"}, {"resource_id", "nightly"}]
+        },
+        {
+          %{"resource_type" => "limiter", "resource_id" => "payments"},
+          :limiter,
+          [{"resource_type", "limiter"}, {"resource_id", "payments"}]
+        }
+      ]
+
+      for {params, kind, canonical} <- cases do
+        assert {:ok, %{kind: ^kind} = scope, ^canonical} = Scope.parse(params)
+        assert scope.__struct__ == Scope
+        assert Scope.canonical_params(scope) == canonical
+      end
+    end
+
+    test "accepts only consistent workflow and incident context pairs" do
+      valid = [
+        %{
+          "resource_type" => "workflow",
+          "resource_id" => "workflow-1",
+          "workflow_id" => "workflow-1"
+        },
+        %{
+          "resource_type" => "workflow_step",
+          "resource_id" => "step-row-7",
+          "workflow_id" => "workflow-1",
+          "step" => "sync"
+        },
+        %{
+          "resource_type" => "workflow",
+          "resource_id" => "workflow-1",
+          "workflow_id" => "workflow-1",
+          "incident_fingerprint" => "workflow_stuck:workflow-1"
+        },
+        %{
+          "resource_type" => "workflow_step",
+          "resource_id" => "step-row-7",
+          "workflow_id" => "workflow-1",
+          "step" => "sync",
+          "incident_fingerprint" => "workflow_stuck:workflow-1:sync"
+        }
+      ]
+
+      assert Enum.map(valid, &Scope.parse/1)
+             |> Enum.all?(fn
+               {:ok, %{__struct__: Scope}, _params} -> true
+               _other -> false
+             end)
+    end
+
+    test "rejects every mixed orphan incomplete unknown arbitrary-job and seventh-key scope before a read" do
+      invalid = [
+        %{"step" => "sync"},
+        %{"view" => "active"},
+        %{"workflow_id" => "workflow-1", "view" => "active"},
+        %{"incident_fingerprint" => "incident-1", "view" => "archived"},
+        %{"resource_type" => "workflow"},
+        %{"resource_id" => "workflow-1"},
+        %{"resource_type" => "unknown", "resource_id" => "1"},
+        %{"resource_type" => "job", "resource_id" => "42"},
+        %{
+          "resource_type" => "workflow",
+          "resource_id" => "different-workflow",
+          "workflow_id" => "workflow-1"
+        },
+        %{
+          "resource_type" => "workflow_step",
+          "resource_id" => "step-row-7",
+          "workflow_id" => "workflow-1"
+        },
+        %{
+          "resource_type" => "cron_entry",
+          "resource_id" => "nightly",
+          "workflow_id" => "workflow-1"
+        },
+        %{
+          "resource_type" => "limiter",
+          "resource_id" => "payments",
+          "incident_fingerprint" => "incident-1"
+        },
+        %{"workflow_id" => "workflow-1", "seventh" => "conflict"}
+      ]
+
+      for params <- invalid do
+        result = Scope.parse(params)
+        if match?({:ok, %{__struct__: Scope}, _canonical}, result), do: send(self(), :repo_read)
+
+        assert result == {:invalid, [], "Choose one evidence type"}
+        refute_received :repo_read
+      end
+    end
+
+    test "round-trips Unicode and delimiter-heavy identities without changing values" do
+      workflow_id = "workflow:α/مرحبا?next=#one % two&three=four"
+      step = "sync/課金?mode=full#attempt 1&retry=true"
+
+      assert {:ok, scope, canonical} =
+               Scope.parse(%{"workflow_id" => workflow_id, "step" => step})
+
+      path = ObanPowertools.Web.Selectors.forensic_path(canonical)
+      decoded = path |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query()
+
+      assert decoded == %{"workflow_id" => workflow_id, "step" => step}
+      assert Scope.canonical_params(scope) == canonical
+    end
+  end
 
   test "bundle contract preserves diagnosis-first shape, chronology ordering, and supporting evidence labels" do
     now = DateTime.utc_now()
