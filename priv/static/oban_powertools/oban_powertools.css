@@ -2996,6 +2996,11 @@
   outline-offset: calc(var(--obpt-space-1) / 2);
 }
 
+.obpt-root .obpt-confirm-action__dialog:focus-visible {
+  outline: calc(var(--obpt-space-1) / 2) solid var(--obpt-color-focus);
+  outline-offset: calc(var(--obpt-space-1) * -1);
+}
+
 .obpt-root .obpt-confirm-action__scope,
 .obpt-root .obpt-confirm-action__consequence,
 .obpt-root .obpt-confirm-action__reversibility,

@@ -127,7 +127,7 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
         phx-key={if(@dismissible, do: "Escape")}
       >
         <div class="obpt-confirm-action__overlay" aria-hidden="true"></div>
-        <div class="obpt-confirm-action__dialog">
+        <div class="obpt-confirm-action__dialog" tabindex="0">
           <header class="obpt-confirm-action__header">
             <p class="obpt-confirm-action__object">{@object_label}</p>
             <h2

@@ -573,6 +573,7 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
     assert html =~ ~s(aria-modal="true")
     assert html =~ ~s(aria-labelledby="retry-jobs-title")
     assert html =~ ~s(id="retry-jobs-focus-wrap")
+    assert html =~ ~s(class="obpt-confirm-action__dialog" tabindex="0")
     assert html =~ ~s(id="retry-jobs-title")
     assert html =~ ~s(tabindex="-1")
     assert html =~ ~s(data-obpt-focus-fallback="job-results-heading")

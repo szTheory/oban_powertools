@@ -672,6 +672,7 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
   test "ConfirmActionDialog keeps focus, outcome, busy, motion, and 320px styles token-owned" do
     css = read_contract_file!(@tokens_path)
 
+    assert css =~ ".obpt-root .obpt-confirm-action__dialog:focus-visible"
     assert css =~ ".obpt-root .obpt-confirm-action__title:focus-visible"
     assert css =~ ".obpt-root .obpt-confirm-action__result-heading:focus-visible"
     assert css =~ ~s(.obpt-confirm-action__consequence[data-obpt-intent="danger"])
