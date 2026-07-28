@@ -336,7 +336,7 @@
   2. VRT + a11y green over adversarial fixtures (thousands of rows, redacted args, deep timelines).
   3. No functional regression in filter/search/bulk/deep-link behavior.
 
-**Plans**: 4/13 plans executed
+**Plans**: 7/13 plans executed
 
 - [x] 80-01-PLAN.md
 - [x] 80-02-PLAN.md
@@ -344,7 +344,7 @@
 - [x] 80-04-PLAN.md
 - [x] 80-05-PLAN.md
 - [x] 80-06-PLAN.md
-- [ ] 80-07-PLAN.md
+- [x] 80-07-PLAN.md
 - [ ] 80-08-PLAN.md
 - [ ] 80-09-PLAN.md
 - [ ] 80-10-PLAN.md
@@ -419,7 +419,7 @@
 | 77. Data-Display & Operator Patterns | 9/9 | Complete    | 2026-07-13 |
 | 78. Component Groups (Meta-Components) | 8/8 | Complete    | 2026-07-19 |
 | 79. Page Migration Wave 1 | 12/12 | Complete   | 2026-07-20 |
-| 80. Page Migration Wave 2 | 5/13 | In Progress|  |
+| 80. Page Migration Wave 2 | 7/13 | In Progress|  |
 | 81. Page Migration Wave 3 | 0/TBD | Not started | — |
 | 82. Cross-Cutting A11y/Motion/Responsive Sweep | 0/TBD | Not started | — |
 | 83. Showcase Completion & Documentation | 0/TBD | Not started | — |
