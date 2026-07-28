@@ -661,7 +661,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       refute render(view) =~ "PHASE78-GROUP-SECRET-SENTINEL"
     end
 
-    test "pages section registers exactly 19 production-composition stories with no active tree",
+    test "pages section registers exactly 49 production-composition stories with no active tree",
          %{conn: conn} do
       {:ok, view, html} = mount_showcase!(conn)
 
@@ -680,7 +680,12 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       end
 
       refute has_element?(view, "[data-obpt-page-story][data-obpt-page-active='true']")
-      refute has_element?(view, "#overview-page, #cron-page, #limiters-page, #audit-page")
+
+      refute has_element?(
+               view,
+               "#overview-page, #cron-page, #limiters-page, #audit-page, #jobs-page, #job-detail-page, #forensics-page"
+             )
+
       refute has_element?(view, "[role='dialog'], dialog[open]")
     end
 
@@ -729,9 +734,30 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       assert has_element?(view, "#audit-entry-42", "Recorded at")
       assert active_page_overlay_count(view) == 1
 
-      render_hook(view, "activate-page-story", %{"id" => "missing-page-story"})
-      assert_active_page_story(view, "page-audit-selected-long-unicode", "#audit-page")
+      render_hook(view, "activate-page-story", %{"id" => "page-jobs-review-one"})
+      assert_active_page_story(view, "page-jobs-review-one", "#jobs-page")
+      assert has_element?(view, "#jobs-page h1#jobs-page-title", "Jobs")
+      assert has_element?(view, "#jobs-page table")
+      assert has_element?(view, "#job-quick-review")
       assert active_page_overlay_count(view) == 1
+
+      render_hook(view, "activate-page-story", %{
+        "id" => "page-forensics-workflow-complete"
+      })
+
+      assert_active_page_story(
+        view,
+        "page-forensics-workflow-complete",
+        "#forensics-page"
+      )
+
+      assert has_element?(view, "#forensics-page h1", "Forensics")
+      assert has_element?(view, "#forensics-events")
+      assert active_page_overlay_count(view) == 0
+
+      render_hook(view, "activate-page-story", %{"id" => "missing-page-story"})
+      assert_active_page_story(view, "page-forensics-workflow-complete", "#forensics-page")
+      assert active_page_overlay_count(view) == 0
     end
 
     test "group and page activation atomically replace the opposite active surface", %{
@@ -762,34 +788,67 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       for story <- ObanPowertools.PageStoryCatalog.stories() do
         render_hook(view, "activate-page-story", %{"id" => story.id})
 
-        root_selector = page_root_selector(story.page)
+        root_selector = page_root_selector(story)
         assert_active_page_story(view, story.id, root_selector)
         assert has_element?(view, "#{root_selector} h1")
 
         assert Enum.count(
-                 ~w[#overview-page #cron-page #limiters-page #audit-page],
+                 ~w[
+                   #overview-page #cron-page #limiters-page #audit-page
+                   #jobs-page #job-detail-page #forensics-page
+                 ],
                  &has_element?(view, &1)
                ) == 1
 
-        if story.page != :overview do
+        if story.page in [:cron, :limiters, :audit, :jobs] and
+             story.id != "page-jobs-full-detail" do
           assert has_element?(view, "#{root_selector} table")
+        end
+
+        if story.page == :forensics and story.fixtures.scope_state == :ready do
+          assert has_element?(view, "#{root_selector} #forensics-events")
         end
 
         assert active_page_overlay_count(view) <= 1
 
-        case story.activation do
-          :confirmation ->
+        case {story.page, story.activation} do
+          {:jobs, :confirmation} ->
+            assert has_element?(view, "#jobs-bulk-confirmation[role='dialog']")
+            refute has_element?(view, "#job-quick-review")
+
+          {:jobs, :detail} when story.id == "page-jobs-review-one" ->
+            assert has_element?(view, "#job-quick-review")
+            refute has_element?(view, "#jobs-bulk-confirmation")
+
+          {:jobs, :detail} ->
+            refute has_element?(view, "#job-quick-review, #jobs-bulk-confirmation")
+
+          {_page, :confirmation} ->
             assert has_element?(view, "#cron-confirmation-dialog[role='dialog']")
             refute has_element?(view, "#cron-entry-detail")
 
-          :detail ->
+          {_page, :detail} ->
             refute has_element?(view, "#cron-confirmation-dialog")
 
-          :none ->
+          {_page, :none} ->
             assert active_page_overlay_count(view) == 0
         end
 
-        if story.id in ["page-overview-long-unicode", "page-audit-selected-long-unicode"] do
+        case story.id do
+          "page-jobs-thousands-bounded" ->
+            assert count(render(view), ~s(id="jobs-results-row-)) == 20
+
+          "page-forensics-deep-timeline" ->
+            assert count(render(view), ~s(class="obpt-timeline__item")) == 50
+
+          _other ->
+            :ok
+        end
+
+        if story.id in [
+             "page-overview-long-unicode",
+             "page-audit-selected-long-unicode"
+           ] do
           assert render(view) =~ "&lt;script&gt;alert(&#39;page&#39;)&lt;/script&gt;"
 
           refute has_element?(
@@ -797,17 +856,36 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
                    "[data-obpt-page-story='#{story.id}'][data-obpt-page-active='true'] script"
                  )
         end
+
+        if story.id in [
+             "page-jobs-adversarial-redacted",
+             "page-forensics-adversarial-redacted"
+           ] do
+          html = render(view)
+
+          for sentinel <- [
+                "PHASE80-JOBS-TOKEN-SENTINEL",
+                "PHASE80-JOBS-HASH-SENTINEL",
+                "PHASE80-JOBS-RAW-ERROR-SENTINEL",
+                "PHASE80-FORENSICS-PAYLOAD-SENTINEL",
+                "PHASE80-FORENSICS-SECRET-SENTINEL"
+              ] do
+            refute html =~ sentinel
+          end
+        end
       end
     end
 
-    test "showcase source delegates page markup to all four production page_content seams" do
+    test "showcase source delegates page markup to all six production page_content seams" do
       source = File.read!("lib/oban_powertools/web/dev/showcase_live.ex")
 
       for call <- [
             "EngineOverviewLive.page_content",
             "CronLive.page_content",
             "LimitersLive.page_content",
-            "AuditLive.page_content"
+            "AuditLive.page_content",
+            "JobsLive.page_content",
+            "ForensicsLive.page_content"
           ] do
         assert source =~ call
       end
@@ -816,7 +894,9 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
             ~s(<h1 id="overview-title">),
             ~s(<h1 id="cron-page-title">),
             ~s(<h1 id="limiters-page-title">),
-            ~s(<h1 id="audit-page-title">)
+            ~s(<h1 id="audit-page-title">),
+            ~s(<h1 id="jobs-page-title">),
+            ~s(<h1>Forensics</h1>)
           ] do
         refute source =~ copied_markup
       end
@@ -1262,10 +1342,13 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       count(html, ~s(role="dialog")) + count(html, "<dialog")
     end
 
-    defp page_root_selector(:overview), do: "#overview-page"
-    defp page_root_selector(:cron), do: "#cron-page"
-    defp page_root_selector(:limiters), do: "#limiters-page"
-    defp page_root_selector(:audit), do: "#audit-page"
+    defp page_root_selector(%{page: :overview}), do: "#overview-page"
+    defp page_root_selector(%{page: :cron}), do: "#cron-page"
+    defp page_root_selector(%{page: :limiters}), do: "#limiters-page"
+    defp page_root_selector(%{page: :audit}), do: "#audit-page"
+    defp page_root_selector(%{id: "page-jobs-full-detail"}), do: "#job-detail-page"
+    defp page_root_selector(%{page: :jobs}), do: "#jobs-page"
+    defp page_root_selector(%{page: :forensics}), do: "#forensics-page"
 
     defp assert_in_order(html, values) do
       indexes = Enum.map(values, &(:binary.match(html, &1) |> elem(0)))

@@ -23,24 +23,59 @@ defmodule ObanPowertools.PageStoryCatalogTest do
     page-audit-filtered-boundary-page
     page-audit-selected-long-unicode
     page-audit-selected-missing-fields
+    page-jobs-empty-browse
+    page-jobs-review-one
+    page-jobs-many-filtered
+    page-jobs-thousands-bounded
+    page-jobs-final-page-exact
+    page-jobs-invalid-json
+    page-jobs-adversarial-redacted
+    page-jobs-explicit-selection
+    page-jobs-frozen-all-matching
+    page-jobs-bulk-oversized
+    page-jobs-bulk-zero-ready
+    page-jobs-bulk-progress
+    page-jobs-bulk-success
+    page-jobs-bulk-mixed-results
+    page-jobs-bulk-drifted
+    page-jobs-bulk-disconnected
+    page-jobs-bulk-interrupted
+    page-jobs-full-detail
+    page-forensics-empty-chooser
+    page-forensics-workflow-complete
+    page-forensics-incident-partial-remediation
+    page-forensics-cron-bounded
+    page-forensics-limiter-bounded
+    page-forensics-unavailable
+    page-forensics-conflicting-scope
+    page-forensics-unknown-coverage
+    page-forensics-history-unavailable
+    page-forensics-deep-timeline
+    page-forensics-adversarial-redacted
+    page-forensics-restricted-guidance
   ]
 
-  @confirmation_ids Enum.slice(@ids, 5, 6)
+  @phase79_ids Enum.take(@ids, 19)
+  @jobs_ids Enum.slice(@ids, 19, 18)
+  @forensics_ids Enum.slice(@ids, 37, 12)
+
+  @confirmation_ids Enum.slice(@ids, 5, 6) ++ Enum.slice(@jobs_ids, 8, 9)
 
   @detail_ids Enum.slice(@ids, 3, 2) ++
                 Enum.slice(@ids, 11, 4) ++
-                Enum.slice(@ids, 17, 2)
+                Enum.slice(@ids, 17, 2) ++
+                [Enum.at(@jobs_ids, 1), Enum.at(@jobs_ids, 17)]
 
   @story_fields ~w[
     id kind page name description components variant state fixtures activation test_targets
   ]a
 
-  @pages ~w[overview cron limiters audit]a
+  @pages ~w[overview cron limiters audit jobs forensics]a
 
   @components ~w[
     app_shell surface button link reason_field attention_card metric_card status_pill
     empty_state data_table description_list code_block toast filter_bar detail_surface
-    confirm_action_dialog why_blocked audit_entry
+    confirm_action_dialog why_blocked audit_entry timeline progress_bar
   ]a
 
   @explicit_states ~w[
@@ -66,17 +101,64 @@ defmodule ObanPowertools.PageStoryCatalogTest do
     stacktrace
   ]
 
-  test "keeps exactly 19 deterministic page stories in binding UI-SPEC order" do
+  @d86_coverage [
+    empty_browse: "page-jobs-empty-browse",
+    review_one: "page-jobs-review-one",
+    many_filtered: "page-jobs-many-filtered",
+    thousands_bounded: "page-jobs-thousands-bounded",
+    final_page_exact: "page-jobs-final-page-exact",
+    invalid_json: "page-jobs-invalid-json",
+    adversarial_redacted: "page-jobs-adversarial-redacted",
+    explicit_selection: "page-jobs-explicit-selection",
+    frozen_all_matching: "page-jobs-frozen-all-matching",
+    bulk_oversized: "page-jobs-bulk-oversized",
+    bulk_zero_ready: "page-jobs-bulk-zero-ready",
+    bulk_progress: "page-jobs-bulk-progress",
+    bulk_success: "page-jobs-bulk-success",
+    bulk_mixed_results: "page-jobs-bulk-mixed-results",
+    bulk_drifted: "page-jobs-bulk-drifted",
+    bulk_disconnected: "page-jobs-bulk-disconnected",
+    bulk_interrupted: "page-jobs-bulk-interrupted",
+    full_detail: "page-jobs-full-detail"
+  ]
+
+  @d87_coverage [
+    empty_chooser: "page-forensics-empty-chooser",
+    workflow_complete: "page-forensics-workflow-complete",
+    incident_partial_remediation: "page-forensics-incident-partial-remediation",
+    cron_bounded: "page-forensics-cron-bounded",
+    limiter_bounded: "page-forensics-limiter-bounded",
+    unavailable: "page-forensics-unavailable",
+    conflicting_scope: "page-forensics-conflicting-scope",
+    unknown_coverage: "page-forensics-unknown-coverage",
+    history_unavailable: "page-forensics-history-unavailable",
+    deep_timeline: "page-forensics-deep-timeline",
+    adversarial_redacted: "page-forensics-adversarial-redacted",
+    restricted_guidance: "page-forensics-restricted-guidance"
+  ]
+
+  test "keeps exactly 49 deterministic page stories in binding UI-SPEC order" do
     stories = stories!()
     ids = Enum.map(stories, & &1.id)
 
-    assert length(@ids) == 19
+    assert length(@ids) == 49
     assert stories == PageStoryCatalog.stories()
     assert ids == @ids
     assert ids == Enum.uniq(ids)
+    assert Enum.take(ids, 19) == @phase79_ids
+    assert Enum.slice(ids, 19, 18) == @jobs_ids
+    assert Enum.slice(ids, 37, 12) == @forensics_ids
+    assert Enum.all?(ids, &String.starts_with?(&1, "page-"))
 
     for story <- stories do
-      assert story |> Map.keys() |> Enum.sort() == Enum.sort(@story_fields)
+      expected_fields =
+        if story.id in (@jobs_ids ++ @forensics_ids) do
+          Enum.uniq([:acceptance | @story_fields])
+        else
+          @story_fields
+        end
+
+      assert story |> Map.keys() |> Enum.sort() == Enum.sort(expected_fields)
       assert story.kind == :page
       assert story.page in @pages
       assert is_binary(story.name) and story.name != ""
@@ -93,8 +175,56 @@ defmodule ObanPowertools.PageStoryCatalogTest do
              overview: 3,
              cron: 8,
              limiters: 4,
-             audit: 4
+             audit: 4,
+             jobs: 18,
+             forensics: 12
            }
+  end
+
+  test "maps every D-86 and D-87 production-composition state to one named story" do
+    ids = stories!() |> Enum.map(& &1.id) |> MapSet.new()
+
+    assert Keyword.values(@d86_coverage) == @jobs_ids
+    assert Keyword.values(@d87_coverage) == @forensics_ids
+    assert Enum.all?(@d86_coverage ++ @d87_coverage, &MapSet.member?(ids, elem(&1, 1)))
+  end
+
+  test "keeps large source totals bounded to the locked Jobs and Forensics DOM windows" do
+    thousands = PageStoryCatalog.story!("page-jobs-thousands-bounded")
+    deep = PageStoryCatalog.story!("page-forensics-deep-timeline")
+
+    assert thousands.fixtures.pagination.total_count >= 1_000
+    assert length(thousands.fixtures.rows) == 20
+    assert deep.fixtures.coverage.total_count > 50
+    assert length(deep.fixtures.events) == 50
+  end
+
+  test "uses exact explicit copy for invalid, conflicting, and unavailable states" do
+    invalid = PageStoryCatalog.story!("page-jobs-invalid-json")
+    conflicting = PageStoryCatalog.story!("page-forensics-conflicting-scope")
+    unavailable = PageStoryCatalog.story!("page-forensics-unavailable")
+
+    assert invalid.fixtures.filter_errors.args == ["Enter a valid JSON object."]
+    assert conflicting.fixtures.scope_notice.heading == "Conflicting evidence scope"
+    assert unavailable.fixtures.scope_state == :unavailable
+    assert unavailable.acceptance.required_text =~ "Evidence unavailable"
+  end
+
+  test "keeps Phase 80 confidentiality sentinels out of serialized story data" do
+    serialized = inspect(stories!(), limit: :infinity, printable_limit: :infinity)
+
+    for sentinel <- [
+          "PHASE80-JOBS-TOKEN-SENTINEL",
+          "PHASE80-JOBS-HASH-SENTINEL",
+          "PHASE80-JOBS-RAW-ERROR-SENTINEL",
+          "PHASE80-FORENSICS-PAYLOAD-SENTINEL",
+          "PHASE80-FORENSICS-SECRET-SENTINEL"
+        ] do
+      refute serialized =~ sentinel
+    end
+
+    assert serialized =~ "[redacted]"
+    assert serialized =~ "Failure details are redacted."
   end
 
   test "derives stable page story, snapshot, and accessibility targets" do
@@ -128,7 +258,7 @@ defmodule ObanPowertools.PageStoryCatalogTest do
            |> Enum.filter(&(&1.activation == :detail))
            |> Enum.map(& &1.id) == @detail_ids
 
-    assert Enum.count(stories, &(&1.activation == :none)) == 5
+    assert Enum.count(stories, &(&1.activation == :none)) == 24
 
     for story <- stories do
       refute story.fixtures[:detail_open] == true and story.fixtures[:confirmation_open] == true

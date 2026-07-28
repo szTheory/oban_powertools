@@ -173,6 +173,29 @@ defmodule ObanPowertools.ShowcaseCatalogTest do
     end
   end
 
+  describe "PAGE-02 schema-8 target cardinality" do
+    test "the showcase catalogs expose exactly 113 deterministic targets" do
+      catalogs = [
+        ShowcaseCatalog,
+        ObanPowertools.PrimitiveStoryCatalog,
+        ObanPowertools.FormStoryCatalog,
+        ObanPowertools.ShellStoryCatalog,
+        ObanPowertools.DataDisplayStoryCatalog,
+        ObanPowertools.OperatorPatternStoryCatalog,
+        ObanPowertools.PageStoryCatalog
+      ]
+
+      targets =
+        Enum.flat_map(catalogs, fn
+          ShowcaseCatalog -> ShowcaseCatalog.scenarios()
+          catalog -> catalog.stories()
+        end)
+
+      assert length(targets) == 113
+      assert length(ObanPowertools.PageStoryCatalog.stories()) == 49
+    end
+  end
+
   defp scenario_field!(scenario, key) do
     scenario
     |> scenario_map()
