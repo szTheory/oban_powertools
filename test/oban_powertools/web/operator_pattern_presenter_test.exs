@@ -17,9 +17,13 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
     present_audit_row present_audit_detail
   ]a
 
-  @phase80_job_presenters ~w[
-    present_job_row present_job_quick_review
-  ]a
+  @phase80_job_presenters [
+    present_job_row: 2,
+    present_job_quick_review: 2,
+    present_job_detail: 2,
+    present_job_action: 1,
+    present_job_action_result: 1
+  ]
 
   test "exports all five finite Phase 78 presenter seams" do
     assert Code.ensure_loaded?(Presenter), "Phase 78 requires #{Presenter}"
@@ -42,12 +46,12 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
     end
   end
 
-  test "exports the two finite Phase 80 Jobs browse presentation seams" do
+  test "exports the five finite Phase 80 Jobs presentation seams" do
     assert Code.ensure_loaded?(Presenter), "Phase 80 requires #{Presenter}"
 
-    for presenter <- @phase80_job_presenters do
-      assert function_exported?(Presenter, presenter, 2),
-             "Phase 80 requires #{inspect(Presenter)}.#{presenter}/2"
+    for {presenter, arity} <- @phase80_job_presenters do
+      assert function_exported?(Presenter, presenter, arity),
+             "Phase 80 requires #{inspect(Presenter)}.#{presenter}/#{arity}"
     end
   end
 
@@ -213,6 +217,249 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
                  "#{alias_name} projected forbidden key #{inspect(key)}"
         end)
       end
+    end
+  end
+
+  test "Jobs full detail is a closed incident-first projection with policy-safe displays" do
+    detail =
+      present(:present_job_detail, [
+        job_fixture(),
+        %{
+          args_display: {:raw_json, ~s({"customer_id":"[redacted]"})},
+          meta_display: {:string, "Metadata hidden by host policy."},
+          recorded_output_display: %{
+            available?: false,
+            summary: "No recorded output found for this job.",
+            status: nil,
+            payload: "No recorded output found for this job.",
+            redacted?: false
+          },
+          audit_href: "/ops/jobs/audit?resource_type=job&resource_id=42"
+        }
+      ])
+
+    assert Map.keys(detail) |> Enum.sort() ==
+             Enum.sort([
+               :support,
+               :actions,
+               :identity,
+               :timing,
+               :errors,
+               :data,
+               :redaction,
+               :destinations
+             ])
+
+    assert detail.support == %{
+             heading: "Current state",
+             state: "retryable",
+             state_label: "Retryable",
+             summary: "This job is retryable.",
+             availability: "Current job detail is available for operator review."
+           }
+
+    assert Enum.map(detail.actions, & &1.kind) == [:retry, :cancel, :discard]
+
+    assert Enum.map(detail.identity, & &1.label) ==
+             ["Job ID", "Worker", "Queue", "State", "Attempts", "Priority"]
+
+    assert Enum.map(detail.timing, & &1.label) ==
+             ["Inserted", "Scheduled", "Attempted", "Completed", "Cancelled", "Discarded"]
+
+    assert [%{class: "RuntimeError", message: "provider request failed"} = error] =
+             detail.errors
+
+    assert error.occurred_at == "July 28, 2026 at 02:05 UTC"
+    assert error.occurred_datetime == "2026-07-28T02:05:00Z"
+    refute error.truncated?
+
+    assert detail.data.arguments.display == {:raw_json, ~s({"customer_id":"[redacted]"})}
+    assert detail.data.metadata.display == {:string, "Metadata hidden by host policy."}
+    assert detail.data.recorded_output.display.available? == false
+
+    assert detail.redaction.enqueue == %{
+             redacted?: true,
+             summary: "2 argument fields were redacted at enqueue."
+           }
+
+    assert detail.destinations == [
+             %{
+               id: "job-audit",
+               label: "View matching audit evidence",
+               href: "/ops/jobs/audit?resource_type=job&resource_id=42"
+             }
+           ]
+
+    serialized = inspect(detail, printable_limit: :infinity, limit: :infinity)
+    refute serialized =~ "cust-42"
+    refute serialized =~ "__redacted_fields__"
+    refute serialized =~ "** (RuntimeError)"
+  end
+
+  test "Jobs full detail retains only the newest ten safe bounded errors" do
+    long_message = String.duplicate("界", 1_050)
+
+    errors =
+      Enum.map(1..12, fn attempt ->
+        %{
+          "attempt" => attempt,
+          "at" => DateTime.add(~U[2026-07-28 02:00:00Z], attempt, :minute),
+          "error" =>
+            "** (RuntimeError) #{if(attempt == 12, do: long_message, else: "failure #{attempt}")}"
+        }
+      end)
+
+    detail =
+      present(:present_job_detail, [
+        %{job_fixture() | errors: Enum.reverse(errors)},
+        detail_context()
+      ])
+
+    assert length(detail.errors) == 10
+    assert hd(detail.errors).occurred_datetime == "2026-07-28T02:12:00Z"
+    assert List.last(detail.errors).occurred_datetime == "2026-07-28T02:03:00Z"
+    assert hd(detail.errors).truncated?
+    assert String.length(hd(detail.errors).message) == 1_000
+    assert String.ends_with?(hd(detail.errors).message, "…")
+
+    sensitive =
+      present(:present_job_detail, [
+        %{
+          job_fixture()
+          | errors: [
+              %{
+                "attempt" => 4,
+                "at" => "2026-07-28T02:06:00Z",
+                "error" =>
+                  "** (RuntimeError) request failed at https://secret.invalid/?token=SYNTHETIC_TOKEN"
+              },
+              %{"unexpected" => %RuntimeError{message: "SYNTHETIC_EXCEPTION"}}
+            ]
+        },
+        detail_context()
+      ])
+
+    refute inspect(sensitive) =~ "SYNTHETIC_"
+    assert Enum.any?(sensitive.errors, &(&1.message == "Failure details are redacted."))
+    assert Enum.any?(sensitive.errors, &(&1.message == "Failure details are unavailable."))
+  end
+
+  test "single job actions use exact labels, intent, consequence, and support copy" do
+    expected = %{
+      retry: %{
+        intent: :warning,
+        confirm_label: "Retry job",
+        dismiss_label: "Keep current state",
+        consequence:
+          "Powertools requests a retry for each ready job. A retry request does not mean the job completed."
+      },
+      cancel: %{
+        intent: :danger,
+        confirm_label: "Cancel job",
+        dismiss_label: "Keep running",
+        consequence: "Each ready job stops and will not retry. This cannot be undone."
+      },
+      discard: %{
+        intent: :danger,
+        confirm_label: "Discard job",
+        dismiss_label: "Keep current state",
+        consequence:
+          "Each ready job is marked discarded and will not retry. This cannot be undone."
+      }
+    }
+
+    for {kind, contract} <- expected do
+      action = present(:present_job_action, [kind])
+
+      assert Map.keys(action) |> Enum.sort() ==
+               Enum.sort([
+                 :kind,
+                 :intent,
+                 :title,
+                 :object_label,
+                 :scope,
+                 :confirm_label,
+                 :dismiss_label,
+                 :consequence,
+                 :reversibility,
+                 :support_boundary,
+                 :pending_copy
+               ])
+
+      assert Map.take(action, Map.keys(contract)) == contract
+      assert action.support_boundary =~ "Audit"
+      refute action.title in ["Confirm", "Are you sure?"]
+    end
+
+    assert_raise ArgumentError, ~r/job action/i, fn ->
+      present(:present_job_action, [:unknown])
+    end
+  end
+
+  test "single job action results keep clean success distinct from every recovery state" do
+    success =
+      present(:present_job_action_result, [
+        %{
+          state: :success,
+          action: :retry,
+          job_id: 42,
+          audit_href: "/ops/jobs/audit?resource_type=job&resource_id=42"
+        }
+      ])
+
+    assert success == %{
+             state: :success,
+             message: "The retry request was recorded.",
+             recovery: nil,
+             receipt: "Retry requested for job 42. Audit evidence recorded.",
+             audit_href: "/ops/jobs/audit?resource_type=job&resource_id=42",
+             requires_fresh_preview?: false
+           }
+
+    for state <- [:skipped, :failed, :expired, :drifted, :consumed] do
+      result =
+        present(:present_job_action_result, [
+          %{state: state, action: :retry, job_id: 42}
+        ])
+
+      assert result.state == state
+      assert result.receipt == nil
+      assert result.recovery =~ "Create a new preview"
+      assert result.requires_fresh_preview?
+    end
+
+    unknown =
+      present(:present_job_action_result, [
+        %{
+          state: :provider_failure,
+          raw_error: %RuntimeError{message: "SYNTHETIC_INTERNAL_ERROR"},
+          preview_token: "SYNTHETIC_PREVIEW_TOKEN"
+        }
+      ])
+
+    assert unknown.state == :failed
+    assert unknown.receipt == nil
+    assert unknown.requires_fresh_preview?
+    refute inspect(unknown) =~ "SYNTHETIC_"
+  end
+
+  test "Jobs detail rejects unsafe component displays and external evidence destinations" do
+    assert_raise ArgumentError, ~r/prohibited source field/i, fn ->
+      present(:present_job_detail, [
+        job_fixture(),
+        Map.put(detail_context(), :args_display, {:raw_json, ~s({"token":"SYNTHETIC"})})
+      ])
+    end
+
+    assert_raise ArgumentError, ~r/destination/i, fn ->
+      present(:present_job_detail, [
+        job_fixture(),
+        Map.put(
+          detail_context(),
+          :audit_href,
+          "https://attacker.invalid/?token=SYNTHETIC_TOKEN"
+        )
+      ])
     end
   end
 
@@ -819,6 +1066,20 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
       inserted_at: ~U[2026-07-28 01:55:00Z],
       scheduled_at: ~U[2026-07-28 02:00:00Z],
       attempted_at: ~U[2026-07-28 02:05:00Z]
+    }
+  end
+
+  defp detail_context do
+    %{
+      args_display: {:raw_json, ~s({"customer_id":"[redacted]"})},
+      meta_display: {:string, "Metadata hidden by host policy."},
+      recorded_output_display: %{
+        available?: false,
+        summary: "No recorded output found for this job.",
+        status: nil,
+        payload: "No recorded output found for this job.",
+        redacted?: false
+      }
     }
   end
 
