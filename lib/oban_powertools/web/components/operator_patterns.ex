@@ -449,6 +449,7 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
   attr(:filters_expanded, :boolean, default: false)
   attr(:change_event, :string, default: nil)
   attr(:submit_event, :string, default: nil)
+  attr(:submit_label, :string, default: "Apply filters")
   attr(:clear_href, :string, default: nil)
 
   slot(:fields, required: true)
@@ -474,6 +475,7 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
         :results_target_id,
         require_text!(assigns.results_target_id, "filter results target id")
       )
+      |> assign(:submit_label, require_text!(assigns.submit_label, "filter submit label"))
       |> assign(:active_filters, active_filters)
       |> assign(:clear_href, filter_clear_href(assigns.clear_href, active_filters))
       |> assign(:fields_id, filter_dom_id(assigns.id, "fields"))
@@ -517,7 +519,7 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
 
           <div :if={@mode == :submit} class="obpt-filter-bar__actions">
             <p :if={@dirty} class="obpt-filter-bar__dirty">Changes not applied.</p>
-            <Primitives.button type="submit" variant={:primary}>Apply filters</Primitives.button>
+            <Primitives.button type="submit" variant={:primary}>{@submit_label}</Primitives.button>
           </div>
         </div>
       </.form>

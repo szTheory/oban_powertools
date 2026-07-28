@@ -6,11 +6,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     alias ObanPowertools.Forensics
     alias ObanPowertools.Forensics.Scope
-    alias ObanPowertools.Web.Components.{Forms, OperatorPatterns}
+    alias ObanPowertools.Web.Components.{DataDisplay, Forms, OperatorPatterns, Primitives}
     alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth, Selectors}
     alias Phoenix.LiveView.JS
 
     @bare_path "/ops/jobs/forensics"
+    @page_assigns ~w[
+      scope_form scope_state scope_notice support summary next_steps
+      latest_remediation events coverage audit_href
+    ]a
     @draft_keys ~w(evidence_type workflow_id step incident_fingerprint view resource_id)
     @evidence_types ~w(workflow incident cron limiter)
     @support %{
@@ -119,6 +123,37 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     @impl true
     def render(assigns) do
+      assigns
+      |> Map.take([:__changed__ | @page_assigns])
+      |> page_content()
+    end
+
+    attr(:scope_form, Phoenix.HTML.Form, required: true)
+    attr(:scope_state, :atom, required: true)
+    attr(:scope_notice, :map, default: nil)
+    attr(:support, :map, required: true)
+    attr(:summary, :map, default: nil)
+    attr(:next_steps, :list, required: true)
+    attr(:latest_remediation, :map, default: nil)
+    attr(:events, :list, required: true)
+    attr(:coverage, :map, default: nil)
+    attr(:audit_href, :string, default: nil)
+
+    def page_content(assigns) do
+      events = Enum.take(assigns.events, 50)
+      primary_step = Enum.find(assigns.next_steps, &(&1.role == :primary))
+
+      additional_steps =
+        Enum.reject(assigns.next_steps, fn step ->
+          primary_step && step.id == primary_step.id
+        end)
+
+      assigns =
+        assigns
+        |> assign(:events, events)
+        |> assign(:primary_step, primary_step)
+        |> assign(:additional_steps, additional_steps)
+
       ~H"""
       <main class="obpt-page obpt-page--forensics">
         <header class="obpt-page-header">
@@ -159,6 +194,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           filters_expanded
           change_event="validate_scope"
           submit_event="inspect_evidence"
+          submit_label="Inspect evidence"
         >
           <:fields>
             <Forms.select
@@ -261,11 +297,154 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         <section
           :if={@scope_state == :ready}
           id="forensics-result-state"
-          class="obpt-surface"
+          class="obpt-forensics-results"
           data-obpt-state="ready"
         >
-          <h2>Evidence loaded</h2>
-          <p>The retained evidence is ready for diagnosis-first presentation.</p>
+          <section
+            id="forensics-investigation-summary"
+            class="obpt-surface"
+            aria-labelledby="forensics-investigation-summary-heading"
+          >
+            <h2 id="forensics-investigation-summary-heading">{@summary.heading}</h2>
+            <DataDisplay.description_list
+              id="forensics-summary-facts"
+              state={:ready}
+              resource="investigation summary"
+            >
+              <:item label="Subject">{@summary.scope.subject}</:item>
+              <:item label="Evidence type">{@summary.scope.type_label}</:item>
+              <:item label="Ownership">{@summary.scope.ownership}</:item>
+              <:item label="Current diagnosis">{@summary.diagnosis}</:item>
+              <:item label="Detail">{@summary.detail}</:item>
+              <:item label="Provenance">{@summary.provenance}</:item>
+              <:item label="Completeness">{@summary.completeness}</:item>
+              <:item label="Coverage">{@summary.coverage}</:item>
+            </DataDisplay.description_list>
+          </section>
+
+          <section
+            id="forensics-next-steps"
+            class="obpt-surface"
+            aria-labelledby="forensics-next-steps-heading"
+          >
+            <h2 id="forensics-next-steps-heading">What to do next</h2>
+
+            <div :if={@primary_step} class="obpt-forensics-guidance" data-obpt-primary-guidance>
+              <Primitives.link href={@primary_step.href}>{@primary_step.label}</Primitives.link>
+              <p>{@primary_step.support}</p>
+            </div>
+
+            <p :if={is_nil(@primary_step)}>
+              No authorized follow-up destination is available for this evidence.
+            </p>
+
+            <details :if={@additional_steps != []} class="obpt-forensics-guidance-disclosure">
+              <summary>Review all guidance</summary>
+              <ul>
+                <li :for={step <- @additional_steps} id={"forensics-guidance-#{step.id}"}>
+                  <Primitives.link href={step.href}>{step.label}</Primitives.link>
+                  <p>{step.support}</p>
+                </li>
+              </ul>
+            </details>
+          </section>
+
+          <section
+            :if={@latest_remediation}
+            id="forensics-latest-remediation"
+            class="obpt-surface"
+            aria-labelledby="forensics-latest-remediation-heading"
+            data-obpt-historical-evidence
+          >
+            <h2 id="forensics-latest-remediation-heading">
+              {@latest_remediation.heading}
+            </h2>
+            <p>
+              Historical evidence only. It does not replace the current investigation summary.
+            </p>
+            <p>{@latest_remediation.summary}</p>
+            <dl>
+              <div>
+                <dt>Status</dt>
+                <dd>{@latest_remediation.status}</dd>
+              </div>
+              <div>
+                <dt>Recorded at</dt>
+                <dd>
+                  <time datetime={@latest_remediation.occurred_datetime}>
+                    {@latest_remediation.occurred_at}
+                  </time>
+                </dd>
+              </div>
+              <div>
+                <dt>Provenance</dt>
+                <dd>{@latest_remediation.provenance}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section
+            id="forensics-event-log"
+            class="obpt-surface"
+            aria-labelledby="forensics-event-log-heading"
+          >
+            <h2 id="forensics-event-log-heading">Event log</h2>
+            <p :if={@events == []} class="obpt-forensics-history-unavailable">
+              <strong>Event history unavailable.</strong>
+              Current evidence may still be available, but this source cannot provide retained history.
+            </p>
+            <DataDisplay.timeline
+              id="forensics-events"
+              state={:ready}
+              resource="forensic events"
+            >
+              <:event
+                :for={event <- @events}
+                timestamp={event.timestamp}
+                title={event.title}
+                source={event.source}
+              >
+                <p :if={event.notes}>{event.notes}</p>
+                <p><strong>Status:</strong> {event.status}</p>
+                <ul :if={event.follow_ups != []}>
+                  <li :for={follow_up <- event.follow_ups}>
+                    <Primitives.link href={follow_up.href}>{follow_up.label}</Primitives.link>
+                  </li>
+                </ul>
+              </:event>
+            </DataDisplay.timeline>
+          </section>
+
+          <section
+            id="forensics-evidence-coverage"
+            class="obpt-surface"
+            aria-labelledby="forensics-evidence-coverage-heading"
+          >
+            <h2 id="forensics-evidence-coverage-heading">{@coverage.heading}</h2>
+            <p>{@coverage.summary}</p>
+            <p>{@coverage.retention}</p>
+            <dl>
+              <div>
+                <dt>Completeness</dt>
+                <dd>{@coverage.completeness}</dd>
+              </div>
+              <div>
+                <dt>Bounded window</dt>
+                <dd>{if(@coverage.bounded?, do: "Yes", else: "Unknown")}</dd>
+              </div>
+            </dl>
+            <ul class="obpt-forensics-sources">
+              <li :for={source <- @coverage.sources} id={"forensics-source-#{source.id}"}>
+                <h3>{source.label}</h3>
+                <p>{coverage_source_count(source)}</p>
+                <p>{source.provenance} · {source.completeness}</p>
+                <p>{source.retention}</p>
+              </li>
+            </ul>
+            <Primitives.link :if={@audit_href} href={@audit_href}>
+              View matching audit evidence
+            </Primitives.link>
+          </section>
         </section>
       </main>
       """
@@ -530,6 +709,19 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         _unsupported -> nil
       end
     end
+
+    defp coverage_source_count(%{shown_count: shown_count, has_more?: true}),
+      do: "Newest #{shown_count} retained events; more evidence exists."
+
+    defp coverage_source_count(%{shown_count: shown_count, total_count: total_count})
+         when is_integer(total_count) and shown_count < total_count,
+         do: "Showing #{shown_count} of #{total_count} retained events."
+
+    defp coverage_source_count(%{shown_count: shown_count, has_more?: false}),
+      do: "All #{shown_count} available events in this source window."
+
+    defp coverage_source_count(%{shown_count: shown_count}),
+      do: "#{shown_count} retained events; total availability is unknown."
 
     defp empty_notice, do: @empty_notice
     defp unavailable_notice, do: @unavailable_notice

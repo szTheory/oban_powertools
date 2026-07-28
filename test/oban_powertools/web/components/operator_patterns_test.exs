@@ -488,6 +488,8 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
 
     assert custom_html =~ "Inspect evidence"
     refute custom_html =~ "Apply filters"
+    assert count(custom_html, "<form") == 1
+    assert count(custom_html, "Inspect evidence") == 1
     assert default_html =~ "Apply filters"
     refute default_html =~ "Inspect evidence"
   end
