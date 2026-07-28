@@ -1,14 +1,9 @@
 defmodule ObanPowertools.Web.ForensicsLiveTest do
   use ObanPowertools.LiveCase, async: false
 
-  alias ObanPowertools.Audit
-  alias ObanPowertools.Cron
-  alias ObanPowertools.Forensics.LimiterHistoryFact
-  alias ObanPowertools.Lifeline.Incident
-  alias ObanPowertools.Limits.{Resource, State}
-  alias ObanPowertools.Workflow
-  alias ObanPowertools.WorkflowFixtures
+  alias ObanPowertools.TestRepo
 
+  @bare_path "/ops/jobs/forensics"
   @allowed_selector_keys MapSet.new([
                            "resource_type",
                            "resource_id",
@@ -18,492 +13,279 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
                            "view"
                          ])
 
-  test "mounts the workflow forensic bundle and preserves step scope across remount", %{
-    conn: conn
-  } do
-    {:ok, workflow} =
-      WorkflowFixtures.workflow_fixture(name: "forensics-live-workflow")
-      |> Workflow.insert(TestRepo)
+  describe "typed scope chooser and URL state" do
+    test "bare route is a genuine four-family chooser and does not inspect evidence", %{
+      conn: conn
+    } do
+      {{:ok, view, html}, queries} =
+        capture_select_queries(fn -> live(forensics_conn(conn), @bare_path) end)
 
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_forensics, :view_workflows]}
-      )
+      assert queries == []
+      assert count(html, "<h1") == 1
+      assert html =~ "Forensics"
+      assert html =~ "Choose evidence to inspect."
+      assert html =~ "Select one evidence type and enter its stable identifier."
+      assert html =~ ~s(data-obpt-filter-bar)
+      assert html =~ ~s(phx-change="validate_scope")
+      assert html =~ ~s(phx-submit="inspect_evidence")
+      assert has_element?(view, "form#forensics-scope-form")
 
-    {:ok, _view, html} =
-      live(
-        conn,
-        "/ops/jobs/forensics?workflow_id=#{workflow.id}&step=sync_billing&resource_type=workflow_step"
-      )
+      for {label, value} <- [
+            {"Workflow", "workflow"},
+            {"Lifeline incident", "incident"},
+            {"Cron entry", "cron"},
+            {"Limiter", "limiter"}
+          ] do
+        assert has_element?(
+                 view,
+                 ~s(select[name="scope[evidence_type]"] option[value="#{value}"]),
+                 label
+               )
+      end
 
-    assert html =~ "Forensics"
-    assert html =~ "Diagnosis Summary"
-    assert html =~ "Timeline"
-    assert html =~ "supporting evidence"
-    assert html =~ "partial evidence"
-    assert html =~ "workflow_id=#{workflow.id}"
-    assert html =~ "step=sync_billing"
+      refute html =~ "Investigation summary"
+      refute html =~ "What to do next"
+      refute html =~ "Latest remediation evidence"
+      refute html =~ "Event log"
+      refute html =~ "Evidence limits and sources"
+    end
 
-    {:ok, _remounted_view, remounted_html} =
-      live(
-        conn,
-        "/ops/jobs/forensics?workflow_id=#{workflow.id}&step=sync_billing&resource_type=workflow_step"
-      )
+    test "change events validate drafts, reveal only the chosen family, and perform no reads or patches",
+         %{conn: conn} do
+      {:ok, view, _html} = live(forensics_conn(conn), @bare_path)
 
-    assert remounted_html =~ "sync_billing"
-    refute remounted_html =~ "preview_token="
-    refute remounted_html =~ "reason="
-    refute remounted_html =~ "diagnosis="
-    refute remounted_html =~ "refusal="
-  end
-
-  test "mounts the lifeline forensic bundle and preserves incident scope across remount", %{
-    conn: conn
-  } do
-    incident =
-      %Incident{}
-      |> Incident.changeset(%{
-        incident_class: "dead_executor",
-        status: "active",
-        executor_id: "forensics-live-executor",
-        incident_fingerprint: "dead_executor:forensics-live-executor",
-        health_state: "missing",
-        summary: "missing executor forensics-live-executor",
-        affected_counts: %{"jobs" => 1, "workflow_steps" => 0},
-        evidence: %{"job_ids" => [123], "workflow_step_ids" => []},
-        first_detected_at: DateTime.utc_now(),
-        last_detected_at: DateTime.utc_now(),
-        metadata: %{}
-      })
-      |> TestRepo.insert!()
-
-    {:ok, _event} =
-      Audit.record(
-        "lifeline.repair_executed",
-        %{type: :job, id: 123},
-        %{
-          "event_type" => "lifeline.repair_executed",
-          "incident_fingerprint" => incident.incident_fingerprint,
-          "reason" => "Operator rescued orphaned execution",
-          "runbook_context" => %{
-            "selected_path" => %{
-              "ownership" => "Powertools-native",
-              "venue" => "Powertools-native Lifeline"
-            },
-            "attempt" => %{
-              "state" => "succeeded",
-              "action" => "job_rescue",
-              "target_type" => "job",
-              "target_id" => "123"
+      {_html, queries} =
+        capture_select_queries(fn ->
+          render_change(element(view, "#forensics-scope-form"), %{
+            "scope" => %{
+              "evidence_type" => "workflow",
+              "workflow_id" => "",
+              "step" => "billing"
             }
-          }
-        },
-        repo: TestRepo,
-        actor_id: "ops-1"
-      )
+          })
+        end)
 
-    {:ok, _follow_up_event} =
-      Audit.record(
-        "lifeline.host_follow_up",
-        %{type: :job, id: 123},
-        %{
-          "event_type" => "lifeline.host_follow_up",
-          "incident_fingerprint" => incident.incident_fingerprint,
-          "status" => "host_owned_follow_up_callback_invoked",
-          "details" => %{"result" => "ok"},
-          "preview_token" => "preview-123"
-        },
-        repo: TestRepo,
-        actor_id: "ops-1"
-      )
+      assert queries == []
+      refute_patch(view)
+      assert has_element?(view, ~s(input[name="scope[workflow_id]"][aria-invalid="true"]))
+      assert has_element?(view, ~s(input[name="scope[workflow_id]"][aria-describedby]))
+      assert has_element?(view, ~s(input[name="scope[step]"]))
+      refute has_element?(view, ~s(input[name="scope[incident_fingerprint]"]))
+      refute has_element?(view, ~s(input[name="scope[resource_id]"]))
 
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_forensics, :view_lifeline]}
-      )
-
-    path =
-      "/ops/jobs/forensics?incident_fingerprint=#{URI.encode_www_form(incident.incident_fingerprint)}&view=active&resource_type=job&resource_id=123"
-
-    {:ok, _view, html} = live(conn, path)
-
-    assert html =~ "Powertools-native Lifeline"
-    assert html =~ "Inspection only"
-    assert html =~ "resource_type=job"
-    assert html =~ "resource_id=123"
-    assert html =~ "Latest runbook continuity"
-    assert html =~ "Diagnosis:"
-    assert html =~ "Legal next path:"
-    assert html =~ "Venue:"
-    assert html =~ "Attempt state:"
-    assert html =~ "Evidence link:"
-    assert html =~ "Audit follow-up:"
-    assert html =~ "Reason:"
-    assert html =~ "host-owned follow-up status:"
-    assert html =~ "Host-owned follow-up callback invoked"
-    assert html =~ "Operator rescued orphaned execution"
-    assert html =~ "host-owned follow-up"
-
-    diagnosis_position = html_position(html, "Diagnosis:")
-    legal_path_position = html_position(html, "Legal next path:")
-    venue_position = html_position(html, "Venue:")
-    attempt_position = html_position(html, "Attempt state:")
-    evidence_link_position = html_position(html, "Evidence link:")
-    audit_follow_up_position = html_position(html, "Audit follow-up:")
-
-    assert diagnosis_position < legal_path_position
-    assert legal_path_position < venue_position
-    assert venue_position < attempt_position
-    assert attempt_position < evidence_link_position
-    assert evidence_link_position < audit_follow_up_position
-    assert_forensics_selector_allowlist(html)
-
-    {:ok, _remounted_view, remounted_html} = live(conn, path)
-
-    assert remounted_html =~ incident.incident_fingerprint
-    assert remounted_html =~ "Latest runbook continuity"
-  end
-
-  test "renders failed host-owned follow-up status with explicit warning detail", %{conn: conn} do
-    incident =
-      %Incident{}
-      |> Incident.changeset(%{
-        incident_class: "dead_executor",
-        status: "active",
-        executor_id: "forensics-live-failed-follow-up",
-        incident_fingerprint: "dead_executor:forensics-live-failed-follow-up",
-        health_state: "missing",
-        summary: "missing executor forensics-live-failed-follow-up",
-        affected_counts: %{"jobs" => 1, "workflow_steps" => 0},
-        evidence: %{"job_ids" => [321], "workflow_step_ids" => []},
-        first_detected_at: DateTime.utc_now(),
-        last_detected_at: DateTime.utc_now(),
-        metadata: %{}
+      render_change(element(view, "#forensics-scope-form"), %{
+        "scope" => %{
+          "evidence_type" => "incident",
+          "incident_fingerprint" => "dead_executor:ops-1",
+          "view" => "active"
+        }
       })
-      |> TestRepo.insert!()
 
-    {:ok, _repair_event} =
-      Audit.record(
-        "lifeline.repair_executed",
-        %{type: :job, id: 321},
-        %{
-          "event_type" => "lifeline.repair_executed",
-          "incident_fingerprint" => incident.incident_fingerprint,
-          "reason" => "Operator retried job",
-          "runbook_context" => %{
-            "selected_path" => %{
-              "ownership" => "Powertools-native",
-              "venue" => "Powertools-native Lifeline"
-            },
-            "attempt" => %{
-              "state" => "succeeded",
-              "action" => "job_retry",
-              "target_type" => "job",
-              "target_id" => "321"
+      refute_patch(view)
+      assert has_element?(view, ~s(input[name="scope[incident_fingerprint]"]))
+      assert has_element?(view, ~s(select[name="scope[view]"]))
+      refute has_element?(view, ~s(input[name="scope[workflow_id]"]))
+      refute has_element?(view, ~s(input[name="scope[resource_id]"]))
+
+      render_change(element(view, "#forensics-scope-form"), %{
+        "scope" => %{"evidence_type" => "cron", "resource_id" => "nightly-export"}
+      })
+
+      refute_patch(view)
+      assert has_element?(view, ~s(input[name="scope[resource_id]"]), "nightly-export")
+      refute has_element?(view, ~s(input[name="scope[workflow_id]"]))
+      refute has_element?(view, ~s(input[name="scope[incident_fingerprint]"]))
+
+      render_change(element(view, "#forensics-scope-form"), %{
+        "scope" => %{"evidence_type" => "limiter", "resource_id" => "billing-api"}
+      })
+
+      refute_patch(view)
+      assert has_element?(view, ~s(input[name="scope[resource_id]"]), "billing-api")
+      refute has_element?(view, ~s(input[name="scope[workflow_id]"]))
+      refute has_element?(view, ~s(input[name="scope[incident_fingerprint]"]))
+    end
+
+    test "valid submit patches only the canonical six-key URL scope", %{conn: conn} do
+      cases = [
+        {%{
+           "evidence_type" => "workflow",
+           "workflow_id" => "workflow/alpha",
+           "step" => "sync billing"
+         }, "/ops/jobs/forensics?workflow_id=workflow%2Falpha&step=sync+billing"},
+        {%{
+           "evidence_type" => "incident",
+           "incident_fingerprint" => "dead_executor:node/1",
+           "view" => "resolved"
+         }, "/ops/jobs/forensics?incident_fingerprint=dead_executor%3Anode%2F1&view=resolved"},
+        {%{"evidence_type" => "cron", "resource_id" => "nightly/export"},
+         "/ops/jobs/forensics?resource_type=cron_entry&resource_id=nightly%2Fexport"},
+        {%{"evidence_type" => "limiter", "resource_id" => "billing api"},
+         "/ops/jobs/forensics?resource_type=limiter&resource_id=billing+api"}
+      ]
+
+      Enum.each(cases, fn {params, expected_path} ->
+        {:ok, view, _html} = live(forensics_conn(conn), @bare_path)
+
+        view
+        |> element("#forensics-scope-form")
+        |> render_submit(%{"scope" => params})
+
+        assert_patch(view, expected_path)
+        assert_selector_keys_allowed(expected_path)
+      end)
+    end
+
+    test "invalid submit retains the draft and exposes associated errors without reading or patching",
+         %{conn: conn} do
+      {:ok, view, _html} = live(forensics_conn(conn), @bare_path)
+
+      {html, queries} =
+        capture_select_queries(fn ->
+          render_submit(element(view, "#forensics-scope-form"), %{
+            "scope" => %{
+              "evidence_type" => "workflow",
+              "workflow_id" => " ",
+              "step" => "billing"
             }
+          })
+        end)
+
+      assert queries == []
+      refute_patch(view)
+      assert html =~ "Choose evidence to inspect"
+      assert html =~ "Enter a workflow ID."
+      assert html =~ ~s(id="forensics-scope-errors")
+      assert html =~ ~s(tabindex="-1")
+      assert has_element?(view, ~s(input[name="scope[workflow_id]"][aria-invalid="true"]))
+      assert has_element?(view, ~s(input[name="scope[workflow_id]"][aria-describedby]))
+      assert has_element?(view, ~s(input[name="scope[step]"]), "billing")
+    end
+
+    test "invalid, conflicting, unknown, and oversized direct scopes replace to bare before reads",
+         %{conn: conn} do
+      paths = [
+        "/ops/jobs/forensics?step=sync",
+        "/ops/jobs/forensics?workflow_id=wf-1&incident_fingerprint=incident-1",
+        "/ops/jobs/forensics?resource_type=unknown&resource_id=resource-1",
+        "/ops/jobs/forensics?workflow_id=wf-1&surprise=true",
+        "/ops/jobs/forensics?workflow_id=wf-1&step=sync&resource_type=workflow_step&resource_id=step-1&view=active&incident_fingerprint=incident-1&surprise=true"
+      ]
+
+      Enum.each(paths, fn path ->
+        {{:ok, view, _html}, queries} =
+          capture_select_queries(fn -> live(forensics_conn(conn), path) end)
+
+        assert queries == []
+        assert_patch(view, @bare_path)
+        assert render(view) =~ "Choose one evidence type"
+      end)
+    end
+
+    test "authorized-missing and unauthorized scopes have byte-equivalent unavailable output",
+         %{conn: conn} do
+      id = "missing-workflow-80-07"
+      path = "#{@bare_path}?workflow_id=#{id}"
+
+      {{:ok, authorized_view, _html}, authorized_queries} =
+        capture_select_queries(fn ->
+          live(forensics_conn(conn, [:view_workflows]), path)
+        end)
+
+      {{:ok, unauthorized_view, _html}, unauthorized_queries} =
+        capture_select_queries(fn -> live(forensics_conn(conn), path) end)
+
+      assert authorized_queries != []
+      assert unauthorized_queries == []
+
+      authorized_html = render(element(authorized_view, "#forensics-result-state"))
+      unauthorized_html = render(element(unauthorized_view, "#forensics-result-state"))
+
+      assert authorized_html == unauthorized_html
+      assert authorized_html =~ "Evidence unavailable"
+      assert authorized_html =~ "The requested evidence is unavailable or you do not have access."
+      refute authorized_html =~ "<a "
+    end
+
+    test "unauthorized page viewers are redirected", %{conn: conn} do
+      conn = Plug.Test.init_test_session(conn, current_actor: %{id: "ops-2", permissions: []})
+      assert {:error, {:redirect, %{to: "/"}}} = live(conn, @bare_path)
+    end
+
+    test "draft identifiers are never copied into hidden persistence or browser storage", %{
+      conn: conn
+    } do
+      {:ok, view, _html} = live(forensics_conn(conn), @bare_path)
+
+      html =
+        render_change(element(view, "#forensics-scope-form"), %{
+          "scope" => %{
+            "evidence_type" => "incident",
+            "incident_fingerprint" => "unsafe-draft-80-07",
+            "view" => "active"
           }
-        },
-        repo: TestRepo,
-        actor_id: "ops-1"
-      )
+        })
 
-    {:ok, _follow_up_event} =
-      Audit.record(
-        "lifeline.host_follow_up",
-        %{type: :job, id: 321},
-        %{
-          "event_type" => "lifeline.host_follow_up",
-          "incident_fingerprint" => incident.incident_fingerprint,
-          "status" => "host_owned_follow_up_callback_failed",
-          "details" => %{"reason" => "callback timeout"},
-          "preview_token" => "preview-321"
-        },
-        repo: TestRepo,
-        actor_id: "ops-1"
-      )
-
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_forensics, :view_lifeline]}
-      )
-
-    path =
-      "/ops/jobs/forensics?incident_fingerprint=#{URI.encode_www_form(incident.incident_fingerprint)}&view=active&resource_type=job&resource_id=321"
-
-    {:ok, _view, html} = live(conn, path)
-
-    assert html =~ "host-owned follow-up status:"
-    assert html =~ "Host-owned follow-up callback failed"
-    assert html =~ "callback timeout"
+      assert html =~ ~s(value="unsafe-draft-80-07")
+      refute html =~ ~r/type="hidden"[^>]*unsafe-draft-80-07/
+      refute html =~ "localStorage"
+      refute html =~ "sessionStorage"
+      refute html =~ "data-scope-value"
+    end
   end
 
-  test "redirects unauthorized viewers", %{conn: conn} do
-    conn = Plug.Test.init_test_session(conn, current_actor: %{id: "ops-2", permissions: []})
-    assert {:error, {:redirect, %{to: "/"}}} = live(conn, "/ops/jobs/forensics")
+  defp forensics_conn(conn, extra_permissions \\ []) do
+    Plug.Test.init_test_session(conn,
+      current_actor: %{
+        id: "ops-1",
+        permissions: [:view_forensics | extra_permissions]
+      }
+    )
   end
 
-  test "mounts the cron forensic bundle from stable resource selectors", %{conn: conn} do
-    {:ok, entry} =
-      Cron.sync_entry(TestRepo, %{
-        name: "forensics-cron",
-        source: "runtime",
-        worker: "DemoWorker",
-        queue: "default",
-        expression: "* * * * *"
-      })
+  defp capture_select_queries(fun) do
+    handler_id = {__MODULE__, make_ref()}
+    event = TestRepo.config() |> Keyword.fetch!(:telemetry_prefix) |> Kernel.++([:query])
+    test_pid = self()
+    query_ref = make_ref()
 
-    slot_at = truncate_minute(DateTime.add(DateTime.utc_now(), -120, :second))
-    assert {:ok, _coverage} = Cron.record_coverage(TestRepo, entry, slot_at, status: "healthy")
+    :telemetry.attach(
+      handler_id,
+      event,
+      fn _event, _measurements, metadata, {pid, ref} ->
+        if String.starts_with?(metadata[:query] || "", "SELECT") do
+          send(pid, {ref, Map.take(metadata, [:source, :query])})
+        end
+      end,
+      {test_pid, query_ref}
+    )
 
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-3", permissions: [:view_forensics, :view_cron]}
-      )
-
-    {:ok, _view, html} =
-      live(conn, "/ops/jobs/forensics?resource_type=cron_entry&resource_id=#{entry.name}")
-
-    assert html =~ "Powertools-native cron"
-    assert html =~ "Missed fire"
-    assert html =~ "complete"
+    try do
+      result = fun.()
+      {result, collect_select_queries(query_ref, [])}
+    after
+      :telemetry.detach(handler_id)
+    end
   end
 
-  test "renders canonical runbook entry after diagnosis and before timeline", %{conn: conn} do
-    {:ok, entry} =
-      Cron.sync_entry(TestRepo, %{
-        name: "forensics-runbook-cron",
-        source: "runtime",
-        worker: "DemoWorker",
-        queue: "default",
-        expression: "* * * * *"
-      })
-
-    slot_at = truncate_minute(DateTime.add(DateTime.utc_now(), -120, :second))
-    assert {:ok, _coverage} = Cron.record_coverage(TestRepo, entry, slot_at, status: "healthy")
-
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-5", permissions: [:view_forensics, :view_cron]}
-      )
-
-    {:ok, _view, html} =
-      live(conn, "/ops/jobs/forensics?resource_type=cron_entry&resource_id=#{entry.name}")
-
-    diagnosis_position = html_position(html, "Diagnosis Summary")
-    runbook_position = html_position(html, "Open runbook entry")
-    timeline_position = html_position(html, "Timeline")
-
-    assert diagnosis_position < runbook_position
-    assert runbook_position < timeline_position
-
-    assert html =~ "Diagnosis state"
-    assert html =~ "Why it matters now"
-    assert html =~ "Prerequisites"
-    assert html =~ "Cautions"
-    assert html =~ "Recommended order"
-    assert html =~ "Unsupported boundaries"
-    assert html =~ "Evidence link"
-    assert html =~ "Evidence completeness"
-    assert html =~ "Powertools-native"
-    assert html =~ "Oban Web bridge"
-    assert html =~ "host-owned follow-up"
+  defp collect_select_queries(query_ref, queries) do
+    receive do
+      {^query_ref, query} -> collect_select_queries(query_ref, [query | queries])
+    after
+      0 -> Enum.reverse(queries)
+    end
   end
 
-  test "renders degraded runbook guidance and non-native next paths as bordered guidance", %{
-    conn: conn
-  } do
-    {:ok, entry} =
-      Cron.sync_entry(TestRepo, %{
-        name: "forensics-runbook-unknown",
-        source: "runtime",
-        worker: "DemoWorker",
-        queue: "default",
-        expression: "* * * * *"
-      })
-
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-6", permissions: [:view_forensics, :view_cron]}
-      )
-
-    {:ok, _view, html} =
-      live(conn, "/ops/jobs/forensics?resource_type=cron_entry&resource_id=#{entry.name}")
-
-    assert html =~ "history unavailable"
-    assert html =~ "unknown"
-    assert html =~ ~s(data-runbook-ownership="Oban Web bridge")
-    assert html =~ ~s(data-runbook-ownership="host-owned follow-up")
-    refute html =~ ~s(data-runbook-ownership="Oban Web bridge" class="rounded bg-indigo-700)
-    refute html =~ ~s(data-runbook-ownership="host-owned follow-up" class="rounded bg-indigo-700)
-    refute html =~ "bridge-only completed"
-    refute html =~ "host-owned follow-up succeeded"
+  defp refute_patch(%Phoenix.LiveViewTest.View{proxy: {ref, topic, _}}) do
+    refute_receive {^ref, {:patch, ^topic, _}}
   end
 
-  test "ownership boundary remains explicit", %{conn: conn} do
-    {:ok, entry} =
-      Cron.sync_entry(TestRepo, %{
-        name: "forensics-ownership-boundary",
-        source: "runtime",
-        worker: "DemoWorker",
-        queue: "default",
-        expression: "* * * * *"
-      })
+  defp assert_selector_keys_allowed(path) do
+    parsed = URI.parse(path)
+    keys = parsed.query |> URI.decode_query() |> Map.keys() |> MapSet.new()
 
-    connection =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-7", permissions: [:view_forensics, :view_cron]}
-      )
-
-    {:ok, view, html} =
-      live(connection, "/ops/jobs/forensics?resource_type=cron_entry&resource_id=#{entry.name}")
-
-    assert html =~ "Powertools-native"
-    assert html =~ "Oban Web bridge"
-    assert html =~ "host-owned follow-up"
-
-    assert has_element?(
-             view,
-             ~s([data-runbook-ownership="Powertools-native"][data-runbook-variant="native_primary"])
-           )
-
-    assert has_element?(
-             view,
-             ~s([data-runbook-ownership="Oban Web bridge"][data-runbook-variant="bridge_guidance"])
-           )
-
-    assert has_element?(
-             view,
-             ~s([data-runbook-ownership="host-owned follow-up"][data-runbook-variant="host_guidance"])
-           )
-
-    refute has_element?(
-             view,
-             ~s([data-runbook-ownership="Oban Web bridge"][data-runbook-variant="native_primary"])
-           )
-
-    refute has_element?(
-             view,
-             ~s([data-runbook-ownership="host-owned follow-up"][data-runbook-variant="native_primary"])
-           )
-
-    refute html =~ "alert delivered"
-    refute html =~ "ticket created"
-    refute html =~ "page sent"
-    refute html =~ "PagerDuty"
-    refute html =~ "Slack"
+    assert MapSet.subset?(keys, @allowed_selector_keys)
   end
 
-  test "mounts the limiter forensic bundle from stable resource selectors", %{conn: conn} do
-    resource =
-      TestRepo.insert!(%Resource{
-        name: "forensics-limiter",
-        scope_kind: "global",
-        algorithm: "token_bucket",
-        bucket_span_ms: 60_000,
-        bucket_capacity: 5,
-        default_weight: 1,
-        partition_strategy: "global",
-        partition_config: %{},
-        cooldown_enabled: true,
-        metadata: %{}
-      })
-
-    TestRepo.insert!(%State{
-      resource_id: resource.id,
-      partition_key: "__global__",
-      tokens_used: 0,
-      bucket_started_at: DateTime.utc_now(),
-      reservation_snapshot: %{}
-    })
-
-    TestRepo.insert!(%LimiterHistoryFact{
-      resource_name: resource.name,
-      partition_key: "__global__",
-      event_type: "limiter.reconfigured",
-      cause_kind: "policy",
-      occurred_at: DateTime.utc_now(),
-      metadata: %{"config_diff" => %{"bucket_capacity" => %{"before" => 3, "after" => 5}}}
-    })
-
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-4", permissions: [:view_forensics, :view_limiters]}
-      )
-
-    {:ok, _view, html} =
-      live(conn, "/ops/jobs/forensics?resource_type=limiter&resource_id=#{resource.name}")
-
-    assert html =~ "Powertools-native limiters"
-    assert html =~ "Limiter reconfigured"
-    assert html =~ "complete"
-  end
-
-  test "resolves a delimiter-heavy incident fingerprint round-trip", %{conn: conn} do
-    # Full D-19 delimiter set: : / ? # % space & =
-    fingerprint = "workflow_stuck:wf-1/step-2?attempt=3 #frag%20"
-
-    incident =
-      %Incident{}
-      |> Incident.changeset(%{
-        incident_class: "workflow_stuck",
-        status: "active",
-        incident_fingerprint: fingerprint,
-        health_state: "missing",
-        summary: "delimiter-heavy incident for round-trip test",
-        affected_counts: %{"jobs" => 1, "workflow_steps" => 0},
-        evidence: %{"job_ids" => [456], "workflow_step_ids" => []},
-        first_detected_at: DateTime.utc_now(),
-        last_detected_at: DateTime.utc_now(),
-        metadata: %{}
-      })
-      |> TestRepo.insert!()
-
-    conn =
-      Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_forensics, :view_lifeline]}
-      )
-
-    encoded = URI.encode_www_form(fingerprint)
-    path = "/ops/jobs/forensics?incident_fingerprint=#{encoded}&view=active"
-
-    {:ok, _view, html} = live(conn, path)
-
-    # Bundle subject must contain the decoded fingerprint (round-trip identity)
-    assert html =~ incident.incident_fingerprint
-
-    # The encoded fingerprint must appear in URL parameter context (href attributes)
-    assert html =~ "incident_fingerprint=#{URI.encode_www_form(fingerprint)}"
-
-    # Selector allowlist must be satisfied
-    assert_forensics_selector_allowlist(html)
-
-    # Re-mount: idempotency check
-    {:ok, _remounted_view, remounted_html} = live(conn, path)
-    assert remounted_html =~ incident.incident_fingerprint
-    assert URI.encode_www_form(fingerprint) in ~w(#{encoded})
-  end
-
-  defp truncate_minute(%DateTime{} = dt), do: %DateTime{dt | second: 0, microsecond: {0, 0}}
-
-  defp html_position(html, text) do
-    {position, _length} = :binary.match(html, text)
-    position
-  end
-
-  defp assert_forensics_selector_allowlist(html) do
-    Regex.scan(~r{/ops/jobs/forensics\?[^"']+}, html)
-    |> Enum.map(&List.first/1)
-    |> Enum.each(fn encoded_path ->
-      query =
-        encoded_path
-        |> String.split("?", parts: 2)
-        |> List.last()
-        |> String.replace("&amp;", "&")
-        |> URI.decode_query()
-        |> Map.keys()
-        |> MapSet.new()
-
-      assert MapSet.subset?(query, @allowed_selector_keys)
-    end)
-  end
+  defp count(text, needle), do: length(String.split(text, needle)) - 1
 end
