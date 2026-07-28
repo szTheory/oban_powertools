@@ -20,6 +20,7 @@ defmodule ObanPowertools.Web.AuditLiveTest do
 
   alias ObanPowertools.Audit
   alias ObanPowertools.Workflow
+  alias ObanPowertools.Workflow.Step
   alias ObanPowertools.WorkflowFixtures
   alias ObanPowertools.Web.AuditLive
 
@@ -127,10 +128,18 @@ defmodule ObanPowertools.Web.AuditLiveTest do
     assert has_element?(view, "#audit-filters a[href='/ops/jobs/audit']", "Clear filters")
   end
 
-  test "forensic audit follow-up preserves scoped resource and event filters", %{conn: conn} do
+  test "forensic audit follow-up preserves resource scope and explicit Audit filters", %{
+    conn: conn
+  } do
     {:ok, workflow} =
       WorkflowFixtures.workflow_fixture(name: "forensic-audit-follow-up")
       |> Workflow.insert(TestRepo)
+
+    workflow_step_ids =
+      Step
+      |> TestRepo.all()
+      |> Enum.filter(&(&1.workflow_id == workflow.id))
+      |> MapSet.new(& &1.id)
 
     Audit.record(
       "workflow.step_completed",
@@ -142,14 +151,33 @@ defmodule ObanPowertools.Web.AuditLiveTest do
 
     conn =
       Plug.Test.init_test_session(conn,
-        current_actor: %{id: "ops-1", permissions: [:view_audit, :view_forensics]}
+        current_actor: %{
+          id: "ops-1",
+          permissions: [:view_audit, :view_forensics, :view_workflows]
+        }
       )
 
     {:ok, _forensic_view, forensic_html} =
       live(conn, "/ops/jobs/forensics?workflow_id=#{workflow.id}")
 
-    assert forensic_html =~
-             "/ops/jobs/audit?resource_type=workflow&amp;resource_id=#{workflow.id}&amp;event_type=workflow.step_completed"
+    audit_hrefs =
+      forensic_html
+      |> then(&Regex.scan(~r/href="([^"]*audit[^"]*)"/, &1, capture: :all_but_first))
+      |> List.flatten()
+
+    [forensic_audit_href] = Enum.reject(audit_hrefs, &(&1 == "/ops/jobs/audit"))
+
+    forensic_audit_params =
+      forensic_audit_href
+      |> String.replace("&amp;", "&")
+      |> URI.parse()
+      |> Map.fetch!(:query)
+      |> URI.decode_query()
+
+    assert Enum.sort(Map.keys(forensic_audit_params)) == ["resource_id", "resource_type"]
+    assert forensic_audit_params["resource_type"] == "workflow_step"
+    assert MapSet.member?(workflow_step_ids, forensic_audit_params["resource_id"])
+    assert forensic_html =~ "View matching audit evidence"
 
     {:ok, _audit_view, audit_html} =
       live(

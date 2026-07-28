@@ -28,7 +28,13 @@ defmodule ObanPowertools.Web.RunbookCopyContractTest do
 
   @ownership_triad ["Powertools-native", "Oban Web bridge", "host-owned follow-up"]
 
-  @evidence_boundary_markers ["partial evidence", "history unavailable", "unknown"]
+  @evidence_boundary_markers [
+    "Read-only evidence",
+    "Forensics summarizes retained Powertools evidence and does not prove root cause.",
+    "Evidence limits and sources",
+    "Completeness",
+    "Bounded window"
+  ]
 
   @forbidden_phrases [
     "executed remediation",
@@ -95,7 +101,7 @@ defmodule ObanPowertools.Web.RunbookCopyContractTest do
     {:ok, _forensics_workflow_view, forensics_workflow_html} =
       live(
         conn,
-        "/ops/jobs/forensics?workflow_id=#{workflow.id}&step=fetch_customer&resource_type=workflow_step"
+        "/ops/jobs/forensics?workflow_id=#{workflow.id}&step=fetch_customer"
       )
 
     {:ok, _forensics_lifeline_view, forensics_lifeline_html} =
@@ -115,8 +121,11 @@ defmodule ObanPowertools.Web.RunbookCopyContractTest do
              "runbook surface missing required ownership triad label #{inspect(label)}"
     end
 
-    assert Enum.any?(@evidence_boundary_markers, &String.contains?(runbook_surface, &1)),
-           "runbook surface missing at least one evidence-boundary marker (any of #{inspect(@evidence_boundary_markers)})"
+    for forensics_html <- [forensics_workflow_html, forensics_lifeline_html],
+        marker <- @evidence_boundary_markers do
+      assert forensics_html =~ marker,
+             "Forensics surface missing evidence-boundary marker #{inspect(marker)}"
+    end
 
     assert_occurs_in_order(workflows_html, [
       "Outcome:",

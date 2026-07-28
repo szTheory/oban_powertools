@@ -163,16 +163,31 @@ defmodule ObanPowertools.Web.ControlPlaneCopyCoherenceTest do
     {:ok, _forensics_view, forensics_html} =
       live(conn, "/ops/jobs/forensics?workflow_id=#{workflow.id}&step=fetch_customer")
 
-    assert_occurs_in_order(forensics_html, [
-      "Diagnosis Summary",
-      "Timeline",
-      "Related Evidence",
-      "Linked Resources",
-      "Legal Next Paths",
-      "Evidence Completeness"
-    ])
+    forensics_order = [
+      "Read-only evidence",
+      "Investigation summary",
+      "What to do next"
+    ]
 
-    assert forensics_html =~ "supporting evidence"
+    forensics_order =
+      if forensics_html =~ "Latest remediation evidence" do
+        forensics_order ++
+          [
+            "Latest remediation evidence",
+            "Historical evidence only. It does not replace the current investigation summary."
+          ]
+      else
+        forensics_order
+      end
+
+    assert_occurs_in_order(
+      forensics_html,
+      forensics_order ++ ["Event log", "Evidence limits and sources"]
+    )
+
+    assert forensics_html =~
+             "Forensics summarizes retained Powertools evidence and does not prove root cause."
+
     assert forensics_html =~ "Inspection only"
     refute forensics_html =~ "preview_token="
     refute forensics_html =~ "reason="
