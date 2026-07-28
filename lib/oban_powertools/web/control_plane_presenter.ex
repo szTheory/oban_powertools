@@ -72,6 +72,24 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     "discarded" => "Discarded",
     "completed" => "Completed"
   }
+  @job_action_kinds %{
+    "retry" => :retry,
+    "cancel" => :cancel,
+    "discard" => :discard
+  }
+  @job_result_states %{
+    "success" => :success,
+    "skipped" => :skipped,
+    "failed" => :failed,
+    "expired" => :expired,
+    "drifted" => :drifted,
+    "consumed" => :consumed
+  }
+  @job_recorded_output_fields ~w[
+    available summary status payload redacted attempt payload_bytes recorded_at retention expires_at
+  ]
+  @job_error_limit 10
+  @job_error_text_limit 1_000
   @audit_event_labels %{
     "cron.missed_fire" => "Missed schedule recorded",
     "cron.paused" => "Cron entry paused",
@@ -417,6 +435,80 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
 
   def present_job_quick_review(_job, _context),
     do: raise(ArgumentError, "job quick review source must be an Oban job")
+
+  @doc """
+  Projects one job into the closed, incident-first detail contract.
+
+  Arguments, metadata, and recorded output must arrive as already-rendered policy
+  displays. Only bounded, classified error summaries are derived from the job.
+  """
+  def present_job_detail(%Oban.Job{} = job, context) do
+    context = ensure_job_context!(context)
+    state = normalize_job_state!(job.state)
+
+    %{
+      support: %{
+        heading: "Current state",
+        state: state,
+        state_label: Map.fetch!(@job_states, state),
+        summary: "This job is #{state}.",
+        availability: "Current job detail is available for operator review."
+      },
+      actions: Enum.map(job_legal_actions(state), &present_job_action/1),
+      identity: job_identity(job, state),
+      timing: job_timing(job),
+      errors: job_errors(job.errors),
+      data: job_policy_data!(context),
+      redaction: %{
+        enqueue: job_enqueue_redaction(job.meta),
+        policy: "Arguments, metadata, and recorded output use the configured display policy."
+      },
+      destinations: job_destinations!(context)
+    }
+  end
+
+  def present_job_detail(_job, _context),
+    do: raise(ArgumentError, "job detail source must be an Oban job")
+
+  @doc """
+  Returns the exact confirmation contract for one single-job action.
+  """
+  def present_job_action(action) do
+    action
+    |> normalize_job_action!()
+    |> job_action_presentation()
+  end
+
+  @doc """
+  Returns one closed single-job action result and recovery instruction.
+
+  Unknown provider-shaped inputs fail closed without traversing or rendering them.
+  """
+  def present_job_action_result(result) when is_map(result) and not is_struct(result) do
+    state = normalize_job_result_state(presentation_value(result, :state))
+    action = normalize_optional_job_action(presentation_value(result, :action))
+    job_id = normalize_optional_job_id(presentation_value(result, :job_id))
+
+    %{
+      state: state,
+      message: job_result_message(action, state),
+      recovery: job_result_recovery(state),
+      receipt: job_result_receipt(action, state, job_id),
+      audit_href: job_result_audit_href!(result, state),
+      requires_fresh_preview?: state != :success
+    }
+  end
+
+  def present_job_action_result(_result) do
+    %{
+      state: :failed,
+      message: "The job action was not recorded.",
+      recovery: "Create a new preview before trying again.",
+      receipt: nil,
+      audit_href: nil,
+      requires_fresh_preview?: true
+    }
+  end
 
   @doc """
   Normalizes ordered active-filter presentation maps through a finite key contract.
@@ -924,6 +1016,396 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
         "Manual slot claim recorded for #{object_label}: #{recorded_result}. Audit evidence recorded."
     end
   end
+
+  defp job_action_presentation(:retry) do
+    %{
+      kind: :retry,
+      intent: :warning,
+      title: "Retry this job",
+      object_label: "Job",
+      scope: "1 ready job",
+      confirm_label: "Retry job",
+      dismiss_label: "Keep current state",
+      consequence:
+        "Powertools requests a retry for each ready job. A retry request does not mean the job completed.",
+      reversibility: "The retry request cannot be withdrawn after it is recorded.",
+      support_boundary: "Audit evidence records the request, not successful job completion.",
+      pending_copy: "Requesting retry"
+    }
+  end
+
+  defp job_action_presentation(:cancel) do
+    %{
+      kind: :cancel,
+      intent: :danger,
+      title: "Cancel this job",
+      object_label: "Job",
+      scope: "1 ready job",
+      confirm_label: "Cancel job",
+      dismiss_label: "Keep running",
+      consequence: "Each ready job stops and will not retry. This cannot be undone.",
+      reversibility: "Cancellation is irreversible.",
+      support_boundary: "Audit evidence records the cancellation request and its outcome.",
+      pending_copy: "Cancelling job"
+    }
+  end
+
+  defp job_action_presentation(:discard) do
+    %{
+      kind: :discard,
+      intent: :danger,
+      title: "Discard this job",
+      object_label: "Job",
+      scope: "1 ready job",
+      confirm_label: "Discard job",
+      dismiss_label: "Keep current state",
+      consequence:
+        "Each ready job is marked discarded and will not retry. This cannot be undone.",
+      reversibility: "Discarding is irreversible.",
+      support_boundary: "Audit evidence records the discard request and its outcome.",
+      pending_copy: "Discarding job"
+    }
+  end
+
+  defp normalize_job_action!(value) do
+    normalize_closed_value!(value, @job_action_kinds, "job action")
+  end
+
+  defp normalize_optional_job_action(value) do
+    normalize_job_action!(value)
+  rescue
+    ArgumentError -> nil
+  end
+
+  defp normalize_job_result_state(value) do
+    normalize_closed_value!(value, @job_result_states, "job result state")
+  rescue
+    ArgumentError -> :failed
+  end
+
+  defp normalize_optional_job_id(value) when is_integer(value) and value > 0, do: value
+  defp normalize_optional_job_id(_value), do: nil
+
+  defp job_result_message(:retry, :success), do: "The retry request was recorded."
+  defp job_result_message(:cancel, :success), do: "The cancellation was recorded."
+  defp job_result_message(:discard, :success), do: "The discard request was recorded."
+  defp job_result_message(_action, :success), do: "The job action was recorded."
+  defp job_result_message(_action, :skipped), do: "The job action was skipped."
+  defp job_result_message(_action, :failed), do: "The job action was not recorded."
+  defp job_result_message(_action, :expired), do: "The action preview expired before execution."
+  defp job_result_message(_action, :drifted), do: "The job changed after the preview."
+  defp job_result_message(_action, :consumed), do: "The action preview was already used."
+
+  defp job_result_recovery(:success), do: nil
+
+  defp job_result_recovery(:drifted),
+    do: "Review the current job, then Create a new preview."
+
+  defp job_result_recovery(_state), do: "Create a new preview before trying again."
+
+  defp job_result_receipt(_action, state, _job_id) when state != :success, do: nil
+
+  defp job_result_receipt(:retry, :success, job_id) when is_integer(job_id),
+    do: "Retry requested for job #{job_id}. Audit evidence recorded."
+
+  defp job_result_receipt(:cancel, :success, job_id) when is_integer(job_id),
+    do: "Job #{job_id} cancelled. Audit evidence recorded."
+
+  defp job_result_receipt(:discard, :success, job_id) when is_integer(job_id),
+    do: "Job #{job_id} discarded. Audit evidence recorded."
+
+  defp job_result_receipt(_action, :success, _job_id), do: nil
+
+  defp job_result_audit_href!(result, :success) do
+    case presentation_value(result, :audit_href) do
+      nil -> nil
+      href -> validate_job_destination!(href)
+    end
+  end
+
+  defp job_result_audit_href!(_result, _state), do: nil
+
+  defp job_legal_actions(state)
+       when state in ["retryable", "available", "scheduled", "executing"],
+       do: [:retry, :cancel, :discard]
+
+  defp job_legal_actions(state) when state in ["cancelled", "discarded", "completed"],
+    do: [:retry]
+
+  defp job_identity(job, state) do
+    [
+      %{label: "Job ID", value: Integer.to_string(normalize_job_id!(job.id)), value_kind: :text},
+      %{
+        label: "Worker",
+        value: required_presentation_text!(job.worker, "job worker"),
+        value_kind: :code
+      },
+      %{
+        label: "Queue",
+        value: required_presentation_text!(job.queue, "job queue"),
+        value_kind: :text
+      },
+      %{label: "State", value: Map.fetch!(@job_states, state), value_kind: :status},
+      %{
+        label: "Attempts",
+        value: job_attempts!(job.attempt, job.max_attempts),
+        value_kind: :text
+      },
+      %{
+        label: "Priority",
+        value: job_priority(job.priority),
+        value_kind: :text
+      }
+    ]
+  end
+
+  defp job_priority(value) when is_integer(value) and value >= 0, do: Integer.to_string(value)
+  defp job_priority(nil), do: "Unavailable"
+
+  defp job_priority(_value),
+    do: raise(ArgumentError, "job priority must be nonnegative")
+
+  defp job_timing(job) do
+    [
+      job_timing_value("Inserted", job.inserted_at),
+      job_timing_value("Scheduled", job.scheduled_at),
+      job_timing_value("Attempted", job.attempted_at),
+      job_timing_value("Completed", job.completed_at),
+      job_timing_value("Cancelled", job.cancelled_at),
+      job_timing_value("Discarded", job.discarded_at)
+    ]
+  end
+
+  defp job_timing_value(label, nil), do: %{label: label, value: "Unavailable", datetime: nil}
+
+  defp job_timing_value(label, value) do
+    value
+    |> job_time!()
+    |> Map.put(:label, label)
+  end
+
+  defp job_errors(errors) when is_list(errors) do
+    errors
+    |> Enum.map(&job_error_candidate/1)
+    |> Enum.sort_by(& &1.sort_key, :desc)
+    |> Enum.take(@job_error_limit)
+    |> Enum.map(&Map.delete(&1, :sort_key))
+  end
+
+  defp job_errors(_errors), do: []
+
+  defp job_error_candidate(error) when is_map(error) and not is_struct(error) do
+    attempt = job_error_attempt(presentation_value(error, :attempt))
+    {occurred_at, occurred_datetime, time_sort} = job_error_time(presentation_value(error, :at))
+
+    case presentation_value(error, :error) do
+      text when is_binary(text) ->
+        {class, message} = parse_job_error(text)
+        {class, class_truncated?} = bound_job_error_text(class)
+        {message, message_truncated?} = bound_job_error_text(message)
+
+        %{
+          class: class,
+          message: message,
+          occurred_at: occurred_at,
+          occurred_datetime: occurred_datetime,
+          attempt: attempt,
+          truncated?: class_truncated? or message_truncated?,
+          sort_key: {time_sort, attempt}
+        }
+
+      _unknown ->
+        unavailable_job_error(occurred_at, occurred_datetime, time_sort, attempt)
+    end
+  end
+
+  defp job_error_candidate(_error) do
+    unavailable_job_error("Timestamp unavailable", nil, 0, 0)
+  end
+
+  defp unavailable_job_error(occurred_at, occurred_datetime, time_sort, attempt) do
+    %{
+      class: "Failure class unavailable",
+      message: "Failure details are unavailable.",
+      occurred_at: occurred_at,
+      occurred_datetime: occurred_datetime,
+      attempt: attempt,
+      truncated?: false,
+      sort_key: {time_sort, attempt}
+    }
+  end
+
+  defp parse_job_error(text) do
+    if sensitive_job_error?(text) do
+      {"Failure class unavailable", "Failure details are redacted."}
+    else
+      case Regex.run(~r/\A\*\* \(([^)\r\n]+)\)\s*(.*)/s, text, capture: :all_but_first) do
+        [class, message] ->
+          {
+            required_job_error_text(class, "Failure class unavailable"),
+            required_job_error_text(
+              first_job_error_line(message),
+              "Failure details are unavailable."
+            )
+          }
+
+        _unrecognized ->
+          {"Failure class unavailable", "Failure details are unavailable."}
+      end
+    end
+  end
+
+  defp sensitive_job_error?(text) do
+    Regex.match?(
+      ~r/(?:https?|ftp):\/\/|(?:token|secret|password|passwd|credential|authorization|cookie|api[-_ ]?key|headers?|payload)\s*[=:]/i,
+      text
+    )
+  end
+
+  defp first_job_error_line(text) do
+    text
+    |> String.split(~r/\R/, parts: 2)
+    |> hd()
+  end
+
+  defp required_job_error_text(text, fallback) do
+    case String.trim(text) do
+      "" -> fallback
+      value -> value
+    end
+  end
+
+  defp bound_job_error_text(text) do
+    if String.length(text) > @job_error_text_limit do
+      {String.slice(text, 0, @job_error_text_limit - 1) <> "…", true}
+    else
+      {text, false}
+    end
+  end
+
+  defp job_error_attempt(value) when is_integer(value) and value >= 0, do: value
+  defp job_error_attempt(_value), do: 0
+
+  defp job_error_time(%DateTime{} = value) do
+    time = job_time!(value)
+    {time.value, time.datetime, DateTime.to_unix(value, :microsecond)}
+  end
+
+  defp job_error_time(%NaiveDateTime{} = value) do
+    value
+    |> DateTime.from_naive!("Etc/UTC")
+    |> job_error_time()
+  end
+
+  defp job_error_time(value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, parsed, _offset} -> job_error_time(parsed)
+      {:error, _reason} -> {"Timestamp unavailable", nil, 0}
+    end
+  end
+
+  defp job_error_time(_value), do: {"Timestamp unavailable", nil, 0}
+
+  defp job_policy_data!(context) do
+    %{
+      arguments: %{
+        label: "Arguments",
+        kind: :args,
+        display: validate_job_policy_display!(presentation_value(context, :args_display), :args)
+      },
+      metadata: %{
+        label: "Metadata",
+        kind: :meta,
+        display: validate_job_policy_display!(presentation_value(context, :meta_display), :meta)
+      },
+      recorded_output: %{
+        label: "Recorded output",
+        kind: :recorded_output,
+        display:
+          validate_job_policy_display!(
+            presentation_value(context, :recorded_output_display),
+            :recorded_output
+          )
+      }
+    }
+  end
+
+  defp validate_job_policy_display!({:raw_json, json} = display, _kind) when is_binary(json) do
+    case Jason.decode(json) do
+      {:ok, value} ->
+        ensure_safe_presentation_data!(value, "job policy display")
+        display
+
+      {:error, _reason} ->
+        raise ArgumentError, "job policy display must contain valid JSON"
+    end
+  end
+
+  defp validate_job_policy_display!({:string, text} = display, _kind) when is_binary(text) do
+    required_presentation_text!(text, "job policy display")
+    display
+  end
+
+  defp validate_job_policy_display!({:fallback, "[redacted]"} = display, _kind), do: display
+
+  defp validate_job_policy_display!(display, :recorded_output)
+       when is_map(display) and not is_struct(display) do
+    Enum.each(display, fn {key, value} ->
+      if normalize_presentation_source_key(key) not in @job_recorded_output_fields do
+        raise ArgumentError, "job recorded output contains an unsupported presentation field"
+      end
+
+      ensure_job_recorded_output_value!(value)
+    end)
+
+    display
+  end
+
+  defp validate_job_policy_display!(_display, _kind),
+    do: raise(ArgumentError, "job policy display has an unsupported shape")
+
+  defp ensure_job_recorded_output_value!(value)
+       when is_nil(value) or is_binary(value) or is_number(value) or is_boolean(value),
+       do: :ok
+
+  defp ensure_job_recorded_output_value!(_value),
+    do: raise(ArgumentError, "job recorded output contains unsupported presentation data")
+
+  defp job_destinations!(context) do
+    [
+      job_destination(
+        "job-audit",
+        "View matching audit evidence",
+        presentation_value(context, :audit_href)
+      ),
+      job_destination(
+        "job-forensics",
+        "Open job forensics",
+        presentation_value(context, :forensics_href)
+      )
+    ]
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp job_destination(_id, _label, nil), do: nil
+
+  defp job_destination(id, label, href),
+    do: %{id: id, label: label, href: validate_job_destination!(href)}
+
+  defp validate_job_destination!(href) when is_binary(href) do
+    uri = URI.parse(href)
+
+    if uri.scheme || uri.host || not String.starts_with?(uri.path || "", "/ops/jobs") do
+      raise ArgumentError, "job evidence destination must be local to Jobs"
+    end
+
+    query = URI.decode_query(uri.query || "")
+    ensure_safe_presentation_data!(query, "job evidence destination")
+    href
+  end
+
+  defp validate_job_destination!(_href),
+    do: raise(ArgumentError, "job evidence destination must be text")
 
   defp normalize_current_evidence!(value) do
     case normalize_closed_value!(value, @blocker_evidence_kinds, "limiter evidence kind") do
