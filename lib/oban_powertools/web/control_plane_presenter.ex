@@ -63,6 +63,15 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     "drifted" => :drifted,
     "consumed" => :consumed
   }
+  @job_states %{
+    "available" => "Available",
+    "scheduled" => "Scheduled",
+    "executing" => "Executing",
+    "retryable" => "Retryable",
+    "cancelled" => "Cancelled",
+    "discarded" => "Discarded",
+    "completed" => "Completed"
+  }
   @audit_event_labels %{
     "cron.missed_fire" => "Missed schedule recorded",
     "cron.paused" => "Cron entry paused",
@@ -341,6 +350,73 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
 
   def present_audit_detail(_event, _context),
     do: raise(ArgumentError, "audit detail source must be an Audit event")
+
+  @doc """
+  Projects one Oban job into the exact eight finite Jobs table facts.
+
+  Selection and review state are caller-owned presentation booleans. Job arguments,
+  metadata, errors, and provider values are never traversed or returned.
+  """
+  def present_job_row(%Oban.Job{} = job, context) do
+    context = ensure_job_context!(context)
+    id = normalize_job_id!(job.id)
+    state = normalize_job_state!(job.state)
+
+    %{
+      id: id,
+      worker: required_presentation_text!(job.worker, "job worker"),
+      state: state,
+      queue: required_presentation_text!(job.queue, "job queue"),
+      scheduled: job_row_time!(job.scheduled_at),
+      attempts: job_attempts!(job.attempt, job.max_attempts),
+      selection: %{
+        label: "Select job #{id}",
+        checked?: job_context_boolean!(context, :selected?, false)
+      },
+      review: %{
+        label: "Review job #{id}",
+        current?: job_context_boolean!(context, :reviewing?, false)
+      }
+    }
+  end
+
+  def present_job_row(_job, _context),
+    do: raise(ArgumentError, "job row source must be an Oban job")
+
+  @doc """
+  Projects one bounded, read-only Jobs quick review.
+
+  The result contains only current identity/status facts, a non-provider failure
+  summary, output availability, enqueue-redaction disclosure, and an allowlisted
+  full-detail destination. Raw payloads and histories never enter the projection.
+  """
+  def present_job_quick_review(%Oban.Job{} = job, context) do
+    context = ensure_job_context!(context)
+    id = normalize_job_id!(job.id)
+    state = normalize_job_state!(job.state)
+
+    %{
+      id: id,
+      title: "Review job #{id}",
+      state: %{value: state, label: Map.fetch!(@job_states, state)},
+      worker: required_presentation_text!(job.worker, "job worker"),
+      queue: required_presentation_text!(job.queue, "job queue"),
+      attempts: job_attempts!(job.attempt, job.max_attempts),
+      relevant_time: job_relevant_time!(job),
+      failure_summary: job_failure_summary(job),
+      recorded_output_available?:
+        job_context_boolean!(context, :recorded_output_available?, false),
+      enqueue_redaction: job_enqueue_redaction(job.meta),
+      full_details_href:
+        Selectors.job_detail_path(
+          id,
+          job_context_list_params(context)
+        )
+    }
+  end
+
+  def present_job_quick_review(_job, _context),
+    do: raise(ArgumentError, "job quick review source must be an Oban job")
 
   @doc """
   Normalizes ordered active-filter presentation maps through a finite key contract.
@@ -853,6 +929,109 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     case normalize_closed_value!(value, @blocker_evidence_kinds, "limiter evidence kind") do
       :current -> :current
       :block_start_snapshot -> raise ArgumentError, "limiter blocker must use current evidence"
+    end
+  end
+
+  defp ensure_job_context!(context) when is_map(context) and not is_struct(context), do: context
+  defp ensure_job_context!(context) when is_list(context), do: Map.new(context)
+
+  defp ensure_job_context!(_context),
+    do: raise(ArgumentError, "job presentation context must be a plain map")
+
+  defp normalize_job_id!(value) when is_integer(value) and value > 0, do: value
+  defp normalize_job_id!(_value), do: raise(ArgumentError, "job id must be a positive integer")
+
+  defp normalize_job_state!(value) when is_atom(value),
+    do: value |> Atom.to_string() |> normalize_job_state!()
+
+  defp normalize_job_state!(value) when is_binary(value) do
+    if Map.has_key?(@job_states, value) do
+      value
+    else
+      raise ArgumentError, "unsupported job state"
+    end
+  end
+
+  defp normalize_job_state!(_value), do: raise(ArgumentError, "unsupported job state")
+
+  defp job_attempts!(attempt, max_attempts)
+       when is_integer(attempt) and attempt >= 0 and is_integer(max_attempts) and
+              max_attempts > 0,
+       do: "#{attempt} of #{max_attempts}"
+
+  defp job_attempts!(_attempt, _max_attempts),
+    do: raise(ArgumentError, "job attempts must be finite nonnegative counts")
+
+  defp job_row_time!(value) do
+    %{value: label, datetime: datetime} = job_time!(value)
+    %{label: label, datetime: datetime}
+  end
+
+  defp job_relevant_time!(%Oban.Job{attempted_at: %DateTime{} = value}),
+    do: Map.put(job_time!(value), :label, "Attempted")
+
+  defp job_relevant_time!(%Oban.Job{scheduled_at: value}),
+    do: Map.put(job_time!(value), :label, "Scheduled")
+
+  defp job_time!(%DateTime{} = value) do
+    utc = DateTime.shift_zone!(value, "Etc/UTC")
+
+    %{
+      value:
+        "#{Calendar.strftime(utc, "%B")} #{utc.day}, #{utc.year} at #{Calendar.strftime(utc, "%H:%M")} UTC",
+      datetime: DateTime.to_iso8601(utc)
+    }
+  end
+
+  defp job_time!(%NaiveDateTime{} = value) do
+    value
+    |> DateTime.from_naive!("Etc/UTC")
+    |> job_time!()
+  end
+
+  defp job_time!(_value), do: raise(ArgumentError, "job time must be a datetime")
+
+  defp job_failure_summary(%Oban.Job{errors: errors, unsaved_error: unsaved_error})
+       when errors not in [nil, []] or not is_nil(unsaved_error),
+       do: "Latest failure recorded. Open full job details for the redacted error summary."
+
+  defp job_failure_summary(_job), do: "No failure summary recorded."
+
+  defp job_enqueue_redaction(meta) when is_map(meta) do
+    case Map.get(meta, "__redacted_fields__") || Map.get(meta, :__redacted_fields__) do
+      fields when is_list(fields) and fields != [] ->
+        count = length(fields)
+
+        %{
+          redacted?: true,
+          summary:
+            if(count == 1,
+              do: "1 argument field was redacted at enqueue.",
+              else: "#{count} argument fields were redacted at enqueue."
+            )
+        }
+
+      _missing ->
+        %{redacted?: false, summary: "No enqueue redaction was recorded."}
+    end
+  end
+
+  defp job_enqueue_redaction(_meta),
+    do: %{redacted?: false, summary: "No enqueue redaction was recorded."}
+
+  defp job_context_boolean!(context, key, default) do
+    case presentation_value(context, key) do
+      nil -> default
+      value when is_boolean(value) -> value
+      _value -> raise ArgumentError, "job presentation #{key} must be boolean"
+    end
+  end
+
+  defp job_context_list_params(context) do
+    case presentation_value(context, :list_params) do
+      nil -> []
+      params when is_map(params) or is_list(params) -> params
+      _params -> raise ArgumentError, "job list params must be a map or list"
     end
   end
 
