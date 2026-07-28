@@ -10,6 +10,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     @valid_states ~w(available scheduled executing retryable cancelled discarded completed)
     @allowed_preview_actions ~w(job_retry job_cancel job_discard)
+    @job_action_kinds %{"retry" => :retry, "cancel" => :cancel, "discard" => :discard}
+    @job_action_values %{retry: "job_retry", cancel: "job_cancel", discard: "job_discard"}
+    @job_action_permissions %{retry: :retry_job, cancel: :cancel_job, discard: :discard_job}
+    @job_action_states %{
+      retry: ~w(retryable cancelled discarded completed),
+      cancel: ~w(available scheduled executing retryable),
+      discard: ~w(available scheduled executing retryable)
+    }
+    @job_action_preview_private :oban_powertools_job_action_preview
 
     @impl true
     def mount(params, %{"oban_dashboard_path" => dashboard_path}, socket) do
@@ -240,43 +249,72 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
        )}
     end
 
-    def handle_event("preview", %{"action" => action}, socket)
-        when action in @allowed_preview_actions do
-      with :ok <-
-             LiveAuth.authorize_action(socket, :preview_repair, %{
-               type: :job,
-               id: to_string(socket.assigns.job_id)
-             }),
-           {:ok, preview} <-
-             Lifeline.preview_repair(repo(), socket.assigns.current_actor, %{
-               incident_id: nil,
-               action: action,
-               target_type: "job",
-               target_id: socket.assigns.job_id
-             }) do
-        presentation = ControlPlanePresenter.present_job_action(job_action_kind(action))
-
-        {:noreply,
-         socket
-         |> assign(:preview, preview)
-         |> assign(:preview_action, presentation)
-         |> assign(:reason, "")
-         |> assign(:error_message, nil)}
-      else
-        {:error, :unauthorized} -> {:noreply, socket}
-        {:error, msg} -> {:noreply, assign(socket, :error_message, to_string(msg))}
+    def handle_event("preview_action", %{"kind" => kind}, socket) do
+      case Map.fetch(@job_action_kinds, kind) do
+        {:ok, action_kind} -> {:noreply, preview_job_action(socket, action_kind, "")}
+        :error -> {:noreply, socket}
       end
     end
 
-    def handle_event("preview", _, socket), do: {:noreply, socket}
+    def handle_event("preview_action", _params, socket), do: {:noreply, socket}
 
-    def handle_event("preview_bulk", %{"action" => action}, socket) do
+    def handle_event("close_action_confirmation", _params, socket) do
+      {:noreply, clear_job_action_confirmation(socket)}
+    end
+
+    def handle_event("new_action_preview", _params, socket) do
+      case Map.get(socket.assigns, :action_kind) do
+        kind when kind in [:retry, :cancel, :discard] ->
+          reason_draft = Map.get(socket.assigns, :action_reason_draft, "")
+
+          {:noreply,
+           socket
+           |> put_private(@job_action_preview_private, nil)
+           |> preview_job_action(kind, reason_draft)}
+
+        _missing ->
+          {:noreply, socket}
+      end
+    end
+
+    def handle_event(
+          "execute_action",
+          %{"confirmation" => %{"reason" => reason}},
+          socket
+        ) do
+      if Map.get(socket.assigns, :confirmation_state) == :preview do
+        case validate_action_reason(reason) do
+          {:ok, reason_draft} ->
+            {:noreply, execute_job_action(socket, reason_draft)}
+
+          {:error, reason_draft} ->
+            {:noreply,
+             socket
+             |> assign(:action_reason_draft, reason_draft)
+             |> assign(:confirmation_form, action_confirmation_form(reason_draft, :invalid))}
+        end
+      else
+        {:noreply, socket}
+      end
+    end
+
+    def handle_event("execute_action", _params, socket) do
+      {:noreply,
+       socket
+       |> assign(:action_reason_draft, "")
+       |> assign(:confirmation_form, action_confirmation_form("", :invalid))}
+    end
+
+    def handle_event("preview_bulk", %{"action" => action}, socket)
+        when action in @allowed_preview_actions do
       {:noreply,
        socket
        |> assign(:bulk_preview_action, action)
        |> assign(:reason, "")
        |> assign(:error_message, nil)}
     end
+
+    def handle_event("preview_bulk", _params, socket), do: {:noreply, socket}
 
     def handle_event("close_preview", _, socket) do
       {:noreply,
@@ -291,53 +329,6 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     def handle_event("reason", %{"reason" => r}, socket) do
       {:noreply, assign(socket, :reason, r)}
-    end
-
-    def handle_event("execute", params, socket) do
-      reason_from_params = Map.get(params, "reason")
-      reason = String.trim(reason_from_params || socket.assigns.reason)
-
-      if reason == "" do
-        {:noreply, socket}
-      else
-        with :ok <-
-               LiveAuth.authorize_action(socket, :execute_repair, %{
-                 type: :job,
-                 id: to_string(socket.assigns.job_id)
-               }),
-             {:ok, %{target: target}} <-
-               Lifeline.execute_repair(
-                 repo(),
-                 socket.assigns.current_actor,
-                 socket.assigns.preview.preview_token,
-                 reason
-               ) do
-          socket =
-            socket
-            |> put_flash(
-              :info,
-              "Job ##{target.id} successfully " <>
-                action_word(socket.assigns.preview.action) <> "."
-            )
-            |> push_patch(to: Selectors.job_detail_path(target.id))
-
-          {:noreply, load_job_detail(socket, target.id)}
-        else
-          {:error, :unauthorized} ->
-            {:noreply, socket}
-
-          {:error, :preview_drifted} ->
-            {:noreply,
-             assign(
-               socket,
-               :error_message,
-               "Could not execute action. The job's state was changed by another process or operator. Please refresh to see the latest state."
-             )}
-
-          {:error, reason} ->
-            {:noreply, assign(socket, :error_message, "Error: #{inspect(reason)}")}
-        end
-      end
     end
 
     def handle_event("execute_bulk", params, socket) do
@@ -440,15 +431,6 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       not (is_nil(filter.queue) and is_nil(filter.worker) and is_nil(filter.tags) and
              is_nil(filter.args) and is_nil(filter.meta))
     end
-
-    defp action_word("job_retry"), do: "retried"
-    defp action_word("job_cancel"), do: "cancelled"
-    defp action_word("job_discard"), do: "discarded"
-    defp action_word(action), do: action
-
-    defp job_action_kind("job_retry"), do: :retry
-    defp job_action_kind("job_cancel"), do: :cancel
-    defp job_action_kind("job_discard"), do: :discard
 
     @impl true
     def render(%{live_action: :show} = assigns), do: page_content(assigns)
@@ -797,12 +779,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         |> assign(:detail_unavailable?, Map.get(assigns, :detail_unavailable?, is_nil(detail)))
         |> assign(:back_path, Map.get(assigns, :back_path, Selectors.jobs_path([])))
         |> assign(:read_only?, Map.get(assigns, :read_only?, true))
-        |> assign(:confirmation, Map.get(assigns, :confirmation))
+        |> assign(:action_controls, Map.get(assigns, :action_controls, []))
+        |> assign(:confirmation_action, Map.get(assigns, :confirmation_action))
+        |> assign(:confirmation_state, Map.get(assigns, :confirmation_state, :preview))
+        |> assign(:confirmation_form, Map.get(assigns, :confirmation_form))
+        |> assign(:confirmation_results, Map.get(assigns, :confirmation_results, []))
+        |> assign(:confirmation_object_label, Map.get(assigns, :confirmation_object_label))
+        |> assign(:confirmation_fallback_id, Map.get(assigns, :confirmation_fallback_id))
+        |> assign(:confirmation_audit_href, Map.get(assigns, :confirmation_audit_href))
         |> assign(:receipt, Map.get(assigns, :receipt))
-        |> assign(:preview, Map.get(assigns, :preview))
-        |> assign(:preview_action, Map.get(assigns, :preview_action))
-        |> assign(:reason, Map.get(assigns, :reason, ""))
-        |> assign(:error_message, Map.get(assigns, :error_message))
         |> assign(:detail_job_id, detail_job_id(detail))
         |> assign(:recorded_output_facts, recorded_output_facts(detail))
 
@@ -837,16 +822,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <p :if={@read_only?}>{LiveAuth.page_read_only_banner(:job_detail)}</p>
             <div>
               <Primitives.button
-                :for={action <- @detail.actions}
+                :for={action <- @action_controls}
                 id={"job-action-#{action.kind}"}
-                phx-click="preview"
-                phx-value-action={"job_#{action.kind}"}
+                phx-click="preview_action"
+                phx-value-kind={action.kind}
                 variant={action.intent}
-                disabled_reason={
-                  if(@read_only?,
-                    do: "Permission: read-only. This action is not available."
-                  )
-                }
+                disabled_reason={action.disabled_reason}
               >
                 {action.confirm_label}
               </Primitives.button>
@@ -950,41 +931,35 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             </Primitives.link>
           </DataDisplay.toast>
 
-          <div :if={@preview && @preview_action} class="obpt-modal-backdrop">
-            <div class="obpt-modal">
-              <h2>{@preview_action.title} for job #{@detail_job_id}</h2>
-              <div class="obpt-modal-summary">
-                <p>{@preview_action.scope}</p>
-                <p>{@preview_action.consequence}</p>
-                <p>{@preview_action.reversibility}</p>
-                <p>{@preview_action.support_boundary}</p>
-              </div>
-              <form phx-change="reason" phx-submit="execute">
-                <label for="job-action-reason">Reason</label>
-                <p id="job-action-reason-hint">
-                  Explain why this action is needed. Do not enter secrets.
-                </p>
-                <input
-                  id="job-action-reason"
-                  type="text"
-                  name="reason"
-                  value={@reason}
-                  aria-describedby="job-action-reason-hint"
-                />
-                <p :if={@error_message}>{@error_message}</p>
-                <Primitives.button type="button" phx-click="close_preview">
-                  {@preview_action.dismiss_label}
-                </Primitives.button>
-                <Primitives.button
-                  type="submit"
-                  variant={@preview_action.intent}
-                  disabled={String.trim(@reason) == ""}
-                >
-                  {@preview_action.confirm_label}
-                </Primitives.button>
-              </form>
-            </div>
-          </div>
+          <OperatorPatterns.confirm_action_dialog
+            :if={@confirmation_action && @confirmation_form}
+            id="job-action-confirmation"
+            intent={@confirmation_action.intent}
+            state={@confirmation_state}
+            title={@confirmation_action.title}
+            object_label={@confirmation_object_label}
+            scope={@confirmation_action.scope}
+            consequence={@confirmation_action.consequence}
+            reversibility={@confirmation_action.reversibility}
+            support_boundary={@confirmation_action.support_boundary}
+            form={@confirmation_form}
+            confirm_label={@confirmation_action.confirm_label}
+            dismiss_label={@confirmation_action.dismiss_label}
+            pending_copy={@confirmation_action.pending_copy}
+            logical_fallback_id={@confirmation_fallback_id}
+            submit_event="execute_action"
+            dismiss_event="close_action_confirmation"
+            results={@confirmation_results}
+          >
+            <:recovery>
+              <Primitives.button type="button" variant={:neutral} phx-click="new_action_preview">
+                Create new preview
+              </Primitives.button>
+            </:recovery>
+            <:audit :if={@confirmation_audit_href}>
+              <Primitives.link navigate={@confirmation_audit_href}>Open audit evidence</Primitives.link>
+            </:audit>
+          </OperatorPatterns.confirm_action_dialog>
         <% end %>
       </section>
       """
@@ -1015,42 +990,36 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         }
 
         detail = ControlPlanePresenter.present_job_detail(job, context)
+        action_controls = job_action_controls(detail.actions, actor, job.id)
 
         socket
+        |> put_private(@job_action_preview_private, nil)
         |> assign(:page_mode, :detail)
         |> assign(:detail, detail)
         |> assign(:detail_unavailable?, false)
         |> assign(:job_id, job.id)
         |> assign(:job_state, job.state)
         |> assign(:detail_return_params, return_params)
-        |> assign(:preview, nil)
-        |> assign(:preview_action, nil)
-        |> assign(:confirmation, nil)
+        |> assign(:action_controls, action_controls)
+        |> assign_job_action_confirmation_defaults()
         |> assign(:receipt, nil)
         |> assign(:reason, "")
         |> assign(:error_message, nil)
         |> assign(:success_message, nil)
         |> assign(:back_path, back_path)
-        |> assign(
-          :read_only?,
-          not LiveAuth.authorized?(
-            actor,
-            :retry_job,
-            %{type: :job, id: Integer.to_string(job.id)}
-          )
-        )
+        |> assign(:read_only?, Enum.all?(action_controls, &(not &1.enabled?)))
       else
         _unavailable ->
           socket
+          |> put_private(@job_action_preview_private, nil)
           |> assign(:page_mode, :detail)
           |> assign(:detail, nil)
           |> assign(:detail_unavailable?, true)
           |> assign(:job_id, nil)
           |> assign(:job_state, nil)
           |> assign(:detail_return_params, return_params)
-          |> assign(:preview, nil)
-          |> assign(:preview_action, nil)
-          |> assign(:confirmation, nil)
+          |> assign(:action_controls, [])
+          |> assign_job_action_confirmation_defaults()
           |> assign(:receipt, nil)
           |> assign(:reason, "")
           |> assign(:error_message, nil)
@@ -1058,6 +1027,226 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           |> assign(:back_path, back_path)
           |> assign(:read_only?, true)
       end
+    end
+
+    defp preview_job_action(socket, action_kind, reason_draft) do
+      with {:ok, job} <- authorize_job_action(socket, action_kind, :preview_repair),
+           {:ok, preview} <-
+             Lifeline.preview_repair(
+               repo(),
+               socket.assigns.current_actor,
+               %{
+                 incident_id: nil,
+                 action: Map.fetch!(@job_action_values, action_kind),
+                 target_type: "job",
+                 target_id: job.id
+               },
+               telemetry_metadata: %{source: "jobs_detail"}
+             ) do
+        presentation = ControlPlanePresenter.present_job_action(action_kind)
+
+        socket
+        |> put_private(@job_action_preview_private, %{
+          preview_token: preview.preview_token
+        })
+        |> assign(:action_kind, action_kind)
+        |> assign(:action_reason_draft, reason_draft)
+        |> assign(:confirmation_action, presentation)
+        |> assign(:confirmation_state, :preview)
+        |> assign(:confirmation_form, action_confirmation_form(reason_draft))
+        |> assign(:confirmation_results, [])
+        |> assign(:confirmation_object_label, "Job #{job.id}")
+        |> assign(:confirmation_fallback_id, "job-action-#{action_kind}")
+        |> assign(:confirmation_audit_href, nil)
+      else
+        _unavailable_or_unauthorized -> socket
+      end
+    end
+
+    defp execute_job_action(socket, reason_draft) do
+      action_kind = Map.get(socket.assigns, :action_kind)
+      private_preview = Map.get(socket.private, @job_action_preview_private)
+
+      with action_kind when action_kind in [:retry, :cancel, :discard] <- action_kind,
+           %{preview_token: preview_token} when is_binary(preview_token) <- private_preview,
+           {:ok, _job} <- authorize_job_action(socket, action_kind, :execute_repair),
+           {:ok, %{target: target}} <-
+             Lifeline.execute_repair(
+               repo(),
+               socket.assigns.current_actor,
+               preview_token,
+               reason_draft,
+               telemetry_metadata: %{source: "jobs_detail"}
+             ) do
+        result =
+          ControlPlanePresenter.present_job_action_result(%{
+            state: :success,
+            action: action_kind,
+            job_id: target.id,
+            audit_href: authorized_job_audit_href(socket.assigns.current_actor, target.id)
+          })
+
+        receipt = %{message: result.receipt, audit_href: result.audit_href}
+
+        socket
+        |> clear_job_action_confirmation()
+        |> load_job_detail(target.id)
+        |> assign(:receipt, receipt)
+      else
+        {:error, reason} ->
+          assign_job_action_failure(socket, action_kind, reason, reason_draft)
+
+        _missing_or_forged ->
+          assign_job_action_failure(socket, action_kind, :failed, reason_draft)
+      end
+    end
+
+    defp authorize_job_action(socket, action_kind, service_permission)
+         when action_kind in [:retry, :cancel, :discard] and
+                service_permission in [:preview_repair, :execute_repair] do
+      job_id = Map.get(socket.assigns, :job_id)
+      resource = %{type: :job, id: to_string(job_id)}
+      action_permission = Map.fetch!(@job_action_permissions, action_kind)
+
+      with true <- is_integer(job_id) and job_id > 0,
+           :ok <- LiveAuth.authorize_action(socket, :view_job_detail, resource),
+           :ok <- LiveAuth.authorize_action(socket, action_permission, resource),
+           %Oban.Job{id: ^job_id} = job <- Jobs.get(repo(), job_id),
+           true <- job_action_legal?(action_kind, job.state),
+           :ok <- LiveAuth.authorize_action(socket, service_permission, resource),
+           {:ok, _principal} <- LiveAuth.principal_for_action(socket) do
+        {:ok, job}
+      else
+        _unavailable_or_unauthorized -> {:error, :unauthorized}
+      end
+    end
+
+    defp job_action_legal?(action_kind, state) do
+      state in Map.fetch!(@job_action_states, action_kind)
+    end
+
+    defp job_action_controls(actions, actor, job_id) do
+      resource = %{type: :job, id: Integer.to_string(job_id)}
+
+      Enum.map(actions, fn action ->
+        permission = Map.fetch!(@job_action_permissions, action.kind)
+        action_allowed? = LiveAuth.authorized?(actor, permission, resource)
+        preview_allowed? = LiveAuth.authorized?(actor, :preview_repair, resource)
+        execute_allowed? = LiveAuth.authorized?(actor, :execute_repair, resource)
+        enabled? = action_allowed? and preview_allowed? and execute_allowed?
+
+        disabled_reason =
+          cond do
+            not action_allowed? -> LiveAuth.permission_message(permission)
+            not preview_allowed? -> LiveAuth.permission_message(:preview_repair)
+            not execute_allowed? -> LiveAuth.permission_message(:execute_repair)
+            true -> nil
+          end
+
+        Map.merge(action, %{
+          enabled?: enabled?,
+          disabled_reason: disabled_reason
+        })
+      end)
+    end
+
+    defp validate_action_reason(reason) when is_binary(reason) do
+      reason_draft = String.trim(reason)
+
+      if String.length(reason_draft) >= 8,
+        do: {:ok, reason_draft},
+        else: {:error, reason_draft}
+    end
+
+    defp validate_action_reason(_reason), do: {:error, ""}
+
+    defp action_confirmation_form(reason_draft, validity \\ :valid) do
+      options =
+        if validity == :invalid do
+          [
+            errors: [reason: {"Enter at least 8 characters.", []}],
+            action: :validate
+          ]
+        else
+          []
+        end
+
+      Phoenix.Component.to_form(
+        %{"reason" => reason_draft},
+        [
+          as: :confirmation,
+          id: "job-action-confirmation-form"
+        ] ++ options
+      )
+    end
+
+    defp assign_job_action_failure(socket, action_kind, reason, reason_draft) do
+      result_state = job_action_result_state(reason)
+      confirmation_state = job_action_confirmation_state(result_state)
+
+      result =
+        ControlPlanePresenter.present_job_action_result(%{
+          state: result_state,
+          action: action_kind,
+          job_id: Map.get(socket.assigns, :job_id)
+        })
+
+      results =
+        if result_state in [:failed, :skipped] do
+          [
+            %{
+              id: "job-action-result",
+              object_label: "Job #{Map.get(socket.assigns, :job_id)}",
+              outcome: result_state,
+              message: result.message,
+              recovery: result.recovery,
+              audit_href: nil
+            }
+          ]
+        else
+          []
+        end
+
+      socket
+      |> put_private(@job_action_preview_private, nil)
+      |> assign(:action_reason_draft, reason_draft)
+      |> assign(:confirmation_state, confirmation_state)
+      |> assign(:confirmation_form, action_confirmation_form(reason_draft))
+      |> assign(:confirmation_results, results)
+      |> assign(:confirmation_audit_href, nil)
+    end
+
+    defp job_action_result_state(:preview_expired), do: :expired
+    defp job_action_result_state(:preview_drifted), do: :drifted
+    defp job_action_result_state(:preview_consumed), do: :consumed
+    defp job_action_result_state(:mutation_conflict), do: :skipped
+    defp job_action_result_state(_reason), do: :failed
+
+    defp job_action_confirmation_state(state)
+         when state in [:expired, :drifted, :consumed],
+         do: state
+
+    defp job_action_confirmation_state(:skipped), do: :partial
+    defp job_action_confirmation_state(_state), do: :failed
+
+    defp clear_job_action_confirmation(socket) do
+      socket
+      |> put_private(@job_action_preview_private, nil)
+      |> assign_job_action_confirmation_defaults()
+    end
+
+    defp assign_job_action_confirmation_defaults(socket) do
+      assign(socket,
+        action_kind: nil,
+        action_reason_draft: "",
+        confirmation_action: nil,
+        confirmation_state: :preview,
+        confirmation_form: nil,
+        confirmation_results: [],
+        confirmation_object_label: nil,
+        confirmation_fallback_id: nil,
+        confirmation_audit_href: nil
+      )
     end
 
     defp normalize_detail_job_id(value) when is_integer(value) and value > 0, do: {:ok, value}
@@ -1158,6 +1347,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> assign(:detail_return_params, [])
       |> assign(:job_id, nil)
       |> assign(:job_state, nil)
+      |> assign(:action_controls, [])
+      |> assign_job_action_confirmation_defaults()
       |> assign(:preview, nil)
       |> assign(:preview_action, nil)
       |> assign(:confirmation, nil)

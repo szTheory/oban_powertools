@@ -953,7 +953,7 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       end
     end
 
-    test "clean action success closes the dialog, reloads truth, and links exact Audit receipt",
+    test "all three clean successes reauthorize, close, reload truth, and link Audit receipts",
          %{
            conn: conn
          } do
@@ -965,31 +965,43 @@ defmodule ObanPowertools.Web.JobsLiveTest do
               :view_job_detail,
               :view_audit,
               :retry_job,
+              :cancel_job,
+              :discard_job,
               :preview_repair,
               :execute_repair
             ]
           }
         )
 
-      job = insert_job!(worker: "W", queue: :default, state: "retryable")
-      {:ok, view, _html} = live(conn, "/ops/jobs/jobs/#{job.id}")
+      for {kind, reason, receipt, resulting_state} <- [
+            {"retry", "SYNTHETIC_SENSITIVE_REASON",
+             "Retry requested for job %{id}. Audit evidence recorded.", "Available"},
+            {"cancel", "Cancel after operator review",
+             "Job %{id} cancelled. Audit evidence recorded.", "Cancelled"},
+            {"discard", "Discard after operator review",
+             "Job %{id} discarded. Audit evidence recorded.", "Discarded"}
+          ] do
+        job = insert_job!(worker: "W", queue: :default, state: "retryable")
+        {:ok, view, _html} = live(conn, "/ops/jobs/jobs/#{job.id}")
 
-      view
-      |> element("button[phx-click=\"preview_action\"][phx-value-kind=\"retry\"]")
-      |> render_click()
-
-      html =
         view
-        |> form("#job-action-confirmation-form", %{
-          "confirmation" => %{"reason" => "Retry after dependency recovery"}
-        })
-        |> render_submit()
+        |> element("button[phx-click=\"preview_action\"][phx-value-kind=\"#{kind}\"]")
+        |> render_click()
 
-      refute html =~ ~s(data-obpt-confirm-state=)
-      assert html =~ "Retry requested for job #{job.id}. Audit evidence recorded."
-      assert html =~ "Open audit evidence"
-      assert html =~ "/ops/jobs/audit?resource_type=job&amp;resource_id=#{job.id}"
-      assert html =~ "Available"
+        html =
+          view
+          |> form("#job-action-confirmation-form", %{
+            "confirmation" => %{"reason" => reason}
+          })
+          |> render_submit()
+
+        refute html =~ ~s(data-obpt-confirm-state=)
+        assert html =~ String.replace(receipt, "%{id}", Integer.to_string(job.id))
+        assert html =~ "Open audit evidence"
+        assert html =~ "/ops/jobs/audit?resource_type=job&amp;resource_id=#{job.id}"
+        assert html =~ resulting_state
+        refute html =~ "SYNTHETIC_SENSITIVE_REASON"
+      end
     end
 
     test "drifted action stays in shared recovery and needs an explicit fresh preview", %{
@@ -1033,6 +1045,15 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       assert html =~ "Create new preview"
       refute html =~ "Audit evidence recorded."
       refute has_element?(view, "#job-action-confirmation-form")
+
+      html =
+        render_hook(view, "execute_action", %{
+          "confirmation" => %{"reason" => "Forged replay attempt"}
+        })
+
+      assert html =~ ~s(data-obpt-confirm-state="drifted")
+      refute html =~ "Audit evidence recorded."
+      assert TestRepo.get!(Oban.Job, job.id).state == "executing"
 
       html = view |> element("button[phx-click=\"new_action_preview\"]") |> render_click()
 
@@ -1096,7 +1117,143 @@ defmodule ObanPowertools.Web.JobsLiveTest do
         assert html =~ "Create new preview"
         refute html =~ "Audit evidence recorded."
         refute has_element?(view, "#job-action-confirmation-form")
+
+        replay_html =
+          render_hook(view, "execute_action", %{
+            "confirmation" => %{"reason" => "Forged replay attempt"}
+          })
+
+        assert replay_html =~ ~s(data-obpt-confirm-state="#{expected_state}")
+        refute replay_html =~ "Audit evidence recorded."
+        assert TestRepo.get!(Oban.Job, job.id).state == "retryable"
       end
+    end
+
+    test "current principal is reauthorized before all three executes and failure stays recoverable",
+         %{conn: conn} do
+      full_permissions = [
+        :view_job_detail,
+        :retry_job,
+        :cancel_job,
+        :discard_job,
+        :preview_repair,
+        :execute_repair
+      ]
+
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{id: "ops-1", permissions: full_permissions}
+        )
+
+      for kind <- ~w(retry cancel discard) do
+        job = insert_job!(worker: "W", queue: :default, state: "retryable")
+        {:ok, view, _html} = live(conn, "/ops/jobs/jobs/#{job.id}")
+
+        view
+        |> element("button[phx-click=\"preview_action\"][phx-value-kind=\"#{kind}\"]")
+        |> render_click()
+
+        :sys.replace_state(view.pid, fn state ->
+          actor = %{id: "ops-1", permissions: List.delete(full_permissions, :execute_repair)}
+          socket = %{state.socket | assigns: Map.put(state.socket.assigns, :current_actor, actor)}
+          %{state | socket: socket}
+        end)
+
+        html =
+          view
+          |> form("#job-action-confirmation-form", %{
+            "confirmation" => %{"reason" => "Operator reviewed current truth"}
+          })
+          |> render_submit()
+
+        assert html =~ ~s(data-obpt-confirm-state="failed")
+        assert html =~ "The job action was not recorded."
+        assert html =~ "Create new preview"
+        refute html =~ "Audit evidence recorded."
+        refute has_element?(view, "#job-action-confirmation-form")
+
+        :sys.replace_state(view.pid, fn state ->
+          actor = %{id: "ops-1", permissions: full_permissions}
+          socket = %{state.socket | assigns: Map.put(state.socket.assigns, :current_actor, actor)}
+          %{state | socket: socket}
+        end)
+
+        replay_html =
+          render_hook(view, "execute_action", %{
+            "confirmation" => %{"reason" => "Forged replay attempt"}
+          })
+
+        assert replay_html =~ ~s(data-obpt-confirm-state="failed")
+        refute replay_html =~ "Audit evidence recorded."
+        assert TestRepo.get!(Oban.Job, job.id).state == "retryable"
+      end
+    end
+
+    test "skipped action presentation stays open without a success receipt or replay form" do
+      job = %Oban.Job{
+        id: 89,
+        state: "retryable",
+        worker: "MyApp.SkippedWorker",
+        queue: "critical",
+        attempt: 1,
+        max_attempts: 5,
+        priority: 0,
+        inserted_at: ~U[2026-07-28 01:00:00Z],
+        scheduled_at: ~U[2026-07-28 01:05:00Z],
+        errors: [],
+        meta: %{}
+      }
+
+      detail =
+        ObanPowertools.Web.ControlPlanePresenter.present_job_detail(job, %{
+          args_display: {:raw_json, "{}"},
+          meta_display: {:raw_json, "{}"},
+          recorded_output_display: %{
+            available?: false,
+            summary: "No recorded output found for this job.",
+            status: nil,
+            payload: "No recorded output found for this job.",
+            redacted?: false
+          }
+        })
+
+      html =
+        render_component(&JobsLive.page_content/1, %{
+          page_mode: :detail,
+          detail: detail,
+          detail_unavailable?: false,
+          back_path: "/ops/jobs/jobs",
+          read_only?: false,
+          action_controls: [],
+          confirmation_action:
+            ObanPowertools.Web.ControlPlanePresenter.present_job_action(:retry),
+          confirmation_state: :partial,
+          confirmation_form:
+            Phoenix.Component.to_form(%{"reason" => "Operator reviewed current truth"},
+              as: :confirmation
+            ),
+          confirmation_results: [
+            %{
+              id: "job-action-result",
+              object_label: "Job 89",
+              outcome: :skipped,
+              message: "The job action was skipped.",
+              recovery: "Create a new preview before trying again.",
+              audit_href: nil
+            }
+          ],
+          confirmation_object_label: "Job 89",
+          confirmation_fallback_id: "job-action-retry",
+          confirmation_audit_href: nil,
+          receipt: nil
+        })
+
+      assert html =~ ~s(data-obpt-confirm-state="partial")
+      assert html =~ ~s(data-obpt-result="skipped")
+      assert html =~ "The job action was skipped."
+      assert html =~ "Create new preview"
+      refute html =~ ~s(id="job-action-confirmation-form")
+      refute html =~ "Audit evidence recorded."
     end
 
     test "single action source reauthorizes current truth and uses only Lifeline mutation APIs" do
