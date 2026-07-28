@@ -20,9 +20,9 @@ defmodule ObanPowertools.Jobs do
 
   Oban does not create this index. The host application owns it.
 
-  The state-leading composite index `oban_jobs_state_queue_priority_scheduled_at_id_index`
-  (created by Oban's standard migration) still applies to every query in this module. The
-  sequential scan is bounded to state-filtered rows — never an unfiltered full-table scan.
+  Active-state list, count, and ID-window queries retain Oban's state predicate and stable
+  order. Grouped state counts intentionally omit one active state so all seven states can be
+  counted in a single query while retaining every optional predicate.
 
   ## Keyset Pagination Upgrade Path (D-03)
 
@@ -46,7 +46,16 @@ defmodule ObanPowertools.Jobs do
 
   import Ecto.Query
 
-  @states ~w(available scheduled executing retryable cancelled discarded completed)
+  @page_size 20
+  @zero_state_counts %{
+    "available" => 0,
+    "scheduled" => 0,
+    "executing" => 0,
+    "retryable" => 0,
+    "cancelled" => 0,
+    "discarded" => 0,
+    "completed" => 0
+  }
 
   @typedoc """
   Filter struct for the job browse query layer.
@@ -54,7 +63,8 @@ defmodule ObanPowertools.Jobs do
   - `state` — required; the atom state to browse (e.g. `:available`). Converted to a string
     at the WHERE boundary via `to_string/1`.
   - `queue`, `worker`, `tags`, `args`, `meta` — optional narrowing filters; `nil` means "all".
-  - `page`, `page_size` — offset pagination controls (D-03).
+  - `page` — offset page number.
+  - `page_size` — retained struct metadata; list queries always use the fixed 20-row contract.
   """
   @type t :: %__MODULE__{
           state: atom(),
@@ -79,21 +89,17 @@ defmodule ObanPowertools.Jobs do
   @doc """
   Lists jobs matching the given filter, ordered by `scheduled_at DESC, id DESC` (D-11).
 
-  State is always the first WHERE predicate (D-05), ensuring the composite index
-  `oban_jobs_state_queue_priority_scheduled_at_id_index` applies to every query.
-
-  Optional filters `queue`, `worker`, and `tags` narrow the result set when non-nil.
-  Results are paginated using offset-based pagination (D-03); see the module doc for the
-  keyset upgrade path.
+  State and optional `queue`, `worker`, `tags`, `args`, and `meta` predicates are ANDed.
+  Results use the fixed 20-row offset-page contract.
   """
-  def list(repo, %__MODULE__{} = filter, _opts \\ []) do
-    offset = (filter.page - 1) * filter.page_size
+  def list(repo, %__MODULE__{} = filter, opts \\ []) do
+    offset = (filter.page - 1) * @page_size
 
-    base_query(filter)
+    active_query(filter)
     |> order_by([j], desc: j.scheduled_at, desc: j.id)
-    |> limit(^filter.page_size)
+    |> limit(^@page_size)
     |> offset(^offset)
-    |> repo.all()
+    |> repo.all(opts)
   end
 
   @doc """
@@ -101,14 +107,56 @@ defmodule ObanPowertools.Jobs do
   Useful for cross-page bulk operations.
   """
   def list_ids(repo, %__MODULE__{} = filter) do
-    base_query(filter)
+    active_query(filter)
     |> select([j], j.id)
     |> repo.all()
   end
 
-  defp base_query(%__MODULE__{} = filter) do
-    Oban.Job
+  @doc """
+  Returns the exact count for the active state and all optional filters.
+  """
+  def count(repo, %__MODULE__{} = filter, opts \\ []) do
+    active_query(filter)
+    |> select([j], count(j.id))
+    |> repo.one(opts)
+  end
+
+  @doc """
+  Returns a stable bounded ID window for the active filter.
+
+  The query reads at most `limit + 1` IDs in fixed `scheduled_at DESC, id DESC`
+  order. The extra ID is used only to report overflow and is never returned in
+  the executable scope.
+  """
+  def ordered_ids_window(repo, filter, limit, opts \\ [])
+
+  def ordered_ids_window(repo, %__MODULE__{} = filter, limit, opts)
+      when is_integer(limit) and limit > 0 do
+    ids =
+      active_query(filter)
+      |> order_by([j], desc: j.scheduled_at, desc: j.id)
+      |> select([j], j.id)
+      |> limit(^(limit + 1))
+      |> repo.all(opts)
+
+    %{
+      ids: Enum.take(ids, limit),
+      overflow?: length(ids) > limit
+    }
+  end
+
+  def ordered_ids_window(_repo, %__MODULE__{}, _limit, _opts) do
+    raise ArgumentError, "limit must be a positive integer"
+  end
+
+  defp active_query(%__MODULE__{} = filter) do
+    filter
+    |> non_state_query()
     |> where([j], j.state == ^to_string(filter.state))
+  end
+
+  defp non_state_query(%__MODULE__{} = filter) do
+    Oban.Job
     |> maybe_filter_queue(filter.queue)
     |> maybe_filter_worker(filter.worker)
     |> maybe_filter_tags(filter.tags)
@@ -124,33 +172,25 @@ defmodule ObanPowertools.Jobs do
   end
 
   @doc """
-  Returns a map of job counts keyed by all 7 Oban state strings (D-13).
+  Returns a map of job counts keyed by all seven Oban state strings.
 
-  The `state` field of `base_filter` is ignored — this function iterates all 7 states and
-  returns a count for each. Non-state filters (`queue`, `worker`, `tags`, `args`, `meta`) from `base_filter`
-  narrow each per-state count.
-
-  This issues 7 round-trips per filter change, which is acceptable for Phase 43 because each
-  query uses the state-leading composite index `oban_jobs_state_queue_priority_scheduled_at_id_index`.
-
-  A single `GROUP BY state` query would miss states with zero counts (D-13) — the map must
-  always include all 7 keys, even for states with no matching jobs.
+  The filter's `state` is ignored. One grouped query applies the shared non-state
+  predicates, and its result is merged into a literal seven-state zero map.
   """
   def count_by_state(repo, %__MODULE__{} = base_filter) do
-    Map.new(@states, fn state ->
-      count =
-        Oban.Job
-        |> where([j], j.state == ^state)
-        |> maybe_filter_queue(base_filter.queue)
-        |> maybe_filter_worker(base_filter.worker)
-        |> maybe_filter_tags(base_filter.tags)
-        |> maybe_filter_args(base_filter.args)
-        |> maybe_filter_meta(base_filter.meta)
-        |> select([j], count(j.id))
-        |> repo.one()
+    count_by_state(repo, base_filter, [])
+  end
 
-      {state, count}
-    end)
+  def count_by_state(repo, %__MODULE__{} = base_filter, opts) when is_list(opts) do
+    grouped_counts =
+      base_filter
+      |> non_state_query()
+      |> group_by([j], j.state)
+      |> select([j], {j.state, count(j.id)})
+      |> repo.all(opts)
+      |> Map.new()
+
+    Map.merge(@zero_state_counts, grouped_counts)
   end
 
   defp maybe_filter_queue(query, nil), do: query

@@ -7,7 +7,7 @@ defmodule ObanPowertools.JobsTest do
   # list/3
   # -------------------------------------------------------------------------
 
-  test "list/3 filters by state with state leading the WHERE clause" do
+  test "list/3 filters by active state" do
     available_job = insert_job!(%{}, worker: "MyApp.AvailableWorker", queue: :default)
 
     _executing_job =
@@ -40,16 +40,24 @@ defmodule ObanPowertools.JobsTest do
     assert hd(result).id == target_job.id
   end
 
-  test "list/3 narrows by tags via @> array contains" do
+  test "list/3 requires every requested tag via @> array containment" do
     tagged_job =
-      insert_job!(%{}, worker: "MyApp.Worker", queue: :default, tags: ["alpha", "beta"])
+      insert_job!(%{},
+        worker: "MyApp.Worker",
+        queue: :default,
+        tags: ["alpha", "beta", "queue:critical"]
+      )
 
-    _untagged_job = insert_job!(%{}, worker: "MyApp.Worker", queue: :default, tags: ["gamma"])
+    _partial_job =
+      insert_job!(%{}, worker: "MyApp.Worker", queue: :default, tags: ["alpha"])
 
-    result = Jobs.list(TestRepo, %Jobs{state: :available, tags: ["alpha"]})
+    result =
+      Jobs.list(TestRepo, %Jobs{
+        state: :available,
+        tags: ["alpha", "beta", "queue:critical"]
+      })
 
-    assert length(result) == 1
-    assert hd(result).id == tagged_job.id
+    assert Enum.map(result, & &1.id) == [tagged_job.id]
   end
 
   test "list/3 narrows by args via @> jsonb contains" do
@@ -96,6 +104,78 @@ defmodule ObanPowertools.JobsTest do
     assert hd(result).id == job_with_meta.id
   end
 
+  test "list, count, and ordered ids AND the same optional literal predicates" do
+    fixed_time = ~U[2026-07-27 20:00:00.000000Z]
+
+    matching =
+      insert_job_at!(
+        %{"account_id" => 123, "kind" => "export"},
+        fixed_time,
+        worker: "MyApp.TargetWorker",
+        queue: :default,
+        tags: ["alpha", "beta", "worker:other.module"],
+        meta: %{"region" => "us", "attempt" => 1}
+      )
+
+    _wrong_queue =
+      insert_job_at!(
+        %{"account_id" => 123, "kind" => "export"},
+        fixed_time,
+        worker: "MyApp.TargetWorker",
+        queue: :other,
+        tags: ["alpha", "beta", "worker:other.module"],
+        meta: %{"region" => "us", "attempt" => 1}
+      )
+
+    _missing_tag =
+      insert_job_at!(
+        %{"account_id" => 123, "kind" => "export"},
+        fixed_time,
+        worker: "MyApp.TargetWorker",
+        queue: :default,
+        tags: ["alpha", "worker:other.module"],
+        meta: %{"region" => "us", "attempt" => 1}
+      )
+
+    _wrong_args =
+      insert_job_at!(
+        %{"account_id" => 456, "kind" => "export"},
+        fixed_time,
+        worker: "MyApp.TargetWorker",
+        queue: :default,
+        tags: ["alpha", "beta", "worker:other.module"],
+        meta: %{"region" => "us", "attempt" => 1}
+      )
+
+    _wrong_meta =
+      insert_job_at!(
+        %{"account_id" => 123, "kind" => "export"},
+        fixed_time,
+        worker: "MyApp.TargetWorker",
+        queue: :default,
+        tags: ["alpha", "beta", "worker:other.module"],
+        meta: %{"region" => "eu", "attempt" => 1}
+      )
+
+    filter = %Jobs{
+      state: :available,
+      queue: "default",
+      worker: "MyApp.TargetWorker",
+      tags: ["alpha", "beta", "worker:other.module"],
+      args: %{"account_id" => 123},
+      meta: %{"region" => "us"}
+    }
+
+    assert Enum.map(Jobs.list(TestRepo, filter), & &1.id) == [matching.id]
+    assert Jobs.count(TestRepo, filter, []) == 1
+    assert Jobs.count_by_state(TestRepo, filter, [])["available"] == 1
+
+    assert Jobs.ordered_ids_window(TestRepo, filter, 20, []) == %{
+             ids: [matching.id],
+             overflow?: false
+           }
+  end
+
   test "list/3 orders by scheduled_at DESC, id DESC" do
     # Insert two jobs with the same scheduled_at; the higher id should come first
     fixed_time = DateTime.truncate(DateTime.utc_now(), :microsecond)
@@ -125,20 +205,68 @@ defmodule ObanPowertools.JobsTest do
            "Expected higher id (#{job_b.id}) to appear before lower id (#{job_a.id})"
   end
 
-  test "list/3 paginates by page/page_size" do
-    _j1 = insert_job!(%{}, worker: "MyApp.Worker", queue: :default)
-    _j2 = insert_job!(%{}, worker: "MyApp.Worker", queue: :default)
-    _j3 = insert_job!(%{}, worker: "MyApp.Worker", queue: :default)
+  test "list/3 keeps fixed non-overlapping 20-row offset pages with stable ties" do
+    fixed_time = ~U[2026-07-27 20:30:00.000000Z]
 
-    page1 = Jobs.list(TestRepo, %Jobs{state: :available, page: 1, page_size: 2})
-    page2 = Jobs.list(TestRepo, %Jobs{state: :available, page: 2, page_size: 2})
+    jobs =
+      for _index <- 1..41 do
+        insert_job_at!(%{}, fixed_time, worker: "MyApp.Worker", queue: :default)
+      end
 
-    assert length(page1) == 2
-    assert length(page2) == 1
+    expected_ids = jobs |> Enum.map(& &1.id) |> Enum.sort(:desc)
 
-    page1_ids = MapSet.new(page1, & &1.id)
-    page2_ids = MapSet.new(page2, & &1.id)
-    assert MapSet.disjoint?(page1_ids, page2_ids), "Pages should not overlap"
+    page1 = Jobs.list(TestRepo, %Jobs{state: :available, page: 1})
+    page2 = Jobs.list(TestRepo, %Jobs{state: :available, page: 2})
+    page3 = Jobs.list(TestRepo, %Jobs{state: :available, page: 3})
+
+    assert Enum.map(page1, & &1.id) == Enum.slice(expected_ids, 0, 20)
+    assert Enum.map(page2, & &1.id) == Enum.slice(expected_ids, 20, 20)
+    assert Enum.map(page3, & &1.id) == Enum.slice(expected_ids, 40, 1)
+
+    assert [page1, page2, page3]
+           |> Enum.flat_map(&Enum.map(&1, fn job -> job.id end))
+           |> Enum.uniq()
+           |> length() == 41
+  end
+
+  # -------------------------------------------------------------------------
+  # count/3 and ordered_ids_window/4
+  # -------------------------------------------------------------------------
+
+  test "count/3 returns the exact active-state filtered count" do
+    insert_job!(%{"account_id" => 123}, worker: "MyApp.Worker", queue: :default)
+    insert_job!(%{"account_id" => 123}, worker: "MyApp.Worker", queue: :default)
+    insert_job!(%{"account_id" => 456}, worker: "MyApp.Worker", queue: :default)
+
+    insert_job!(%{"account_id" => 123},
+      worker: "MyApp.Worker",
+      queue: :default,
+      state: "executing"
+    )
+
+    filter = %Jobs{state: :available, queue: "default", args: %{"account_id" => 123}}
+
+    assert Jobs.count(TestRepo, filter, []) == 2
+  end
+
+  test "ordered_ids_window/4 returns at most limit stable ids plus overflow truth" do
+    fixed_time = ~U[2026-07-27 21:00:00.000000Z]
+
+    jobs =
+      for _index <- 1..21 do
+        insert_job_at!(%{}, fixed_time, worker: "MyApp.Worker", queue: :default)
+      end
+
+    expected_ids = jobs |> Enum.map(& &1.id) |> Enum.sort(:desc)
+
+    assert Jobs.ordered_ids_window(TestRepo, %Jobs{state: :available}, 20, []) == %{
+             ids: Enum.take(expected_ids, 20),
+             overflow?: true
+           }
+
+    assert_raise ArgumentError, "limit must be a positive integer", fn ->
+      Jobs.ordered_ids_window(TestRepo, %Jobs{}, 0, [])
+    end
   end
 
   # -------------------------------------------------------------------------
@@ -208,6 +336,26 @@ defmodule ObanPowertools.JobsTest do
     assert counts_meta["available"] == 1
   end
 
+  test "count_by_state/3 executes one grouped count query and fills all seven states" do
+    insert_job!(%{}, worker: "MyApp.Worker", queue: :default)
+    insert_job!(%{}, worker: "MyApp.Worker", queue: :default, state: "executing")
+    insert_job!(%{}, worker: "MyApp.Worker", queue: :other, state: "retryable")
+
+    {counts, queries} =
+      capture_job_queries(fn ->
+        Jobs.count_by_state(TestRepo, %Jobs{queue: "default"}, [])
+      end)
+
+    assert length(queries) == 1
+    assert hd(queries) =~ ~r/GROUP BY .*state/
+    assert counts["available"] == 1
+    assert counts["executing"] == 1
+    assert counts["retryable"] == 0
+
+    assert Map.keys(counts) |> Enum.sort() ==
+             ~w(available cancelled completed discarded executing retryable scheduled)
+  end
+
   # -------------------------------------------------------------------------
   # Private helpers
   # -------------------------------------------------------------------------
@@ -226,6 +374,46 @@ defmodule ObanPowertools.JobsTest do
       job
       |> Ecto.Changeset.change(state: state)
       |> TestRepo.update!()
+    end
+  end
+
+  defp insert_job_at!(args, scheduled_at, opts) do
+    args
+    |> Oban.Job.new(opts)
+    |> Ecto.Changeset.change(scheduled_at: scheduled_at)
+    |> TestRepo.insert!()
+  end
+
+  defp capture_job_queries(fun) do
+    handler_id = {__MODULE__, make_ref()}
+    event = TestRepo.config() |> Keyword.fetch!(:telemetry_prefix) |> Kernel.++([:query])
+    test_pid = self()
+
+    :telemetry.attach(
+      handler_id,
+      event,
+      fn _event, _measurements, metadata, pid ->
+        if metadata[:source] == "oban_jobs" and
+             String.starts_with?(metadata[:query] || "", "SELECT") do
+          send(pid, {:job_query, metadata.query})
+        end
+      end,
+      test_pid
+    )
+
+    try do
+      result = fun.()
+      {result, collect_job_queries([])}
+    after
+      :telemetry.detach(handler_id)
+    end
+  end
+
+  defp collect_job_queries(queries) do
+    receive do
+      {:job_query, query} -> collect_job_queries([query | queries])
+    after
+      0 -> Enum.reverse(queries)
     end
   end
 end
