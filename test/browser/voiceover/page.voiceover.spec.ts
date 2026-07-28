@@ -11,15 +11,49 @@ import {
 
 test.use({ voiceOverStartOptions: { capture: true } });
 
+const voiceOverStoryIds = [
+  "page-overview-fixed-order-nonzero",
+  "page-cron-pause-confirmation",
+  "page-cron-expired-recovery",
+  "page-limiters-blocked-evidence-layers",
+  "page-audit-selected-missing-fields",
+  "page-jobs-full-detail",
+  "page-forensics-incident-partial-remediation",
+] as const;
+
+type VoiceOverStoryId = (typeof voiceOverStoryIds)[number];
+type VoiceOverPageStory = ShowcasePageStory & { id: VoiceOverStoryId };
+
+function storyById(id: VoiceOverStoryId): VoiceOverPageStory {
+  const match = pageStories.find((candidate) => candidate.id === id);
+
+  if (!match) {
+    throw new Error(`missing exact VoiceOver page story ${id}`);
+  }
+
+  return match as VoiceOverPageStory;
+}
+
 const voiceOverStories = [
-  storyById("page-overview-fixed-order-nonzero"),
-  storyById("page-cron-pause-confirmation"),
-  storyById("page-cron-expired-recovery"),
-  storyById("page-limiters-blocked-evidence-layers"),
-  storyById("page-audit-selected-missing-fields"),
-  storyById("page-jobs-full-detail"),
-  storyById("page-forensics-incident-partial-remediation"),
+  ...voiceOverStoryIds.map(storyById),
 ];
+
+const requiredTranscriptText: Readonly<
+  Record<VoiceOverStoryId, readonly string[]>
+> = {
+  "page-overview-fixed-order-nonzero": [],
+  "page-cron-pause-confirmation": [],
+  "page-cron-expired-recovery": [],
+  "page-limiters-blocked-evidence-layers": [],
+  "page-audit-selected-missing-fields": [],
+  "page-jobs-full-detail": ["Back to Jobs"],
+  "page-forensics-incident-partial-remediation": [
+    "Investigation summary",
+    "Event log",
+  ],
+};
+
+const maxTraversalSteps = 240;
 
 async function isolateAccessibleStage(
   stage: import("@playwright/test").Locator,
@@ -53,18 +87,41 @@ for (const pageStory of voiceOverStories) {
     await expect(stage).toBeVisible();
     await isolateAccessibleStage(stage);
 
-    await voiceOver.navigateToWebContent();
-
-    for (let index = 0; index < 40; index += 1) {
-      await voiceOver.next();
-    }
-
-    const spokenPhrases = await voiceOver.spokenPhraseLog();
-    const itemText = await voiceOver.itemTextLog();
-    const transcript = [...spokenPhrases, ...itemText].join("\n");
     const requiredRole = pageStory.acceptance.roles.find(
       (contract) => contract.role === "dialog",
     ) ?? pageStory.acceptance.roles[0];
+    const requiredPhrases = requiredTranscriptText[pageStory.id];
+
+    await voiceOver.navigateToWebContent();
+
+    let spokenPhrases: string[] = [];
+    let itemText: string[] = [];
+    let transcript = "";
+
+    for (let index = 0; index < maxTraversalSteps; index += 1) {
+      await voiceOver.next();
+
+      if ((index + 1) % 5 !== 0 && index + 1 !== maxTraversalSteps) {
+        continue;
+      }
+
+      spokenPhrases = await voiceOver.spokenPhraseLog();
+      itemText = await voiceOver.itemTextLog();
+      transcript = [...spokenPhrases, ...itemText].join("\n");
+
+      const roleReached = transcript.includes(requiredRole.name);
+      const acceptanceTruthReached =
+        pageStory.acceptance.required_text.some((copy) =>
+          transcript.includes(copy),
+        );
+      const pageTruthReached = requiredPhrases.every((copy) =>
+        transcript.includes(copy),
+      );
+
+      if (roleReached && acceptanceTruthReached && pageTruthReached) {
+        break;
+      }
+    }
 
     expect(
       transcript,
@@ -78,6 +135,13 @@ for (const pageStory of voiceOverStories) {
       announcedTruth,
       "VoiceOver transcript must contain at least one story acceptance truth",
     ).toBe(true);
+
+    for (const requiredText of requiredPhrases) {
+      expect(
+        transcript,
+        `VoiceOver transcript for ${pageStory.id} must contain ${requiredText}`,
+      ).toContain(requiredText);
+    }
 
     await testInfo.attach(`${pageStory.id}-voiceover-transcript`, {
       body: Buffer.from(
