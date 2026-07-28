@@ -36,8 +36,13 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     @impl true
-    def handle_params(%{"id" => id}, _uri, socket) do
-      {:noreply, load_job_detail(socket, id)}
+    def handle_params(%{"id" => id} = params, _uri, socket) do
+      parsed_return =
+        params
+        |> Map.take(~w(state queue worker tags args meta page))
+        |> JobsParams.parse_url()
+
+      {:noreply, load_job_detail(socket, id, parsed_return.canonical_params)}
     end
 
     def handle_params(params, _uri, socket) do
@@ -240,18 +245,21 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       with :ok <-
              LiveAuth.authorize_action(socket, :preview_repair, %{
                type: :job,
-               id: to_string(socket.assigns.job.id)
+               id: to_string(socket.assigns.job_id)
              }),
            {:ok, preview} <-
              Lifeline.preview_repair(repo(), socket.assigns.current_actor, %{
                incident_id: nil,
                action: action,
                target_type: "job",
-               target_id: socket.assigns.job.id
+               target_id: socket.assigns.job_id
              }) do
+        presentation = ControlPlanePresenter.present_job_action(job_action_kind(action))
+
         {:noreply,
          socket
          |> assign(:preview, preview)
+         |> assign(:preview_action, presentation)
          |> assign(:reason, "")
          |> assign(:error_message, nil)}
       else
@@ -272,7 +280,13 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     def handle_event("close_preview", _, socket) do
       {:noreply,
-       assign(socket, preview: nil, bulk_preview_action: nil, reason: "", error_message: nil)}
+       assign(socket,
+         preview: nil,
+         preview_action: nil,
+         bulk_preview_action: nil,
+         reason: "",
+         error_message: nil
+       )}
     end
 
     def handle_event("reason", %{"reason" => r}, socket) do
@@ -289,7 +303,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         with :ok <-
                LiveAuth.authorize_action(socket, :execute_repair, %{
                  type: :job,
-                 id: to_string(socket.assigns.job.id)
+                 id: to_string(socket.assigns.job_id)
                }),
              {:ok, %{target: target}} <-
                Lifeline.execute_repair(
@@ -432,270 +446,19 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp action_word("job_discard"), do: "discarded"
     defp action_word(action), do: action
 
+    defp job_action_kind("job_retry"), do: :retry
+    defp job_action_kind("job_cancel"), do: :cancel
+    defp job_action_kind("job_discard"), do: :discard
+
     @impl true
-    def render(%{live_action: :show} = assigns) do
-      ~H"""
-      <div class="space-y-6 p-6">
-        <%= if @job_not_found? do %>
-          <div class="rounded-lg border bg-white p-6">
-            <h1 class="text-2xl font-semibold">Job not found</h1>
-            <p class="mt-2 text-sm text-zinc-600">
-              Job not found. It may have been pruned or the ID is invalid. Return to the job list.
-            </p>
-            <.link navigate={Selectors.jobs_path([])} class="mt-3 inline-flex text-indigo-700 underline">
-              Back to Jobs
-            </.link>
-          </div>
-        <% else %>
-          <div class="flex flex-wrap items-start justify-between gap-4">
-            <h1 class="text-2xl font-semibold">Job #<%= @job.id %></h1>
-            <div class="flex gap-2 items-center">
-              <%= if not @read_only? do %>
-                <button :if={@job.state in ["retryable", "discarded", "cancelled", "completed"]} phx-click="preview" phx-value-action="job_retry" class="rounded bg-white px-4 py-2 text-sm font-semibold text-indigo-600 border border-indigo-200 hover:bg-indigo-50">Retry Job</button>
-                <button :if={@job.state in ["available", "scheduled", "executing", "retryable"]} phx-click="preview" phx-value-action="job_cancel" class="rounded bg-white px-4 py-2 text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50">Cancel Job</button>
-                <button :if={@job.state in ["available", "scheduled", "executing", "retryable"]} phx-click="preview" phx-value-action="job_discard" class="rounded bg-white px-4 py-2 text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50">Discard Job</button>
-              <% end %>
-              <.link navigate={@back_path} class="text-indigo-700 underline">Back to Jobs</.link>
-            </div>
-          </div>
-
-          <p :if={@read_only?} class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            <%= LiveAuth.page_read_only_banner(:job_detail) %>
-          </p>
-
-          <%!-- Identity card --%>
-          <div class="rounded-lg border bg-white p-4">
-            <h2 class="text-base font-semibold">Identity</h2>
-            <dl class="mt-3 space-y-2 text-sm">
-              <div class="flex gap-4">
-                <dt class="w-36 text-zinc-500">Worker</dt>
-                <dd><%= short_worker_name(@job.worker) %></dd>
-              </div>
-              <div class="flex gap-4">
-                <dt class="w-36 text-zinc-500">Queue</dt>
-                <dd><%= @job.queue %></dd>
-              </div>
-              <div class="flex gap-4">
-                <dt class="w-36 text-zinc-500">State</dt>
-                <dd>
-                  <span class="obpt-badge" data-obpt-tone={state_badge_tone(@job.state)}>
-                    <%= @job.state %>
-                  </span>
-                </dd>
-              </div>
-              <div class="flex gap-4">
-                <dt class="w-36 text-zinc-500">Job ID</dt>
-                <dd><%= @job.id %></dd>
-              </div>
-              <div class="flex gap-4">
-                <dt class="w-36 text-zinc-500">Attempt</dt>
-                <dd><%= @job.attempt %> / <%= @job.max_attempts %></dd>
-              </div>
-              <%!-- Timing fields — only non-nil are rendered per D-14 --%>
-              <div :if={@job.inserted_at} class="flex gap-4">
-                <dt class="w-36 text-zinc-500">Inserted At</dt>
-                <dd><%= timestamp_copy(@job.inserted_at) %></dd>
-              </div>
-              <div :if={@job.scheduled_at} class="flex gap-4">
-                <dt class="w-36 text-zinc-500">Scheduled At</dt>
-                <dd><%= timestamp_copy(@job.scheduled_at) %></dd>
-              </div>
-              <div :if={@job.attempted_at} class="flex gap-4">
-                <dt class="w-36 text-zinc-500">Attempted At</dt>
-                <dd><%= timestamp_copy(@job.attempted_at) %></dd>
-              </div>
-              <div :if={@job.completed_at} class="flex gap-4">
-                <dt class="w-36 text-zinc-500">Completed At</dt>
-                <dd><%= timestamp_copy(@job.completed_at) %></dd>
-              </div>
-              <div :if={@job.cancelled_at} class="flex gap-4">
-                <dt class="w-36 text-zinc-500">Cancelled At</dt>
-                <dd><%= timestamp_copy(@job.cancelled_at) %></dd>
-              </div>
-              <div :if={@job.discarded_at} class="flex gap-4">
-                <dt class="w-36 text-zinc-500">Discarded At</dt>
-                <dd><%= timestamp_copy(@job.discarded_at) %></dd>
-              </div>
-            </dl>
-          </div>
-
-          <%!-- Args / Meta panels — side-by-side on xl per UI-SPEC --%>
-          <div class="grid gap-6 xl:grid-cols-2">
-            <div class="rounded-lg border bg-white p-4">
-              <h2 class="text-base font-semibold">Args</h2>
-              <div class="mt-3">
-                <%= case @args_display do %>
-                  <% {:raw_json, json} -> %>
-                    <pre class="text-sm bg-slate-50 p-3 rounded overflow-x-auto"><%= json %></pre>
-                  <% {:string, text} -> %>
-                    <pre class="text-sm bg-slate-50 p-3 rounded overflow-x-auto"><%= text %></pre>
-                  <% {:fallback, msg} -> %>
-                    <span class="text-zinc-500"><%= msg %></span>
-                <% end %>
-              </div>
-            </div>
-
-            <div class="rounded-lg border bg-white p-4">
-              <h2 class="text-base font-semibold">Meta</h2>
-              <div class="mt-3">
-                <%= case @meta_display do %>
-                  <% {:raw_json, json} -> %>
-                    <pre class="text-sm bg-slate-50 p-3 rounded overflow-x-auto"><%= json %></pre>
-                  <% {:string, text} -> %>
-                    <pre class="text-sm bg-slate-50 p-3 rounded overflow-x-auto"><%= text %></pre>
-                  <% {:fallback, msg} -> %>
-                    <span class="text-zinc-500"><%= msg %></span>
-                <% end %>
-              </div>
-            </div>
-          </div>
-
-          <%!-- Redaction disclosure — shown near Meta card when __redacted_fields__ present (REDACT-03, D-13) --%>
-          <%= if @redacted_fields != [] do %>
-            <div class="rounded-lg border bg-white p-4">
-              <p class="text-xs font-semibold text-zinc-500">
-                Fields redacted at enqueue:
-                <%= Enum.map(@redacted_fields, &":#{&1}") |> Enum.join(", ") %>
-              </p>
-            </div>
-          <% end %>
-
-          <%!-- Recorded output panel --%>
-          <div class="rounded-lg border bg-white p-4">
-            <h2 class="text-base font-semibold">Recorded Output</h2>
-            <%= if @recorded_output.available? do %>
-              <dl class="mt-3 grid gap-3 text-sm md:grid-cols-2">
-                <div class="flex gap-4">
-                  <dt class="w-36 text-zinc-500">Availability</dt>
-                  <dd>Available</dd>
-                </div>
-                <div class="flex gap-4">
-                  <dt class="w-36 text-zinc-500">Summary</dt>
-                  <dd><%= @recorded_output.summary %></dd>
-                </div>
-                <div class="flex gap-4">
-                  <dt class="w-36 text-zinc-500">Status</dt>
-                  <dd><%= @recorded_output.status || "Unknown" %></dd>
-                </div>
-                <div class="flex gap-4">
-                  <dt class="w-36 text-zinc-500">Attempt</dt>
-                  <dd><%= @recorded_output.attempt || "Unknown" %></dd>
-                </div>
-                <div class="flex gap-4">
-                  <dt class="w-36 text-zinc-500">Payload Bytes</dt>
-                  <dd><%= @recorded_output.payload_bytes || "Unknown" %></dd>
-                </div>
-                <div class="flex gap-4">
-                  <dt class="w-36 text-zinc-500">Recorded At</dt>
-                  <dd><%= timestamp_copy(@recorded_output.recorded_at) %></dd>
-                </div>
-                <div class="flex gap-4">
-                  <dt class="w-36 text-zinc-500">Retention</dt>
-                  <dd><%= @recorded_output.retention || "Unknown" %></dd>
-                </div>
-                <div class="flex gap-4">
-                  <dt class="w-36 text-zinc-500">Expires At</dt>
-                  <dd><%= timestamp_copy(@recorded_output.expires_at) %></dd>
-                </div>
-                <div class="flex gap-4 md:col-span-2">
-                  <dt class="w-36 text-zinc-500">Redacted Metadata</dt>
-                  <dd><%= if @recorded_output.redacted?, do: "Stored redaction metadata present", else: "None" %></dd>
-                </div>
-              </dl>
-              <div class="mt-4">
-                <h3 class="text-sm font-semibold text-zinc-700">Payload</h3>
-                <pre class="mt-2 text-sm bg-slate-50 p-3 rounded overflow-x-auto"><%= payload_copy(@recorded_output.payload) %></pre>
-              </div>
-            <% else %>
-              <p class="mt-3 text-sm text-zinc-600">No recorded output found for this job.</p>
-            <% end %>
-          </div>
-
-          <%!-- Errors panel --%>
-          <div class="rounded-lg border bg-white p-4">
-            <h2 class="text-base font-semibold">Errors</h2>
-            <%= if (@job.errors || []) == [] do %>
-              <p class="mt-3 text-sm text-zinc-600">No errors recorded for this job.</p>
-            <% else %>
-              <div class="mt-3 space-y-3">
-                <div :for={err <- @job.errors || []} class="rounded border bg-slate-50 p-3 text-sm space-y-1">
-                  <div><span class="font-semibold">Attempt <%= err["attempt"] %></span></div>
-                  <div class="text-zinc-500"><%= timestamp_copy(err["at"]) %></div>
-                  <pre class="text-sm whitespace-pre-wrap"><%= err["error"] %></pre>
-                </div>
-              </div>
-            <% end %>
-          </div>
-
-          <%!-- Attempt history panel --%>
-          <div class="rounded-lg border bg-white p-4">
-            <h2 class="text-base font-semibold">Attempt History</h2>
-            <%= if @job.attempt == 0 and (@job.errors || []) == [] do %>
-              <p class="mt-3 text-sm text-zinc-600">No attempt history available.</p>
-            <% else %>
-              <div class="mt-3 space-y-2 text-sm">
-                <%= for attempt_num <- 1..max(@job.attempt, length(@job.errors || [])) do %>
-                  <% err = Enum.find(@job.errors || [], &(&1["attempt"] == attempt_num)) %>
-                  <div class="flex gap-4">
-                    <span class="w-24 text-zinc-500">Attempt <%= attempt_num %></span>
-                    <span><%= if err, do: timestamp_copy(err["at"]), else: "In progress" %></span>
-                  </div>
-                <% end %>
-              </div>
-            <% end %>
-          </div>
-        <% end %>
-
-        <%!-- Action Preview Modal --%>
-        <%= if @preview do %>
-          <div class="obpt-modal-backdrop">
-            <div class="obpt-modal">
-              <h2 class="text-base font-semibold">
-                <%= case @preview.action do %>
-                  <% "job_retry" -> %> Retry Job #<%= @job.id %>
-                  <% "job_cancel" -> %> Cancel Job #<%= @job.id %>
-                  <% "job_discard" -> %> Discard Job #<%= @job.id %>
-                <% end %>
-              </h2>
-
-              <div class="obpt-modal-summary">
-                <div><strong>Job ID:</strong> <%= @job.id %></div>
-                <div><strong>Current State:</strong> <%= @job.state %></div>
-                <div><strong>Action:</strong> <%= @preview.action %></div>
-              </div>
-
-              <form phx-change="reason" phx-submit="execute" class="mt-4 space-y-4">
-                <label class="obpt-form-label">Reason (required)</label>
-                <input type="text" name="reason" value={@reason} placeholder="e.g., Network timeout, operator intervention..." class="obpt-input" />
-
-                <div :if={@error_message} class="obpt-alert obpt-alert--danger">
-                  <%= @error_message %>
-                </div>
-
-                <div class="mt-6 flex justify-end gap-4">
-                  <button type="button" phx-click="close_preview" class="obpt-button obpt-button--neutral">Keep Job</button>
-                  <button type="submit" disabled={String.trim(@reason) == ""} class={preview_confirm_button_class(@preview.action)}>
-                    <%= case @preview.action do %>
-                      <% "job_retry" -> %> Confirm Retry
-                      <% "job_cancel" -> %> Confirm Cancel
-                      <% "job_discard" -> %> Confirm Discard
-                    <% end %>
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        <% end %>
-      </div>
-      """
-    end
+    def render(%{live_action: :show} = assigns), do: page_content(assigns)
 
     def render(assigns), do: page_content(assigns)
 
     attr(:rows, :list, default: [])
     attr(:counts, :map, required: true)
     attr(:filter, :any, required: true)
-    attr(:filter_form, Phoenix.HTML.Form, required: true)
+    attr(:filter_form, :any, required: true)
     attr(:filter_copy, :map, required: true)
     attr(:filter_errors, :map, default: %{})
     attr(:filters_dirty?, :boolean, default: false)
@@ -718,300 +481,506 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     attr(:error_message, :string, default: nil)
 
     def page_content(assigns) do
-      assigns = assign(assigns, :states, @valid_states)
+      if Map.get(assigns, :page_mode) == :detail do
+        detail_page_content(assigns)
+      else
+        assigns = assign(assigns, :states, @valid_states)
+
+        ~H"""
+        <section id="jobs-page" class="obpt-jobs-page" aria-labelledby="jobs-page-title">
+          <header class="obpt-jobs-page__header">
+            <h1 id="jobs-page-title">Jobs</h1>
+            <p>
+              Review current job state, apply precise filters, and take deliberate action with recorded evidence.
+            </p>
+          </header>
+
+          <Primitives.surface :if={@read_only?} variant={:inset}>
+            <p>{LiveAuth.page_read_only_banner(:jobs)}</p>
+          </Primitives.surface>
+
+          <Primitives.surface :if={@url_notice} variant={:inset}>
+            <h2>Some filters were not applied</h2>
+            <p>{@url_notice}</p>
+          </Primitives.surface>
+
+          <Primitives.surface :if={@review_notice} variant={:inset}>
+            <h2>Job unavailable</h2>
+            <p>{@review_notice}</p>
+          </Primitives.surface>
+
+          <nav class="obpt-jobs-page__states" aria-label="Job state">
+            <Primitives.button
+              :for={state <- @states}
+              id={"jobs-state-#{state}"}
+              phx-click="select_state"
+              phx-value-state={state}
+              variant={if(to_string(@filter.state) == state, do: :primary, else: :neutral)}
+              aria-current={if(to_string(@filter.state) == state, do: "page")}
+            >
+              {state_label(state)} ({Map.get(@counts, state, 0)})
+            </Primitives.button>
+          </nav>
+
+          <OperatorPatterns.filter_bar
+            id="jobs-filter"
+            form={@filter_form}
+            mode={:submit}
+            result_summary={@result_summary}
+            results_target_id="jobs-results"
+            active_filters={@active_filters}
+            dirty={@filters_dirty?}
+            filters_expanded={@filters_expanded?}
+            change_event="validate_filters"
+            submit_event="apply_filters"
+            clear_href={@clear_filters_href}
+          >
+            <:fields>
+              <Forms.input
+                field={@filter_form[:queue]}
+                label="Queue"
+                variant={:filter}
+                placeholder="All queues"
+              />
+              <Forms.input
+                field={@filter_form[:worker]}
+                label="Worker module"
+                variant={:filter}
+                placeholder="All worker modules"
+              />
+              <Forms.input
+                field={@filter_form[:tags]}
+                label="Tags"
+                hint={@filter_copy.tags_help}
+                variant={:filter}
+                placeholder="All tags"
+              />
+            </:fields>
+            <:advanced_fields>
+              <Forms.input
+                field={@filter_form[:args]}
+                label="Args contain"
+                hint={@filter_copy.json_help}
+                errors={field_errors(@filter_errors, :args)}
+                variant={:filter}
+                placeholder="JSON object"
+              />
+              <Forms.input
+                field={@filter_form[:meta]}
+                label="Meta contain"
+                hint={@filter_copy.json_help}
+                errors={field_errors(@filter_errors, :meta)}
+                variant={:filter}
+                placeholder="JSON object"
+              />
+            </:advanced_fields>
+          </OperatorPatterns.filter_bar>
+
+          <section
+            :if={@selected_count > 0}
+            id="jobs-selection-summary"
+            class="obpt-jobs-page__selection-summary"
+            aria-live="polite"
+          >
+            <p>{selection_count_copy(@selected_count)}</p>
+            <Primitives.button phx-click="clear_selection">Clear selection</Primitives.button>
+            <div :if={!@read_only?} class="obpt-jobs-page__selection-actions">
+              <Primitives.button
+                :if={to_string(@filter.state) in ["retryable", "cancelled", "discarded", "completed"]}
+                phx-click="preview_bulk"
+                phx-value-action="job_retry"
+                variant={:warning}
+              >
+                Retry jobs
+              </Primitives.button>
+              <Primitives.button
+                :if={to_string(@filter.state) in ["available", "scheduled", "executing", "retryable"]}
+                phx-click="preview_bulk"
+                phx-value-action="job_cancel"
+                variant={:danger}
+              >
+                Cancel jobs
+              </Primitives.button>
+              <Primitives.button
+                :if={to_string(@filter.state) in ["available", "scheduled", "executing", "retryable"]}
+                phx-click="preview_bulk"
+                phx-value-action="job_discard"
+                variant={:danger}
+              >
+                Discard jobs
+              </Primitives.button>
+            </div>
+          </section>
+
+          <DataDisplay.data_table
+            id="jobs-results"
+            caption="Jobs"
+            rows={@rows}
+            row_id={& &1.id}
+            state={:ready}
+            resource="jobs"
+            row_count={@pagination.total_count}
+            pagination_summary={@pagination.summary}
+          >
+            <:toolbar>
+              <label for="jobs-page-selection">
+                <input
+                  id="jobs-page-selection"
+                  type="checkbox"
+                  phx-click="toggle_page"
+                  checked={@page_selection_state == :checked}
+                  aria-checked={page_selection_aria(@page_selection_state)}
+                  data-obpt-page-selection={@page_selection_state}
+                />
+                <span>Select current page</span>
+              </label>
+            </:toolbar>
+            <:selection :let={row}>
+              <label for={"job-select-#{row.id}"}>
+                <input
+                  id={"job-select-#{row.id}"}
+                  type="checkbox"
+                  checked={row.selection.checked?}
+                  phx-click="toggle_job"
+                  phx-value-id={row.id}
+                  aria-label={row.selection.label}
+                />
+                <span class="obpt-sr-only">{row.selection.label}</span>
+              </label>
+            </:selection>
+            <:col :let={row} label="Worker" value_kind={:module}>
+              <DataDisplay.machine_value
+                id={"job-worker-#{row.id}"}
+                value={row.worker}
+                kind={:module}
+                truncate={false}
+              />
+            </:col>
+            <:col :let={row} label="State">
+              <DataDisplay.status_pill domain={:job} state={row.state} />
+            </:col>
+            <:col :let={row} label="Queue" value_kind={:literal}>
+              <DataDisplay.machine_value
+                id={"job-queue-#{row.id}"}
+                value={row.queue}
+                kind={:literal}
+                truncate={false}
+              />
+            </:col>
+            <:col :let={row} label="Scheduled">
+              <time datetime={row.scheduled.datetime}>{row.scheduled.label}</time>
+            </:col>
+            <:col :let={row} label="Attempts">{row.attempts}</:col>
+            <:col :let={row} label="Job ID" value_kind={:id}>
+              <DataDisplay.machine_value
+                id={"job-id-#{row.id}"}
+                value={to_string(row.id)}
+                kind={:id}
+                truncate={false}
+              />
+            </:col>
+            <:col :let={row} label="Review job">
+              <Primitives.button
+                id={"job-review-#{row.id}"}
+                phx-click="select_review"
+                phx-value-id={row.id}
+                variant={if(row.review.current?, do: :primary, else: :neutral)}
+                aria-label={row.review.label}
+                aria-expanded={to_string(row.review.current?)}
+                aria-controls={if(row.review.current?, do: "job-quick-review")}
+              >
+                {if(row.review.current?, do: "Reviewing", else: "Review job")}
+              </Primitives.button>
+            </:col>
+          </DataDisplay.data_table>
+
+          <DataDisplay.empty_state
+            :if={@rows == []}
+            id="jobs-empty"
+            heading="No jobs match the applied filters"
+            body="Remove a filter or clear all filters to widen the review."
+          />
+
+          <nav class="obpt-jobs-page__pagination" aria-label="Jobs pages">
+            <Primitives.button
+              id="jobs-previous-page"
+              phx-click="paginate"
+              phx-value-page={@pagination.page - 1}
+              disabled={!@pagination.previous?}
+            >
+              Previous
+            </Primitives.button>
+            <span>{@pagination.summary}</span>
+            <Primitives.button
+              id="jobs-next-page"
+              phx-click="paginate"
+              phx-value-page={@pagination.page + 1}
+              disabled={!@pagination.next?}
+            >
+              Next
+            </Primitives.button>
+          </nav>
+
+          <OperatorPatterns.detail_surface
+            :if={@quick_review}
+            id="job-quick-review"
+            title={@quick_review.title}
+            close_label="Close job review"
+            open={true}
+            variant={:adaptive}
+            state={:ready}
+            resource="job review"
+            logical_fallback_id={"job-review-#{@quick_review.id}"}
+            close_event="close_review"
+            loaded_announcement={"Job #{@quick_review.id} review loaded"}
+          >
+            <:body>
+              <DataDisplay.description_list id="job-quick-review-facts">
+                <:item label="Job ID" value_kind={:id}>{@quick_review.id}</:item>
+                <:item label="State">
+                  <DataDisplay.status_pill domain={:job} state={@quick_review.state.value} />
+                </:item>
+                <:item label="Worker" value_kind={:module}>{@quick_review.worker}</:item>
+                <:item label="Queue" value_kind={:literal}>{@quick_review.queue}</:item>
+                <:item label="Attempts">{@quick_review.attempts}</:item>
+                <:item label={@quick_review.relevant_time.label}>
+                  <time datetime={@quick_review.relevant_time.datetime}>
+                    {@quick_review.relevant_time.value}
+                  </time>
+                </:item>
+                <:item label="Latest failure">{@quick_review.failure_summary}</:item>
+                <:item label="Recorded output">
+                  {if(@quick_review.recorded_output_available?, do: "Available", else: "Not recorded")}
+                </:item>
+                <:item label="Enqueue redaction">{@quick_review.enqueue_redaction.summary}</:item>
+              </DataDisplay.description_list>
+            </:body>
+            <:actions>
+              <Primitives.link navigate={@quick_review.full_details_href}>
+                Open full job details
+              </Primitives.link>
+            </:actions>
+          </OperatorPatterns.detail_surface>
+
+          <%= if @bulk_preview_action do %>
+            <div class="obpt-modal-backdrop">
+              <div class="obpt-modal">
+                <h2>{bulk_preview_title(@bulk_preview_action, @selected_count)}</h2>
+                <p>Each job is processed independently.</p>
+                <form phx-change="reason" phx-submit="execute_bulk">
+                  <label for="jobs-bulk-reason">Reason (required)</label>
+                  <input id="jobs-bulk-reason" type="text" name="reason" value={@reason} />
+                  <p :if={@error_message}>{@error_message}</p>
+                  <Primitives.button phx-click="close_preview">Cancel</Primitives.button>
+                  <Primitives.button
+                    type="submit"
+                    variant={if(@bulk_preview_action == "job_retry", do: :warning, else: :danger)}
+                    disabled={String.trim(@reason) == ""}
+                  >
+                    {bulk_confirm_label(@bulk_preview_action)}
+                  </Primitives.button>
+                </form>
+              </div>
+            </div>
+          <% end %>
+        </section>
+        """
+      end
+    end
+
+    defp detail_page_content(assigns) do
+      detail = Map.get(assigns, :detail)
+
+      assigns =
+        assigns
+        |> assign(:detail, detail)
+        |> assign(:detail_unavailable?, Map.get(assigns, :detail_unavailable?, is_nil(detail)))
+        |> assign(:back_path, Map.get(assigns, :back_path, Selectors.jobs_path([])))
+        |> assign(:read_only?, Map.get(assigns, :read_only?, true))
+        |> assign(:confirmation, Map.get(assigns, :confirmation))
+        |> assign(:receipt, Map.get(assigns, :receipt))
+        |> assign(:preview, Map.get(assigns, :preview))
+        |> assign(:preview_action, Map.get(assigns, :preview_action))
+        |> assign(:reason, Map.get(assigns, :reason, ""))
+        |> assign(:error_message, Map.get(assigns, :error_message))
+        |> assign(:detail_job_id, detail_job_id(detail))
+        |> assign(:recorded_output_facts, recorded_output_facts(detail))
 
       ~H"""
-      <section id="jobs-page" class="obpt-jobs-page" aria-labelledby="jobs-page-title">
-        <header class="obpt-jobs-page__header">
-          <h1 id="jobs-page-title">Jobs</h1>
+      <section id="job-detail-page" class="obpt-jobs-page" aria-labelledby="job-detail-title">
+        <Primitives.surface :if={@detail_unavailable?} id="job-unavailable" variant={:inset}>
+          <h1 id="job-detail-title">Job unavailable</h1>
           <p>
-            Review current job state, apply precise filters, and take deliberate action with recorded evidence.
+            It may not exist, may no longer be available, or you may not have access. Return to Jobs and choose another job.
           </p>
-        </header>
-
-        <Primitives.surface :if={@read_only?} variant={:inset}>
-          <p>{LiveAuth.page_read_only_banner(:jobs)}</p>
+          <Primitives.link navigate={@back_path}>Back to Jobs</Primitives.link>
         </Primitives.surface>
 
-        <Primitives.surface :if={@url_notice} variant={:inset}>
-          <h2>Some filters were not applied</h2>
-          <p>{@url_notice}</p>
-        </Primitives.surface>
+        <%= if !@detail_unavailable? do %>
+          <header class="obpt-jobs-page__header">
+            <div>
+              <h1 id="job-detail-title">Job #{if(@detail_job_id, do: @detail_job_id)}</h1>
+              <p>Review current job truth, bounded failure evidence, and redacted data.</p>
+            </div>
+            <Primitives.link navigate={@back_path}>Back to Jobs</Primitives.link>
+          </header>
 
-        <Primitives.surface :if={@review_notice} variant={:inset}>
-          <h2>Job unavailable</h2>
-          <p>{@review_notice}</p>
-        </Primitives.surface>
+          <Primitives.surface id="job-current-state" variant={:attention}>
+            <p>{@detail.support.heading}</p>
+            <h2>{@detail.support.state_label}</h2>
+            <p>{@detail.support.summary}</p>
+            <p>{@detail.support.availability}</p>
+          </Primitives.surface>
 
-        <nav class="obpt-jobs-page__states" aria-label="Job state">
-          <Primitives.button
-            :for={state <- @states}
-            id={"jobs-state-#{state}"}
-            phx-click="select_state"
-            phx-value-state={state}
-            variant={if(to_string(@filter.state) == state, do: :primary, else: :neutral)}
-            aria-current={if(to_string(@filter.state) == state, do: "page")}
-          >
-            {state_label(state)} ({Map.get(@counts, state, 0)})
-          </Primitives.button>
-        </nav>
+          <Primitives.surface id="job-actions" variant={:inset}>
+            <h2>Legal actions</h2>
+            <p :if={@read_only?}>{LiveAuth.page_read_only_banner(:job_detail)}</p>
+            <div>
+              <Primitives.button
+                :for={action <- @detail.actions}
+                id={"job-action-#{action.kind}"}
+                phx-click="preview"
+                phx-value-action={"job_#{action.kind}"}
+                variant={action.intent}
+                disabled_reason={
+                  if(@read_only?,
+                    do: "Permission: read-only. This action is not available."
+                  )
+                }
+              >
+                {action.confirm_label}
+              </Primitives.button>
+            </div>
+          </Primitives.surface>
 
-        <OperatorPatterns.filter_bar
-          id="jobs-filter"
-          form={@filter_form}
-          mode={:submit}
-          result_summary={@result_summary}
-          results_target_id="jobs-results"
-          active_filters={@active_filters}
-          dirty={@filters_dirty?}
-          filters_expanded={@filters_expanded?}
-          change_event="validate_filters"
-          submit_event="apply_filters"
-          clear_href={@clear_filters_href}
-        >
-          <:fields>
-            <Forms.input
-              field={@filter_form[:queue]}
-              label="Queue"
-              variant={:filter}
-              placeholder="All queues"
-            />
-            <Forms.input
-              field={@filter_form[:worker]}
-              label="Worker module"
-              variant={:filter}
-              placeholder="All worker modules"
-            />
-            <Forms.input
-              field={@filter_form[:tags]}
-              label="Tags"
-              hint={@filter_copy.tags_help}
-              variant={:filter}
-              placeholder="All tags"
-            />
-          </:fields>
-          <:advanced_fields>
-            <Forms.input
-              field={@filter_form[:args]}
-              label="Args contain"
-              hint={@filter_copy.json_help}
-              errors={field_errors(@filter_errors, :args)}
-              variant={:filter}
-              placeholder="JSON object"
-            />
-            <Forms.input
-              field={@filter_form[:meta]}
-              label="Meta contain"
-              hint={@filter_copy.json_help}
-              errors={field_errors(@filter_errors, :meta)}
-              variant={:filter}
-              placeholder="JSON object"
-            />
-          </:advanced_fields>
-        </OperatorPatterns.filter_bar>
-
-        <section
-          :if={@selected_count > 0}
-          id="jobs-selection-summary"
-          class="obpt-jobs-page__selection-summary"
-          aria-live="polite"
-        >
-          <p>{selection_count_copy(@selected_count)}</p>
-          <Primitives.button phx-click="clear_selection">Clear selection</Primitives.button>
-          <div :if={!@read_only?} class="obpt-jobs-page__selection-actions">
-            <Primitives.button
-              :if={to_string(@filter.state) in ["retryable", "cancelled", "discarded", "completed"]}
-              phx-click="preview_bulk"
-              phx-value-action="job_retry"
-              variant={:warning}
-            >
-              Retry jobs
-            </Primitives.button>
-            <Primitives.button
-              :if={to_string(@filter.state) in ["available", "scheduled", "executing", "retryable"]}
-              phx-click="preview_bulk"
-              phx-value-action="job_cancel"
-              variant={:danger}
-            >
-              Cancel jobs
-            </Primitives.button>
-            <Primitives.button
-              :if={to_string(@filter.state) in ["available", "scheduled", "executing", "retryable"]}
-              phx-click="preview_bulk"
-              phx-value-action="job_discard"
-              variant={:danger}
-            >
-              Discard jobs
-            </Primitives.button>
-          </div>
-        </section>
-
-        <DataDisplay.data_table
-          id="jobs-results"
-          caption="Jobs"
-          rows={@rows}
-          row_id={& &1.id}
-          state={:ready}
-          resource="jobs"
-          row_count={@pagination.total_count}
-          pagination_summary={@pagination.summary}
-        >
-          <:toolbar>
-            <label for="jobs-page-selection">
-              <input
-                id="jobs-page-selection"
-                type="checkbox"
-                phx-click="toggle_page"
-                checked={@page_selection_state == :checked}
-                aria-checked={page_selection_aria(@page_selection_state)}
-                data-obpt-page-selection={@page_selection_state}
-              />
-              <span>Select current page</span>
-            </label>
-          </:toolbar>
-          <:selection :let={row}>
-            <label for={"job-select-#{row.id}"}>
-              <input
-                id={"job-select-#{row.id}"}
-                type="checkbox"
-                checked={row.selection.checked?}
-                phx-click="toggle_job"
-                phx-value-id={row.id}
-                aria-label={row.selection.label}
-              />
-              <span class="obpt-sr-only">{row.selection.label}</span>
-            </label>
-          </:selection>
-          <:col :let={row} label="Worker" value_kind={:module}>
-            <DataDisplay.machine_value
-              id={"job-worker-#{row.id}"}
-              value={row.worker}
-              kind={:module}
-              truncate={false}
-            />
-          </:col>
-          <:col :let={row} label="State">
-            <DataDisplay.status_pill domain={:job} state={row.state} />
-          </:col>
-          <:col :let={row} label="Queue" value_kind={:literal}>
-            <DataDisplay.machine_value
-              id={"job-queue-#{row.id}"}
-              value={row.queue}
-              kind={:literal}
-              truncate={false}
-            />
-          </:col>
-          <:col :let={row} label="Scheduled">
-            <time datetime={row.scheduled.datetime}>{row.scheduled.label}</time>
-          </:col>
-          <:col :let={row} label="Attempts">{row.attempts}</:col>
-          <:col :let={row} label="Job ID" value_kind={:id}>
-            <DataDisplay.machine_value
-              id={"job-id-#{row.id}"}
-              value={to_string(row.id)}
-              kind={:id}
-              truncate={false}
-            />
-          </:col>
-          <:col :let={row} label="Review job">
-            <Primitives.button
-              id={"job-review-#{row.id}"}
-              phx-click="select_review"
-              phx-value-id={row.id}
-              variant={if(row.review.current?, do: :primary, else: :neutral)}
-              aria-label={row.review.label}
-              aria-expanded={to_string(row.review.current?)}
-              aria-controls={if(row.review.current?, do: "job-quick-review")}
-            >
-              {if(row.review.current?, do: "Reviewing", else: "Review job")}
-            </Primitives.button>
-          </:col>
-        </DataDisplay.data_table>
-
-        <DataDisplay.empty_state
-          :if={@rows == []}
-          id="jobs-empty"
-          heading="No jobs match the applied filters"
-          body="Remove a filter or clear all filters to widen the review."
-        />
-
-        <nav class="obpt-jobs-page__pagination" aria-label="Jobs pages">
-          <Primitives.button
-            id="jobs-previous-page"
-            phx-click="paginate"
-            phx-value-page={@pagination.page - 1}
-            disabled={!@pagination.previous?}
-          >
-            Previous
-          </Primitives.button>
-          <span>{@pagination.summary}</span>
-          <Primitives.button
-            id="jobs-next-page"
-            phx-click="paginate"
-            phx-value-page={@pagination.page + 1}
-            disabled={!@pagination.next?}
-          >
-            Next
-          </Primitives.button>
-        </nav>
-
-        <OperatorPatterns.detail_surface
-          :if={@quick_review}
-          id="job-quick-review"
-          title={@quick_review.title}
-          close_label="Close job review"
-          open={true}
-          variant={:adaptive}
-          state={:ready}
-          resource="job review"
-          logical_fallback_id={"job-review-#{@quick_review.id}"}
-          close_event="close_review"
-          loaded_announcement={"Job #{@quick_review.id} review loaded"}
-        >
-          <:body>
-            <DataDisplay.description_list id="job-quick-review-facts">
-              <:item label="Job ID" value_kind={:id}>{@quick_review.id}</:item>
-              <:item label="State">
-                <DataDisplay.status_pill domain={:job} state={@quick_review.state.value} />
+          <Primitives.surface variant={:plain}>
+            <h2>Identity</h2>
+            <DataDisplay.description_list id="job-identity">
+              <:item
+                :for={item <- @detail.identity}
+                label={item.label}
+                value_kind={item.value_kind}
+              >
+                <DataDisplay.status_pill
+                  :if={item.label == "State"}
+                  domain={:job}
+                  state={@detail.support.state}
+                />
+                <span :if={item.label != "State"}>{item.value}</span>
               </:item>
-              <:item label="Worker" value_kind={:module}>{@quick_review.worker}</:item>
-              <:item label="Queue" value_kind={:literal}>{@quick_review.queue}</:item>
-              <:item label="Attempts">{@quick_review.attempts}</:item>
-              <:item label={@quick_review.relevant_time.label}>
-                <time datetime={@quick_review.relevant_time.datetime}>
-                  {@quick_review.relevant_time.value}
-                </time>
-              </:item>
-              <:item label="Latest failure">{@quick_review.failure_summary}</:item>
-              <:item label="Recorded output">
-                {if(@quick_review.recorded_output_available?, do: "Available", else: "Not recorded")}
-              </:item>
-              <:item label="Enqueue redaction">{@quick_review.enqueue_redaction.summary}</:item>
             </DataDisplay.description_list>
-          </:body>
-          <:actions>
-            <Primitives.link navigate={@quick_review.full_details_href}>
-              Open full job details
-            </Primitives.link>
-          </:actions>
-        </OperatorPatterns.detail_surface>
+          </Primitives.surface>
 
-        <%= if @bulk_preview_action do %>
-          <div class="obpt-modal-backdrop">
+          <Primitives.surface variant={:plain}>
+            <h2>Timing</h2>
+            <DataDisplay.description_list id="job-timing">
+              <:item :for={item <- @detail.timing} label={item.label}>
+                <time :if={item.datetime} datetime={item.datetime}>{item.value}</time>
+                <span :if={!item.datetime}>{item.value}</span>
+              </:item>
+            </DataDisplay.description_list>
+          </Primitives.surface>
+
+          <Primitives.surface id="job-errors" variant={:plain}>
+            <h2>Errors and Attempt History</h2>
+            <p :if={@detail.errors == []}>No errors recorded for this job.</p>
+            <ol :if={@detail.errors != []}>
+              <li :for={error <- @detail.errors}>
+                <p>Attempt {error.attempt}</p>
+                <p>{error.class}</p>
+                <p>{error.message}</p>
+                <time :if={error.occurred_datetime} datetime={error.occurred_datetime}>
+                  {error.occurred_at}
+                </time>
+                <span :if={!error.occurred_datetime}>{error.occurred_at}</span>
+                <p :if={error.truncated?}>Failure summary truncated to 1,000 characters.</p>
+              </li>
+            </ol>
+          </Primitives.surface>
+
+          <Primitives.surface variant={:plain}>
+            <h2>Arguments, metadata, and recorded output</h2>
+            <h3>{@detail.data.arguments.label}</h3>
+            <DataDisplay.args_viewer
+              id="job-arguments"
+              label={@detail.data.arguments.label}
+              kind={@detail.data.arguments.kind}
+              display={@detail.data.arguments.display}
+            />
+            <h3>{@detail.data.metadata.label}</h3>
+            <DataDisplay.args_viewer
+              id="job-metadata"
+              label={@detail.data.metadata.label}
+              kind={@detail.data.metadata.kind}
+              display={@detail.data.metadata.display}
+            />
+            <h3>{@detail.data.recorded_output.label}</h3>
+            <DataDisplay.args_viewer
+              id="job-recorded-output"
+              label={@detail.data.recorded_output.label}
+              kind={@detail.data.recorded_output.kind}
+              display={@detail.data.recorded_output.display}
+            />
+            <DataDisplay.description_list
+              :if={@recorded_output_facts != []}
+              id="job-recorded-output-facts"
+            >
+              <:item :for={item <- @recorded_output_facts} label={item.label}>
+                {item.value}
+              </:item>
+            </DataDisplay.description_list>
+            <p>{@detail.redaction.enqueue.summary}</p>
+            <p>{@detail.redaction.policy}</p>
+          </Primitives.surface>
+
+          <Primitives.surface id="job-destinations" variant={:inset}>
+            <h2>Related evidence</h2>
+            <p :if={@detail.destinations == []}>No authorized related evidence is available.</p>
+            <ul :if={@detail.destinations != []}>
+              <li :for={destination <- @detail.destinations}>
+                <Primitives.link navigate={destination.href}>{destination.label}</Primitives.link>
+              </li>
+            </ul>
+          </Primitives.surface>
+
+          <DataDisplay.toast :if={@receipt} id="job-action-receipt" tone={:success}>
+            <p>{@receipt.message}</p>
+            <Primitives.link :if={@receipt.audit_href} navigate={@receipt.audit_href}>
+              Open audit evidence
+            </Primitives.link>
+          </DataDisplay.toast>
+
+          <div :if={@preview && @preview_action} class="obpt-modal-backdrop">
             <div class="obpt-modal">
-              <h2>{bulk_preview_title(@bulk_preview_action, @selected_count)}</h2>
-              <p>Each job is processed independently.</p>
-              <form phx-change="reason" phx-submit="execute_bulk">
-                <label for="jobs-bulk-reason">Reason (required)</label>
-                <input id="jobs-bulk-reason" type="text" name="reason" value={@reason} />
+              <h2>{@preview_action.title} for job #{@detail_job_id}</h2>
+              <div class="obpt-modal-summary">
+                <p>{@preview_action.scope}</p>
+                <p>{@preview_action.consequence}</p>
+                <p>{@preview_action.reversibility}</p>
+                <p>{@preview_action.support_boundary}</p>
+              </div>
+              <form phx-change="reason" phx-submit="execute">
+                <label for="job-action-reason">Reason</label>
+                <p id="job-action-reason-hint">
+                  Explain why this action is needed. Do not enter secrets.
+                </p>
+                <input
+                  id="job-action-reason"
+                  type="text"
+                  name="reason"
+                  value={@reason}
+                  aria-describedby="job-action-reason-hint"
+                />
                 <p :if={@error_message}>{@error_message}</p>
-                <Primitives.button phx-click="close_preview">Cancel</Primitives.button>
+                <Primitives.button type="button" phx-click="close_preview">
+                  {@preview_action.dismiss_label}
+                </Primitives.button>
                 <Primitives.button
                   type="submit"
-                  variant={if(@bulk_preview_action == "job_retry", do: :warning, else: :danger)}
+                  variant={@preview_action.intent}
                   disabled={String.trim(@reason) == ""}
                 >
-                  {bulk_confirm_label(@bulk_preview_action)}
+                  {@preview_action.confirm_label}
                 </Primitives.button>
               </form>
             </div>
@@ -1024,77 +993,132 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     # --- Private helpers ---
 
     defp load_job_detail(socket, job_id) do
-      case Jobs.get(repo(), job_id) do
-        nil ->
-          socket
-          |> assign(:job, nil)
-          |> assign(:job_not_found?, true)
-          |> assign(:args_display, nil)
-          |> assign(:meta_display, nil)
-          |> assign(:recorded_output, DisplayPolicy.render_job_field(:job_recorded, nil, %{}))
-          |> assign(:redacted_fields, [])
-          |> assign(:back_path, Selectors.jobs_path([]))
+      load_job_detail(socket, job_id, Map.get(socket.assigns, :detail_return_params, []))
+    end
 
-        %Oban.Job{} = job ->
-          args_display = DisplayPolicy.render_job_field(:job_args, job.args, %{job: job})
-          meta_display = DisplayPolicy.render_job_field(:job_meta, job.meta, %{job: job})
-          recorded_output = recorded_output_display(job)
-          redacted_fields = get_in(job.meta || %{}, ["__redacted_fields__"]) || []
+    defp load_job_detail(socket, job_id, return_params) do
+      actor = Map.get(socket.assigns, :current_actor)
+      back_path = Selectors.jobs_path(return_params)
 
+      with {:ok, normalized_id} <- normalize_detail_job_id(job_id),
+           true <-
+             LiveAuth.authorized?(actor, :view_job_detail, %{
+               type: :job,
+               id: Integer.to_string(normalized_id)
+             }),
+           %Oban.Job{} = job <- Jobs.get(repo(), normalized_id) do
+        context = %{
+          args_display: DisplayPolicy.render_job_field(:job_args, job.args, %{job: job}),
+          meta_display: DisplayPolicy.render_job_field(:job_meta, job.meta, %{job: job}),
+          recorded_output_display: recorded_output_display(job),
+          audit_href: authorized_job_audit_href(actor, job.id)
+        }
+
+        detail = ControlPlanePresenter.present_job_detail(job, context)
+
+        socket
+        |> assign(:page_mode, :detail)
+        |> assign(:detail, detail)
+        |> assign(:detail_unavailable?, false)
+        |> assign(:job_id, job.id)
+        |> assign(:job_state, job.state)
+        |> assign(:detail_return_params, return_params)
+        |> assign(:preview, nil)
+        |> assign(:preview_action, nil)
+        |> assign(:confirmation, nil)
+        |> assign(:receipt, nil)
+        |> assign(:reason, "")
+        |> assign(:error_message, nil)
+        |> assign(:success_message, nil)
+        |> assign(:back_path, back_path)
+        |> assign(
+          :read_only?,
+          not LiveAuth.authorized?(
+            actor,
+            :retry_job,
+            %{type: :job, id: Integer.to_string(job.id)}
+          )
+        )
+      else
+        _unavailable ->
           socket
-          |> assign(:job, job)
-          |> assign(:job_not_found?, false)
-          |> assign(:args_display, args_display)
-          |> assign(:meta_display, meta_display)
-          |> assign(:recorded_output, recorded_output)
-          |> assign(:redacted_fields, redacted_fields)
+          |> assign(:page_mode, :detail)
+          |> assign(:detail, nil)
+          |> assign(:detail_unavailable?, true)
+          |> assign(:job_id, nil)
+          |> assign(:job_state, nil)
+          |> assign(:detail_return_params, return_params)
           |> assign(:preview, nil)
+          |> assign(:preview_action, nil)
+          |> assign(:confirmation, nil)
+          |> assign(:receipt, nil)
           |> assign(:reason, "")
           |> assign(:error_message, nil)
           |> assign(:success_message, nil)
-          |> assign(:back_path, back_path_from_session(socket))
-          |> assign(
-            :read_only?,
-            not LiveAuth.authorized?(
-              Map.get(socket.assigns, :current_actor),
-              :retry_job,
-              %{type: :job, id: to_string(job.id)}
-            )
-          )
+          |> assign(:back_path, back_path)
+          |> assign(:read_only?, true)
       end
     end
+
+    defp normalize_detail_job_id(value) when is_integer(value) and value > 0, do: {:ok, value}
+
+    defp normalize_detail_job_id(value) when is_binary(value) do
+      case Integer.parse(value) do
+        {id, ""} when id > 0 -> {:ok, id}
+        _invalid -> :error
+      end
+    end
+
+    defp normalize_detail_job_id(_value), do: :error
 
     defp recorded_output_display(%Oban.Job{} = job) do
       context = %{surface: :jobs, field: :recorded, job: job}
 
-      case JobRecord.fetch_result(repo(), job.id) do
-        {:ok, _payload} ->
-          case JobRecord.fetch_record(repo(), job.id) do
-            {:ok, record} -> DisplayPolicy.render_job_field(:job_recorded, record, context)
-            {:error, :not_found} -> DisplayPolicy.render_job_field(:job_recorded, nil, context)
-          end
-
-        {:error, :not_found} ->
-          DisplayPolicy.render_job_field(:job_recorded, nil, context)
+      case JobRecord.fetch_record(repo(), job.id) do
+        {:ok, record} -> DisplayPolicy.render_job_field(:job_recorded, record, context)
+        {:error, :not_found} -> DisplayPolicy.render_job_field(:job_recorded, nil, context)
       end
     end
 
-    defp back_path_from_session(socket) do
-      filter = Map.get(socket.assigns, :filter)
+    defp authorized_job_audit_href(actor, job_id) do
+      resource = %{type: :job, id: Integer.to_string(job_id)}
 
-      if filter do
-        Selectors.jobs_path([
-          {"state", to_string(filter.state)},
-          {"queue", filter.queue},
-          {"worker", filter.worker},
-          {"tags", if(filter.tags, do: Enum.join(filter.tags, ","))},
-          {"args", if(filter.args, do: Jason.encode!(filter.args))},
-          {"meta", if(filter.meta, do: Jason.encode!(filter.meta))}
-        ])
-      else
-        Selectors.jobs_path([])
+      if LiveAuth.authorized?(actor, :view_audit, resource) do
+        Selectors.audit_path(resource_type: "job", resource_id: job_id)
       end
     end
+
+    defp detail_job_id(%{identity: identity}) when is_list(identity) do
+      case Enum.find(identity, &(&1.label == "Job ID")) do
+        %{value: value} -> value
+        _missing -> nil
+      end
+    end
+
+    defp detail_job_id(_detail), do: nil
+
+    defp recorded_output_facts(%{data: %{recorded_output: %{display: display}}})
+         when is_map(display) do
+      [
+        %{
+          label: "Availability",
+          value: if(display.available?, do: "Available", else: "Unavailable")
+        },
+        %{label: "Summary", value: display.summary || "Unavailable"},
+        %{label: "Status", value: display.status || "Unavailable"},
+        %{label: "Attempt", value: display.attempt || "Unavailable"},
+        %{label: "Payload Bytes", value: display.payload_bytes || "Unavailable"},
+        %{label: "Recorded At", value: display.recorded_at || "Unavailable"},
+        %{label: "Retention", value: display.retention || "Unavailable"},
+        %{label: "Expires At", value: display.expires_at || "Unavailable"},
+        %{
+          label: "Redacted Metadata",
+          value: if(display.redacted?, do: "Stored redaction metadata present", else: "None")
+        }
+      ]
+    end
+
+    defp recorded_output_facts(_detail), do: []
 
     defp assign_defaults(socket) do
       initial_query = %Jobs{}
@@ -1128,12 +1152,16 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> assign(:review_notice, nil)
       |> assign(:quick_review, nil)
       |> assign(:quick_review_id, nil)
-      |> assign(:job, nil)
-      |> assign(:job_not_found?, false)
-      |> assign(:args_display, nil)
-      |> assign(:meta_display, nil)
-      |> assign(:redacted_fields, [])
+      |> assign(:page_mode, :index)
+      |> assign(:detail, nil)
+      |> assign(:detail_unavailable?, false)
+      |> assign(:detail_return_params, [])
+      |> assign(:job_id, nil)
+      |> assign(:job_state, nil)
       |> assign(:preview, nil)
+      |> assign(:preview_action, nil)
+      |> assign(:confirmation, nil)
+      |> assign(:receipt, nil)
       |> assign(:bulk_preview_action, nil)
       |> assign(:selected_jobs, MapSet.new())
       |> assign(:global_select, false)
@@ -1463,65 +1491,6 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           %{type: :page, id: "jobs"}
         )
       )
-    end
-
-    defp state_badge_tone("executing"), do: "info"
-    defp state_badge_tone("retryable"), do: "warning"
-    defp state_badge_tone("discarded"), do: "danger"
-    defp state_badge_tone("completed"), do: "success"
-    defp state_badge_tone(_), do: "neutral"
-
-    defp preview_confirm_button_class("job_retry"), do: "obpt-button obpt-button--primary"
-    defp preview_confirm_button_class(_), do: "obpt-button obpt-button--danger"
-
-    defp short_worker_name(worker) when is_binary(worker),
-      do: worker |> String.split(".") |> List.last()
-
-    defp short_worker_name(nil), do: "—"
-
-    defp timestamp_copy(nil), do: "Unknown"
-
-    defp timestamp_copy(%NaiveDateTime{} = timestamp) do
-      timestamp
-      |> DateTime.from_naive!("Etc/UTC")
-      |> timestamp_copy()
-    end
-
-    defp timestamp_copy(%DateTime{} = timestamp) do
-      seconds = DateTime.diff(DateTime.utc_now(), timestamp, :second)
-
-      relative =
-        if seconds < 0 do
-          abs_s = abs(seconds)
-
-          cond do
-            abs_s < 60 -> "in #{abs_s}s"
-            abs_s < 3_600 -> "in #{div(abs_s, 60)}m"
-            abs_s < 86_400 -> "in #{div(abs_s, 3_600)}h"
-            true -> "in #{div(abs_s, 86_400)}d"
-          end
-        else
-          cond do
-            seconds < 60 -> "#{seconds}s ago"
-            seconds < 3_600 -> "#{div(seconds, 60)}m ago"
-            seconds < 86_400 -> "#{div(seconds, 3_600)}h ago"
-            true -> "#{div(seconds, 86_400)}d ago"
-          end
-        end
-
-      exact = Calendar.strftime(timestamp, "%Y-%m-%d %H:%M:%S UTC")
-      "#{relative} (#{exact})"
-    end
-
-    defp timestamp_copy(timestamp) when is_binary(timestamp), do: timestamp
-    defp timestamp_copy(_timestamp), do: "Unknown"
-
-    defp payload_copy(payload) when is_binary(payload), do: payload
-
-    defp payload_copy(payload) do
-      Jason.encode!(payload || %{}, pretty: true)
-    rescue
-      _ -> inspect(payload)
     end
 
     defp repo, do: Application.fetch_env!(:oban_powertools, :repo)

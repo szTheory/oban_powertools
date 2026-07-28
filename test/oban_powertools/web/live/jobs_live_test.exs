@@ -438,7 +438,7 @@ defmodule ObanPowertools.Web.JobsLiveTest do
 
       conn =
         Plug.Test.init_test_session(conn,
-          current_actor: %{id: "ops-1", permissions: [:view_job_detail]}
+          current_actor: %{id: "ops-1", permissions: [:view_job_detail, :view_audit]}
         )
 
       {:ok, _view, html} =
@@ -499,7 +499,7 @@ defmodule ObanPowertools.Web.JobsLiveTest do
 
       conn =
         Plug.Test.init_test_session(conn,
-          current_actor: %{id: "ops-1", permissions: [:view_job_detail]}
+          current_actor: %{id: "ops-1", permissions: [:view_job_detail, :view_audit]}
         )
 
       {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
@@ -529,8 +529,8 @@ defmodule ObanPowertools.Web.JobsLiveTest do
 
       assert html =~ "Job ##{job.id}"
       assert html =~ "Back to Jobs"
-      assert html =~ "Args"
-      assert html =~ "Meta"
+      assert html =~ "Arguments"
+      assert html =~ "Metadata"
       assert html =~ "Errors"
       assert html =~ "Attempt History"
       # Short worker name (last segment)
@@ -729,7 +729,7 @@ defmodule ObanPowertools.Web.JobsLiveTest do
 
       {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
 
-      assert html =~ "Recorded Output"
+      assert html =~ "Recorded output"
       assert html =~ "Available"
       assert html =~ "notification delivered"
       assert html =~ "ok"
@@ -754,7 +754,7 @@ defmodule ObanPowertools.Web.JobsLiveTest do
 
       {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
 
-      assert html =~ "Recorded Output"
+      assert html =~ "Recorded output"
       assert html =~ "No recorded output found for this job."
       refute html =~ "recording was disabled"
     end
@@ -789,7 +789,7 @@ defmodule ObanPowertools.Web.JobsLiveTest do
 
       {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
 
-      assert html =~ "Recorded Output"
+      assert html =~ "Recorded output"
       assert html =~ "default summary"
       assert html =~ "recorded output from policy"
       assert html =~ "standard"
@@ -823,7 +823,7 @@ defmodule ObanPowertools.Web.JobsLiveTest do
 
       assert html =~ "policy summary"
       assert html =~ "policy"
-      assert html =~ "payload"
+      assert html =~ "Hidden by display policy"
       assert html =~ "Redacted Metadata"
 
       Application.put_env(
@@ -877,16 +877,16 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       # Executing job
       job_executing = insert_job!(worker: "W1", queue: :default, state: "executing")
       {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job_executing.id}")
-      assert html =~ "Cancel Job"
-      assert html =~ "Discard Job"
-      refute html =~ "Retry Job"
+      assert html =~ "Cancel job"
+      assert html =~ "Discard job"
+      refute html =~ "Retry job"
 
       # Retryable job
       job_retryable = insert_job!(worker: "W2", queue: :default, state: "retryable")
       {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job_retryable.id}")
-      assert html =~ "Cancel Job"
-      assert html =~ "Discard Job"
-      assert html =~ "Retry Job"
+      assert html =~ "Cancel job"
+      assert html =~ "Discard job"
+      assert html =~ "Retry job"
     end
 
     test "executing an action opens preview, accepts reason, and executes", %{conn: conn} do
@@ -902,15 +902,15 @@ defmodule ObanPowertools.Web.JobsLiveTest do
 
       {:ok, view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
 
-      assert html =~ "Cancel Job"
+      assert html =~ "Cancel job"
 
       html =
         view
         |> element("button[phx-click=\"preview\"][phx-value-action=\"job_cancel\"]")
         |> render_click()
 
-      assert html =~ "Cancel Job ##{job.id}"
-      assert html =~ "Reason (required)"
+      assert html =~ "Cancel this job for job ##{job.id}"
+      assert html =~ "Reason"
       assert html =~ "obpt-modal-backdrop"
       assert html =~ "obpt-modal"
       assert html =~ "obpt-modal-summary"
@@ -987,11 +987,9 @@ defmodule ObanPowertools.Web.JobsLiveTest do
 
       {:ok, _view, html} = live(conn, "/ops/jobs/jobs/#{job.id}")
 
-      # Disclosure header must appear
-      assert html =~ "Fields redacted at enqueue"
-
-      # Comma-joined atom-presentation form (D-13/D-17/UI-SPEC) — locked joined form, not separate assertions
-      assert html =~ ":ssn, :token"
+      assert html =~ "2 argument fields were redacted at enqueue."
+      refute html =~ ":ssn"
+      refute html =~ ":token"
     end
 
     test "renders no disclosure block when __redacted_fields__ is absent (honest empty state)",

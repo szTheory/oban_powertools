@@ -85,9 +85,6 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     "drifted" => :drifted,
     "consumed" => :consumed
   }
-  @job_recorded_output_fields ~w[
-    available summary status payload redacted attempt payload_bytes recorded_at retention expires_at
-  ]
   @job_error_limit 10
   @job_error_text_limit 1_000
   @audit_event_labels %{
@@ -1125,9 +1122,10 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
 
   defp job_result_audit_href!(_result, _state), do: nil
 
-  defp job_legal_actions(state)
-       when state in ["retryable", "available", "scheduled", "executing"],
-       do: [:retry, :cancel, :discard]
+  defp job_legal_actions("retryable"), do: [:retry, :cancel, :discard]
+
+  defp job_legal_actions(state) when state in ["available", "scheduled", "executing"],
+    do: [:cancel, :discard]
 
   defp job_legal_actions(state) when state in ["cancelled", "discarded", "completed"],
     do: [:retry]
@@ -1333,7 +1331,7 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
   defp validate_job_policy_display!({:raw_json, json} = display, _kind) when is_binary(json) do
     case Jason.decode(json) do
       {:ok, value} ->
-        ensure_safe_presentation_data!(value, "job policy display")
+        ensure_safe_job_policy_data!(value)
         display
 
       {:error, _reason} ->
@@ -1350,26 +1348,84 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
 
   defp validate_job_policy_display!(display, :recorded_output)
        when is_map(display) and not is_struct(display) do
-    Enum.each(display, fn {key, value} ->
-      if normalize_presentation_source_key(key) not in @job_recorded_output_fields do
-        raise ArgumentError, "job recorded output contains an unsupported presentation field"
-      end
-
-      ensure_job_recorded_output_value!(value)
-    end)
-
-    display
+    %{
+      available?:
+        job_recorded_output_boolean!(presentation_value(display, :available?), "availability"),
+      summary:
+        optional_presentation_text(presentation_value(display, :summary), "output summary"),
+      status: optional_presentation_text(presentation_value(display, :status), "output status"),
+      payload: job_recorded_output_payload!(presentation_value(display, :payload)),
+      redacted?:
+        job_recorded_output_boolean!(presentation_value(display, :redacted?), "redaction"),
+      attempt: job_recorded_output_integer(presentation_value(display, :attempt)),
+      payload_bytes: job_recorded_output_integer(presentation_value(display, :payload_bytes)),
+      recorded_at: optional_job_recorded_output_time(presentation_value(display, :recorded_at)),
+      retention:
+        optional_presentation_text(presentation_value(display, :retention), "output retention"),
+      expires_at: optional_job_recorded_output_time(presentation_value(display, :expires_at))
+    }
   end
 
   defp validate_job_policy_display!(_display, _kind),
     do: raise(ArgumentError, "job policy display has an unsupported shape")
 
-  defp ensure_job_recorded_output_value!(value)
-       when is_nil(value) or is_binary(value) or is_number(value) or is_boolean(value),
-       do: :ok
+  defp ensure_safe_job_policy_data!(value) when is_map(value) do
+    Enum.each(value, fn {key, nested} ->
+      if sensitive_presentation_source_key?(normalize_presentation_source_key(key)) and
+           not redacted_job_policy_value?(nested) do
+        raise ArgumentError, "job policy display contains a prohibited source field"
+      end
 
-  defp ensure_job_recorded_output_value!(_value),
-    do: raise(ArgumentError, "job recorded output contains unsupported presentation data")
+      ensure_safe_job_policy_data!(nested)
+    end)
+  end
+
+  defp ensure_safe_job_policy_data!(value) when is_list(value),
+    do: Enum.each(value, &ensure_safe_job_policy_data!/1)
+
+  defp ensure_safe_job_policy_data!(_value), do: :ok
+
+  defp redacted_job_policy_value?(value) when is_binary(value) do
+    normalized = String.downcase(value)
+    normalized in ["[redacted]", "redacted", "redacted at enqueue", "[hidden]", "hidden"]
+  end
+
+  defp redacted_job_policy_value?(_value), do: false
+
+  defp job_recorded_output_boolean!(value, _field) when is_boolean(value), do: value
+
+  defp job_recorded_output_boolean!(_value, field),
+    do: raise(ArgumentError, "job recorded output #{field} must be boolean")
+
+  defp job_recorded_output_integer(nil), do: nil
+  defp job_recorded_output_integer(value) when is_integer(value) and value >= 0, do: value
+
+  defp job_recorded_output_integer(_value),
+    do: raise(ArgumentError, "job recorded output count must be nonnegative")
+
+  defp job_recorded_output_payload!(value) do
+    ensure_safe_presentation_data!(value, "job recorded output")
+    value
+  end
+
+  defp optional_job_recorded_output_time(nil), do: nil
+  defp optional_job_recorded_output_time(%DateTime{} = value), do: DateTime.to_iso8601(value)
+
+  defp optional_job_recorded_output_time(%NaiveDateTime{} = value) do
+    value
+    |> DateTime.from_naive!("Etc/UTC")
+    |> DateTime.to_iso8601()
+  end
+
+  defp optional_job_recorded_output_time(value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, _datetime, _offset} -> value
+      {:error, _reason} -> raise ArgumentError, "job recorded output time must be ISO 8601"
+    end
+  end
+
+  defp optional_job_recorded_output_time(_value),
+    do: raise(ArgumentError, "job recorded output time must be a datetime")
 
   defp job_destinations!(context) do
     [
