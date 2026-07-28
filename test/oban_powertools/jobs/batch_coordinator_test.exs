@@ -2,9 +2,9 @@ defmodule ObanPowertools.Jobs.BatchCoordinatorTest do
   use ObanPowertools.DataCase, async: false
 
   alias Ecto.Changeset
-  alias ObanPowertools.{Audit, Jobs}
+  alias ObanPowertools.Audit
   alias ObanPowertools.Jobs.BatchCoordinator
-  alias ObanPowertools.Jobs.BatchCoordinator.{Preview, Scope}
+  alias ObanPowertools.Jobs.BatchCoordinator.Scope
 
   @telemetry_event [:oban_powertools, :jobs, :batch]
 
@@ -385,6 +385,7 @@ defmodule ObanPowertools.Jobs.BatchCoordinatorTest do
 
     assert_receive {:observer_handle, handle}
     on_exit(fn -> terminate_handle(handle) end)
+    coordinator_monitor = Process.monitor(handle.coordinator)
     assert_receive :execution_accepted
     assert_receive {:accepted_target_started, 95_001, worker}
 
@@ -393,7 +394,7 @@ defmodule ObanPowertools.Jobs.BatchCoordinatorTest do
     send(worker, :release)
 
     assert_receive :durable_target_effect
-    refute Process.alive?(handle.coordinator)
+    assert_receive {:DOWN, ^coordinator_monitor, :process, _, :normal}
   end
 
   test "real Lifeline preview and execution run once per target with independent Audit evidence" do
