@@ -1558,43 +1558,208 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       refute html =~ "jobs selected"
     end
 
-    test "executing bulk action", %{conn: conn} do
-      _job1 = insert_job!(worker: "MyApp.Worker1", queue: :default, state: "retryable")
-      _job2 = insert_job!(worker: "MyApp.Worker2", queue: :default, state: "retryable")
+    test "all-matching is offered only after page selection and freezes one bounded query", %{
+      conn: conn
+    } do
+      for index <- 1..21 do
+        insert_job!(worker: "MyApp.FrozenWorker#{index}", queue: :default, state: "retryable")
+      end
 
       conn =
         Plug.Test.init_test_session(conn,
           current_actor: %{
             id: "ops-1",
-            permissions: [:view_jobs, :retry_job, :preview_repair, :execute_repair]
+            permissions: [:view_jobs, :retry_job]
           }
         )
 
       {:ok, view, _html} = live(conn, "/ops/jobs/jobs?state=retryable")
+      refute has_element?(view, "#jobs-select-all-matching")
 
-      # Select all
-      view |> element("input[phx-click=\"toggle_page\"]") |> render_click()
+      html = view |> element("#jobs-page-selection") |> render_click()
+      assert html =~ "20 jobs selected"
+      assert html =~ "Select all 21 jobs matching these filters"
 
-      # Click preview
+      {html, queries} =
+        capture_job_queries(fn ->
+          view |> element("#jobs-select-all-matching") |> render_click()
+        end)
+
+      assert length(queries) == 1
+      assert html =~ "21 jobs selected"
+      assert html =~ "All 21 jobs matching the applied filters"
+      refute html =~ "Select all 21 jobs matching these filters"
+    end
+
+    test "oversized all-matching scope is rejected without preview or truncation", %{conn: conn} do
+      for index <- 1..101 do
+        insert_job!(
+          worker: "MyApp.OversizedWorker#{index}",
+          queue: :default,
+          state: "retryable"
+        )
+      end
+
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{id: "ops-1", permissions: [:view_jobs, :retry_job]}
+        )
+
+      {:ok, view, _html} = live(conn, "/ops/jobs/jobs?state=retryable")
+      view |> element("#jobs-page-selection") |> render_click()
+
+      {html, queries} =
+        capture_job_queries(fn ->
+          view |> element("#jobs-select-all-matching") |> render_click()
+        end)
+
+      assert length(queries) == 1
+
+      assert html =~
+               "This action is limited to 100 jobs. Narrow the applied filters before continuing."
+
+      refute html =~ ~s(id="jobs-bulk-confirmation-dialog")
+      assert html =~ "20 jobs selected"
+    end
+
+    test "preview renders exact frozen truth and gates execution on reason and typed ready count",
+         %{
+           conn: conn
+         } do
+      _job1 = insert_job!(worker: "MyApp.Worker1", queue: :default, state: "retryable")
+      _job2 = insert_job!(worker: "MyApp.Worker2", queue: :default, state: "retryable")
+
+      conn = bulk_conn(conn)
+      {:ok, view, _html} = live(conn, "/ops/jobs/jobs?state=retryable")
+
+      view |> element("#jobs-page-selection") |> render_click()
+      view |> element("button[phx-value-action=\"job_retry\"]") |> render_click()
+
+      html = render_until(view, &(&1 =~ ~s(id="jobs-bulk-confirmation-dialog")))
+
+      assert html =~ "2 selected jobs"
+      assert html =~ "2 ready"
+      assert html =~ "0 excluded"
+      assert html =~ "0 off-page"
+      assert html =~ "This selection was captured at"
+      assert html =~ "New matching jobs will not be included."
+      assert html =~ "Each job is processed independently."
+      assert html =~ "Closing this page will not stop work already started."
+      assert html =~ "Type 2 to confirm"
+      refute html =~ "preview_token"
+      refute html =~ "plan_hash"
+
       html =
         view
-        |> element("button[phx-click=\"preview_bulk\"][phx-value-action=\"job_discard\"]")
-        |> render_click()
+        |> form("#jobs-bulk-confirmation-form", %{
+          "confirmation" => %{
+            "reason" => "short",
+            "confirmation_count" => "1"
+          }
+        })
+        |> render_submit()
 
-      assert html =~ "Bulk Discard 2 Jobs"
-      assert html =~ "obpt-modal-backdrop"
-      assert html =~ "obpt-modal"
+      assert html =~ "Enter at least 8 characters."
+      assert html =~ "Type exactly 2 to confirm."
+      assert html =~ ~s(data-obpt-confirm-state="preview")
 
-      # Execute
       view
-      |> form("form[phx-submit=\"execute_bulk\"]", %{"reason" => "Bulk discard test"})
+      |> form("#jobs-bulk-confirmation-form", %{
+        "confirmation" => %{
+          "reason" => "Retry after operator review",
+          "confirmation_count" => "2"
+        }
+      })
       |> render_submit()
 
-      html = render(view)
-      assert html =~ "No jobs match the applied filters"
-
-      # Selection should be cleared
+      html = render_until(view, &(not String.contains?(&1, "jobs-bulk-confirmation-dialog")))
+      assert html =~ "Retry requested for 2 jobs. Audit evidence was recorded per job."
       refute html =~ "jobs selected"
+      assert html =~ "No jobs match the applied filters"
+    end
+
+    test "mixed execution stays open and retains only unresolved jobs for fresh preview", %{
+      conn: conn
+    } do
+      jobs =
+        for index <- 1..2 do
+          insert_job!(
+            worker: "MyApp.MixedWorker#{index}",
+            queue: :default,
+            state: "retryable"
+          )
+        end
+
+      conn = bulk_conn(conn)
+      {:ok, view, _html} = live(conn, "/ops/jobs/jobs?state=retryable")
+
+      view |> element("#jobs-page-selection") |> render_click()
+      view |> element("button[phx-value-action=\"job_retry\"]") |> render_click()
+
+      _html = render_until(view, &(&1 =~ ~s(id="jobs-bulk-confirmation-dialog")))
+
+      jobs
+      |> List.first()
+      |> Ecto.Changeset.change(state: "executing")
+      |> TestRepo.update!()
+
+      view
+      |> form("#jobs-bulk-confirmation-form", %{
+        "confirmation" => %{
+          "reason" => "Retry after operator review",
+          "confirmation_count" => "2"
+        }
+      })
+      |> render_submit()
+
+      html =
+        render_until(
+          view,
+          &String.contains?(&1, ~s(data-obpt-confirm-state="partial"))
+        )
+
+      assert html =~ "Retry finished with mixed results."
+      assert html =~ "Success"
+      assert html =~ "Skipped"
+      assert html =~ "1 job selected"
+      assert html =~ "Create fresh preview"
+      assert html =~ "Review the Audit log"
+      assert has_element?(view, "#jobs-bulk-confirmation-dialog")
+    end
+  end
+
+  defp bulk_conn(conn) do
+    Plug.Test.init_test_session(conn,
+      current_actor: %{
+        id: "ops-1",
+        permissions: [
+          :view_jobs,
+          :view_job_detail,
+          :view_audit,
+          :retry_job,
+          :cancel_job,
+          :discard_job,
+          :preview_repair,
+          :execute_repair
+        ]
+      }
+    )
+  end
+
+  defp render_until(view, predicate, attempts \\ 100)
+
+  defp render_until(_view, _predicate, 0), do: flunk("LiveView did not reach expected state")
+
+  defp render_until(view, predicate, attempts) do
+    html = render(view)
+
+    if predicate.(html) do
+      html
+    else
+      receive do
+      after
+        5 -> render_until(view, predicate, attempts - 1)
+      end
     end
   end
 end
