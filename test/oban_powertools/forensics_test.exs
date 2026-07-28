@@ -197,6 +197,94 @@ defmodule ObanPowertools.ForensicsTest do
     end
   end
 
+  describe "typed evidence assembly" do
+    test "empty invalid and forged typed scopes return safe unavailable results with zero reads" do
+      cases = [
+        {%{}, "Choose evidence to inspect."},
+        {%{"workflow_id" => "workflow-1", "incident_fingerprint" => "incident-1"},
+         "Choose one evidence type"},
+        {%{"resource_type" => "job", "resource_id" => "42"}, "Choose one evidence type"},
+        {%Scope{kind: :workflow, workflow_id: nil}, "Choose one evidence type"}
+      ]
+
+      for {params, reason} <- cases do
+        {result, queries} =
+          capture_select_queries(fn ->
+            Forensics.bundle(params, repo: TestRepo)
+          end)
+
+        assert result == {:unavailable, reason}
+        assert queries == []
+      end
+    end
+
+    test "well-formed missing scopes are uniformly unavailable" do
+      for params <- [
+            %{"workflow_id" => Ecto.UUID.generate()},
+            %{"incident_fingerprint" => "missing:incident"},
+            %{"resource_type" => "cron_entry", "resource_id" => "missing-cron"},
+            %{"resource_type" => "limiter", "resource_id" => "missing-limiter"}
+          ] do
+        assert Forensics.bundle(params, repo: TestRepo) ==
+                 {:unavailable, "Evidence unavailable"}
+      end
+    end
+
+    test "workflow assembly uses the bounded Audit window and exposes exact source coverage" do
+      {:ok, workflow} =
+        WorkflowFixtures.workflow_fixture(name: "bounded-workflow") |> Workflow.insert(TestRepo)
+
+      for index <- 1..55 do
+        {:ok, event} =
+          Audit.record(
+            "workflow.step_completed",
+            %{type: :workflow, id: workflow.id},
+            %{"event_type" => "workflow.step_completed", "reason" => "SYNTHETIC_REASON_#{index}"},
+            repo: TestRepo,
+            actor_id: "operator"
+          )
+
+        event
+        |> Ecto.Changeset.change(
+          inserted_at: ~N[2026-07-28 12:00:00] |> NaiveDateTime.add(index, :second)
+        )
+        |> TestRepo.update!()
+      end
+
+      {result, queries} =
+        capture_select_queries(fn ->
+          Forensics.bundle(%{"workflow_id" => workflow.id}, repo: TestRepo)
+        end)
+
+      assert {:ok, bundle} = result
+      audit_source = Enum.find(bundle.coverage.sources, &(&1.id == "audit"))
+      workflow_source = Enum.find(bundle.coverage.sources, &(&1.id == "workflow"))
+
+      assert audit_source == %{
+               id: "audit",
+               label: "Audit",
+               shown_count: 50,
+               total_count: 55,
+               has_more?: true,
+               limit: 50,
+               provenance: :bridge_only,
+               completeness: :partial_evidence,
+               retention: "Newest retained Audit evidence for this workflow scope."
+             }
+
+      assert workflow_source.shown_count >= 1
+      assert workflow_source.total_count == workflow_source.shown_count
+      assert workflow_source.has_more? == false
+      assert Enum.count(bundle.chronology, &(&1.source_family == "audit")) == 50
+      refute inspect(bundle, limit: :infinity, printable_limit: :infinity) =~ "SYNTHETIC_REASON"
+
+      assert Enum.count(queries, &(&1.source == "oban_powertools_audit_events")) == 2
+      assert Enum.all?(queries, &(&1.source != "oban_powertools_lifeline_incidents"))
+      assert Enum.all?(queries, &(&1.source != "oban_powertools_cron_entries"))
+      assert Enum.all?(queries, &(&1.source != "oban_powertools_limit_resources"))
+    end
+  end
+
   test "bundle contract preserves diagnosis-first shape, chronology ordering, and supporting evidence labels" do
     now = DateTime.utc_now()
 
@@ -242,33 +330,61 @@ defmodule ObanPowertools.ForensicsTest do
     assert hd(bundle.related_evidence).provenance == :supporting
   end
 
-  test "chronology sorts stronger anchors ahead of weaker evidence at the same time" do
+  test "chronology produces stable closed identity and newest-first order" do
     now = DateTime.utc_now()
 
     items =
       [
         Chronology.item(%{
-          occurred_at: now,
-          label: "supporting",
+          occurred_at: DateTime.add(now, -1, :second),
+          label: "Supporting evidence recorded",
           resource_type: "cron_entry",
           resource_id: "nightly",
           source_family: "cron",
           strength: :supporting,
-          event_type: "cron.snapshot"
+          event_type: "cron.snapshot",
+          reason: "SYNTHETIC_REASON",
+          payload: "SYNTHETIC_PAYLOAD"
         }),
         Chronology.item(%{
           occurred_at: now,
-          label: "durable",
+          label: "Workflow evidence recorded",
           resource_type: "workflow",
           resource_id: "1",
           source_family: "workflow",
           strength: :durable,
-          event_type: "workflow.created"
+          event_type: "workflow.created",
+          notes: String.duplicate("n", 1_100)
         })
       ]
       |> Chronology.sort()
 
-    assert Enum.map(items, & &1.label) == ["durable", "supporting"]
+    assert Enum.map(items, & &1.label) ==
+             ["Workflow evidence recorded", "Supporting evidence recorded"]
+
+    for item <- items do
+      assert Map.keys(item) |> Enum.sort() ==
+               Enum.sort([
+                 :id,
+                 :occurred_at,
+                 :label,
+                 :resource_type,
+                 :resource_id,
+                 :source_family,
+                 :strength,
+                 :event_type,
+                 :status,
+                 :notes
+               ])
+
+      assert String.starts_with?(item.id, "forensic-event-")
+    end
+
+    assert String.length(hd(items).notes) == 1_000
+    assert String.ends_with?(hd(items).notes, "…")
+    refute inspect(items) =~ "SYNTHETIC_"
+
+    assert Chronology.sort(Enum.reverse(items)) == items
   end
 
   test "workflow bundle exposes partial evidence when scoped audit history is absent" do
@@ -276,7 +392,7 @@ defmodule ObanPowertools.ForensicsTest do
       WorkflowFixtures.workflow_fixture(name: "forensics-workflow") |> Workflow.insert(TestRepo)
 
     bundle =
-      Forensics.bundle(%{"workflow_id" => workflow.id, "step" => "sync_billing"}, repo: TestRepo)
+      ok_bundle(%{"workflow_id" => workflow.id, "step" => "sync_billing"})
 
     assert bundle.subject.entry_surface == "Powertools-native workflows"
     assert bundle.diagnosis_summary.current
@@ -307,13 +423,13 @@ defmodule ObanPowertools.ForensicsTest do
       |> TestRepo.insert!()
 
     workflow_bundle =
-      Forensics.bundle(%{"workflow_id" => workflow.id, "step" => "sync_billing"}, repo: TestRepo)
+      ok_bundle(%{"workflow_id" => workflow.id, "step" => "sync_billing"})
 
     lifeline_bundle =
-      Forensics.bundle(
-        %{"incident_fingerprint" => incident.incident_fingerprint, "view" => "active"},
-        repo: TestRepo
-      )
+      ok_bundle(%{
+        "incident_fingerprint" => incident.incident_fingerprint,
+        "view" => "active"
+      })
 
     assert_selector_keys_allowed(workflow_bundle.runbook_entry.evidence_path)
     assert_selector_keys_allowed(lifeline_bundle.runbook_entry.evidence_path)
@@ -354,13 +470,13 @@ defmodule ObanPowertools.ForensicsTest do
       |> TestRepo.insert!()
 
     bundle =
-      Forensics.bundle(%{"incident_fingerprint" => incident.incident_fingerprint}, repo: TestRepo)
+      ok_bundle(%{"incident_fingerprint" => incident.incident_fingerprint})
 
     assert bundle.subject.entry_surface == "Powertools-native Lifeline"
     assert bundle.completeness.state == :history_unavailable
   end
 
-  test "lifeline forensic chronology projects runbook continuity from repair audit events" do
+  test "lifeline forensic chronology keeps only finite repair status from runbook continuity" do
     incident =
       %Incident{}
       |> Incident.changeset(%{
@@ -418,19 +534,35 @@ defmodule ObanPowertools.ForensicsTest do
       )
 
     bundle =
-      Forensics.bundle(%{"incident_fingerprint" => incident.incident_fingerprint}, repo: TestRepo)
+      ok_bundle(%{"incident_fingerprint" => incident.incident_fingerprint})
 
     audit_item = Enum.find(bundle.chronology, &(&1.event_type == "lifeline.repair_executed"))
 
-    assert audit_item.reason == "Operator retried the stuck job"
-    assert audit_item.action == "lifeline.repair_executed"
-    assert audit_item.attempt_state == "succeeded"
-    assert audit_item.selected_path["ownership"] == "Powertools-native"
-    assert audit_item.selected_path["venue"] == "Powertools-native Lifeline"
-    assert audit_item.runbook_context["attempt"]["action"] == "job_rescue"
+    assert audit_item.status == :succeeded
+    assert audit_item.notes == nil
+
+    assert Map.keys(audit_item) |> Enum.sort() ==
+             Enum.sort([
+               :id,
+               :occurred_at,
+               :label,
+               :resource_type,
+               :resource_id,
+               :source_family,
+               :strength,
+               :event_type,
+               :status,
+               :notes
+             ])
+
+    serialized = inspect(bundle, printable_limit: :infinity, limit: :infinity)
+    refute serialized =~ "Operator retried the stuck job"
+    refute serialized =~ "preview-token"
+    refute serialized =~ "plan-hash"
+    refute serialized =~ "job_rescue"
   end
 
-  test "runbook entry includes latest native remediation continuity summary when available" do
+  test "latest genuine repair evidence remains historical and excludes the operator reason" do
     incident =
       %Incident{}
       |> Incident.changeset(%{
@@ -498,15 +630,17 @@ defmodule ObanPowertools.ForensicsTest do
       )
 
     bundle =
-      Forensics.bundle(%{"incident_fingerprint" => incident.incident_fingerprint}, repo: TestRepo)
+      ok_bundle(%{"incident_fingerprint" => incident.incident_fingerprint})
 
-    continuity_caution =
-      Enum.find(bundle.runbook_entry.cautions, &(&1.label == "Remediation continuity"))
+    repairs =
+      Enum.filter(bundle.chronology, &(&1.event_type == "lifeline.repair_executed"))
 
-    assert continuity_caution.detail =~ "succeeded"
-    assert continuity_caution.detail =~ "Action: job_rescue"
-    assert continuity_caution.detail =~ "Ownership: Powertools-native"
-    assert continuity_caution.detail =~ "Reason: Operator completed rescue."
+    assert Enum.map(repairs, & &1.status) == [:succeeded, :previewed]
+
+    refute inspect(bundle, printable_limit: :infinity, limit: :infinity) =~
+             "Operator completed rescue"
+
+    refute Enum.any?(bundle.runbook_entry.cautions, &(&1.label == "Remediation continuity"))
   end
 
   test "missing runbook continuity metadata degrades safely without remediation summary caution" do
@@ -543,13 +677,12 @@ defmodule ObanPowertools.ForensicsTest do
       )
 
     bundle =
-      Forensics.bundle(%{"incident_fingerprint" => incident.incident_fingerprint}, repo: TestRepo)
+      ok_bundle(%{"incident_fingerprint" => incident.incident_fingerprint})
 
     audit_item = Enum.find(bundle.chronology, &(&1.event_type == "lifeline.repair_executed"))
     assert audit_item
-    assert is_nil(audit_item.attempt_state)
-    assert is_nil(audit_item.selected_path)
-    assert is_nil(audit_item.runbook_context)
+    assert audit_item.status == :unknown
+    assert audit_item.notes == nil
 
     refute Enum.any?(bundle.runbook_entry.cautions, &(&1.label == "Remediation continuity"))
   end
@@ -688,7 +821,7 @@ defmodule ObanPowertools.ForensicsTest do
       actor_id: "ops-1"
     )
 
-    bundle = Forensics.bundle(%{"workflow_id" => workflow.id}, repo: TestRepo)
+    bundle = ok_bundle(%{"workflow_id" => workflow.id})
 
     assert Enum.any?(bundle.chronology, &(&1.event_type == "workflow.step_completed"))
   end
@@ -707,13 +840,17 @@ defmodule ObanPowertools.ForensicsTest do
     assert {:ok, _coverage} = Cron.record_coverage(TestRepo, entry, slot_at, status: "healthy")
 
     bundle =
-      Forensics.bundle(%{"resource_type" => "cron_entry", "resource_id" => entry.name},
-        repo: TestRepo
-      )
+      ok_bundle(%{"resource_type" => "cron_entry", "resource_id" => entry.name})
 
     assert bundle.subject.entry_surface == "Powertools-native cron"
     assert bundle.completeness.state == :complete
     assert Enum.any?(bundle.chronology, &(&1.event_type == "cron.missed_fire"))
+
+    cron_source = Enum.find(bundle.coverage.sources, &(&1.id == "cron"))
+    assert cron_source.limit == 8
+    assert cron_source.shown_count <= 8
+    assert cron_source.provenance == :durable
+    assert bundle.coverage.bounded?
   end
 
   test "limiter forensic bundle uses retained history facts and explicit completeness labels" do
@@ -749,13 +886,17 @@ defmodule ObanPowertools.ForensicsTest do
     })
 
     bundle =
-      Forensics.bundle(%{"resource_type" => "limiter", "resource_id" => resource.name},
-        repo: TestRepo
-      )
+      ok_bundle(%{"resource_type" => "limiter", "resource_id" => resource.name})
 
     assert bundle.subject.entry_surface == "Powertools-native limiters"
     assert bundle.completeness.state == :complete
     assert Enum.any?(bundle.chronology, &(&1.event_type == "limiter.reconfigured"))
+
+    limiter_source = Enum.find(bundle.coverage.sources, &(&1.id == "limiter"))
+    assert limiter_source.limit == 8
+    assert limiter_source.shown_count <= 8
+    assert limiter_source.provenance == :durable
+    assert bundle.coverage.bounded?
   end
 
   test "supported forensic bundles expose canonical runbook entries with stable selectors" do
@@ -823,27 +964,24 @@ defmodule ObanPowertools.ForensicsTest do
     })
 
     workflow_bundle =
-      Forensics.bundle(%{"workflow_id" => workflow.id, "step" => "sync_billing"}, repo: TestRepo)
+      ok_bundle(%{"workflow_id" => workflow.id, "step" => "sync_billing"})
 
     lifeline_bundle =
-      Forensics.bundle(
-        %{"incident_fingerprint" => incident.incident_fingerprint, "view" => "active"},
-        repo: TestRepo
-      )
+      ok_bundle(%{
+        "incident_fingerprint" => incident.incident_fingerprint,
+        "view" => "active"
+      })
 
     cron_bundle =
-      Forensics.bundle(%{"resource_type" => "cron_entry", "resource_id" => entry.name},
-        repo: TestRepo
-      )
+      ok_bundle(%{"resource_type" => "cron_entry", "resource_id" => entry.name})
 
     limiter_bundle =
-      Forensics.bundle(%{"resource_type" => "limiter", "resource_id" => resource.name},
-        repo: TestRepo
-      )
+      ok_bundle(%{"resource_type" => "limiter", "resource_id" => resource.name})
 
-    unknown_bundle = Forensics.bundle(%{}, repo: TestRepo)
+    assert {:unavailable, "Choose evidence to inspect."} =
+             Forensics.bundle(%{}, repo: TestRepo)
 
-    for bundle <- [workflow_bundle, lifeline_bundle, cron_bundle, limiter_bundle, unknown_bundle] do
+    for bundle <- [workflow_bundle, lifeline_bundle, cron_bundle, limiter_bundle] do
       assert Map.has_key?(bundle, :runbook_entry)
       assert bundle.runbook_entry.title == "Open runbook entry"
     end
@@ -859,11 +997,6 @@ defmodule ObanPowertools.ForensicsTest do
     assert cron_bundle.runbook_entry.evidence_path =~ "resource_id=runbook-cron"
     assert limiter_bundle.runbook_entry.evidence_path =~ "resource_type=limiter"
     assert limiter_bundle.runbook_entry.evidence_path =~ "resource_id=runbook-limiter"
-
-    refute Enum.any?(
-             unknown_bundle.runbook_entry.ordered_next_paths,
-             &(&1.ownership == "Powertools-native" and &1.intent == :remediate)
-           )
   end
 
   test "cron and limiter runbook paths label ownership before action intent" do
@@ -877,9 +1010,7 @@ defmodule ObanPowertools.ForensicsTest do
       })
 
     cron_bundle =
-      Forensics.bundle(%{"resource_type" => "cron_entry", "resource_id" => entry.name},
-        repo: TestRepo
-      )
+      ok_bundle(%{"resource_type" => "cron_entry", "resource_id" => entry.name})
 
     resource =
       TestRepo.insert!(%Resource{
@@ -904,9 +1035,7 @@ defmodule ObanPowertools.ForensicsTest do
     })
 
     limiter_bundle =
-      Forensics.bundle(%{"resource_type" => "limiter", "resource_id" => resource.name},
-        repo: TestRepo
-      )
+      ok_bundle(%{"resource_type" => "limiter", "resource_id" => resource.name})
 
     for bundle <- [cron_bundle, limiter_bundle] do
       labels = Enum.map(bundle.runbook_entry.ordered_next_paths, & &1.label)
@@ -1167,6 +1296,44 @@ defmodule ObanPowertools.ForensicsTest do
   end
 
   defp truncate_minute(%DateTime{} = dt), do: %DateTime{dt | second: 0, microsecond: {0, 0}}
+
+  defp ok_bundle(params) do
+    assert {:ok, bundle} = Forensics.bundle(params, repo: TestRepo)
+    bundle
+  end
+
+  defp capture_select_queries(fun) do
+    handler_id = {__MODULE__, make_ref()}
+    event = TestRepo.config() |> Keyword.fetch!(:telemetry_prefix) |> Kernel.++([:query])
+    test_pid = self()
+    query_ref = make_ref()
+
+    :telemetry.attach(
+      handler_id,
+      event,
+      fn _event, _measurements, metadata, {pid, ref} ->
+        if String.starts_with?(metadata[:query] || "", "SELECT") do
+          send(pid, {ref, Map.take(metadata, [:source, :query])})
+        end
+      end,
+      {test_pid, query_ref}
+    )
+
+    try do
+      result = fun.()
+      {result, collect_select_queries(query_ref, [])}
+    after
+      :telemetry.detach(handler_id)
+    end
+  end
+
+  defp collect_select_queries(query_ref, queries) do
+    receive do
+      {^query_ref, query} -> collect_select_queries(query_ref, [query | queries])
+    after
+      0 -> Enum.reverse(queries)
+    end
+  end
 
   defp assert_no_existing_atom(value) do
     assert_raise ArgumentError, fn -> String.to_existing_atom(value) end

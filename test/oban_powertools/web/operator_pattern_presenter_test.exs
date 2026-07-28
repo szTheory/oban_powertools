@@ -25,6 +25,8 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
     present_job_action_result: 1
   ]
 
+  @phase80_forensics_presenters [present_forensics: 2]
+
   test "exports all five finite Phase 78 presenter seams" do
     assert Code.ensure_loaded?(Presenter), "Phase 78 requires #{Presenter}"
 
@@ -53,6 +55,242 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
       assert function_exported?(Presenter, presenter, arity),
              "Phase 80 requires #{inspect(Presenter)}.#{presenter}/#{arity}"
     end
+  end
+
+  test "exports the finite Phase 80 Forensics presentation seam" do
+    assert Code.ensure_loaded?(Presenter), "Phase 80 requires #{Presenter}"
+
+    for {presenter, arity} <- @phase80_forensics_presenters do
+      assert function_exported?(Presenter, presenter, arity),
+             "Phase 80 requires #{inspect(Presenter)}.#{presenter}/#{arity}"
+    end
+  end
+
+  test "Forensics returns exactly eight diagnosis-first redaction-safe fields" do
+    lifeline_href =
+      "/ops/jobs/lifeline?incident_fingerprint=dead_executor%3Aalpha&view=active"
+
+    audit_href =
+      "/ops/jobs/audit?resource_type=job&resource_id=42"
+
+    page =
+      present(:present_forensics, [
+        forensic_evidence_fixture(),
+        %{authorized_hrefs: [lifeline_href, audit_href]}
+      ])
+
+    assert Map.keys(page) |> Enum.sort() ==
+             Enum.sort([
+               :support,
+               :scope,
+               :summary,
+               :next_steps,
+               :latest_remediation,
+               :events,
+               :coverage,
+               :audit_href
+             ])
+
+    assert page.support == %{
+             state: :ready,
+             heading: "Read-only evidence",
+             copy:
+               "Forensics summarizes retained Powertools evidence and does not prove root cause."
+           }
+
+    assert page.scope == %{
+             type: :lifeline_incident,
+             type_label: "Lifeline incident",
+             identity: "dead_executor:alpha",
+             subject: "Executor alpha is unavailable",
+             ownership: "Powertools-native Lifeline"
+           }
+
+    assert Map.keys(page.summary) |> Enum.sort() ==
+             Enum.sort([
+               :heading,
+               :diagnosis,
+               :detail,
+               :provenance,
+               :completeness,
+               :coverage
+             ])
+
+    assert page.summary.heading == "Investigation summary"
+    assert page.summary.diagnosis == "Blocked"
+    assert page.summary.provenance == "Durable evidence"
+    assert page.summary.completeness == "Partial evidence"
+    assert page.summary.coverage == "Showing the newest 2 events; more evidence exists."
+
+    assert page.next_steps == [
+             %{
+               id: "review-incident-in-lifeline",
+               label: "Review incident in Lifeline",
+               href: lifeline_href,
+               role: :primary,
+               support:
+                 "Review current evidence and reauthorize the incident before taking any action."
+             }
+           ]
+
+    assert page.latest_remediation == %{
+             heading: "Latest remediation evidence",
+             historical?: true,
+             status: "Succeeded",
+             summary:
+               "Historical Lifeline repair evidence was recorded. It does not change the current diagnosis.",
+             occurred_at: "July 28, 2026 at 14:00 UTC",
+             occurred_datetime: "2026-07-28T14:00:00Z",
+             provenance: "Inspection only"
+           }
+
+    assert page.audit_href == audit_href
+    assert Enum.map(page.events, & &1.id) == ["forensic-event-repair", "forensic-event-opened"]
+
+    for event <- page.events do
+      assert Map.keys(event) |> Enum.sort() ==
+               Enum.sort([
+                 :id,
+                 :timestamp,
+                 :datetime,
+                 :title,
+                 :source,
+                 :status,
+                 :domain,
+                 :state,
+                 :notes,
+                 :follow_ups
+               ])
+
+      assert is_binary(event.timestamp)
+      assert is_binary(event.datetime)
+      assert is_binary(event.title)
+      assert is_binary(event.source)
+      assert is_binary(event.status)
+      assert event.domain == :forensics
+      assert is_atom(event.state)
+      assert is_list(event.follow_ups)
+    end
+
+    assert page.coverage == %{
+             heading: "Evidence limits and sources",
+             summary: "Showing the newest 2 events; more evidence exists.",
+             shown_count: 2,
+             total_count: nil,
+             has_more?: true,
+             bounded?: true,
+             completeness: "Partial evidence",
+             retention: "The newest retained incident and Audit evidence is shown.",
+             sources: [
+               %{
+                 id: "lifeline",
+                 label: "Lifeline",
+                 shown_count: 1,
+                 total_count: 1,
+                 has_more?: false,
+                 limit: 1,
+                 provenance: "Durable evidence",
+                 completeness: "Complete",
+                 retention: "Current retained incident evidence."
+               },
+               %{
+                 id: "audit",
+                 label: "Audit",
+                 shown_count: 1,
+                 total_count: nil,
+                 has_more?: true,
+                 limit: 50,
+                 provenance: "Inspection only",
+                 completeness: "Partial evidence",
+                 retention: "Newest retained Audit evidence for this incident scope."
+               }
+             ]
+           }
+
+    serialized = inspect(page, printable_limit: :infinity, limit: :infinity)
+
+    for sentinel <- ~w[
+          SYNTHETIC_REASON SYNTHETIC_RUNBOOK SYNTHETIC_ERROR SYNTHETIC_STACKTRACE
+          SYNTHETIC_PAYLOAD SYNTHETIC_URL SYNTHETIC_HEADER SYNTHETIC_TOKEN
+          SYNTHETIC_CREDENTIAL SYNTHETIC_METADATA
+        ] do
+      refute serialized =~ sentinel
+    end
+
+    refute serialized =~ "repair_executed"
+    refute serialized =~ "bridge_only"
+    refute serialized =~ "incident_fingerprint"
+  end
+
+  test "Forensics guidance is authorized noun-only canonical-URL-deduplicated and fail closed" do
+    evidence = forensic_evidence_fixture()
+
+    page =
+      present(:present_forensics, [
+        evidence,
+        %{
+          authorized_hrefs: [
+            "/ops/jobs/lifeline?incident_fingerprint=dead_executor%3Aalpha&view=active",
+            "/ops/jobs/workflows/workflow-1?step=sync"
+          ]
+        }
+      ])
+
+    assert Enum.map(page.next_steps, & &1.label) == [
+             "Review incident in Lifeline",
+             "Open workflow"
+           ]
+
+    assert Enum.map(page.next_steps, & &1.role) == [:primary, :additional]
+    assert page.audit_href == nil
+    assert Enum.uniq_by(page.next_steps, &canonical_href(&1.href)) == page.next_steps
+
+    allowed_labels = [
+      "Open workflow",
+      "Review incident in Lifeline",
+      "Open cron entry",
+      "Review limiter blockers",
+      "View matching audit evidence"
+    ]
+
+    assert Enum.all?(page.next_steps, &(&1.label in allowed_labels))
+
+    closed = present(:present_forensics, [evidence, %{}])
+    assert closed.next_steps == []
+    assert closed.audit_href == nil
+    assert Enum.all?(closed.events, &(&1.follow_ups == []))
+  end
+
+  test "Forensics omits remediation without genuine Lifeline repair history and caps safe notes" do
+    evidence =
+      forensic_evidence_fixture()
+      |> put_in([:subject, :type], "workflow")
+      |> put_in([:subject, :id], "workflow-1")
+      |> put_in([:subject, :label], "Billing workflow")
+      |> put_in([:subject, :entry_surface], "Powertools-native workflows")
+      |> put_in([:chronology], [
+        %{
+          id: "forensic-event-workflow",
+          occurred_at: ~U[2026-07-28 15:00:00Z],
+          label: "Workflow state was recorded",
+          resource_type: "workflow",
+          resource_id: "workflow-1",
+          source_family: "workflow",
+          strength: :durable,
+          event_type: "workflow.step_state",
+          status: :waiting,
+          notes: String.duplicate("界", 1_200)
+        }
+      ])
+
+    page = present(:present_forensics, [evidence, %{authorized_hrefs: []}])
+
+    assert page.latest_remediation == nil
+    assert [event] = page.events
+    assert String.length(event.notes) == 1_000
+    assert String.ends_with?(event.notes, "…")
+    assert event.status == "Waiting"
+    assert event.state == :waiting
   end
 
   test "Jobs row projects exactly eight grammatical table and control facts" do
@@ -1081,6 +1319,162 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
         redacted?: false
       }
     }
+  end
+
+  defp forensic_evidence_fixture do
+    %{
+      subject: %{
+        type: "lifeline_incident",
+        id: "dead_executor:alpha",
+        label: "Executor alpha is unavailable",
+        entry_surface: "Powertools-native Lifeline",
+        resource_type: "job",
+        resource_id: "42",
+        continuity: %{
+          reason: "SYNTHETIC_REASON",
+          runbook_context: "SYNTHETIC_RUNBOOK",
+          preview_token: "SYNTHETIC_TOKEN"
+        }
+      },
+      diagnosis_summary: %{
+        title: "Lifeline diagnosis",
+        current: "blocked",
+        detail: "The executor is not reporting current health.",
+        provenance: :durable,
+        raw_error: "SYNTHETIC_ERROR"
+      },
+      chronology: [
+        %{
+          id: "forensic-event-repair",
+          occurred_at: ~U[2026-07-28 14:00:00Z],
+          label: "Lifeline repair evidence was recorded",
+          resource_type: "job",
+          resource_id: "42",
+          source_family: "audit",
+          strength: :bridge_only,
+          event_type: "lifeline.repair_executed",
+          status: :succeeded,
+          notes: "SYNTHETIC_REASON",
+          runbook_context: %{"stacktrace" => "SYNTHETIC_STACKTRACE"}
+        },
+        %{
+          id: "forensic-event-opened",
+          occurred_at: ~U[2026-07-28 13:00:00Z],
+          label: "The Lifeline incident was opened",
+          resource_type: "incident",
+          resource_id: "dead_executor:alpha",
+          source_family: "lifeline",
+          strength: :durable,
+          event_type: "lifeline.incident_opened",
+          status: :blocked,
+          notes: nil,
+          payload: "SYNTHETIC_PAYLOAD"
+        }
+      ],
+      related_evidence: [
+        %{
+          title: "Incident evidence",
+          summary: "The retained incident is the current durable source.",
+          provenance: :durable,
+          metadata: "SYNTHETIC_METADATA"
+        }
+      ],
+      linked_resources: [
+        %{
+          label: "Lifeline detail",
+          path: "/ops/jobs/lifeline?view=active&incident_fingerprint=dead_executor%3Aalpha",
+          venue: "Powertools-native"
+        },
+        %{
+          label: "Lifeline duplicate",
+          path: "/ops/jobs/lifeline?incident_fingerprint=dead_executor%3Aalpha&view=active",
+          venue: "Powertools-native"
+        },
+        %{
+          label: "Workflow detail",
+          path: "/ops/jobs/workflows/workflow-1?step=sync",
+          venue: "Powertools-native"
+        },
+        %{
+          label: "Audit follow-up",
+          path: "/ops/jobs/audit?resource_type=job&resource_id=42",
+          venue: "Inspection only"
+        },
+        %{
+          label: "Sensitive URL",
+          path: "https://example.invalid/?token=SYNTHETIC_URL",
+          venue: "External"
+        }
+      ],
+      legal_next_paths: [
+        %{
+          label: "Review incident",
+          path: "/ops/jobs/lifeline?incident_fingerprint=dead_executor%3Aalpha&view=active",
+          venue: "Powertools-native",
+          authorization: "SYNTHETIC_CREDENTIAL"
+        },
+        %{
+          label: "Unsupported",
+          path: "/ops/jobs/unsupported?header=SYNTHETIC_HEADER",
+          venue: "Powertools-native"
+        }
+      ],
+      completeness: %{
+        state: :partial_evidence,
+        details: "Some retained incident evidence may be outside this bounded window."
+      },
+      coverage: %{
+        shown_count: 2,
+        total_count: nil,
+        has_more?: true,
+        bounded?: true,
+        retention: "The newest retained incident and Audit evidence is shown.",
+        sources: [
+          %{
+            id: "lifeline",
+            label: "Lifeline",
+            shown_count: 1,
+            total_count: 1,
+            has_more?: false,
+            limit: 1,
+            provenance: :durable,
+            completeness: :complete,
+            retention: "Current retained incident evidence."
+          },
+          %{
+            id: "audit",
+            label: "Audit",
+            shown_count: 1,
+            total_count: nil,
+            has_more?: true,
+            limit: 50,
+            provenance: :bridge_only,
+            completeness: :partial_evidence,
+            retention: "Newest retained Audit evidence for this incident scope.",
+            error: "SYNTHETIC_ERROR"
+          }
+        ]
+      },
+      runbook_entry: %{
+        reason: "SYNTHETIC_REASON",
+        context: "SYNTHETIC_RUNBOOK",
+        credentials: "SYNTHETIC_CREDENTIAL"
+      },
+      unknown_source: %Oban.Job{args: %{"token" => "SYNTHETIC_TOKEN"}}
+    }
+  end
+
+  defp canonical_href(href) do
+    uri = URI.parse(href)
+
+    query =
+      uri.query
+      |> to_string()
+      |> URI.decode_query()
+      |> Enum.sort()
+      |> URI.encode_query()
+
+    if query == "", do: uri.path, else: "#{uri.path}?#{query}"
   end
 
   defp nested_keys(value) when is_map(value) do
