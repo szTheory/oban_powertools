@@ -8,8 +8,16 @@ const manifestPath = path.join(
   "test/browser/.generated/showcase-manifest.json",
 );
 const screenshotRoot = path.join(root, "test/browser/__screenshots__");
-const expectedStoryCount = 19;
+const expectedStoryCount = 49;
 const expectedThemes = ["system", "light", "dark", "high-contrast"];
+const expectedPages = [
+  "overview",
+  "cron",
+  "limiters",
+  "audit",
+  "jobs",
+  "forensics",
+];
 const viewportProjects = new Map([
   ["320", { project: "chromium-320", width: 320, height: 900 }],
   ["tablet", { project: "chromium-tablet", width: 768, height: 1000 }],
@@ -39,9 +47,9 @@ function readManifest() {
 
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 
-  if (manifest.schema_version !== 7) {
+  if (manifest.schema_version !== 8) {
     fail(
-      `schema_version must be 7, got ${JSON.stringify(manifest.schema_version)}`,
+      `schema_version must be 8, got ${JSON.stringify(manifest.schema_version)}`,
     );
   }
 
@@ -75,7 +83,11 @@ function readManifest() {
 function validatePageStory(story) {
   if (
     story.kind !== "page" ||
-    !/^page-(overview|cron|limiters|audit)-[a-z0-9-]+$/.test(story.id) ||
+    !expectedPages.includes(story.page) ||
+    !/^page-(overview|cron|limiters|audit|jobs|forensics)-[a-z0-9-]+$/.test(
+      story.id,
+    ) ||
+    !story.id.startsWith(`page-${story.page}-`) ||
     story.story !== `obpt-page-story-${story.id}` ||
     story.snapshot !== `showcase/${story.id}` ||
     story.a11y !== `[data-obpt-page-story="${story.id}"]` ||
@@ -96,6 +108,15 @@ function validatePageStory(story) {
 
 function expectedPaths(manifest) {
   const expected = [];
+  const pageFamilies = [
+    ...new Set(manifest.page_stories.map((story) => story.page)),
+  ];
+
+  if (JSON.stringify(pageFamilies) !== JSON.stringify(expectedPages)) {
+    fail(
+      `page families must be ${JSON.stringify(expectedPages)}, got ${JSON.stringify(pageFamilies)}`,
+    );
+  }
 
   for (const viewport of manifest.viewports) {
     const expectedViewport = viewportProjects.get(viewport.name);
@@ -126,12 +147,12 @@ function expectedPaths(manifest) {
 
   const unique = new Set(expected);
   if (
-    expectedCount !== 228 ||
+    expectedCount !== 588 ||
     expected.length !== expectedCount ||
     unique.size !== expectedCount
   ) {
     fail(
-      `manifest-derived matrix must contain 19 * 4 * 3 = 228 unique paths, got ${expected.length} paths and ${unique.size} unique paths`,
+      `manifest-derived matrix must contain 49 * 4 * 3 = 588 unique paths, got ${expected.length} paths and ${unique.size} unique paths`,
     );
   }
 
@@ -158,7 +179,12 @@ function actualPagePaths() {
   );
 }
 
-function reportSetDifference(expected, actual) {
+function reportSetDifference(
+  expected,
+  actual,
+  label,
+  requiredCount = expectedCount,
+) {
   const missing = [...expected].filter((file) => !actual.has(file)).sort();
   const extra = [...actual].filter((file) => !expected.has(file)).sort();
 
@@ -173,14 +199,34 @@ function reportSetDifference(expected, actual) {
     fail(diagnostics.join("\n"));
   }
 
-  if (actual.size !== expectedCount) {
+  if (actual.size !== requiredCount) {
     fail(
-      `actual page baseline cardinality must be ${expectedCount}, got ${actual.size}`,
+      `${label} page baseline cardinality must be ${requiredCount}, got ${actual.size}`,
     );
   }
 }
 
-function changedScreenshotPaths() {
+function trackedPagePaths() {
+  const output = execFileSync(
+    "git",
+    ["ls-files", "-z", "--", "test/browser/__screenshots__"],
+    { cwd: root, encoding: "utf8" },
+  );
+
+  return new Set(
+    output
+      .split("\0")
+      .filter(Boolean)
+      .map(slash)
+      .filter(
+        (file) =>
+          file.endsWith(".png") &&
+          file.split("/").some((segment) => segment.startsWith("page-")),
+      ),
+  );
+}
+
+function changedScreenshotEntries() {
   const output = execFileSync(
     "git",
     [
@@ -194,42 +240,59 @@ function changedScreenshotPaths() {
     { cwd: root, encoding: "utf8" },
   );
   const records = output.split("\0");
-  const paths = [];
+  const entries = [];
 
   for (let index = 0; index < records.length; index += 1) {
     const record = records[index];
     if (!record) continue;
 
     const status = record.slice(0, 2);
-    paths.push(slash(record.slice(3)));
+    const entry = { status, path: slash(record.slice(3)), pairedPath: null };
 
     if (status.includes("R") || status.includes("C")) {
       const pairedPath = records[index + 1];
       if (!pairedPath) {
         fail(`malformed git status rename/copy record for ${record.slice(3)}`);
       }
-      paths.push(slash(pairedPath));
+      entry.pairedPath = slash(pairedPath);
       index += 1;
     }
+
+    entries.push(entry);
   }
 
-  return paths;
+  return entries;
 }
 
-const args = process.argv.slice(2);
-if (args.some((arg) => arg !== "--changed-scope") || args.length > 1) {
-  fail(
-    "usage: node test/browser/support/verify-page-baselines.mjs [--changed-scope]",
+function validateChangedScreenshotEntries(entries, expected) {
+  const renamedOrCopied = entries.filter(
+    ({ status }) => status.includes("R") || status.includes("C"),
   );
-}
-
-const expected = expectedPaths(readManifest());
-
-if (args[0] === "--changed-scope") {
-  const changed = changedScreenshotPaths();
+  const untracked = entries.filter(({ status }) => status === "??");
+  const changedPaths = entries.flatMap(({ path: file, pairedPath }) =>
+    pairedPath ? [file, pairedPath] : [file],
+  );
   const outside = [
-    ...new Set(changed.filter((file) => !expected.has(file))),
+    ...new Set(changedPaths.filter((file) => !expected.has(file))),
   ].sort();
+
+  if (renamedOrCopied.length > 0) {
+    fail(
+      `renamed/copied screenshots are not accepted: ${renamedOrCopied
+        .map(({ status, path: file, pairedPath }) =>
+          `${status} ${file}${pairedPath ? ` -> ${pairedPath}` : ""}`,
+        )
+        .join(", ")}`,
+    );
+  }
+
+  if (untracked.length > 0) {
+    fail(
+      `untracked page screenshots must be reviewed and staged: ${untracked
+        .map(({ path: file }) => file)
+        .join(", ")}`,
+    );
+  }
 
   if (outside.length > 0) {
     fail(
@@ -237,11 +300,98 @@ if (args[0] === "--changed-scope") {
     );
   }
 
-  console.log(
-    `page baseline changed scope ok: ${changed.length} paths, all within ${expectedCount}`,
+  return changedPaths;
+}
+
+function expectFailure(label, callback) {
+  try {
+    callback();
+  } catch {
+    return;
+  }
+
+  fail(`self-test ${label} did not reject invalid input`);
+}
+
+function runSelfTest() {
+  const sample = new Set(["page-a.png", "page-b.png"]);
+
+  expectFailure("missing", () =>
+    reportSetDifference(sample, new Set(["page-a.png"]), "sample", 2),
   );
+  expectFailure("extra", () =>
+    reportSetDifference(
+      sample,
+      new Set(["page-a.png", "page-b.png", "page-c.png"]),
+      "sample",
+      2,
+    ),
+  );
+  expectFailure("untracked", () =>
+    validateChangedScreenshotEntries(
+      [{ status: "??", path: "page-a.png", pairedPath: null }],
+      sample,
+    ),
+  );
+  expectFailure("renamed", () =>
+    validateChangedScreenshotEntries(
+      [{ status: "R ", path: "page-a.png", pairedPath: "page-b.png" }],
+      sample,
+    ),
+  );
+  expectFailure("copied", () =>
+    validateChangedScreenshotEntries(
+      [{ status: "C ", path: "page-a.png", pairedPath: "page-b.png" }],
+      sample,
+    ),
+  );
+  expectFailure("non-page scope", () =>
+    validateChangedScreenshotEntries(
+      [{ status: "M ", path: "scenario.png", pairedPath: null }],
+      sample,
+    ),
+  );
+
+  console.log(
+    "page baseline self-test ok: missing, extra, untracked, renamed, copied, and non-page scope rejected",
+  );
+}
+
+const args = process.argv.slice(2);
+if (
+  args.some(
+    (arg) => arg !== "--changed-scope" && arg !== "--contract" && arg !== "--self-test",
+  ) ||
+  args.length > 1
+) {
+  fail(
+    "usage: node test/browser/support/verify-page-baselines.mjs [--changed-scope|--contract|--self-test]",
+  );
+}
+
+if (args[0] === "--self-test") {
+  runSelfTest();
+  process.exit(0);
+}
+
+const expected = expectedPaths(readManifest());
+
+if (args[0] === "--contract") {
+  console.log(`page baseline contract ok: ${expected.size} paths`);
 } else {
   const actual = actualPagePaths();
-  reportSetDifference(expected, actual);
-  console.log(`page baselines ok: ${actual.size}`);
+  reportSetDifference(expected, actual, "filesystem");
+  reportSetDifference(expected, trackedPagePaths(), "tracked");
+
+  if (args[0] === "--changed-scope") {
+    const changed = validateChangedScreenshotEntries(
+      changedScreenshotEntries(),
+      expected,
+    );
+    console.log(
+      `page baseline changed scope ok: ${changed.length} paths, all tracked within ${expectedCount}`,
+    );
+  } else {
+    console.log(`page baselines ok: ${actual.size} tracked paths`);
+  }
 }

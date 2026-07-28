@@ -1,9 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const manifestPath = path.join(process.cwd(), 'test/browser/.generated/showcase-manifest.json');
+const manifestPath =
+  process.env.SHOWCASE_MANIFEST_PATH ??
+  path.join(process.cwd(), 'test/browser/.generated/showcase-manifest.json');
 const expectedThemes = ['system', 'light', 'dark', 'high-contrast'];
-const expectedPages = ['overview', 'cron', 'limiters', 'audit'];
+const expectedPages = ['overview', 'cron', 'limiters', 'audit', 'jobs', 'forensics'];
 const expectedViewports = [
   { name: '320', width: 320, height: 900 },
   { name: 'tablet', width: 768, height: 1000 },
@@ -80,6 +82,7 @@ function pageStory(value, label) {
       'variant',
       'state',
       'activation',
+      'acceptance',
       'story',
       'snapshot',
       'a11y'
@@ -91,14 +94,18 @@ function pageStory(value, label) {
   const components = array(actual.components, `${label}.components`);
   const variant = array(actual.variant, `${label}.variant`);
   const state = array(actual.state, `${label}.state`);
+  const acceptance = record(actual.acceptance, `${label}.acceptance`);
 
   equal(actual.kind, 'page', `${label}.kind`);
   if (!/^page-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)) {
     fail(`${label}.id must be a slug-like page-* identifier`);
   }
   if (!expectedPages.includes(actual.page)) {
-    fail(`${label}.page must be "overview", "cron", "limiters", or "audit"`);
+    fail(
+      `${label}.page must be "overview", "cron", "limiters", "audit", "jobs", or "forensics"`
+    );
   }
+  equal(id.startsWith(`page-${actual.page}-`), true, `${label}.id page prefix`);
   if (!['none', 'detail', 'confirmation'].includes(actual.activation)) {
     fail(`${label}.activation must be "none", "detail", or "confirmation"`);
   }
@@ -113,6 +120,52 @@ function pageStory(value, label) {
   equal(actual.story, `obpt-page-story-${id}`, `${label}.story`);
   equal(actual.snapshot, `showcase/${id}`, `${label}.snapshot`);
   equal(actual.a11y, `[data-obpt-page-story="${id}"]`, `${label}.a11y`);
+
+  exactFields(
+    acceptance,
+    ['required_text', 'forbidden_text', 'ordered_text', 'roles'],
+    `${label}.acceptance`
+  );
+
+  for (const field of ['required_text', 'forbidden_text', 'ordered_text']) {
+    const values = array(acceptance[field], `${label}.acceptance.${field}`);
+    equal(values.length > 0, true, `${label}.acceptance.${field} non-empty`);
+    values.forEach((item, index) =>
+      string(item, `${label}.acceptance.${field}[${index}]`)
+    );
+  }
+
+  const roles = array(acceptance.roles, `${label}.acceptance.roles`);
+  equal(roles.length > 0, true, `${label}.acceptance.roles non-empty`);
+
+  roles.forEach((role, index) => {
+    const roleLabel = `${label}.acceptance.roles[${index}]`;
+    const contract = record(role, roleLabel);
+    exactFields(
+      contract,
+      contract.level === undefined
+        ? ['role', 'name', 'states']
+        : ['role', 'name', 'level', 'states'],
+      roleLabel
+    );
+    string(contract.role, `${roleLabel}.role`);
+    string(contract.name, `${roleLabel}.name`);
+    const states = record(contract.states, `${roleLabel}.states`);
+
+    for (const [stateName, enabled] of Object.entries(states)) {
+      if (!['checked', 'disabled', 'expanded', 'pressed', 'selected'].includes(stateName)) {
+        fail(`${roleLabel}.states.${stateName} is not supported`);
+      }
+      equal(typeof enabled, 'boolean', `${roleLabel}.states.${stateName} boolean`);
+    }
+
+    if (
+      contract.level !== undefined &&
+      (!Number.isInteger(contract.level) || contract.level < 1 || contract.level > 6)
+    ) {
+      fail(`${roleLabel}.level must be an integer from 1 through 6`);
+    }
+  });
 
   return actual;
 }
@@ -167,7 +220,7 @@ exactFields(
   ],
   'manifest'
 );
-equal(manifest.schema_version, 7, 'schema_version');
+equal(manifest.schema_version, 8, 'schema_version');
 exactList(array(manifest.themes, 'themes'), expectedThemes, 'themes');
 
 const viewports = array(manifest.viewports, 'viewports');
@@ -354,7 +407,7 @@ for (const [index, story] of groupStories.entries()) {
 }
 
 const pageStories = array(manifest.page_stories, 'page_stories');
-equal(pageStories.length, 19, 'page_stories.length');
+equal(pageStories.length, 49, 'page_stories.length');
 
 const pageIds = new Set();
 
@@ -365,6 +418,12 @@ for (const [index, story] of pageStories.entries()) {
   pageIds.add(actual.id);
   expectedTargets.push({ ...actual });
 }
+
+exactList(
+  [...new Set(pageStories.map((story) => story.page))],
+  expectedPages,
+  'page_stories families'
+);
 
 const targets = array(manifest.targets, 'targets');
 const allowedTargetKinds = ['scenario', 'primitive', 'form', 'shell', 'data', 'group', 'page'];
@@ -380,7 +439,7 @@ for (const [index, target] of targets.entries()) {
 }
 
 assertPageTargetOrder(targets, pageStories, 64);
-equal(expectedTargets.length, 83, 'expected targets.length');
+equal(expectedTargets.length, 113, 'expected targets.length');
 equal(targets.length, expectedTargets.length, 'targets.length');
 
 for (const [index, target] of targets.entries()) {
@@ -508,6 +567,11 @@ for (const [index, target] of targets.entries()) {
       `targets[${index}].state`
     );
     equal(actual.activation, expected.activation, `targets[${index}].activation`);
+    equal(
+      JSON.stringify(actual.acceptance),
+      JSON.stringify(expected.acceptance),
+      `targets[${index}].acceptance`
+    );
   }
 
   if (expected.kind === 'page') {

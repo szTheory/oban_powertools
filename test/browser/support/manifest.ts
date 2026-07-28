@@ -1,9 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const manifestPath = path.join(process.cwd(), 'test/browser/.generated/showcase-manifest.json');
+const manifestPath =
+  process.env.SHOWCASE_MANIFEST_PATH ??
+  path.join(process.cwd(), 'test/browser/.generated/showcase-manifest.json');
 const allowedThemes = ['system', 'light', 'dark', 'high-contrast'] as const;
-const allowedPages = ['overview', 'cron', 'limiters', 'audit'] as const;
+const allowedPages = ['overview', 'cron', 'limiters', 'audit', 'jobs', 'forensics'] as const;
 const expectedViewports = [
   { name: '320', width: 320, height: 900 },
   { name: 'tablet', width: 768, height: 1000 },
@@ -13,6 +15,28 @@ const expectedViewports = [
 export type ShowcaseTheme = (typeof allowedThemes)[number];
 export type ViewportName = (typeof expectedViewports)[number]['name'];
 export type ShowcasePageName = (typeof allowedPages)[number];
+
+export type ShowcaseRoleState = {
+  checked?: boolean;
+  disabled?: boolean;
+  expanded?: boolean;
+  pressed?: boolean;
+  selected?: boolean;
+};
+
+export type ShowcaseRoleContract = {
+  role: string;
+  name: string;
+  level?: number;
+  states: ShowcaseRoleState;
+};
+
+export type ShowcaseAcceptance = {
+  required_text: string[];
+  forbidden_text: string[];
+  ordered_text: string[];
+  roles: ShowcaseRoleContract[];
+};
 
 export type ShowcaseViewport = {
   name: ViewportName;
@@ -66,6 +90,7 @@ export type ShowcasePageStory = Omit<ShowcasePrimitiveStory, 'kind'> & {
   kind: 'page';
   page: ShowcasePageName;
   activation: 'none' | 'detail' | 'confirmation';
+  acceptance: ShowcaseAcceptance;
 };
 
 export type ShowcaseTarget =
@@ -78,7 +103,7 @@ export type ShowcaseTarget =
   | ShowcasePageStory;
 
 export type ShowcaseManifest = {
-  schema_version: 7;
+  schema_version: 8;
   themes: ShowcaseTheme[];
   viewports: ShowcaseViewport[];
   scenarios: ShowcaseScenario[];
@@ -122,7 +147,7 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
     ],
     'manifest'
   );
-  assertEqual(manifest.schema_version, 7, 'schema_version');
+  assertEqual(manifest.schema_version, 8, 'schema_version');
 
   const themes = assertStringArray(manifest.themes, 'themes') as ShowcaseTheme[];
   assertExactList(themes, [...allowedThemes], 'themes');
@@ -267,10 +292,15 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
     validatePageStory(story, index, 'page_stories')
   );
 
-  assertEqual(pageStories.length, 19, 'page_stories.length');
+  assertEqual(pageStories.length, 49, 'page_stories.length');
   assertUniqueList(
     pageStories.map((story) => story.id),
     'page_stories ids'
+  );
+  assertExactList(
+    [...new Set(pageStories.map((story) => story.page))],
+    [...allowedPages],
+    'page_stories families'
   );
 
   const targets = assertArray(manifest.targets, 'targets').map((target, index) =>
@@ -290,7 +320,7 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
   ];
 
   assertPageTargetOrder(targets, pageStories, 64);
-  assertEqual(expectedTargets.length, 83, 'expected targets.length');
+  assertEqual(expectedTargets.length, 113, 'expected targets.length');
   assertEqual(targets.length, expectedTargets.length, 'targets.length');
 
   for (const [index, expectedTarget] of expectedTargets.entries()) {
@@ -369,11 +399,16 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
         expectedTarget.activation,
         `targets[${index}].activation`
       );
+      assertEqual(
+        JSON.stringify(actualTarget.acceptance),
+        JSON.stringify(expectedTarget.acceptance),
+        `targets[${index}].acceptance`
+      );
     }
   }
 
   return {
-    schema_version: 7,
+    schema_version: 8,
     themes,
     viewports,
     scenarios,
@@ -477,6 +512,7 @@ function validatePageStory(
       'variant',
       'state',
       'activation',
+      'acceptance',
       'story',
       'snapshot',
       'a11y'
@@ -492,6 +528,7 @@ function validatePageStory(
   }
 
   const page = assertPageName(actual.page, `${label}.page`);
+  assertEqual(id.startsWith(`page-${page}-`), true, `${label}.id page prefix`);
   const component = assertString(actual.component, `${label}.component`);
   const components = assertStringArray(actual.components, `${label}.components`);
   const name = assertString(actual.name, `${label}.name`);
@@ -499,6 +536,7 @@ function validatePageStory(
   const variant = assertStringArray(actual.variant, `${label}.variant`);
   const state = assertStringArray(actual.state, `${label}.state`);
   const activation = assertPageActivation(actual.activation, `${label}.activation`);
+  const acceptance = validateAcceptance(actual.acceptance, `${label}.acceptance`);
   const story = assertString(actual.story, `${label}.story`);
   const snapshot = assertString(actual.snapshot, `${label}.snapshot`);
   const a11y = assertString(actual.a11y, `${label}.a11y`);
@@ -523,9 +561,83 @@ function validatePageStory(
     variant,
     state,
     activation,
+    acceptance,
     story,
     snapshot,
     a11y
+  };
+}
+
+function validateAcceptance(value: unknown, label: string): ShowcaseAcceptance {
+  const actual = assertRecord(value, label);
+
+  assertExactRecordFields(
+    actual,
+    ['required_text', 'forbidden_text', 'ordered_text', 'roles'],
+    label
+  );
+
+  const requiredText = assertStringArray(actual.required_text, `${label}.required_text`);
+  const forbiddenText = assertStringArray(actual.forbidden_text, `${label}.forbidden_text`);
+  const orderedText = assertStringArray(actual.ordered_text, `${label}.ordered_text`);
+  const roles = assertArray(actual.roles, `${label}.roles`).map((role, index) =>
+    validateRoleContract(role, `${label}.roles[${index}]`)
+  );
+
+  if (
+    requiredText.length === 0 ||
+    forbiddenText.length === 0 ||
+    orderedText.length === 0 ||
+    roles.length === 0
+  ) {
+    throw new Error(`${label} text and role contracts must not be empty`);
+  }
+
+  return {
+    required_text: requiredText,
+    forbidden_text: forbiddenText,
+    ordered_text: orderedText,
+    roles
+  };
+}
+
+function validateRoleContract(value: unknown, label: string): ShowcaseRoleContract {
+  const actual = assertRecord(value, label);
+  const expectedFields =
+    actual.level === undefined
+      ? ['role', 'name', 'states']
+      : ['role', 'name', 'level', 'states'];
+
+  assertExactRecordFields(actual, expectedFields, label);
+
+  const role = assertString(actual.role, `${label}.role`);
+  const name = assertString(actual.name, `${label}.name`);
+  const states = assertRecord(actual.states, `${label}.states`);
+  const allowedStateFields = ['checked', 'disabled', 'expanded', 'pressed', 'selected'];
+
+  for (const [state, enabled] of Object.entries(states)) {
+    if (!allowedStateFields.includes(state) || typeof enabled !== 'boolean') {
+      throw new Error(`${label}.states.${state} must be a supported boolean role state`);
+    }
+  }
+
+  if (actual.level === undefined) {
+    return { role, name, states: states as ShowcaseRoleState };
+  }
+
+  if (
+    !Number.isInteger(actual.level) ||
+    (actual.level as number) < 1 ||
+    (actual.level as number) > 6
+  ) {
+    throw new Error(`${label}.level must be an integer from 1 through 6`);
+  }
+
+  return {
+    role,
+    name,
+    level: actual.level as number,
+    states: states as ShowcaseRoleState
   };
 }
 
@@ -626,7 +738,9 @@ function assertPageName(value: unknown, label: string): ShowcasePageName {
   const page = assertString(value, label);
 
   if (!allowedPages.includes(page as ShowcasePageName)) {
-    throw new Error(`${label} must be "overview", "cron", "limiters", or "audit"`);
+    throw new Error(
+      `${label} must be "overview", "cron", "limiters", "audit", "jobs", or "forensics"`
+    );
   }
 
   return page as ShowcasePageName;
