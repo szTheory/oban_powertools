@@ -90,13 +90,15 @@ defmodule ObanPowertools.Web.JobsLiveTest do
     test "canonicalizes missing and invalid URL values before loading", %{conn: conn} do
       conn = jobs_conn(conn)
 
-      {:ok, view, html} =
-        live(
-          conn,
-          "/ops/jobs/jobs?state=unknown&page=nope&args=%7Bbad&job=not-an-id&surprise=true"
-        )
+      {{:ok, _view, html}, queries} =
+        capture_job_queries(fn ->
+          live(
+            conn,
+            "/ops/jobs/jobs?state=unknown&page=nope&args=%7Bbad&job=not-an-id&surprise=true"
+          )
+        end)
 
-      assert_patch(view, "/ops/jobs/jobs?state=available")
+      assert length(queries) == 3
       assert html =~ "Some filters were not applied"
 
       assert html =~
@@ -251,12 +253,12 @@ defmodule ObanPowertools.Web.JobsLiveTest do
         insert_job!(worker: "MyApp.PageWorker#{index}", queue: :default)
       end
 
-      {:ok, _view, html} = live(jobs_conn(conn), "/ops/jobs/jobs?state=available&page=2")
+      {:ok, view, html} = live(jobs_conn(conn), "/ops/jobs/jobs?state=available&page=2")
 
       assert html =~ "40 available jobs"
       assert html =~ "Showing 21–40 of 40"
-      assert html =~ ~r/id="jobs-next-page"[^>]*disabled/
-      assert html =~ ~r/id="jobs-previous-page"[^>]*phx-click="paginate"/
+      assert has_element?(view, "#jobs-next-page[disabled]")
+      assert has_element?(view, "#jobs-previous-page[phx-click=paginate]")
     end
 
     test "explicit selection persists across pagination and exposes page tri-state", %{conn: conn} do
@@ -321,15 +323,27 @@ defmodule ObanPowertools.Web.JobsLiveTest do
     test "missing and unauthorized review IDs have one unavailable outcome", %{conn: conn} do
       job = insert_job!(worker: "MyApp.PrivateWorker", queue: :default)
 
-      {:ok, unauthorized_view, unauthorized_html} =
-        live(jobs_conn(conn), "/ops/jobs/jobs?state=available&job=#{job.id}")
+      {:ok, unauthorized_view, _html} =
+        live(jobs_conn(conn), "/ops/jobs/jobs?state=available")
+
+      unauthorized_html =
+        render_patch(
+          unauthorized_view,
+          "/ops/jobs/jobs?state=available&job=#{job.id}"
+        )
 
       assert_patch(unauthorized_view, "/ops/jobs/jobs?state=available")
       assert unauthorized_html =~ "Job unavailable"
-      refute unauthorized_html =~ "PrivateWorker"
+      refute has_element?(unauthorized_view, "#job-quick-review")
 
-      {:ok, missing_view, missing_html} =
-        live(jobs_conn(conn, [:view_job_detail]), "/ops/jobs/jobs?state=available&job=999999999")
+      {:ok, missing_view, _html} =
+        live(jobs_conn(conn, [:view_job_detail]), "/ops/jobs/jobs?state=available")
+
+      missing_html =
+        render_patch(
+          missing_view,
+          "/ops/jobs/jobs?state=available&job=999999999"
+        )
 
       assert_patch(missing_view, "/ops/jobs/jobs?state=available")
       assert missing_html =~ "Job unavailable"
@@ -1016,7 +1030,7 @@ defmodule ObanPowertools.Web.JobsLiveTest do
   describe "Bulk actions" do
     test "job selection state and UI", %{conn: conn} do
       job1 = insert_job!(worker: "MyApp.Worker1", queue: :default)
-      job2 = insert_job!(worker: "MyApp.Worker2", queue: :default)
+      _job2 = insert_job!(worker: "MyApp.Worker2", queue: :default)
 
       conn =
         Plug.Test.init_test_session(conn,
@@ -1035,10 +1049,10 @@ defmodule ObanPowertools.Web.JobsLiveTest do
         |> element("input[phx-click=\"toggle_job\"][phx-value-id=\"#{job1.id}\"]")
         |> render_click()
 
-      assert html =~ "1 jobs selected"
+      assert html =~ "1 job selected"
 
       html = render_hook(view, "toggle_job", %{"id" => "not-an-integer"})
-      assert html =~ "1 jobs selected"
+      assert html =~ "1 job selected"
 
       # Toggle all jobs
       html = view |> element("input[phx-click=\"toggle_page\"]") |> render_click()
@@ -1051,8 +1065,8 @@ defmodule ObanPowertools.Web.JobsLiveTest do
     end
 
     test "executing bulk action", %{conn: conn} do
-      job1 = insert_job!(worker: "MyApp.Worker1", queue: :default, state: "retryable")
-      job2 = insert_job!(worker: "MyApp.Worker2", queue: :default, state: "retryable")
+      _job1 = insert_job!(worker: "MyApp.Worker1", queue: :default, state: "retryable")
+      _job2 = insert_job!(worker: "MyApp.Worker2", queue: :default, state: "retryable")
 
       conn =
         Plug.Test.init_test_session(conn,

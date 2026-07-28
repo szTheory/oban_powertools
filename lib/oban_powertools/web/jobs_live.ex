@@ -5,7 +5,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     use Phoenix.LiveView
 
     alias ObanPowertools.{DisplayPolicy, JobRecord, Jobs, Lifeline}
-    alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth, Selectors}
+    alias ObanPowertools.Web.Components.{DataDisplay, Forms, OperatorPatterns, Primitives}
+    alias ObanPowertools.Web.{ControlPlanePresenter, JobsParams, LiveAuth, Selectors}
 
     @valid_states ~w(available scheduled executing retryable cancelled discarded completed)
     @allowed_preview_actions ~w(job_retry job_cancel job_discard)
@@ -40,171 +41,198 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     def handle_params(params, _uri, socket) do
-      case {connected?(socket), Map.get(params, "state")} do
-        {true, nil} ->
-          # Live (connected) phase with no state param — redirect to default state.
-          {:noreply, push_patch(socket, to: Selectors.jobs_path([{"state", "available"}]))}
+      if not connected?(socket) and params == %{} do
+        # The host router's disconnected render does not expose query params.
+        # Keep the finite defaults and defer every index query until the
+        # connected phase can canonicalize the actual URL first.
+        {:noreply, socket}
+      else
+        parsed = JobsParams.parse_url(params)
 
-        _ ->
-          # Dead render (conn.params is %Plug.Conn.Unfetched{} regardless of URL query string),
-          # or live phase with state param present — build filter and load jobs.
-          filter = filter_from_params(params)
-
-          socket =
-            socket
-            |> assign(:args_input, Map.get(params, "args", ""))
-            |> assign(:args_error, nil)
-            |> assign(:meta_input, Map.get(params, "meta", ""))
-            |> assign(:meta_error, nil)
-
-          {:noreply, load_jobs(socket, filter)}
+        if connected?(socket) and parsed.replace? do
+          {:noreply,
+           socket
+           |> maybe_assign_url_notice(parsed.notices)
+           |> reset_browse_transients()
+           |> push_patch(
+             to: Selectors.jobs_path(parsed.canonical_params),
+             replace: true
+           )}
+        else
+          {:noreply,
+           socket
+           |> maybe_assign_url_notice(parsed.notices)
+           |> load_jobs(parsed.query, parsed.quick_review_id)}
+        end
       end
     end
 
     @impl true
     def handle_event("select_state", %{"state" => state}, socket) do
       if state in @valid_states do
-        filter = socket.assigns.filter
-        new_filter = %{filter | state: String.to_existing_atom(state), page: 1}
+        query = %{socket.assigns.filter | state: String.to_existing_atom(state), page: 1}
 
         {:noreply,
          socket
-         |> assign(:selected_jobs, MapSet.new())
-         |> assign(:global_select, false)
-         |> push_patch(to: Selectors.jobs_path(filter_path(new_filter)))}
+         |> assign(:url_notice, nil)
+         |> assign(:review_notice, nil)
+         |> reset_browse_transients()
+         |> push_patch(to: Selectors.jobs_path(canonical_params(query)))}
       else
         {:noreply, socket}
       end
     end
 
-    def handle_event(
-          "filter",
-          %{"filter" => filter_params},
-          socket
-        ) do
-      filter = socket.assigns.filter
-      q = Map.get(filter_params, "queue")
-      w = Map.get(filter_params, "worker")
-      tags_str = Map.get(filter_params, "tags")
-      args_str = Map.get(filter_params, "args", "")
-      meta_str = Map.get(filter_params, "meta", "")
+    def handle_event("validate_filters", %{"filter" => params}, socket) do
+      validation = JobsParams.validate_draft(params)
+      {:noreply, assign_filter_draft(socket, validation)}
+    end
 
-      queue = if q == "", do: nil, else: q
-      worker = if w == "", do: nil, else: w
+    def handle_event("validate_filters", _params, socket), do: {:noreply, socket}
 
-      tags =
-        case tags_str do
-          nil -> nil
-          "" -> nil
-          str -> str |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
-        end
+    def handle_event("apply_filters", %{"filter" => params}, socket) do
+      validation = JobsParams.validate_draft(params)
 
-      args_res = validate_json_input(args_str)
-      meta_res = validate_json_input(meta_str)
+      if validation.valid? do
+        query =
+          socket.assigns.filter
+          |> Map.merge(validation.applied)
+          |> Map.put(:page, 1)
 
-      case {args_res, meta_res} do
-        {{:error, _}, _} ->
-          {:noreply,
-           assign(socket,
-             args_input: args_str,
-             args_error: "Invalid JSON",
-             meta_input: meta_str,
-             meta_error: if(elem(meta_res, 0) == :error, do: "Invalid JSON")
-           )}
-
-        {_, {:error, _}} ->
-          {:noreply,
-           assign(socket,
-             args_input: args_str,
-             args_error: nil,
-             meta_input: meta_str,
-             meta_error: "Invalid JSON"
-           )}
-
-        {{:ok, args}, {:ok, meta}} ->
-          new_filter = %{
-            filter
-            | queue: queue,
-              worker: worker,
-              tags: tags,
-              args: args,
-              meta: meta,
-              page: 1
-          }
-
-          {:noreply,
-           socket
-           |> assign(:args_input, args_str)
-           |> assign(:args_error, nil)
-           |> assign(:meta_input, meta_str)
-           |> assign(:meta_error, nil)
-           |> assign(:selected_jobs, MapSet.new())
-           |> assign(:global_select, false)
-           |> push_patch(to: Selectors.jobs_path(filter_path(new_filter)))}
+        {:noreply,
+         socket
+         |> assign_filter_draft(validation)
+         |> assign(:url_notice, nil)
+         |> assign(:review_notice, nil)
+         |> reset_browse_transients()
+         |> push_patch(to: Selectors.jobs_path(canonical_params(query)))}
+      else
+        {:noreply, assign_filter_draft(socket, validation)}
       end
+    end
+
+    def handle_event("apply_filters", _params, socket), do: {:noreply, socket}
+
+    def handle_event("remove_filter", %{"filter" => field}, socket)
+        when field in ~w(queue worker tags args meta) do
+      query =
+        socket.assigns.filter
+        |> Map.put(String.to_existing_atom(field), nil)
+        |> Map.put(:page, 1)
+
+      {:noreply,
+       socket
+       |> assign(:url_notice, nil)
+       |> assign(:review_notice, nil)
+       |> reset_browse_transients()
+       |> push_patch(to: Selectors.jobs_path(canonical_params(query)))}
+    end
+
+    def handle_event("remove_filter", _params, socket), do: {:noreply, socket}
+
+    def handle_event("clear_filters", _params, socket) do
+      query = %Jobs{state: socket.assigns.filter.state}
+
+      {:noreply,
+       socket
+       |> assign(:url_notice, nil)
+       |> assign(:review_notice, nil)
+       |> reset_browse_transients()
+       |> push_patch(to: Selectors.jobs_path(canonical_params(query)))}
     end
 
     def handle_event("toggle_job", %{"id" => id_str}, socket) do
       case Integer.parse(id_str) do
         {id, ""} ->
-          selected_jobs = socket.assigns.selected_jobs
+          if id in socket.assigns.page_job_ids do
+            selected_jobs = socket.assigns.selected_jobs
 
-          selected_jobs =
-            if MapSet.member?(selected_jobs, id) do
-              MapSet.delete(selected_jobs, id)
-            else
-              MapSet.put(selected_jobs, id)
-            end
+            selected_jobs =
+              if MapSet.member?(selected_jobs, id) do
+                MapSet.delete(selected_jobs, id)
+              else
+                MapSet.put(selected_jobs, id)
+              end
 
-          {:noreply,
-           socket
-           |> assign(:selected_jobs, selected_jobs)
-           |> assign(:global_select, false)}
+            {:noreply, refresh_selection(socket, selected_jobs, false)}
+          else
+            {:noreply, socket}
+          end
 
         _invalid ->
           {:noreply, socket}
       end
     end
 
-    def handle_event("toggle_all", _, socket) do
-      jobs = socket.assigns.jobs
+    def handle_event("toggle_page", _, socket) do
+      job_ids = socket.assigns.page_job_ids
       selected_jobs = socket.assigns.selected_jobs
-      all_selected? = jobs != [] and Enum.all?(jobs, &(&1.id in selected_jobs))
+      all_selected? = job_ids != [] and Enum.all?(job_ids, &MapSet.member?(selected_jobs, &1))
 
       selected_jobs =
         if all_selected? do
-          Enum.reduce(jobs, selected_jobs, &MapSet.delete(&2, &1.id))
+          Enum.reduce(job_ids, selected_jobs, &MapSet.delete(&2, &1))
         else
-          Enum.reduce(jobs, selected_jobs, &MapSet.put(&2, &1.id))
+          Enum.reduce(job_ids, selected_jobs, &MapSet.put(&2, &1))
         end
 
-      {:noreply,
-       socket
-       |> assign(:selected_jobs, selected_jobs)
-       |> assign(:global_select, false)}
+      {:noreply, refresh_selection(socket, selected_jobs, false)}
     end
 
+    def handle_event("toggle_all", params, socket),
+      do: handle_event("toggle_page", params, socket)
+
     def handle_event("select_all_global", _, socket) do
-      {:noreply, assign(socket, :global_select, true)}
+      {:noreply, refresh_selection(socket, socket.assigns.selected_jobs, true)}
     end
 
     def handle_event("clear_selection", _, socket) do
-      {:noreply,
-       socket
-       |> assign(:selected_jobs, MapSet.new())
-       |> assign(:global_select, false)}
+      {:noreply, refresh_selection(socket, MapSet.new(), false)}
     end
 
     def handle_event("paginate", %{"page" => page_str}, socket) do
       case Integer.parse(page_str) do
         {page, ""} when page >= 1 ->
-          filter = socket.assigns.filter
-          new_filter = %{filter | page: page}
-          {:noreply, push_patch(socket, to: Selectors.jobs_path(filter_path(new_filter)))}
+          query = %{socket.assigns.filter | page: page}
+
+          {:noreply,
+           socket
+           |> assign(:review_notice, nil)
+           |> assign(:quick_review, nil)
+           |> assign(:quick_review_id, nil)
+           |> push_patch(to: Selectors.jobs_path(canonical_params(query)))}
 
         _ ->
           {:noreply, socket}
       end
+    end
+
+    def handle_event("select_review", %{"id" => id_str}, socket) do
+      case Integer.parse(id_str) do
+        {id, ""} when id > 0 ->
+          replace? = not is_nil(socket.assigns.quick_review_id)
+
+          {:noreply,
+           socket
+           |> assign(:review_notice, nil)
+           |> push_patch(
+             to: Selectors.jobs_path(canonical_params(socket.assigns.filter, id)),
+             replace: replace?
+           )}
+
+        _invalid ->
+          {:noreply, socket}
+      end
+    end
+
+    def handle_event("close_review", _params, socket) do
+      {:noreply,
+       socket
+       |> assign(:review_notice, nil)
+       |> push_patch(
+         to: Selectors.jobs_path(canonical_params(socket.assigns.filter)),
+         replace: true
+       )}
     end
 
     def handle_event("preview", %{"action" => action}, socket)
@@ -662,233 +690,334 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       """
     end
 
-    def render(assigns) do
+    def render(assigns), do: page_content(assigns)
+
+    attr(:rows, :list, default: [])
+    attr(:counts, :map, required: true)
+    attr(:filter, :any, required: true)
+    attr(:filter_form, Phoenix.HTML.Form, required: true)
+    attr(:filter_copy, :map, required: true)
+    attr(:filter_errors, :map, default: %{})
+    attr(:filters_dirty?, :boolean, default: false)
+    attr(:filters_expanded?, :boolean, default: false)
+    attr(:active_filters, :list, default: [])
+    attr(:clear_filters_href, :string, required: true)
+    attr(:result_summary, :string, required: true)
+    attr(:pagination, :map, required: true)
+    attr(:page_selection_state, :atom, required: true)
+    attr(:selected_count, :integer, default: 0)
+    attr(:selected_jobs, :any, default: MapSet.new())
+    attr(:global_select, :boolean, default: false)
+    attr(:read_only?, :boolean, default: true)
+    attr(:url_notice, :string, default: nil)
+    attr(:review_notice, :string, default: nil)
+    attr(:quick_review, :map, default: nil)
+    attr(:quick_review_id, :integer, default: nil)
+    attr(:bulk_preview_action, :string, default: nil)
+    attr(:reason, :string, default: "")
+    attr(:error_message, :string, default: nil)
+
+    def page_content(assigns) do
+      assigns = assign(assigns, :states, @valid_states)
+
       ~H"""
-      <div class="space-y-6 p-6">
-        <div>
-          <h1 class="text-2xl font-semibold">Jobs</h1>
-          <p class="text-sm text-zinc-600">
-            Browse and inspect Oban jobs by state. <%= ControlPlanePresenter.native_banner() %>
+      <section id="jobs-page" class="obpt-jobs-page" aria-labelledby="jobs-page-title">
+        <header class="obpt-jobs-page__header">
+          <h1 id="jobs-page-title">Jobs</h1>
+          <p>
+            Review current job state, apply precise filters, and take deliberate action with recorded evidence.
           </p>
-        </div>
+        </header>
 
-        <p :if={@read_only?} class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <%= LiveAuth.page_read_only_banner(:jobs) %>
-        </p>
+        <Primitives.surface :if={@read_only?} variant={:inset}>
+          <p>{LiveAuth.page_read_only_banner(:jobs)}</p>
+        </Primitives.surface>
 
-        <% selected_count = if @global_select, do: Map.get(@counts, to_string(@filter.state), 0), else: MapSet.size(@selected_jobs) %>
+        <Primitives.surface :if={@url_notice} variant={:inset}>
+          <h2>Some filters were not applied</h2>
+          <p>{@url_notice}</p>
+        </Primitives.surface>
 
-        <%= if selected_count > 0 do %>
-          <div class="flex items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3">
-            <span class="text-sm font-semibold text-indigo-800"><%= selected_count %> jobs selected</span>
-            <div class="flex gap-2">
-              <%= if not @read_only? do %>
-                <button :if={to_string(@filter.state) in ["retryable", "cancelled", "discarded", "completed"]} phx-click="preview_bulk" phx-value-action="job_retry" class="rounded bg-white px-4 py-2 text-sm font-semibold text-indigo-600 border border-indigo-200 hover:bg-indigo-50">Retry Jobs</button>
-                <button :if={to_string(@filter.state) in ["available", "scheduled", "executing", "retryable"]} phx-click="preview_bulk" phx-value-action="job_cancel" class="rounded bg-white px-4 py-2 text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50">Cancel Jobs</button>
-                <button :if={to_string(@filter.state) in ["available", "scheduled", "executing", "retryable"]} phx-click="preview_bulk" phx-value-action="job_discard" class="rounded bg-white px-4 py-2 text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50">Discard Jobs</button>
-              <% end %>
-            </div>
-          </div>
-        <% end %>
+        <Primitives.surface :if={@review_notice} variant={:inset}>
+          <h2>Job unavailable</h2>
+          <p>{@review_notice}</p>
+        </Primitives.surface>
 
-        <nav class="flex flex-wrap gap-2">
-          <%= for state <- ~w(available scheduled executing retryable cancelled discarded completed) do %>
-            <button
-              phx-click="select_state"
-              phx-value-state={state}
-              class={state_tab_class(to_string(@filter.state) == state)}
-            >
-              <%= state %> (<%= Map.get(@counts, state, 0) %>)
-            </button>
-          <% end %>
+        <nav class="obpt-jobs-page__states" aria-label="Job state">
+          <Primitives.button
+            :for={state <- @states}
+            id={"jobs-state-#{state}"}
+            phx-click="select_state"
+            phx-value-state={state}
+            variant={if(to_string(@filter.state) == state, do: :primary, else: :neutral)}
+            aria-current={if(to_string(@filter.state) == state, do: "page")}
+          >
+            {state_label(state)} ({Map.get(@counts, state, 0)})
+          </Primitives.button>
         </nav>
 
-        <form phx-change="filter">
-          <div class="flex flex-wrap gap-4">
-            <div>
-              <label class="block text-sm font-semibold text-zinc-700">Queue</label>
-              <input
-                type="text"
-                name="filter[queue]"
-                value={@filter.queue || ""}
-                placeholder="All queues"
-                class="mt-1 rounded border px-3 py-2 text-sm border-gray-300"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-semibold text-zinc-700">Worker</label>
-              <input
-                type="text"
-                name="filter[worker]"
-                value={@filter.worker || ""}
-                placeholder="All workers"
-                class="mt-1 rounded border px-3 py-2 text-sm border-gray-300"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-semibold text-zinc-700">Tags</label>
-              <input
-                type="text"
-                name="filter[tags]"
-                value={if @filter.tags, do: Enum.join(@filter.tags, ","), else: ""}
-                placeholder="Any tag"
-                class="mt-1 rounded border px-3 py-2 text-sm border-gray-300"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-semibold text-zinc-700">Args (JSON)</label>
-              <input
-                type="text"
-                name="filter[args]"
-                value={@args_input}
-                placeholder={"e.g. {\"id\": 1}"}
-                phx-debounce="blur"
-                class={"mt-1 rounded border px-3 py-2 text-sm " <> if(@args_error, do: "border-red-500", else: "border-gray-300")}
-              />
-              <p :if={@args_error} class="mt-1 text-xs text-red-600"><%= @args_error %></p>
-            </div>
-            <div>
-              <label class="block text-sm font-semibold text-zinc-700">Meta (JSON)</label>
-              <input
-                type="text"
-                name="filter[meta]"
-                value={@meta_input}
-                placeholder={"e.g. {\"batch_id\": 1}"}
-                phx-debounce="blur"
-                class={"mt-1 rounded border px-3 py-2 text-sm " <> if(@meta_error, do: "border-red-500", else: "border-gray-300")}
-              />
-              <p :if={@meta_error} class="mt-1 text-xs text-red-600"><%= @meta_error %></p>
-            </div>
-          </div>
-        </form>
+        <OperatorPatterns.filter_bar
+          id="jobs-filter"
+          form={@filter_form}
+          mode={:submit}
+          result_summary={@result_summary}
+          results_target_id="jobs-results"
+          active_filters={@active_filters}
+          dirty={@filters_dirty?}
+          filters_expanded={@filters_expanded?}
+          change_event="validate_filters"
+          submit_event="apply_filters"
+          clear_href={@clear_filters_href}
+        >
+          <:fields>
+            <Forms.input
+              field={@filter_form[:queue]}
+              label="Queue"
+              variant={:filter}
+              placeholder="All queues"
+            />
+            <Forms.input
+              field={@filter_form[:worker]}
+              label="Worker module"
+              variant={:filter}
+              placeholder="All worker modules"
+            />
+            <Forms.input
+              field={@filter_form[:tags]}
+              label="Tags"
+              hint={@filter_copy.tags_help}
+              variant={:filter}
+              placeholder="All tags"
+            />
+          </:fields>
+          <:advanced_fields>
+            <Forms.input
+              field={@filter_form[:args]}
+              label="Args contain"
+              hint={@filter_copy.json_help}
+              errors={field_errors(@filter_errors, :args)}
+              variant={:filter}
+              placeholder="JSON object"
+            />
+            <Forms.input
+              field={@filter_form[:meta]}
+              label="Meta contain"
+              hint={@filter_copy.json_help}
+              errors={field_errors(@filter_errors, :meta)}
+              variant={:filter}
+              placeholder="JSON object"
+            />
+          </:advanced_fields>
+        </OperatorPatterns.filter_bar>
 
-        <%= if @jobs == [] do %>
-          <div class="rounded-lg border bg-white p-6">
-            <h2 class="text-base font-semibold">No jobs found</h2>
-            <p class="mt-2 text-sm text-zinc-600">
-              Try adjusting your filters or checking a different state.
-            </p>
-          </div>
-        <% else %>
-          <div class="overflow-hidden rounded-lg border bg-white">
-            <% total_count = Map.get(@counts, to_string(@filter.state), 0) %>
-            <% local_selected? = @jobs != [] and Enum.all?(@jobs, &(&1.id in @selected_jobs)) %>
-            <% show_banner? = local_selected? and total_count > length(@jobs) %>
-
-            <div :if={show_banner?} class="bg-indigo-50 border-b border-indigo-200 py-2 px-4 text-center text-sm" aria-live="polite">
-              <%= if @global_select do %>
-                All <%= total_count %> jobs matching this filter are selected.
-                <button type="button" phx-click="clear_selection" class="text-indigo-600 font-semibold hover:underline ml-1">Clear selection</button>
-              <% else %>
-                All <%= length(@jobs) %> jobs on this page are selected.
-                <button type="button" phx-click="select_all_global" class="text-indigo-600 font-semibold hover:underline ml-1">Select all <%= total_count %> jobs matching this filter</button>
-              <% end %>
-            </div>
-
-            <table class="min-w-full divide-y">
-              <thead class="bg-slate-50 text-left text-sm">
-                <tr>
-                  <th class="px-4 py-3 font-semibold w-10">
-                    <input type="checkbox" checked={length(@jobs) > 0 and Enum.all?(@jobs, &(&1.id in @selected_jobs))} phx-click="toggle_all" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                  </th>
-                  <th class="px-4 py-3 font-semibold">State</th>
-                  <th class="px-4 py-3 font-semibold">Worker</th>
-                  <th class="px-4 py-3 font-semibold">Queue</th>
-                  <th class="px-4 py-3 font-semibold">Job ID</th>
-                  <th class="px-4 py-3 font-semibold">Scheduled At</th>
-                  <th class="px-4 py-3 font-semibold">Attempts</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y text-sm">
-                <tr :for={job <- @jobs}>
-                  <td class="px-4 py-3">
-                    <input type="checkbox" checked={job.id in @selected_jobs} phx-click="toggle_job" phx-value-id={job.id} class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                  </td>
-                  <td class="px-4 py-3">
-                    <span class="obpt-badge" data-obpt-tone={state_badge_tone(job.state)}>
-                      <%= job.state %>
-                    </span>
-                  </td>
-                  <td class="px-4 py-3">
-                    <.link navigate={Selectors.job_detail_path(job.id)} class="text-indigo-700 underline">
-                      <%= short_worker_name(job.worker) %>
-                    </.link>
-                  </td>
-                  <td class="px-4 py-3"><%= job.queue %></td>
-                  <td class="px-4 py-3"><%= job.id %></td>
-                  <td class="px-4 py-3"><%= timestamp_copy(job.scheduled_at) %></td>
-                  <td class="px-4 py-3"><%= job.attempt %> / <%= job.max_attempts %></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        <% end %>
-
-        <div class="flex gap-2">
-          <%= if @filter.page <= 1 do %>
-            <span class="cursor-not-allowed rounded border px-3 py-2 text-sm text-zinc-400">Previous</span>
-          <% else %>
-            <button
-              phx-click="paginate"
-              phx-value-page={@filter.page - 1}
-              class="rounded border px-3 py-2 text-sm"
+        <section
+          :if={@selected_count > 0}
+          id="jobs-selection-summary"
+          class="obpt-jobs-page__selection-summary"
+          aria-live="polite"
+        >
+          <p>{selection_count_copy(@selected_count)}</p>
+          <Primitives.button phx-click="clear_selection">Clear selection</Primitives.button>
+          <div :if={!@read_only?} class="obpt-jobs-page__selection-actions">
+            <Primitives.button
+              :if={to_string(@filter.state) in ["retryable", "cancelled", "discarded", "completed"]}
+              phx-click="preview_bulk"
+              phx-value-action="job_retry"
+              variant={:warning}
             >
-              Previous
-            </button>
-          <% end %>
-          <%= if length(@jobs) < @filter.page_size do %>
-            <span class="cursor-not-allowed rounded border px-3 py-2 text-sm text-zinc-400">Next</span>
-          <% else %>
-            <button
-              phx-click="paginate"
-              phx-value-page={@filter.page + 1}
-              class="rounded border px-3 py-2 text-sm"
+              Retry jobs
+            </Primitives.button>
+            <Primitives.button
+              :if={to_string(@filter.state) in ["available", "scheduled", "executing", "retryable"]}
+              phx-click="preview_bulk"
+              phx-value-action="job_cancel"
+              variant={:danger}
             >
-              Next
-            </button>
-          <% end %>
-        </div>
+              Cancel jobs
+            </Primitives.button>
+            <Primitives.button
+              :if={to_string(@filter.state) in ["available", "scheduled", "executing", "retryable"]}
+              phx-click="preview_bulk"
+              phx-value-action="job_discard"
+              variant={:danger}
+            >
+              Discard jobs
+            </Primitives.button>
+          </div>
+        </section>
 
-        <%!-- Bulk Action Preview Modal --%>
+        <DataDisplay.data_table
+          id="jobs-results"
+          caption="Jobs"
+          rows={@rows}
+          row_id={& &1.id}
+          state={:ready}
+          resource="jobs"
+          row_count={@pagination.total_count}
+          pagination_summary={@pagination.summary}
+        >
+          <:toolbar>
+            <label for="jobs-page-selection">
+              <input
+                id="jobs-page-selection"
+                type="checkbox"
+                phx-click="toggle_page"
+                checked={@page_selection_state == :checked}
+                aria-checked={page_selection_aria(@page_selection_state)}
+                data-obpt-page-selection={@page_selection_state}
+              />
+              <span>Select current page</span>
+            </label>
+          </:toolbar>
+          <:selection :let={row}>
+            <label for={"job-select-#{row.id}"}>
+              <input
+                id={"job-select-#{row.id}"}
+                type="checkbox"
+                checked={row.selection.checked?}
+                phx-click="toggle_job"
+                phx-value-id={row.id}
+                aria-label={row.selection.label}
+              />
+              <span class="obpt-sr-only">{row.selection.label}</span>
+            </label>
+          </:selection>
+          <:col :let={row} label="Worker" value_kind={:module}>
+            <DataDisplay.machine_value
+              id={"job-worker-#{row.id}"}
+              value={row.worker}
+              kind={:module}
+              truncate={false}
+            />
+          </:col>
+          <:col :let={row} label="State">
+            <DataDisplay.status_pill domain={:job} state={row.state} />
+          </:col>
+          <:col :let={row} label="Queue" value_kind={:literal}>
+            <DataDisplay.machine_value
+              id={"job-queue-#{row.id}"}
+              value={row.queue}
+              kind={:literal}
+              truncate={false}
+            />
+          </:col>
+          <:col :let={row} label="Scheduled">
+            <time datetime={row.scheduled.datetime}>{row.scheduled.label}</time>
+          </:col>
+          <:col :let={row} label="Attempts">{row.attempts}</:col>
+          <:col :let={row} label="Job ID" value_kind={:id}>
+            <DataDisplay.machine_value
+              id={"job-id-#{row.id}"}
+              value={to_string(row.id)}
+              kind={:id}
+              truncate={false}
+            />
+          </:col>
+          <:col :let={row} label="Review job">
+            <Primitives.button
+              id={"job-review-#{row.id}"}
+              phx-click="select_review"
+              phx-value-id={row.id}
+              variant={if(row.review.current?, do: :primary, else: :neutral)}
+              aria-label={row.review.label}
+              aria-expanded={to_string(row.review.current?)}
+              aria-controls={if(row.review.current?, do: "job-quick-review")}
+            >
+              {if(row.review.current?, do: "Reviewing", else: "Review job")}
+            </Primitives.button>
+          </:col>
+        </DataDisplay.data_table>
+
+        <DataDisplay.empty_state
+          :if={@rows == []}
+          id="jobs-empty"
+          heading="No jobs match the applied filters"
+          body="Remove a filter or clear all filters to widen the review."
+        />
+
+        <nav class="obpt-jobs-page__pagination" aria-label="Jobs pages">
+          <Primitives.button
+            id="jobs-previous-page"
+            phx-click="paginate"
+            phx-value-page={@pagination.page - 1}
+            disabled={!@pagination.previous?}
+          >
+            Previous
+          </Primitives.button>
+          <span>{@pagination.summary}</span>
+          <Primitives.button
+            id="jobs-next-page"
+            phx-click="paginate"
+            phx-value-page={@pagination.page + 1}
+            disabled={!@pagination.next?}
+          >
+            Next
+          </Primitives.button>
+        </nav>
+
+        <OperatorPatterns.detail_surface
+          :if={@quick_review}
+          id="job-quick-review"
+          title={@quick_review.title}
+          close_label="Close job review"
+          open={true}
+          variant={:adaptive}
+          state={:ready}
+          resource="job review"
+          logical_fallback_id={"job-review-#{@quick_review.id}"}
+          close_event="close_review"
+          loaded_announcement={"Job #{@quick_review.id} review loaded"}
+        >
+          <:body>
+            <DataDisplay.description_list id="job-quick-review-facts">
+              <:item label="Job ID" value_kind={:id}>{@quick_review.id}</:item>
+              <:item label="State">
+                <DataDisplay.status_pill domain={:job} state={@quick_review.state.value} />
+              </:item>
+              <:item label="Worker" value_kind={:module}>{@quick_review.worker}</:item>
+              <:item label="Queue" value_kind={:literal}>{@quick_review.queue}</:item>
+              <:item label="Attempts">{@quick_review.attempts}</:item>
+              <:item label={@quick_review.relevant_time.label}>
+                <time datetime={@quick_review.relevant_time.datetime}>
+                  {@quick_review.relevant_time.value}
+                </time>
+              </:item>
+              <:item label="Latest failure">{@quick_review.failure_summary}</:item>
+              <:item label="Recorded output">
+                {if(@quick_review.recorded_output_available?, do: "Available", else: "Not recorded")}
+              </:item>
+              <:item label="Enqueue redaction">{@quick_review.enqueue_redaction.summary}</:item>
+            </DataDisplay.description_list>
+          </:body>
+          <:actions>
+            <Primitives.link navigate={@quick_review.full_details_href}>
+              Open full job details
+            </Primitives.link>
+          </:actions>
+        </OperatorPatterns.detail_surface>
+
         <%= if @bulk_preview_action do %>
-          <% selected_count = if @global_select, do: Map.get(@counts, to_string(@filter.state), 0), else: MapSet.size(@selected_jobs) %>
           <div class="obpt-modal-backdrop">
             <div class="obpt-modal">
-              <h2 class="text-base font-semibold">
-                <%= case @bulk_preview_action do %>
-                  <% "job_retry" -> %> Bulk Retry <%= selected_count %> Jobs
-                  <% "job_cancel" -> %> Bulk Cancel <%= selected_count %> Jobs
-                  <% "job_discard" -> %> Bulk Discard <%= selected_count %> Jobs
-                <% end %>
-              </h2>
-
-              <p class="mt-2 text-sm text-zinc-600">
-                You are about to <%= case @bulk_preview_action do %><% "job_retry" -> %>retry<% "job_cancel" -> %>cancel<% "job_discard" -> %>discard<% end %> <%= selected_count %> jobs. This will execute independent repairs for each job.
-              </p>
-
-              <form phx-change="reason" phx-submit="execute_bulk" class="mt-4 space-y-4">
-                <label class="obpt-form-label">Reason (required)</label>
-                <input type="text" name="reason" value={@reason} placeholder="e.g., Network timeout, operator intervention..." class="obpt-input" />
-
-                <div :if={@error_message} class="obpt-alert obpt-alert--danger">
-                  <%= @error_message %>
-                </div>
-
-                <div class="mt-6 flex justify-end gap-4">
-                  <button type="button" phx-click="close_preview" class="obpt-button obpt-button--neutral">Cancel</button>
-                  <button type="submit" disabled={String.trim(@reason) == ""} class={preview_confirm_button_class(@bulk_preview_action)}>
-                    <%= case @bulk_preview_action do %>
-                      <% "job_retry" -> %> Confirm Bulk Retry
-                      <% "job_cancel" -> %> Confirm Bulk Cancel
-                      <% "job_discard" -> %> Confirm Bulk Discard
-                    <% end %>
-                  </button>
-                </div>
+              <h2>{bulk_preview_title(@bulk_preview_action, @selected_count)}</h2>
+              <p>Each job is processed independently.</p>
+              <form phx-change="reason" phx-submit="execute_bulk">
+                <label for="jobs-bulk-reason">Reason (required)</label>
+                <input id="jobs-bulk-reason" type="text" name="reason" value={@reason} />
+                <p :if={@error_message}>{@error_message}</p>
+                <Primitives.button phx-click="close_preview">Cancel</Primitives.button>
+                <Primitives.button
+                  type="submit"
+                  variant={if(@bulk_preview_action == "job_retry", do: :warning, else: :danger)}
+                  disabled={String.trim(@reason) == ""}
+                >
+                  {bulk_confirm_label(@bulk_preview_action)}
+                </Primitives.button>
               </form>
             </div>
           </div>
         <% end %>
-      </div>
+      </section>
       """
     end
 
@@ -968,10 +1097,37 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp assign_defaults(socket) do
+      initial_query = %Jobs{}
+      initial_validation = JobsParams.validate_draft(%{})
+
       socket
-      |> assign(:jobs, [])
-      |> assign(:filter, %Jobs{})
+      |> assign(:rows, [])
+      |> assign(:page_job_ids, [])
+      |> assign(:filter, initial_query)
       |> assign(:counts, Map.new(@valid_states, &{&1, 0}))
+      |> assign(:exact_count, 0)
+      |> assign(:pagination, pagination(initial_query, 0, 0))
+      |> assign(:result_summary, state_summary(initial_query.state, 0))
+      |> assign(:filter_draft, initial_validation.draft)
+      |> assign(:filter_errors, %{})
+      |> assign(:filter_copy, initial_validation.copy)
+      |> assign(
+        :filter_form,
+        Phoenix.Component.to_form(initial_validation.draft,
+          as: :filter,
+          id: "jobs-filter-form"
+        )
+      )
+      |> assign(:filters_dirty?, false)
+      |> assign(:filters_expanded?, false)
+      |> assign(:active_filters, [])
+      |> assign(:clear_filters_href, Selectors.jobs_path(state: "available"))
+      |> assign(:page_selection_state, :unchecked)
+      |> assign(:selected_count, 0)
+      |> assign(:url_notice, nil)
+      |> assign(:review_notice, nil)
+      |> assign(:quick_review, nil)
+      |> assign(:quick_review_id, nil)
       |> assign(:job, nil)
       |> assign(:job_not_found?, false)
       |> assign(:args_display, nil)
@@ -984,10 +1140,6 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> assign(:reason, "")
       |> assign(:error_message, nil)
       |> assign(:success_message, nil)
-      |> assign(:args_input, "")
-      |> assign(:args_error, nil)
-      |> assign(:meta_input, "")
-      |> assign(:meta_error, nil)
       |> assign(:back_path, Selectors.jobs_path([]))
       |> assign(
         :read_only?,
@@ -999,16 +1151,307 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       )
     end
 
-    defp load_jobs(socket, filter) do
+    defp load_jobs(socket, filter, quick_review_id \\ nil) do
       jobs = Jobs.list(repo(), filter)
+      exact_count = Jobs.count(repo(), filter)
       counts = Jobs.count_by_state(repo(), filter)
 
+      socket =
+        socket
+        |> assign(:filter, filter)
+        |> assign(:counts, counts)
+        |> assign(:exact_count, exact_count)
+        |> assign(:page_job_ids, Enum.map(jobs, & &1.id))
+        |> assign(:pagination, pagination(filter, exact_count, length(jobs)))
+        |> assign(:result_summary, state_summary(filter.state, exact_count))
+        |> assign_applied_filter_state(filter)
+        |> load_quick_review(quick_review_id, filter)
+
+      reviewing_id = socket.assigns.quick_review_id
+      selected_jobs = socket.assigns.selected_jobs
+
+      rows =
+        Enum.map(jobs, fn job ->
+          ControlPlanePresenter.present_job_row(job, %{
+            selected?: MapSet.member?(selected_jobs, job.id),
+            reviewing?: job.id == reviewing_id
+          })
+        end)
+
       socket
-      |> assign(:jobs, jobs)
+      |> assign(:rows, rows)
       |> assign(:counts, counts)
-      |> assign(:filter, filter)
+      |> assign_selection_state()
       |> assign_read_only()
     end
+
+    defp load_quick_review(socket, nil, _filter) do
+      socket
+      |> assign(:quick_review, nil)
+      |> assign(:quick_review_id, nil)
+    end
+
+    defp load_quick_review(socket, job_id, filter) do
+      actor = Map.get(socket.assigns, :current_actor)
+      resource = %{type: :job, id: to_string(job_id)}
+
+      job =
+        if LiveAuth.authorized?(actor, :view_job_detail, resource) do
+          Jobs.get(repo(), job_id)
+        end
+
+      case job do
+        %Oban.Job{} = job ->
+          review =
+            ControlPlanePresenter.present_job_quick_review(job, %{
+              list_params: canonical_params(filter),
+              recorded_output_available?: recorded_output_available?(job.id)
+            })
+
+          socket
+          |> assign(:quick_review, review)
+          |> assign(:quick_review_id, job.id)
+          |> assign(:review_notice, nil)
+
+        _unavailable ->
+          socket
+          |> assign(:quick_review, nil)
+          |> assign(:quick_review_id, nil)
+          |> assign(
+            :review_notice,
+            "It may not exist, may no longer be available, or you may not have access. Return to Jobs and choose another job."
+          )
+          |> push_patch(
+            to: Selectors.jobs_path(canonical_params(filter)),
+            replace: true
+          )
+      end
+    end
+
+    defp recorded_output_available?(job_id) do
+      match?({:ok, _payload}, JobRecord.fetch_result(repo(), job_id))
+    end
+
+    defp assign_applied_filter_state(socket, filter) do
+      validation = JobsParams.validate_draft(draft_params(filter))
+
+      socket
+      |> assign(:filter_draft, validation.draft)
+      |> assign(:filter_errors, %{})
+      |> assign(:filter_copy, validation.copy)
+      |> assign(
+        :filter_form,
+        Phoenix.Component.to_form(validation.draft,
+          as: :filter,
+          id: "jobs-filter-form"
+        )
+      )
+      |> assign(:filters_dirty?, false)
+      |> assign(:filters_expanded?, advanced_filters?(validation.draft))
+      |> assign(:active_filters, active_filters(filter))
+      |> assign(
+        :clear_filters_href,
+        Selectors.jobs_path(canonical_params(%Jobs{state: filter.state}))
+      )
+    end
+
+    defp assign_filter_draft(socket, validation) do
+      applied_draft = draft_params(socket.assigns.filter)
+
+      socket
+      |> assign(:filter_draft, validation.draft)
+      |> assign(:filter_errors, validation.errors)
+      |> assign(:filter_copy, validation.copy)
+      |> assign(
+        :filter_form,
+        Phoenix.Component.to_form(validation.draft,
+          as: :filter,
+          id: "jobs-filter-form"
+        )
+      )
+      |> assign(:filters_dirty?, validation.draft != applied_draft)
+      |> assign(
+        :filters_expanded?,
+        advanced_filters?(validation.draft) or validation.errors != %{}
+      )
+    end
+
+    defp draft_params(filter) do
+      %{
+        "queue" => filter.queue || "",
+        "worker" => filter.worker || "",
+        "tags" => if(filter.tags, do: Enum.join(filter.tags, ", "), else: ""),
+        "args" => if(filter.args, do: Jason.encode!(filter.args), else: ""),
+        "meta" => if(filter.meta, do: Jason.encode!(filter.meta), else: "")
+      }
+    end
+
+    defp advanced_filters?(draft) do
+      String.trim(Map.get(draft, "args", "")) != "" or
+        String.trim(Map.get(draft, "meta", "")) != ""
+    end
+
+    defp active_filters(filter) do
+      [
+        {:queue, "Queue", filter.queue},
+        {:worker, "Worker module", filter.worker},
+        {:tags, "Tags", if(filter.tags, do: Enum.join(filter.tags, ", "))},
+        {:args, "Args contain", if(filter.args, do: Jason.encode!(filter.args))},
+        {:meta, "Meta contain", if(filter.meta, do: Jason.encode!(filter.meta))}
+      ]
+      |> Enum.reject(fn {_field, _label, value} -> is_nil(value) or value == "" end)
+      |> Enum.map(fn {field, label, value} ->
+        query =
+          filter
+          |> Map.put(field, nil)
+          |> Map.put(:page, 1)
+
+        %{
+          id: Atom.to_string(field),
+          label: label,
+          value: value,
+          remove_href: Selectors.jobs_path(canonical_params(query)),
+          remove_label: "Remove #{label} filter"
+        }
+      end)
+    end
+
+    defp canonical_params(filter, quick_review_id \\ nil) do
+      [
+        {"state", to_string(filter.state)},
+        {"queue", filter.queue},
+        {"worker", filter.worker},
+        {"tags", if(filter.tags, do: Enum.join(filter.tags, ","))},
+        {"args", if(filter.args, do: Jason.encode!(filter.args))},
+        {"meta", if(filter.meta, do: Jason.encode!(filter.meta))},
+        {"page", if(filter.page > 1, do: to_string(filter.page))},
+        {"job", if(quick_review_id, do: to_string(quick_review_id))}
+      ]
+      |> Enum.reject(fn {_key, value} -> is_nil(value) or value == "" end)
+    end
+
+    defp pagination(filter, total_count, row_count) do
+      offset = (filter.page - 1) * filter.page_size
+      from = if row_count == 0, do: 0, else: offset + 1
+      to = if row_count == 0, do: 0, else: min(offset + row_count, total_count)
+
+      %{
+        page: filter.page,
+        page_size: filter.page_size,
+        total_count: total_count,
+        from: from,
+        to: to,
+        previous?: filter.page > 1,
+        next?: filter.page * filter.page_size < total_count,
+        summary:
+          if(row_count == 0,
+            do: "Showing 0 of #{total_count}",
+            else: "Showing #{from}–#{to} of #{total_count}"
+          )
+      }
+    end
+
+    defp state_summary(state, count) do
+      "#{count} #{state} #{if(count == 1, do: "job", else: "jobs")}"
+    end
+
+    defp refresh_selection(socket, selected_jobs, global_select) do
+      rows =
+        Enum.map(socket.assigns.rows, fn row ->
+          put_in(row, [:selection, :checked?], MapSet.member?(selected_jobs, row.id))
+        end)
+
+      socket
+      |> assign(:rows, rows)
+      |> assign(:selected_jobs, selected_jobs)
+      |> assign(:global_select, global_select)
+      |> assign_selection_state()
+    end
+
+    defp assign_selection_state(socket) do
+      job_ids = socket.assigns.page_job_ids
+      selected_jobs = socket.assigns.selected_jobs
+
+      page_selection_state =
+        cond do
+          socket.assigns.global_select and job_ids != [] ->
+            :checked
+
+          job_ids == [] ->
+            :unchecked
+
+          Enum.all?(job_ids, &MapSet.member?(selected_jobs, &1)) ->
+            :checked
+
+          Enum.any?(job_ids, &MapSet.member?(selected_jobs, &1)) ->
+            :mixed
+
+          true ->
+            :unchecked
+        end
+
+      selected_count =
+        if socket.assigns.global_select do
+          socket.assigns.exact_count
+        else
+          MapSet.size(selected_jobs)
+        end
+
+      assign(socket,
+        page_selection_state: page_selection_state,
+        selected_count: selected_count
+      )
+    end
+
+    defp reset_browse_transients(socket) do
+      socket
+      |> assign(:selected_jobs, MapSet.new())
+      |> assign(:global_select, false)
+      |> assign(:selected_count, 0)
+      |> assign(:page_selection_state, :unchecked)
+      |> assign(:quick_review, nil)
+      |> assign(:quick_review_id, nil)
+      |> assign(:preview, nil)
+      |> assign(:bulk_preview_action, nil)
+      |> assign(:reason, "")
+      |> assign(:error_message, nil)
+      |> assign(:success_message, nil)
+      |> assign(:frozen_scope, nil)
+      |> assign(:bulk_results, nil)
+      |> assign(:confirmation, nil)
+    end
+
+    defp maybe_assign_url_notice(socket, []), do: socket
+
+    defp maybe_assign_url_notice(socket, notices) do
+      assign(socket, :url_notice, List.first(notices))
+    end
+
+    defp field_errors(errors, field) do
+      case Map.get(errors, field) do
+        nil -> []
+        error -> [error]
+      end
+    end
+
+    defp state_label(state), do: state |> String.replace("_", " ") |> String.capitalize()
+
+    defp page_selection_aria(:checked), do: "true"
+    defp page_selection_aria(:mixed), do: "mixed"
+    defp page_selection_aria(:unchecked), do: "false"
+
+    defp selection_count_copy(1), do: "1 job selected"
+    defp selection_count_copy(count), do: "#{count} jobs selected"
+
+    defp bulk_preview_title("job_retry", count), do: "Bulk Retry #{count} Jobs"
+    defp bulk_preview_title("job_cancel", count), do: "Bulk Cancel #{count} Jobs"
+    defp bulk_preview_title("job_discard", count), do: "Bulk Discard #{count} Jobs"
+    defp bulk_preview_title(_action, count), do: "Bulk Action for #{count} Jobs"
+
+    defp bulk_confirm_label("job_retry"), do: "Confirm Bulk Retry"
+    defp bulk_confirm_label("job_cancel"), do: "Confirm Bulk Cancel"
+    defp bulk_confirm_label("job_discard"), do: "Confirm Bulk Discard"
+    defp bulk_confirm_label(_action), do: "Confirm Bulk Action"
 
     defp assign_read_only(socket) do
       assign(
@@ -1021,81 +1464,6 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         )
       )
     end
-
-    defp filter_from_params(params) do
-      tags =
-        case Map.get(params, "tags") do
-          nil -> nil
-          "" -> nil
-          str -> str |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
-        end
-
-      state_str = Map.get(params, "state", "available")
-
-      state =
-        if state_str in @valid_states do
-          String.to_existing_atom(state_str)
-        else
-          :available
-        end
-
-      page =
-        case Integer.parse(Map.get(params, "page", "1")) do
-          {p, ""} when p >= 1 -> p
-          _ -> 1
-        end
-
-      %Jobs{
-        state: state,
-        queue: Map.get(params, "queue"),
-        worker: Map.get(params, "worker"),
-        tags: tags,
-        args: decode_json_param(Map.get(params, "args")),
-        meta: decode_json_param(Map.get(params, "meta")),
-        page: page,
-        page_size: %Jobs{}.page_size
-      }
-    end
-
-    defp decode_json_param(nil), do: nil
-    defp decode_json_param(""), do: nil
-
-    defp decode_json_param(str) do
-      case Jason.decode(String.trim(str)) do
-        {:ok, decoded} when is_map(decoded) -> decoded
-        _ -> nil
-      end
-    end
-
-    defp validate_json_input(""), do: {:ok, nil}
-
-    defp validate_json_input(str) do
-      str = String.trim(str)
-
-      if str == "" do
-        {:ok, nil}
-      else
-        case Jason.decode(str) do
-          {:ok, decoded} when is_map(decoded) -> {:ok, decoded}
-          _ -> {:error, :invalid}
-        end
-      end
-    end
-
-    defp filter_path(filter) do
-      [
-        {"state", to_string(filter.state)},
-        {"queue", filter.queue},
-        {"worker", filter.worker},
-        {"tags", if(filter.tags, do: Enum.join(filter.tags, ","))},
-        {"args", if(filter.args, do: Jason.encode!(filter.args))},
-        {"meta", if(filter.meta, do: Jason.encode!(filter.meta))},
-        {"page", if(filter.page > 1, do: to_string(filter.page))}
-      ]
-    end
-
-    defp state_tab_class(true), do: "obpt-tab obpt-tab--active"
-    defp state_tab_class(false), do: "obpt-tab"
 
     defp state_badge_tone("executing"), do: "info"
     defp state_badge_tone("retryable"), do: "warning"
