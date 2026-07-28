@@ -1,7 +1,9 @@
 defmodule ObanPowertools.Web.ForensicsLiveTest do
   use ObanPowertools.LiveCase, async: false
 
+  alias ObanPowertools.Cron
   alias ObanPowertools.TestRepo
+  alias ObanPowertools.Web.ForensicsLive
 
   @bare_path "/ops/jobs/forensics"
   @allowed_selector_keys MapSet.new([
@@ -247,6 +249,145 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
     end
   end
 
+  describe "diagnosis-first page composition" do
+    test "exports a pure closed page composition with exact hierarchy and shared data components" do
+      assert function_exported?(ForensicsLive, :page_content, 1)
+
+      {_html, queries} =
+        capture_select_queries(fn ->
+          html =
+            render_component(
+              &ForensicsLive.page_content/1,
+              Map.put(ready_page_assigns(), :bundle, %{secret: "RAW-BUNDLE-SENTINEL"})
+            )
+
+          assert count(html, "<h1") == 1
+          assert count(html, ~s(class="obpt-timeline")) == 1
+          assert count(html, "<ol") == 1
+          assert html =~ ~s(class="obpt-description-list)
+          assert html =~ "Inspect evidence"
+          assert html =~ "Read-only evidence"
+
+          assert_occurs_in_order(html, [
+            "Read-only evidence",
+            ~s(data-obpt-filter-bar),
+            "Investigation summary",
+            "What to do next",
+            "Latest remediation evidence",
+            "Event log",
+            "Evidence limits and sources"
+          ])
+
+          assert_occurs_in_order(html, [
+            "The newest retained event was recorded.",
+            "An older retained event was recorded."
+          ])
+
+          for label <- [
+                "Open workflow",
+                "Review incident in Lifeline",
+                "Open cron entry",
+                "Review limiter blockers",
+                "View matching audit evidence"
+              ] do
+            assert html =~ label
+          end
+
+          assert html =~ "Review all guidance"
+          assert html =~ "Historical Lifeline repair evidence was recorded."
+          assert html =~ "Showing 2 of 7 retained events."
+          assert html =~ "Newest retained evidence in this source window."
+          refute html =~ "RAW-BUNDLE-SENTINEL"
+
+          for legacy <- [
+                "Diagnosis Summary",
+                "Related Evidence",
+                "Linked Resources",
+                "Legal Next Paths",
+                "Evidence Completeness",
+                "Selectors:"
+              ] do
+            refute html =~ legacy
+          end
+
+          html
+        end)
+
+      assert queries == []
+    end
+
+    test "pure empty and unavailable states render no diagnosis or event shells" do
+      empty_html =
+        render_component(
+          &ForensicsLive.page_content/1,
+          page_assigns(:empty)
+        )
+
+      assert empty_html =~ "Choose evidence to inspect."
+      refute empty_html =~ "Investigation summary"
+      refute empty_html =~ "What to do next"
+      refute empty_html =~ "Event log"
+      refute empty_html =~ "Evidence limits and sources"
+
+      unavailable_html =
+        render_component(
+          &ForensicsLive.page_content/1,
+          page_assigns(:unavailable)
+        )
+
+      assert unavailable_html =~ "Evidence unavailable"
+
+      assert unavailable_html =~
+               "It may not exist, may no longer be retained, or you may not have access."
+
+      refute unavailable_html =~ "<a "
+      refute unavailable_html =~ "Investigation summary"
+      refute unavailable_html =~ "Event log"
+    end
+
+    test "ready live evidence renders one bounded timeline and only authorized destinations", %{
+      conn: conn
+    } do
+      {:ok, entry} =
+        Cron.sync_entry(TestRepo, %{
+          name: "forensics-page-cron",
+          source: "runtime",
+          worker: "DemoWorker",
+          queue: "default",
+          expression: "* * * * *"
+        })
+
+      slot_at = truncate_minute(DateTime.add(DateTime.utc_now(), -120, :second))
+      assert {:ok, _coverage} = Cron.record_coverage(TestRepo, entry, slot_at, status: "healthy")
+
+      path = "#{@bare_path}?resource_type=cron_entry&resource_id=#{entry.name}"
+
+      {:ok, reader_view, reader_html} =
+        live(forensics_conn(conn, [:view_cron]), path)
+
+      assert count(reader_html, ~s(class="obpt-timeline")) == 1
+      assert has_element?(reader_view, "#forensics-event-log ol")
+      assert reader_html =~ "Investigation summary"
+      assert reader_html =~ "What to do next"
+      assert reader_html =~ "Open cron entry"
+      refute reader_html =~ "View matching audit evidence"
+
+      {:ok, audit_view, audit_html} =
+        live(forensics_conn(conn, [:view_cron, :view_audit]), path)
+
+      assert has_element?(
+               audit_view,
+               "#forensics-evidence-coverage a",
+               "View matching audit evidence"
+             )
+
+      assert audit_html =~ "View matching audit evidence"
+      refute audit_html =~ "preview_token"
+      refute audit_html =~ "plan_hash"
+      refute audit_html =~ "raw_error"
+    end
+  end
+
   defp forensics_conn(conn, extra_permissions \\ []) do
     Plug.Test.init_test_session(conn,
       current_actor: %{
@@ -293,12 +434,179 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
     refute_receive {^ref, {:patch, ^topic, _}}
   end
 
+  defp ready_page_assigns do
+    now = "2026-07-28T16:00:00Z"
+    older = "2026-07-28T15:00:00Z"
+
+    page_assigns(:ready)
+    |> Map.merge(%{
+      summary: %{
+        heading: "Investigation summary",
+        diagnosis: "Needs review",
+        detail: "The retained facts identify a current condition that needs review.",
+        provenance: "Durable evidence",
+        completeness: "Partial evidence",
+        coverage: "Showing 2 of 7 retained events.",
+        scope: %{
+          type: :incident,
+          type_label: "Lifeline incident",
+          identity: "dead_executor:node-1",
+          subject: "Missing executor node-1",
+          ownership: "Powertools-native Lifeline"
+        }
+      },
+      next_steps: [
+        %{
+          id: "open-workflow",
+          label: "Open workflow",
+          href: "/ops/jobs/workflows/workflow-1",
+          role: :primary,
+          support: "Review the current workflow diagnosis before taking any action."
+        },
+        %{
+          id: "review-incident-in-lifeline",
+          label: "Review incident in Lifeline",
+          href: "/ops/jobs/lifeline?incident_fingerprint=dead_executor%3Anode-1",
+          role: :additional,
+          support:
+            "Review current evidence and reauthorize the incident before taking any action."
+        },
+        %{
+          id: "open-cron-entry",
+          label: "Open cron entry",
+          href: "/ops/jobs/cron?entry=nightly",
+          role: :additional,
+          support: "Review current schedule evidence before taking any action."
+        },
+        %{
+          id: "review-limiter-blockers",
+          label: "Review limiter blockers",
+          href: "/ops/jobs/limiters?resource=billing",
+          role: :additional,
+          support: "Review current blocker evidence before taking any action."
+        }
+      ],
+      latest_remediation: %{
+        heading: "Latest remediation evidence",
+        historical?: true,
+        status: "Recorded",
+        summary: "Historical Lifeline repair evidence was recorded.",
+        occurred_at: "July 28, 2026 at 15:30 UTC",
+        occurred_datetime: "2026-07-28T15:30:00Z",
+        provenance: "Durable evidence"
+      },
+      events: [
+        %{
+          id: "event-newest",
+          timestamp: "July 28, 2026 at 16:00 UTC",
+          datetime: now,
+          title: "The newest retained event was recorded.",
+          source: "Powertools Audit · Durable evidence",
+          status: "Needs review",
+          domain: :forensics,
+          state: :needs_review,
+          notes: "Newest retained evidence in this source window.",
+          follow_ups: [
+            %{label: "Open workflow", href: "/ops/jobs/workflows/workflow-1"}
+          ]
+        },
+        %{
+          id: "event-older",
+          timestamp: "July 28, 2026 at 15:00 UTC",
+          datetime: older,
+          title: "An older retained event was recorded.",
+          source: "Powertools Lifeline · Supporting evidence",
+          status: "Recorded",
+          domain: :forensics,
+          state: :recorded,
+          notes: nil,
+          follow_ups: [
+            %{
+              label: "Review incident in Lifeline",
+              href: "/ops/jobs/lifeline?incident_fingerprint=dead_executor%3Anode-1"
+            }
+          ]
+        }
+      ],
+      coverage: %{
+        heading: "Evidence limits and sources",
+        summary: "Showing 2 of 7 retained events.",
+        shown_count: 2,
+        total_count: 7,
+        has_more?: false,
+        bounded?: true,
+        completeness: "Partial evidence",
+        retention: "Only the newest retained evidence available to these sources is shown.",
+        sources: [
+          %{
+            id: "audit",
+            label: "Powertools Audit",
+            shown_count: 2,
+            total_count: 7,
+            has_more?: false,
+            limit: 50,
+            provenance: "Durable evidence",
+            completeness: "Partial evidence",
+            retention: "Newest 50 matching retained events."
+          }
+        ]
+      },
+      audit_href: "/ops/jobs/audit?resource_type=incident&resource_id=dead_executor%3Anode-1"
+    })
+  end
+
+  defp page_assigns(state) do
+    %{
+      scope_form:
+        Phoenix.Component.to_form(
+          %{
+            "evidence_type" => "",
+            "workflow_id" => "",
+            "step" => "",
+            "incident_fingerprint" => "",
+            "view" => "",
+            "resource_id" => ""
+          },
+          as: :scope,
+          id: "forensics-scope-form"
+        ),
+      scope_state: state,
+      scope_notice: nil,
+      support: %{
+        state: :ready,
+        heading: "Read-only evidence",
+        copy: "Forensics summarizes retained Powertools evidence and does not prove root cause."
+      },
+      summary: nil,
+      next_steps: [],
+      latest_remediation: nil,
+      events: [],
+      coverage: nil,
+      audit_href: nil
+    }
+  end
+
   defp assert_selector_keys_allowed(path) do
     parsed = URI.parse(path)
     keys = parsed.query |> URI.decode_query() |> Map.keys() |> MapSet.new()
 
     assert MapSet.subset?(keys, @allowed_selector_keys)
   end
+
+  defp assert_occurs_in_order(text, markers) do
+    positions =
+      Enum.map(markers, fn marker ->
+        case :binary.match(text, marker) do
+          {position, _length} -> position
+          :nomatch -> flunk("expected #{inspect(marker)} in rendered Forensics HTML")
+        end
+      end)
+
+    assert positions == Enum.sort(positions)
+  end
+
+  defp truncate_minute(%DateTime{} = dt),
+    do: %DateTime{dt | second: 0, microsecond: {0, 0}}
 
   defp count(text, needle), do: length(String.split(text, needle)) - 1
 end

@@ -461,6 +461,37 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
     assert outside_controlled_region?(html, "Queue: critical")
   end
 
+  @tag phase80_slice: "forensics"
+  test "FilterBar submit mode accepts a page-specific label without changing its default" do
+    custom_html =
+      render_pattern(:filter_bar,
+        id: "forensics-scope",
+        form: filter_form(),
+        mode: :submit,
+        submit_label: "Inspect evidence",
+        result_summary: "Choose one supported evidence scope.",
+        results_target_id: "forensics-results",
+        submit_event: "inspect-evidence",
+        fields: [slot(:fields, %{}, fn -> "Evidence type field" end)]
+      )
+
+    default_html =
+      render_pattern(:filter_bar,
+        id: "default-submit-label",
+        form: filter_form(),
+        mode: :submit,
+        result_summary: "42 jobs match the applied filters.",
+        results_target_id: "job-results",
+        submit_event: "apply-filters",
+        fields: [slot(:fields, %{}, fn -> "Queue field" end)]
+      )
+
+    assert custom_html =~ "Inspect evidence"
+    refute custom_html =~ "Apply filters"
+    assert default_html =~ "Apply filters"
+    refute default_html =~ "Inspect evidence"
+  end
+
   @tag phase78_slice: "filter"
   test "FilterBar instant mode has no submit-only affordance or duplicate field tree" do
     html =
