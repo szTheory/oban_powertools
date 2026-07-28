@@ -219,7 +219,10 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
 
     refute serialized =~ "repair_executed"
     refute serialized =~ "bridge_only"
-    refute serialized =~ "incident_fingerprint"
+
+    refute "incident_fingerprint" in (page
+                                      |> nested_keys()
+                                      |> Enum.map(&normalize_key/1))
   end
 
   test "Forensics guidance is authorized noun-only canonical-URL-deduplicated and fail closed" do

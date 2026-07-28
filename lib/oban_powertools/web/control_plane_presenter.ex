@@ -4,6 +4,7 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
   """
 
   alias ObanPowertools.{Audit, ControlPlane, DisplayPolicy, RuntimeConfig}
+  alias ObanPowertools.Forensics.Chronology
   alias ObanPowertools.Web.Selectors
 
   @status_labels %{
@@ -129,6 +130,35 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
   @audit_presentation_data_fields ~w[
     field before after label value items
   ]
+  @forensic_scope_types %{
+    "workflow" => {:workflow, "Workflow"},
+    "lifeline_incident" => {:lifeline_incident, "Lifeline incident"},
+    "cron_entry" => {:cron_entry, "Cron entry"},
+    "limiter" => {:limiter, "Limiter"}
+  }
+  @forensic_sources %{
+    "workflow" => "Workflow",
+    "lifeline" => "Lifeline",
+    "cron" => "Cron",
+    "limiter" => "Limiter",
+    "audit" => "Audit"
+  }
+  @forensic_statuses ~w[
+    available scheduled executing retryable cancelled discarded completed
+    needs_review blocked waiting runnable resolved success succeeded skipped failed
+    previewed attempted drifted expired consumed recorded on_time manual_run
+    partial_evidence unknown
+  ]a
+  @forensic_destination_queries %{
+    workflow: ~w[step],
+    lifeline: ~w[
+      resource_type resource_id workflow_id step incident_fingerprint view action
+    ],
+    cron: ~w[entry],
+    limiter: ~w[resource],
+    audit: ~w[resource_type resource_id page event event_type]
+  }
+  @forensic_note_limit 1_000
 
   @doc """
   Projects one Overview bucket through the fixed Wave 1 presentation contract.
@@ -508,6 +538,47 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
   end
 
   @doc """
+  Projects one internal evidence bundle into the closed Forensics page contract.
+
+  Destinations are emitted only when their canonical local URL is present in the
+  caller-owned authorization context. Unknown source fields and structs are not
+  traversed.
+  """
+  def present_forensics(evidence, context) do
+    evidence = forensic_plain_map(evidence)
+    authorized = forensic_authorized_destinations(context)
+    subject = evidence |> presentation_value(:subject) |> forensic_plain_map()
+    diagnosis = evidence |> presentation_value(:diagnosis_summary) |> forensic_plain_map()
+    completeness = evidence |> presentation_value(:completeness) |> forensic_plain_map()
+
+    events =
+      evidence
+      |> presentation_value(:chronology)
+      |> forensic_plain_list()
+      |> Enum.filter(&forensic_plain_map?/1)
+      |> Enum.map(&Chronology.item/1)
+      |> Chronology.sort()
+
+    destinations = forensic_destinations(evidence, authorized)
+    coverage = forensic_coverage(evidence, completeness, events)
+
+    %{
+      support: %{
+        state: :ready,
+        heading: "Read-only evidence",
+        copy: "Forensics summarizes retained Powertools evidence and does not prove root cause."
+      },
+      scope: forensic_scope(subject),
+      summary: forensic_summary(diagnosis, completeness, coverage.summary),
+      next_steps: forensic_next_steps(destinations),
+      latest_remediation: forensic_latest_remediation(subject, events),
+      events: Enum.map(events, &forensic_event(&1, destinations)),
+      coverage: coverage,
+      audit_href: forensic_audit_href(destinations)
+    }
+  end
+
+  @doc """
   Normalizes ordered active-filter presentation maps through a finite key contract.
   """
   def normalize_active_filters(filters) when is_list(filters) do
@@ -877,6 +948,446 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
       code: rejection.code
     }
   end
+
+  defp forensic_scope(subject) do
+    {type, type_label} =
+      Map.get(
+        @forensic_scope_types,
+        forensic_text(presentation_value(subject, :type), "unknown"),
+        {:unknown, "Unknown evidence"}
+      )
+
+    %{
+      type: type,
+      type_label: type_label,
+      identity: forensic_text(presentation_value(subject, :id), "Unavailable"),
+      subject: forensic_text(presentation_value(subject, :label), "Evidence subject unavailable"),
+      ownership:
+        forensic_text(
+          presentation_value(subject, :entry_surface),
+          "Evidence ownership unavailable"
+        )
+    }
+  end
+
+  defp forensic_summary(diagnosis, completeness, coverage_summary) do
+    %{
+      heading: "Investigation summary",
+      diagnosis: forensic_status_label(presentation_value(diagnosis, :current)),
+      detail:
+        forensic_text(
+          presentation_value(diagnosis, :detail),
+          "No current diagnosis detail is available."
+        ),
+      provenance: forensic_provenance_display(presentation_value(diagnosis, :provenance)),
+      completeness: forensic_completeness_display(presentation_value(completeness, :state)),
+      coverage: coverage_summary
+    }
+  end
+
+  defp forensic_event(item, destinations) do
+    {timestamp, datetime} = forensic_time(item.occurred_at)
+
+    %{
+      id: item.id,
+      timestamp: timestamp,
+      datetime: datetime,
+      title: forensic_sentence(item.label),
+      source: forensic_event_source(item.source_family, item.strength),
+      status: forensic_status_label(item.status),
+      domain: :forensics,
+      state: forensic_status_state(item.status),
+      notes: item.notes,
+      follow_ups: forensic_event_follow_ups(item, destinations)
+    }
+  end
+
+  defp forensic_latest_remediation(subject, events) do
+    if presentation_value(subject, :type) == "lifeline_incident" do
+      case Enum.find(events, &(&1.event_type == "lifeline.repair_executed")) do
+        nil ->
+          nil
+
+        event ->
+          {occurred_at, occurred_datetime} = forensic_time(event.occurred_at)
+
+          %{
+            heading: "Latest remediation evidence",
+            historical?: true,
+            status: forensic_status_label(event.status),
+            summary:
+              "Historical Lifeline repair evidence was recorded. It does not change the current diagnosis.",
+            occurred_at: occurred_at,
+            occurred_datetime: occurred_datetime,
+            provenance: forensic_provenance_display(event.strength)
+          }
+      end
+    end
+  end
+
+  defp forensic_coverage(evidence, completeness, events) do
+    coverage = evidence |> presentation_value(:coverage) |> forensic_plain_map()
+    shown_count = forensic_count(presentation_value(coverage, :shown_count), length(events))
+    total_count = forensic_optional_count(presentation_value(coverage, :total_count))
+    has_more? = forensic_optional_boolean(presentation_value(coverage, :has_more?))
+    summary = forensic_coverage_summary(shown_count, total_count, has_more?)
+
+    %{
+      heading: "Evidence limits and sources",
+      summary: summary,
+      shown_count: shown_count,
+      total_count: total_count,
+      has_more?: has_more?,
+      bounded?: forensic_boolean(presentation_value(coverage, :bounded?), true),
+      completeness: forensic_completeness_display(presentation_value(completeness, :state)),
+      retention:
+        forensic_text(
+          presentation_value(coverage, :retention),
+          "Only the retained evidence available to these sources is shown."
+        ),
+      sources:
+        coverage
+        |> presentation_value(:sources)
+        |> forensic_plain_list()
+        |> Enum.filter(&forensic_plain_map?/1)
+        |> Enum.map(&forensic_coverage_source/1)
+    }
+  end
+
+  defp forensic_coverage_source(source) do
+    %{
+      id: forensic_text(presentation_value(source, :id), "unknown"),
+      label: forensic_text(presentation_value(source, :label), "Unknown source"),
+      shown_count: forensic_count(presentation_value(source, :shown_count), 0),
+      total_count: forensic_optional_count(presentation_value(source, :total_count)),
+      has_more?: forensic_optional_boolean(presentation_value(source, :has_more?)),
+      limit: forensic_optional_count(presentation_value(source, :limit)),
+      provenance: forensic_provenance_display(presentation_value(source, :provenance)),
+      completeness: forensic_completeness_display(presentation_value(source, :completeness)),
+      retention:
+        forensic_text(
+          presentation_value(source, :retention),
+          "No source retention detail is available."
+        )
+    }
+  end
+
+  defp forensic_coverage_summary(shown_count, _total_count, true),
+    do: "Showing the newest #{shown_count} events; more evidence exists."
+
+  defp forensic_coverage_summary(shown_count, total_count, false)
+       when is_integer(total_count) and shown_count < total_count,
+       do: "Showing #{shown_count} of #{total_count} retained events."
+
+  defp forensic_coverage_summary(shown_count, _total_count, false),
+    do: "Showing all #{shown_count} available events in this source window."
+
+  defp forensic_coverage_summary(shown_count, total_count, nil) when is_integer(total_count),
+    do: "Showing #{shown_count} of #{total_count} retained events."
+
+  defp forensic_coverage_summary(shown_count, _total_count, nil),
+    do: "Showing #{shown_count} retained events; total availability is unknown."
+
+  defp forensic_next_steps(destinations) do
+    destinations
+    |> Enum.reject(&(&1.kind == :audit))
+    |> Enum.with_index()
+    |> Enum.map(fn {destination, index} ->
+      %{
+        id: destination.id,
+        label: destination.label,
+        href: destination.href,
+        role: if(index == 0, do: :primary, else: :additional),
+        support: forensic_destination_support(destination.kind)
+      }
+    end)
+  end
+
+  defp forensic_audit_href(destinations) do
+    case Enum.find(destinations, &(&1.kind == :audit)) do
+      nil -> nil
+      destination -> destination.href
+    end
+  end
+
+  defp forensic_event_follow_ups(event, destinations) do
+    kinds =
+      case {event.source_family, event.event_type} do
+        {"workflow", _event_type} ->
+          [:workflow]
+
+        {"lifeline", _event_type} ->
+          [:lifeline]
+
+        {"cron", _event_type} ->
+          [:cron]
+
+        {"limiter", _event_type} ->
+          [:limiter]
+
+        {"audit", event_type} when is_binary(event_type) ->
+          [forensic_event_destination_kind(event_type)]
+
+        _other ->
+          []
+      end
+
+    destinations
+    |> Enum.filter(&(&1.kind in kinds))
+    |> Enum.map(&%{label: &1.label, href: &1.href})
+  end
+
+  defp forensic_event_destination_kind("workflow." <> _suffix), do: :workflow
+  defp forensic_event_destination_kind("lifeline." <> _suffix), do: :lifeline
+  defp forensic_event_destination_kind("cron." <> _suffix), do: :cron
+  defp forensic_event_destination_kind("limiter." <> _suffix), do: :limiter
+  defp forensic_event_destination_kind(_event_type), do: :audit
+
+  defp forensic_destinations(evidence, authorized) do
+    evidence
+    |> forensic_destination_candidates()
+    |> Enum.reduce([], fn candidate, destinations ->
+      case forensic_destination(candidate, authorized) do
+        nil ->
+          destinations
+
+        destination ->
+          if Enum.any?(
+               destinations,
+               &(&1.canonical == destination.canonical or &1.kind == destination.kind)
+             ) do
+            destinations
+          else
+            destinations ++ [destination]
+          end
+      end
+    end)
+  end
+
+  defp forensic_destination_candidates(evidence) do
+    forensic_plain_list(presentation_value(evidence, :legal_next_paths)) ++
+      forensic_plain_list(presentation_value(evidence, :linked_resources))
+  end
+
+  defp forensic_destination(candidate, authorized)
+       when is_map(candidate) and not is_struct(candidate) do
+    path = presentation_value(candidate, :path)
+
+    with true <- is_binary(path),
+         {:ok, kind, canonical} <- forensic_canonical_destination(path),
+         {:ok, href} <- Map.fetch(authorized, canonical) do
+      %{
+        id: forensic_destination_id(kind),
+        label: forensic_destination_label(kind),
+        href: href,
+        kind: kind,
+        canonical: canonical
+      }
+    else
+      _unavailable -> nil
+    end
+  end
+
+  defp forensic_destination(_candidate, _authorized), do: nil
+
+  defp forensic_authorized_destinations(context) do
+    context =
+      cond do
+        is_map(context) and not is_struct(context) -> context
+        is_list(context) -> Map.new(context)
+        true -> %{}
+      end
+
+    context
+    |> presentation_value(:authorized_hrefs)
+    |> forensic_plain_list()
+    |> Enum.reduce(%{}, fn href, authorized ->
+      case forensic_canonical_destination(href) do
+        {:ok, _kind, canonical} -> Map.put_new(authorized, canonical, href)
+        :error -> authorized
+      end
+    end)
+  end
+
+  defp forensic_canonical_destination(href) when is_binary(href) do
+    uri = URI.parse(href)
+
+    with nil <- uri.scheme,
+         nil <- uri.host,
+         nil <- uri.userinfo,
+         nil <- uri.fragment,
+         {:ok, kind} <- forensic_destination_kind(uri.path),
+         {:ok, query} <- forensic_destination_query(uri.query, kind) do
+      canonical =
+        case URI.encode_query(Enum.sort(query)) do
+          "" -> uri.path
+          encoded -> "#{uri.path}?#{encoded}"
+        end
+
+      {:ok, kind, canonical}
+    else
+      _unsafe -> :error
+    end
+  rescue
+    ArgumentError -> :error
+  end
+
+  defp forensic_canonical_destination(_href), do: :error
+
+  defp forensic_destination_kind("/ops/jobs/lifeline"), do: {:ok, :lifeline}
+  defp forensic_destination_kind("/ops/jobs/cron"), do: {:ok, :cron}
+  defp forensic_destination_kind("/ops/jobs/limiters"), do: {:ok, :limiter}
+  defp forensic_destination_kind("/ops/jobs/audit"), do: {:ok, :audit}
+
+  defp forensic_destination_kind(path) when is_binary(path) do
+    if Regex.match?(~r|\A/ops/jobs/workflows/[^/?]+\z|, path),
+      do: {:ok, :workflow},
+      else: :error
+  end
+
+  defp forensic_destination_kind(_path), do: :error
+
+  defp forensic_destination_query(nil, _kind), do: {:ok, %{}}
+
+  defp forensic_destination_query(query, kind) when is_binary(query) do
+    decoded = URI.decode_query(query)
+
+    if Enum.all?(Map.keys(decoded), &(&1 in Map.fetch!(@forensic_destination_queries, kind))) do
+      {:ok, decoded}
+    else
+      :error
+    end
+  end
+
+  defp forensic_destination_id(:workflow), do: "open-workflow"
+  defp forensic_destination_id(:lifeline), do: "review-incident-in-lifeline"
+  defp forensic_destination_id(:cron), do: "open-cron-entry"
+  defp forensic_destination_id(:limiter), do: "review-limiter-blockers"
+  defp forensic_destination_id(:audit), do: "view-matching-audit-evidence"
+
+  defp forensic_destination_label(:workflow), do: "Open workflow"
+  defp forensic_destination_label(:lifeline), do: "Review incident in Lifeline"
+  defp forensic_destination_label(:cron), do: "Open cron entry"
+  defp forensic_destination_label(:limiter), do: "Review limiter blockers"
+  defp forensic_destination_label(:audit), do: "View matching audit evidence"
+
+  defp forensic_destination_support(:workflow),
+    do: "Review the current workflow diagnosis before taking any action."
+
+  defp forensic_destination_support(:lifeline),
+    do: "Review current evidence and reauthorize the incident before taking any action."
+
+  defp forensic_destination_support(:cron),
+    do: "Review current schedule evidence before taking any action."
+
+  defp forensic_destination_support(:limiter),
+    do: "Review current blocker evidence before taking any action."
+
+  defp forensic_time(%NaiveDateTime{} = value) do
+    value
+    |> DateTime.from_naive!("Etc/UTC")
+    |> forensic_time()
+  end
+
+  defp forensic_time(%DateTime{} = value) do
+    utc = DateTime.shift_zone!(value, "Etc/UTC")
+
+    {
+      "#{Calendar.strftime(utc, "%B")} #{utc.day}, #{utc.year} at #{Calendar.strftime(utc, "%H:%M")} UTC",
+      DateTime.to_iso8601(utc)
+    }
+  end
+
+  defp forensic_time(_value), do: {"Timestamp unavailable", "Timestamp unavailable"}
+
+  defp forensic_event_source(source_family, provenance) do
+    source = Map.get(@forensic_sources, source_family, "Unknown source")
+    "#{source} · #{forensic_provenance_display(provenance)}"
+  end
+
+  defp forensic_provenance_display(value) when value in [:durable, "durable"],
+    do: "Durable evidence"
+
+  defp forensic_provenance_display(value) when value in [:supporting, "supporting"],
+    do: "Supporting evidence"
+
+  defp forensic_provenance_display(value) when value in [:bridge_only, "bridge_only"],
+    do: "Inspection only"
+
+  defp forensic_provenance_display(_value), do: "Provenance unavailable"
+
+  defp forensic_completeness_display(value) when value in [:complete, "complete"], do: "Complete"
+
+  defp forensic_completeness_display(value)
+       when value in [:partial_evidence, "partial_evidence"],
+       do: "Partial evidence"
+
+  defp forensic_completeness_display(value)
+       when value in [:history_unavailable, "history_unavailable"],
+       do: "History unavailable"
+
+  defp forensic_completeness_display(_value), do: "Unknown"
+
+  defp forensic_status_state(value) when is_binary(value) do
+    Enum.find(@forensic_statuses, :unknown, &(Atom.to_string(&1) == value))
+  end
+
+  defp forensic_status_state(value) when value in @forensic_statuses, do: value
+  defp forensic_status_state(_value), do: :unknown
+
+  defp forensic_status_label(value) do
+    case forensic_status_state(value) do
+      :unknown -> "Status unavailable"
+      status -> humanize(status)
+    end
+  end
+
+  defp forensic_sentence(value) do
+    sentence = forensic_text(value, "Evidence was recorded")
+    if Regex.match?(~r/[.!?]\z/, sentence), do: sentence, else: sentence <> "."
+  end
+
+  defp forensic_text(value, fallback) when is_atom(value),
+    do: value |> Atom.to_string() |> forensic_text(fallback)
+
+  defp forensic_text(value, fallback) when is_integer(value),
+    do: value |> Integer.to_string() |> forensic_text(fallback)
+
+  defp forensic_text(value, fallback) when is_binary(value) do
+    case String.trim(value) do
+      "" -> fallback
+      text -> forensic_bounded_text(text)
+    end
+  end
+
+  defp forensic_text(_value, fallback), do: fallback
+
+  defp forensic_bounded_text(text) do
+    if String.length(text) > @forensic_note_limit do
+      String.slice(text, 0, @forensic_note_limit - 1) <> "…"
+    else
+      text
+    end
+  end
+
+  defp forensic_count(value, _fallback) when is_integer(value) and value >= 0, do: value
+  defp forensic_count(_value, fallback), do: fallback
+
+  defp forensic_optional_count(nil), do: nil
+  defp forensic_optional_count(value) when is_integer(value) and value >= 0, do: value
+  defp forensic_optional_count(_value), do: nil
+
+  defp forensic_boolean(value, _fallback) when is_boolean(value), do: value
+  defp forensic_boolean(_value, fallback), do: fallback
+
+  defp forensic_optional_boolean(value) when is_boolean(value), do: value
+  defp forensic_optional_boolean(_value), do: nil
+
+  defp forensic_plain_map(value) when is_map(value) and not is_struct(value), do: value
+  defp forensic_plain_map(_value), do: %{}
+  defp forensic_plain_map?(value), do: is_map(value) and not is_struct(value)
+  defp forensic_plain_list(value) when is_list(value), do: value
+  defp forensic_plain_list(_value), do: []
 
   defp overview_sample_count_label(:bridge_only, count),
     do: "#{count} representative follow-ups"
