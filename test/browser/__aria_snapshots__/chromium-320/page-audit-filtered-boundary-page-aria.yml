@@ -1,0 +1,226 @@
+- region "Audit":
+  - heading "Audit" [level=1]
+  - paragraph: Review recorded operator actions and the evidence available for each record.
+  - paragraph: "Permission: read-only. Review immutable recorded evidence without changing it."
+  - paragraph: The Oban Web bridge remains Inspection only and read-only. Historical records show what was recorded; they do not claim current state or causality.
+  - region "Repair evidence retention":
+    - heading "Repair evidence retention" [level=2]
+    - paragraph: Archived repair evidence is stored separately from the live Audit rows shown here.
+    - paragraph: The latest repair archive run completed at 2026-07-19 13:55:00 UTC.
+  - region "Filters":
+    - button "Filters (1 applied)" [expanded]
+    - text: Resource type
+    - textbox "Resource type": limiter
+    - text: Resource ID
+    - textbox "Resource ID"
+    - text: Event type
+    - textbox "Event type"
+    - button "Apply filters"
+    - region "Applied filters":
+      - heading "Applied filters" [level=2]
+      - list:
+        - listitem:
+          - strong: "Resource type:"
+          - text: limiter
+          - link "Remove Resource type filter":
+            - /url: /ops/jobs/audit
+            - text: Remove
+      - link "Clear filters":
+        - /url: /ops/jobs/audit
+    - status: Records 21–40 of 41 · Page 2 of 3
+  - table "Audit records 41 audit records Records 21–40 of 41 · Page 2 of 3":
+    - caption: Audit records 41 audit records Records 21–40 of 41 · Page 2 of 3
+    - rowgroup:
+      - row "Event Target Actor Reason Recorded at Actions":
+        - columnheader "Event"
+        - columnheader "Target"
+        - columnheader "Actor"
+        - columnheader "Reason"
+        - columnheader "Recorded at"
+        - columnheader "Actions"
+    - rowgroup:
+      - row "Limiter blocked limiter:critical-mailer-21 operator-21 Capacity evidence reviewed for boundary row 21. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-21":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-21"
+        - cell "operator-21"
+        - cell "Capacity evidence reviewed for boundary row 21."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-21":
+          - button "View evidence for Limiter blocked on critical-mailer-21": View evidence
+      - row "Limiter blocked limiter:critical-mailer-22 operator-22 Capacity evidence reviewed for boundary row 22. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-22":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-22"
+        - cell "operator-22"
+        - cell "Capacity evidence reviewed for boundary row 22."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-22":
+          - button "View evidence for Limiter blocked on critical-mailer-22": View evidence
+      - row "Limiter blocked limiter:critical-mailer-23 operator-23 Capacity evidence reviewed for boundary row 23. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-23":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-23"
+        - cell "operator-23"
+        - cell "Capacity evidence reviewed for boundary row 23."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-23":
+          - button "View evidence for Limiter blocked on critical-mailer-23": View evidence
+      - row "Limiter blocked limiter:critical-mailer-24 operator-24 Capacity evidence reviewed for boundary row 24. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-24":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-24"
+        - cell "operator-24"
+        - cell "Capacity evidence reviewed for boundary row 24."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-24":
+          - button "View evidence for Limiter blocked on critical-mailer-24": View evidence
+      - row "Limiter blocked limiter:critical-mailer-25 operator-25 Capacity evidence reviewed for boundary row 25. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-25":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-25"
+        - cell "operator-25"
+        - cell "Capacity evidence reviewed for boundary row 25."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-25":
+          - button "View evidence for Limiter blocked on critical-mailer-25": View evidence
+      - row "Limiter blocked limiter:critical-mailer-26 operator-26 Capacity evidence reviewed for boundary row 26. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-26":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-26"
+        - cell "operator-26"
+        - cell "Capacity evidence reviewed for boundary row 26."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-26":
+          - button "View evidence for Limiter blocked on critical-mailer-26": View evidence
+      - row "Limiter blocked limiter:critical-mailer-27 operator-27 Capacity evidence reviewed for boundary row 27. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-27":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-27"
+        - cell "operator-27"
+        - cell "Capacity evidence reviewed for boundary row 27."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-27":
+          - button "View evidence for Limiter blocked on critical-mailer-27": View evidence
+      - row "Limiter blocked limiter:critical-mailer-28 operator-28 Capacity evidence reviewed for boundary row 28. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-28":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-28"
+        - cell "operator-28"
+        - cell "Capacity evidence reviewed for boundary row 28."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-28":
+          - button "View evidence for Limiter blocked on critical-mailer-28": View evidence
+      - row "Limiter blocked limiter:critical-mailer-29 operator-29 Capacity evidence reviewed for boundary row 29. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-29":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-29"
+        - cell "operator-29"
+        - cell "Capacity evidence reviewed for boundary row 29."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-29":
+          - button "View evidence for Limiter blocked on critical-mailer-29": View evidence
+      - row "Limiter blocked limiter:critical-mailer-30 operator-30 Capacity evidence reviewed for boundary row 30. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-30":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-30"
+        - cell "operator-30"
+        - cell "Capacity evidence reviewed for boundary row 30."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-30":
+          - button "View evidence for Limiter blocked on critical-mailer-30": View evidence
+      - row "Limiter blocked limiter:critical-mailer-31 operator-31 Capacity evidence reviewed for boundary row 31. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-31":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-31"
+        - cell "operator-31"
+        - cell "Capacity evidence reviewed for boundary row 31."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-31":
+          - button "View evidence for Limiter blocked on critical-mailer-31": View evidence
+      - row "Limiter blocked limiter:critical-mailer-32 operator-32 Capacity evidence reviewed for boundary row 32. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-32":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-32"
+        - cell "operator-32"
+        - cell "Capacity evidence reviewed for boundary row 32."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-32":
+          - button "View evidence for Limiter blocked on critical-mailer-32": View evidence
+      - row "Limiter blocked limiter:critical-mailer-33 operator-33 Capacity evidence reviewed for boundary row 33. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-33":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-33"
+        - cell "operator-33"
+        - cell "Capacity evidence reviewed for boundary row 33."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-33":
+          - button "View evidence for Limiter blocked on critical-mailer-33": View evidence
+      - row "Limiter blocked limiter:critical-mailer-34 operator-34 Capacity evidence reviewed for boundary row 34. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-34":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-34"
+        - cell "operator-34"
+        - cell "Capacity evidence reviewed for boundary row 34."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-34":
+          - button "View evidence for Limiter blocked on critical-mailer-34": View evidence
+      - row "Limiter blocked limiter:critical-mailer-35 operator-35 Capacity evidence reviewed for boundary row 35. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-35":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-35"
+        - cell "operator-35"
+        - cell "Capacity evidence reviewed for boundary row 35."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-35":
+          - button "View evidence for Limiter blocked on critical-mailer-35": View evidence
+      - row "Limiter blocked limiter:critical-mailer-36 operator-36 Capacity evidence reviewed for boundary row 36. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-36":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-36"
+        - cell "operator-36"
+        - cell "Capacity evidence reviewed for boundary row 36."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-36":
+          - button "View evidence for Limiter blocked on critical-mailer-36": View evidence
+      - row "Limiter blocked limiter:critical-mailer-37 operator-37 Capacity evidence reviewed for boundary row 37. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-37":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-37"
+        - cell "operator-37"
+        - cell "Capacity evidence reviewed for boundary row 37."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-37":
+          - button "View evidence for Limiter blocked on critical-mailer-37": View evidence
+      - row "Limiter blocked limiter:critical-mailer-38 operator-38 Capacity evidence reviewed for boundary row 38. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-38":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-38"
+        - cell "operator-38"
+        - cell "Capacity evidence reviewed for boundary row 38."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-38":
+          - button "View evidence for Limiter blocked on critical-mailer-38": View evidence
+      - row "Limiter blocked limiter:critical-mailer-39 operator-39 Capacity evidence reviewed for boundary row 39. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-39":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-39"
+        - cell "operator-39"
+        - cell "Capacity evidence reviewed for boundary row 39."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-39":
+          - button "View evidence for Limiter blocked on critical-mailer-39": View evidence
+      - row "Limiter blocked limiter:critical-mailer-40 operator-40 Capacity evidence reviewed for boundary row 40. 2026-07-19 14:05:00 UTC View evidence for Limiter blocked on critical-mailer-40":
+        - cell "Limiter blocked"
+        - cell "limiter:critical-mailer-40"
+        - cell "operator-40"
+        - cell "Capacity evidence reviewed for boundary row 40."
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Limiter blocked on critical-mailer-40":
+          - button "View evidence for Limiter blocked on critical-mailer-40": View evidence
+  - navigation "Audit pagination":
+    - link "Previous":
+      - /url: /ops/jobs/audit?resource_type=limiter
+    - link "Next":
+      - /url: /ops/jobs/audit?resource_type=limiter&page=3

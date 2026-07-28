@@ -1,0 +1,65 @@
+- region "Audit":
+  - heading "Audit" [level=1]
+  - paragraph: Review recorded operator actions and the evidence available for each record.
+  - paragraph: "Permission: read-only. Review immutable recorded evidence without changing it."
+  - paragraph: The Oban Web bridge remains Inspection only and read-only. Historical records show what was recorded; they do not claim current state or causality.
+  - region "Repair evidence retention":
+    - heading "Repair evidence retention" [level=2]
+    - paragraph: Archived repair evidence is stored separately from the live Audit rows shown here.
+    - paragraph: The latest repair archive run completed at 2026-07-19 13:55:00 UTC.
+  - region "Filters":
+    - button "Filters (0 applied)" [expanded]
+    - text: Resource type
+    - textbox "Resource type"
+    - text: Resource ID
+    - textbox "Resource ID"
+    - text: Event type
+    - textbox "Event type"
+    - button "Apply filters"
+    - status: Records 1–1 of 1 · Page 1 of 1
+  - table "Audit records 1 audit records Records 1–1 of 1 · Page 1 of 1":
+    - caption: Audit records 1 audit records Records 1–1 of 1 · Page 1 of 1
+    - rowgroup:
+      - row "Event Target Actor Reason Recorded at Actions":
+        - columnheader "Event"
+        - columnheader "Target"
+        - columnheader "Actor"
+        - columnheader "Reason"
+        - columnheader "Recorded at"
+        - columnheader "Actions"
+    - rowgroup:
+      - row "Recorded event limiter:critical-mailer Powertools system No operator reason recorded 2026-07-19 14:05:00 UTC View evidence for Recorded event on limiter:critical-mailer":
+        - cell "Recorded event"
+        - cell "limiter:critical-mailer"
+        - cell "Powertools system"
+        - cell "No operator reason recorded"
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Recorded event on limiter:critical-mailer":
+          - button "View evidence for Recorded event on limiter:critical-mailer" [expanded]: View evidence
+  - navigation "Audit pagination": Previous Next
+  - dialog "Audit evidence":
+    - heading "Audit evidence" [level=2]
+    - button "Close audit evidence"
+    - article "Powertools system recorded an audit event for limiter:critical-mailer.":
+      - heading "Powertools system recorded an audit event for limiter:critical-mailer." [level=2]
+      - text: "Operator result: Unknown"
+      - paragraph:
+        - text: Recorded at
+        - time: 2026-07-19 14:05:00 UTC
+      - term: Actor
+      - definition: Powertools system
+      - term: Action
+      - definition: Recorded event
+      - term: Target
+      - definition: limiter:critical-mailer
+      - term: Reason
+      - definition: No operator reason recorded
+      - term: Source
+      - definition: Source not recorded
+      - term: Correlation
+      - definition: Correlation not recorded
+      - term: Outcome
+      - definition: Outcome not recorded
+      - group: Technical evidence
+    - text: Ready

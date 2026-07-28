@@ -1,0 +1,104 @@
+- region "Limiters":
+  - heading "Limiters" [level=1]
+  - paragraph: Review limiter state, understand what blocks progress now, and follow the right evidence path.
+  - paragraph: Limiters is read-only. Powertools-native evidence explains current capacity; changes remain host-owned.
+  - table "Limiters 2 limiters":
+    - caption: Limiters 2 limiters
+    - rowgroup:
+      - row "Limiter Scope State Actions":
+        - columnheader "Limiter"
+        - columnheader "Scope"
+        - columnheader "State"
+        - columnheader "Actions"
+    - rowgroup:
+      - 'row "critical-mailer worker Limiter status: Blocked Review blockers for critical-mailer"':
+        - cell "critical-mailer"
+        - cell "worker"
+        - 'cell "Limiter status: Blocked"'
+        - cell "Review blockers for critical-mailer":
+          - link "Review blockers for critical-mailer" [expanded]:
+            - /url: /ops/jobs/limiters?resource=critical-mailer
+            - text: Review blockers
+      - 'row "billing-sync global Limiter status: Runnable Review blockers for billing-sync"':
+        - cell "billing-sync"
+        - cell "global"
+        - 'cell "Limiter status: Runnable"'
+        - cell "Review blockers for billing-sync":
+          - link "Review blockers for billing-sync":
+            - /url: /ops/jobs/limiters?resource=billing-sync
+            - text: Review blockers
+  - dialog "critical-mailer":
+    - heading "critical-mailer" [level=2]
+    - button "Close limiter details"
+    - term: Limiter
+    - definition: critical-mailer
+    - term: Current state
+    - definition: "Limiter status: Blocked"
+    - term: Scope
+    - definition: worker
+    - term: Support
+    - definition: Powertools-native surfaces keep diagnosis, preview, reason, and audited action together.
+    - region "Current blockers":
+      - heading "Current blockers" [level=2]
+      - paragraph: One current limiter condition affects new reservations.
+      - list:
+        - listitem:
+          - paragraph: Current state
+          - heading "Capacity reached" [level=3]
+          - paragraph: The limiter has reserved its current bucket capacity.
+          - term: Affected scope
+          - definition: MyApp.Workers.ReconcileAccountNotificationDeliveryWithAnIntentionallyLongIdentifier / critical-mailer
+          - term: Clearing condition
+          - definition: Clears when the active bucket refreshes at 2026-07-19 14:05:00 UTC.
+          - term: Evidence source
+          - definition: Current limiter state
+      - region "Impact":
+        - heading "Impact" [level=3]
+        - paragraph: New reservations remain limited until the current condition clears.
+      - region "Evidence freshness":
+        - heading "Evidence freshness" [level=3]
+        - paragraph: Current blocker evidence is complete.
+        - paragraph:
+          - text: Observed
+          - time: 2026-07-19 14:05:00 UTC
+        - paragraph:
+          - text: "Evidence completeness:"
+          - strong: Complete
+    - region "Snapshot at block start":
+      - heading "Snapshot at block start" [level=2]
+      - paragraph:
+        - text: Historical evidence captured
+        - time: 2026-07-19 13:55:00 UTC
+        - text: .
+      - list:
+        - listitem:
+          - strong: Cooldown active
+          - text: ": The limiter was in cooldown when this snapshot was captured. Affected scope: critical-mailer."
+      - paragraph:
+        - text: "Snapshot completeness:"
+        - strong: complete
+    - region "Retained history":
+      - heading "Retained history" [level=2]
+      - paragraph: Retained history records one earlier limiter episode without claiming causality.
+      - paragraph:
+        - text: "History completeness:"
+        - strong: Complete evidence
+      - list:
+        - listitem:
+          - strong: Limiter blocked
+          - text: — 2026-07-19 13:55:00 UTC
+    - region "Destinations":
+      - heading "Destinations" [level=2]
+      - heading "Open runbook entry" [level=3]
+      - paragraph: Use current evidence first. Snapshot and retained history provide continuity, not a causal claim.
+      - paragraph: "Caution: partial evidence and history unavailable states stay diagnostic until retained limiter evidence proves what happened."
+      - list:
+        - listitem: Return to limiter diagnosis — Powertools-native
+        - listitem: Inspect generic job state — Oban Web bridge
+        - listitem: Coordinate capacity policy follow-up — host-owned follow-up
+      - navigation "Limiter evidence destinations":
+        - link "Open forensic timeline":
+          - /url: /ops/jobs/forensics?resource_type=limiter&resource_id=critical-mailer
+        - link "Open in Oban Web":
+          - /url: /oban/jobs/42
+    - status: Limiter critical-mailer details loaded

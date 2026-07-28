@@ -1,0 +1,76 @@
+- region "Limiters":
+  - heading "Limiters" [level=1]
+  - paragraph: Review limiter state, understand what blocks progress now, and follow the right evidence path.
+  - paragraph: Limiters is read-only. Powertools-native evidence explains current capacity; changes remain host-owned.
+  - table "Limiters 2 limiters":
+    - caption: Limiters 2 limiters
+    - rowgroup:
+      - row "Limiter Scope State Actions":
+        - columnheader "Limiter"
+        - columnheader "Scope"
+        - columnheader "State"
+        - columnheader "Actions"
+    - rowgroup:
+      - 'row "critical-mailer worker Limiter status: Blocked Review blockers for critical-mailer"':
+        - cell "critical-mailer"
+        - cell "worker"
+        - 'cell "Limiter status: Blocked"'
+        - cell "Review blockers for critical-mailer":
+          - link "Review blockers for critical-mailer":
+            - /url: /ops/jobs/limiters?resource=critical-mailer
+            - text: Review blockers
+      - 'row "billing-sync global Limiter status: Runnable Review blockers for billing-sync"':
+        - cell "billing-sync"
+        - cell "global"
+        - 'cell "Limiter status: Runnable"'
+        - cell "Review blockers for billing-sync":
+          - link "Review blockers for billing-sync" [expanded]:
+            - /url: /ops/jobs/limiters?resource=billing-sync
+            - text: Review blockers
+  - dialog "billing-sync":
+    - heading "billing-sync" [level=2]
+    - button "Close limiter details"
+    - term: Limiter
+    - definition: billing-sync
+    - term: Current state
+    - definition: "Limiter status: Runnable"
+    - term: Scope
+    - definition: global
+    - term: Support
+    - definition: Powertools-native surfaces keep diagnosis, preview, reason, and audited action together.
+    - region "Current blockers":
+      - heading "Current blockers" [level=2]
+      - paragraph: Current limiter state is ready for work.
+      - paragraph: Runnable — complete current evidence contains no blocking conditions.
+      - region "Impact":
+        - heading "Impact" [level=3]
+        - paragraph: No current limiter condition prevents new reservations.
+      - region "Evidence freshness":
+        - heading "Evidence freshness" [level=3]
+        - paragraph: Current blocker evidence is complete.
+        - paragraph:
+          - text: Observed
+          - time: 2026-07-19 14:05:00 UTC
+        - paragraph:
+          - text: "Evidence completeness:"
+          - strong: Complete
+    - region "Snapshot at block start":
+      - heading "Snapshot at block start" [level=2]
+      - paragraph: No block-start snapshot is available. Current state and retained history remain separate evidence.
+    - region "Retained history":
+      - heading "Retained history" [level=2]
+      - paragraph: Retained history contains no blocking episode for billing-sync.
+      - paragraph:
+        - text: "History completeness:"
+        - strong: Complete evidence
+    - region "Destinations":
+      - heading "Destinations" [level=2]
+      - heading "Open runbook entry" [level=3]
+      - paragraph: Use current evidence first. Snapshot and retained history provide continuity, not a causal claim.
+      - paragraph: "Caution: partial evidence and history unavailable states stay diagnostic until retained limiter evidence proves what happened."
+      - list:
+        - listitem: Return to limiter diagnosis — Powertools-native
+        - listitem: Inspect generic job state — Oban Web bridge
+        - listitem: Coordinate capacity policy follow-up — host-owned follow-up
+      - navigation "Limiter evidence destinations"
+    - status: Limiter billing-sync details loaded

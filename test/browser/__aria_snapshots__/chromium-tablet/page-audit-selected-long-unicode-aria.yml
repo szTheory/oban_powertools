@@ -1,0 +1,68 @@
+- region "Audit":
+  - heading "Audit" [level=1]
+  - paragraph: Review recorded operator actions and the evidence available for each record.
+  - paragraph: "Permission: read-only. Review immutable recorded evidence without changing it."
+  - paragraph: The Oban Web bridge remains Inspection only and read-only. Historical records show what was recorded; they do not claim current state or causality.
+  - region "Repair evidence retention":
+    - heading "Repair evidence retention" [level=2]
+    - paragraph: Archived repair evidence is stored separately from the live Audit rows shown here.
+    - paragraph: The latest repair archive run completed at 2026-07-19 13:55:00 UTC.
+  - region "Filters":
+    - text: Resource type
+    - textbox "Resource type"
+    - text: Resource ID
+    - textbox "Resource ID"
+    - text: Event type
+    - textbox "Event type"
+    - button "Apply filters"
+    - status: Records 1–1 of 1 · Page 1 of 1
+  - table "Audit records 1 audit records Records 1–1 of 1 · Page 1 of 1":
+    - caption: Audit records 1 audit records Records 1–1 of 1 · Page 1 of 1
+    - rowgroup:
+      - row "Event Target Actor Reason Recorded at Actions":
+        - columnheader "Event"
+        - columnheader "Target"
+        - columnheader "Actor"
+        - columnheader "Reason"
+        - columnheader "Recorded at"
+        - columnheader "Actions"
+    - rowgroup:
+      - row "Repair executed job:01JZ8M5P999999999999999999 Miyazaki Haruka — مرحبا <script>alert('page')</script> مرحبا שלום お客様通知 ✅ 2026-07-19 14:05:00 UTC View evidence for Repair executed on job 01JZ8M5P999999999999999999":
+        - cell "Repair executed"
+        - cell "job:01JZ8M5P999999999999999999":
+          - link "job:01JZ8M5P999999999999999999":
+            - /url: /ops/jobs/jobs/01JZ8M5P999999999999999999
+        - cell "Miyazaki Haruka — مرحبا"
+        - cell "<script>alert('page')</script> مرحبا שלום お客様通知 ✅"
+        - cell "2026-07-19 14:05:00 UTC":
+          - time: 2026-07-19 14:05:00 UTC
+        - cell "View evidence for Repair executed on job 01JZ8M5P999999999999999999":
+          - button "View evidence for Repair executed on job 01JZ8M5P999999999999999999" [expanded]: View evidence
+  - navigation "Audit pagination": Previous Next
+  - dialog "Audit evidence":
+    - heading "Audit evidence" [level=2]
+    - button "Close audit evidence"
+    - article "Miyazaki Haruka recorded repair executed for job 01JZ8M5P999999999999999999.":
+      - heading "Miyazaki Haruka recorded repair executed for job 01JZ8M5P999999999999999999." [level=2]
+      - text: "Operator result: Success"
+      - paragraph:
+        - text: Recorded at
+        - time: 2026-07-19 14:05:00 UTC
+      - term: Actor
+      - definition: Miyazaki Haruka — مرحبا
+      - term: Action
+      - definition: Repair executed
+      - term: Target
+      - definition: job:01JZ8M5P999999999999999999
+      - term: Reason
+      - definition: <script>alert('page')</script> مرحبا שלום お客様通知 ✅ MyApp.Workers.ReconcileAccountNotificationDeliveryWithAnIntentionallyLongIdentifier
+      - term: Source
+      - definition: Powertools operator UI
+      - term: Correlation
+      - definition: request-00000000000000000042
+      - term: Outcome
+      - definition: Repair request recorded
+      - group: Technical evidence
+    - text: Ready
+    - link "Open full details":
+      - /url: /ops/jobs/jobs/01JZ8M5P999999999999999999

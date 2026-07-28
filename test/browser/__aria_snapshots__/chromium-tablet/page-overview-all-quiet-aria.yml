@@ -1,0 +1,46 @@
+- region "Overview":
+  - heading "Overview" [level=1]
+  - paragraph: See what needs attention, why it matters, and where to continue.
+  - region "Current attention":
+    - heading "Current attention" [level=2]
+    - heading "No current follow-up identified" [level=2]
+    - paragraph: Available evidence identifies no current native or bridge follow-up. Open Jobs to review individual job state.
+    - link "Open Jobs":
+      - /url: /ops/jobs/jobs
+    - heading "No needs review identified" [level=2]
+    - paragraph: Available evidence identifies no work that needs review.
+    - link "Review retryable jobs":
+      - /url: /ops/jobs/jobs?state=retryable
+    - heading "No blocked limiters identified" [level=2]
+    - paragraph: Available evidence identifies no blocked limiter work.
+    - link "Review limiters":
+      - /url: /ops/jobs/limiters
+    - heading "No waiting work identified" [level=2]
+    - paragraph: Available evidence identifies no waiting work.
+    - link "Review workflows":
+      - /url: /ops/jobs/workflows
+  - region "Bridge-only Follow-up":
+    - heading "Bridge-only Follow-up" [level=2]
+    - paragraph: 0 shown
+    - paragraph: No representative Oban Web follow-up is identified.
+    - paragraph: Generic job inspection remains available in Oban Web.
+    - paragraph: Oban Web bridge · Inspection only
+    - link "Inspect in Oban Web":
+      - /url: /ops/jobs/oban
+  - region "Runnable":
+    - heading "Runnable" [level=2]
+    - article:
+      - term: Current runnable capacity
+      - definition: "6"
+      - paragraph: Six current resources are ready for work.
+      - link "Open Jobs":
+        - /url: /ops/jobs/jobs
+    - paragraph: Runnable state does not guarantee future completion.
+  - region "Resolved continuity":
+    - heading "Resolved continuity" [level=2]
+    - paragraph: 2 retained examples
+    - paragraph: Two resolved records remain available as continuity evidence.
+    - paragraph: Historical evidence does not establish current state.
+    - paragraph: Continuity evidence
+    - link "Open Audit":
+      - /url: /ops/jobs/audit

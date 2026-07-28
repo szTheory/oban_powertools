@@ -1,0 +1,48 @@
+- region "Cron":
+  - heading "Cron" [level=1]
+  - paragraph: Review schedules, inspect one cron entry, and take deliberate action with recorded evidence.
+  - table "Cron entries 2 cron entries":
+    - caption: Cron entries 2 cron entries
+    - rowgroup:
+      - row "Entry Schedule Policies/support State":
+        - columnheader "Entry"
+        - columnheader "Schedule"
+        - columnheader "Policies/support"
+        - columnheader "State"
+    - rowgroup:
+      - 'row "nightly-notification-reconciliation 0 2 * * * Etc/UTC Queue One Latest Only Code Cron status: Runnable"':
+        - cell "nightly-notification-reconciliation":
+          - link "nightly-notification-reconciliation":
+            - /url: /ops/jobs/cron?entry=nightly-notification-reconciliation
+        - cell "0 2 * * * Etc/UTC"
+        - cell "Queue One Latest Only Code"
+        - 'cell "Cron status: Runnable"'
+      - 'row "paused-notification-reconciliation 0 2 * * * Etc/UTC Queue One Latest Only Code Cron status: Waiting"':
+        - cell "paused-notification-reconciliation":
+          - link "paused-notification-reconciliation":
+            - /url: /ops/jobs/cron?entry=paused-notification-reconciliation
+        - cell "0 2 * * * Etc/UTC"
+        - cell "Queue One Latest Only Code"
+        - 'cell "Cron status: Waiting"'
+  - dialog "Run nightly-notification-reconciliation now":
+    - paragraph: nightly-notification-reconciliation
+    - heading "Run nightly-notification-reconciliation now" [level=2]
+    - region "Scope":
+      - heading "Scope" [level=3]
+      - paragraph: Cron entry nightly-notification-reconciliation
+    - region "Consequence":
+      - heading "Consequence" [level=3]
+      - paragraph: Powertools attempts a manual schedule-slot claim. Overlap policy may skip, queue, or enqueue it.
+    - region "Reversibility":
+      - heading "Reversibility" [level=3]
+      - paragraph: The recorded manual slot claim cannot be withdrawn after submission.
+    - region "Support boundary":
+      - heading "Support boundary" [level=3]
+      - paragraph: A recorded slot claim does not prove that a job ran.
+      - paragraph: "Actor: ops-demo"
+      - paragraph: One immutable operator event will be written. Powertools-native surfaces keep diagnosis, preview, reason, and audited action together.
+    - text: Reason Required
+    - textbox "Reason Required": Validate the recovered provider path.
+    - paragraph: Explain why this action is needed. Do not enter secrets.
+    - button "Keep current schedule"
+    - button "Run cron entry now"

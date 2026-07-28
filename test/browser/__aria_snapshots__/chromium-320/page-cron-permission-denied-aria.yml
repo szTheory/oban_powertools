@@ -1,0 +1,50 @@
+- region "Cron":
+  - heading "Cron" [level=1]
+  - paragraph: Review schedules, inspect one cron entry, and take deliberate action with recorded evidence.
+  - paragraph: "Permission: read-only. Powertools-native cron stays visible, but preview, reason, and Audited action controls stay disabled until you receive broader permission."
+  - table "Cron entries 2 cron entries":
+    - caption: Cron entries 2 cron entries
+    - rowgroup:
+      - row "Entry Schedule Policies/support State":
+        - columnheader "Entry"
+        - columnheader "Schedule"
+        - columnheader "Policies/support"
+        - columnheader "State"
+    - rowgroup:
+      - 'row "nightly-notification-reconciliation 0 2 * * * Etc/UTC Queue One Latest Only Code Cron status: Runnable"':
+        - cell "nightly-notification-reconciliation":
+          - link "nightly-notification-reconciliation" [expanded]:
+            - /url: /ops/jobs/cron?entry=nightly-notification-reconciliation
+        - cell "0 2 * * * Etc/UTC"
+        - cell "Queue One Latest Only Code"
+        - 'cell "Cron status: Runnable"'
+      - 'row "paused-notification-reconciliation 0 2 * * * Etc/UTC Queue One Latest Only Code Cron status: Waiting"':
+        - cell "paused-notification-reconciliation":
+          - link "paused-notification-reconciliation":
+            - /url: /ops/jobs/cron?entry=paused-notification-reconciliation
+        - cell "0 2 * * * Etc/UTC"
+        - cell "Queue One Latest Only Code"
+        - 'cell "Cron status: Waiting"'
+  - dialog "nightly-notification-reconciliation":
+    - heading "nightly-notification-reconciliation" [level=2]
+    - button "Close cron entry details"
+    - term: Current state
+    - definition: "Cron status: Runnable"
+    - term: Support
+    - definition: Powertools-native surfaces keep diagnosis, preview, reason, and audited action together.
+    - term: Schedule
+    - definition: 0 2 * * *
+    - term: Timezone
+    - definition: Etc/UTC
+    - term: Queue
+    - definition: critical-mailer
+    - term: Overlap policy
+    - definition: Queue One
+    - term: Catch-up policy
+    - definition: Latest Only
+    - status: Cron entry nightly-notification-reconciliation details loaded
+    - region "Technical evidence"
+    - button "Pause cron entry" [disabled]
+    - paragraph: "Permission: read-only. You can inspect this Powertools-native cron entry, but you do not have permission to preview or execute this Audited action."
+    - button "Run cron entry now" [disabled]
+    - paragraph: "Permission: read-only. You can inspect this Powertools-native cron entry, but you do not have permission to preview or execute this Audited action."

@@ -1,0 +1,36 @@
+- region "Limiters":
+  - heading "Limiters" [level=1]
+  - paragraph: Review limiter state, understand what blocks progress now, and follow the right evidence path.
+  - paragraph: Limiters is read-only. Powertools-native evidence explains current capacity; changes remain host-owned.
+  - table "Limiters 2 limiters":
+    - caption: Limiters 2 limiters
+    - rowgroup:
+      - row "Limiter Scope State Actions":
+        - columnheader "Limiter"
+        - columnheader "Scope"
+        - columnheader "State"
+        - columnheader "Actions"
+    - rowgroup:
+      - 'row "critical-mailer worker Limiter status: Blocked Review blockers for critical-mailer"':
+        - cell "critical-mailer"
+        - cell "worker"
+        - 'cell "Limiter status: Blocked"'
+        - cell "Review blockers for critical-mailer":
+          - link "Review blockers for critical-mailer":
+            - /url: /ops/jobs/limiters?resource=critical-mailer
+            - text: Review blockers
+      - 'row "billing-sync global Limiter status: Runnable Review blockers for billing-sync"':
+        - cell "billing-sync"
+        - cell "global"
+        - 'cell "Limiter status: Runnable"'
+        - cell "Review blockers for billing-sync":
+          - link "Review blockers for billing-sync":
+            - /url: /ops/jobs/limiters?resource=billing-sync
+            - text: Review blockers
+  - dialog "Limiter unavailable":
+    - heading "Limiter unavailable" [level=2]
+    - button "Close limiter details"
+    - status:
+      - paragraph: Data unavailable
+      - paragraph: Refresh data
+    - text: Unavailable

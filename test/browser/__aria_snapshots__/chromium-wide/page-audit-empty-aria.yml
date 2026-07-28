@@ -1,0 +1,32 @@
+- region "Audit":
+  - heading "Audit" [level=1]
+  - paragraph: Review recorded operator actions and the evidence available for each record.
+  - paragraph: "Permission: read-only. Review immutable recorded evidence without changing it."
+  - paragraph: The Oban Web bridge remains Inspection only and read-only. Historical records show what was recorded; they do not claim current state or causality.
+  - region "Repair evidence retention":
+    - heading "Repair evidence retention" [level=2]
+    - paragraph: Archived repair evidence is stored separately from the live Audit rows shown here.
+    - paragraph: The latest repair archive run completed at 2026-07-19 13:55:00 UTC.
+  - region "Filters":
+    - text: Resource type
+    - textbox "Resource type"
+    - text: Resource ID
+    - textbox "Resource ID"
+    - text: Event type
+    - textbox "Event type"
+    - button "Apply filters"
+    - status: 0 records · Page 1 of 1
+  - table "Audit records 0 audit records 0 records · Page 1 of 1":
+    - caption: Audit records 0 audit records 0 records · Page 1 of 1
+    - rowgroup:
+      - row "Event Target Actor Reason Recorded at Actions":
+        - columnheader "Event"
+        - columnheader "Target"
+        - columnheader "Actor"
+        - columnheader "Reason"
+        - columnheader "Recorded at"
+        - columnheader "Actions"
+    - rowgroup
+  - heading "No audit records recorded" [level=2]
+  - paragraph: Recorded operator actions will appear here when evidence is available.
+  - navigation "Audit pagination": Previous Next

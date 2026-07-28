@@ -1,0 +1,49 @@
+- region "Cron":
+  - heading "Cron" [level=1]
+  - paragraph: Review schedules, inspect one cron entry, and take deliberate action with recorded evidence.
+  - table "Cron entries 2 cron entries":
+    - caption: Cron entries 2 cron entries
+    - rowgroup:
+      - row "Entry Schedule Policies/support State":
+        - columnheader "Entry"
+        - columnheader "Schedule"
+        - columnheader "Policies/support"
+        - columnheader "State"
+    - rowgroup:
+      - 'row "nightly-notification-reconciliation 0 2 * * * Etc/UTC Queue One Latest Only Code Cron status: Runnable"':
+        - cell "nightly-notification-reconciliation":
+          - link "nightly-notification-reconciliation":
+            - /url: /ops/jobs/cron?entry=nightly-notification-reconciliation
+        - cell "0 2 * * * Etc/UTC"
+        - cell "Queue One Latest Only Code"
+        - 'cell "Cron status: Runnable"'
+      - 'row "paused-notification-reconciliation 0 2 * * * Etc/UTC Queue One Latest Only Code Cron status: Waiting"':
+        - cell "paused-notification-reconciliation":
+          - link "paused-notification-reconciliation":
+            - /url: /ops/jobs/cron?entry=paused-notification-reconciliation
+        - cell "0 2 * * * Etc/UTC"
+        - cell "Queue One Latest Only Code"
+        - 'cell "Cron status: Waiting"'
+  - dialog "Resume nightly-notification-reconciliation":
+    - paragraph: nightly-notification-reconciliation
+    - heading "Resume nightly-notification-reconciliation" [level=2]
+    - region "Scope":
+      - heading "Scope" [level=3]
+      - paragraph: Cron entry nightly-notification-reconciliation
+    - region "Consequence":
+      - heading "Consequence" [level=3]
+      - paragraph: Future schedule claims continue. Missed work is not run retroactively.
+    - region "Reversibility":
+      - heading "Reversibility" [level=3]
+      - paragraph: Pause the cron entry again later to stop future schedule claims.
+    - region "Support boundary":
+      - heading "Support boundary" [level=3]
+      - paragraph: Only future schedule claims continue after this action.
+      - paragraph: "Actor: ops-demo"
+      - paragraph: One immutable operator event will be written. Powertools-native surfaces keep diagnosis, preview, reason, and audited action together.
+      - paragraph: "Reason draft: Capacity is available again."
+      - paragraph: This preview is out of date.
+    - region "This preview is out of date because the job changed. Create a new preview before retrying.":
+      - heading "This preview is out of date because the job changed. Create a new preview before retrying." [level=3]
+      - button "Create new preview"
+      - button "Keep paused"

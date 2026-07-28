@@ -1,0 +1,116 @@
+- region "Overview":
+  - heading "Overview" [level=1]
+  - paragraph: See what needs attention, why it matters, and where to continue.
+  - region "Current attention":
+    - heading "Current attention" [level=2]
+    - heading "Needs Review" [level=2]
+    - text: "Limiter status: Needs review Attention severity: Warning"
+    - paragraph: Two current records need deliberate operator review.
+    - region "Impact":
+      - heading "Impact" [level=3]
+      - paragraph: Customer notifications may remain delayed.
+    - link "Review retryable jobs":
+      - /url: /ops/jobs/jobs?state=retryable
+    - paragraph:
+      - text: Observed
+      - time: 2026-07-19 14:05:00 UTC
+    - paragraph:
+      - text: "Evidence completeness:"
+      - strong: Complete
+    - list "Needs Review examples":
+      - listitem:
+        - paragraph:
+          - strong: Notification retry review
+        - paragraph: A retryable job exhausted ordinary recovery.
+        - paragraph: Powertools-native
+        - paragraph: Operator review
+        - navigation "Destinations for Notification retry review":
+          - link "Open forensic timeline":
+            - /url: /ops/jobs/forensics?resource_type=job&resource_id=101
+          - link "Open runbook entry":
+            - /url: /ops/jobs/jobs?state=retryable
+    - heading "Blocked" [level=2]
+    - text: "Limiter status: Blocked Attention severity: Warning"
+    - paragraph: One limiter currently blocks new reservations.
+    - region "Impact":
+      - heading "Impact" [level=3]
+      - paragraph: Critical mail delivery cannot reserve more work.
+    - link "Review limiters":
+      - /url: /ops/jobs/limiters
+    - paragraph:
+      - text: Observed
+      - time: 2026-07-19 14:05:00 UTC
+    - paragraph:
+      - text: "Evidence completeness:"
+      - strong: Complete
+    - list "Blocked examples":
+      - listitem:
+        - paragraph:
+          - strong: critical-mailer limiter
+        - paragraph: Capacity reached for the current bucket.
+        - paragraph: Powertools-native
+        - paragraph: Read-only diagnosis
+        - navigation "Destinations for critical-mailer limiter":
+          - link "Review exemplar":
+            - /url: /ops/jobs/limiters?resource=critical-mailer
+    - heading "Waiting" [level=2]
+    - text: "Limiter status: Waiting Attention severity: Info"
+    - paragraph: One workflow waits on an external signal.
+    - region "Impact":
+      - heading "Impact" [level=3]
+      - paragraph: The final notification step cannot begin yet.
+    - link "Review workflows":
+      - /url: /ops/jobs/workflows
+    - paragraph:
+      - text: Observed
+      - time: 2026-07-19 14:05:00 UTC
+    - paragraph:
+      - text: "Evidence completeness:"
+      - strong: Complete
+    - list "Waiting examples":
+      - listitem:
+        - paragraph:
+          - strong: notification workflow
+        - paragraph: Waiting for the provider recovery signal.
+        - paragraph: Powertools-native
+        - paragraph: Workflow evidence
+        - paragraph: partial evidence
+        - navigation "Destinations for notification workflow":
+          - link "Review exemplar":
+            - /url: /ops/jobs/workflows
+  - region "Bridge-only Follow-up":
+    - heading "Bridge-only Follow-up" [level=2]
+    - paragraph: 2 representative follow-ups
+    - paragraph: Representative generic job follow-up remains in Oban Web.
+    - paragraph: Generic job inspection remains available in Oban Web.
+    - paragraph: Oban Web bridge · Inspection only
+    - link "Inspect in Oban Web":
+      - /url: /ops/jobs/oban
+    - list "Bridge-only Follow-up examples":
+      - listitem:
+        - paragraph:
+          - strong: Job 01JZ8M5P999999999999999999
+        - paragraph: Inspect the provider-owned job fields in Oban Web.
+        - paragraph: Oban Web bridge
+        - paragraph: Inspection only
+        - paragraph: partial evidence
+        - navigation "Destinations for Job 01JZ8M5P999999999999999999":
+          - link "Review exemplar":
+            - /url: /ops/jobs/oban
+  - region "Runnable":
+    - heading "Runnable" [level=2]
+    - article:
+      - term: Current runnable capacity
+      - definition: "6"
+      - paragraph: Six current resources are ready for work.
+      - link "Open Jobs":
+        - /url: /ops/jobs/jobs
+    - paragraph: Runnable state does not guarantee future completion.
+  - region "Resolved continuity":
+    - heading "Resolved continuity" [level=2]
+    - paragraph: 2 retained examples
+    - paragraph: Two resolved records remain available as continuity evidence.
+    - paragraph: Historical evidence does not establish current state.
+    - paragraph: Continuity evidence
+    - link "Open Audit":
+      - /url: /ops/jobs/audit
