@@ -59,7 +59,8 @@ defmodule ObanPowertools.PageStoryCatalogTest do
   @jobs_ids Enum.slice(@ids, 19, 18)
   @forensics_ids Enum.slice(@ids, 37, 12)
 
-  @confirmation_ids Enum.slice(@ids, 5, 6) ++ Enum.slice(@jobs_ids, 8, 9)
+  @confirmation_ids Enum.slice(@ids, 5, 6) ++
+                      Enum.map([8, 10, 11, 13, 14, 15, 16], &Enum.at(@jobs_ids, &1))
 
   @detail_ids Enum.slice(@ids, 3, 2) ++
                 Enum.slice(@ids, 11, 4) ++
@@ -94,8 +95,6 @@ defmodule ObanPowertools.PageStoryCatalogTest do
     password
     authorization
     bearer
-    metadata
-    exception
     raw_metadata
     raw_exception
     stacktrace
@@ -205,9 +204,9 @@ defmodule ObanPowertools.PageStoryCatalogTest do
     unavailable = PageStoryCatalog.story!("page-forensics-unavailable")
 
     assert invalid.fixtures.filter_errors.args == ["Enter a valid JSON object."]
-    assert conflicting.fixtures.scope_notice.heading == "Conflicting evidence scope"
+    assert conflicting.fixtures.scope_notice.heading == "Choose one evidence type"
     assert unavailable.fixtures.scope_state == :unavailable
-    assert unavailable.acceptance.required_text =~ "Evidence unavailable"
+    assert "Evidence unavailable" in unavailable.acceptance.required_text
   end
 
   test "keeps Phase 80 confidentiality sentinels out of serialized story data" do
@@ -258,7 +257,7 @@ defmodule ObanPowertools.PageStoryCatalogTest do
            |> Enum.filter(&(&1.activation == :detail))
            |> Enum.map(& &1.id) == @detail_ids
 
-    assert Enum.count(stories, &(&1.activation == :none)) == 24
+    assert Enum.count(stories, &(&1.activation == :none)) == 26
 
     for story <- stories do
       refute story.fixtures[:detail_open] == true and story.fixtures[:confirmation_open] == true

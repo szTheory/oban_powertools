@@ -813,15 +813,15 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
         case {story.page, story.activation} do
           {:jobs, :confirmation} ->
-            assert has_element?(view, "#jobs-bulk-confirmation[role='dialog']")
+            assert has_element?(view, "#jobs-bulk-confirmation-dialog[role='dialog']")
             refute has_element?(view, "#job-quick-review")
 
           {:jobs, :detail} when story.id == "page-jobs-review-one" ->
             assert has_element?(view, "#job-quick-review")
-            refute has_element?(view, "#jobs-bulk-confirmation")
+            refute has_element?(view, "#jobs-bulk-confirmation-dialog")
 
           {:jobs, :detail} ->
-            refute has_element?(view, "#job-quick-review, #jobs-bulk-confirmation")
+            refute has_element?(view, "#job-quick-review, #jobs-bulk-confirmation-dialog")
 
           {_page, :confirmation} ->
             assert has_element?(view, "#cron-confirmation-dialog[role='dialog']")
@@ -839,7 +839,11 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
             assert count(render(view), ~s(id="jobs-results-row-)) == 20
 
           "page-forensics-deep-timeline" ->
-            assert count(render(view), ~s(class="obpt-timeline__item")) == 50
+            assert Regex.scan(
+                     ~r/id="forensics-events-event-\d+" class="obpt-timeline__item"/,
+                     render(view)
+                   )
+                   |> length() == 50
 
           _other ->
             :ok

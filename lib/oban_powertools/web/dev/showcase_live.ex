@@ -14,7 +14,14 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
     use Phoenix.LiveView
 
-    alias ObanPowertools.Web.{AuditLive, CronLive, EngineOverviewLive, LimitersLive}
+    alias ObanPowertools.Web.{
+      AuditLive,
+      CronLive,
+      EngineOverviewLive,
+      ForensicsLive,
+      JobsLive,
+      LimitersLive
+    }
 
     alias ObanPowertools.Web.Components.{
       AppShell,
@@ -50,8 +57,8 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
                          "../../../../test/support/page_story_catalog.ex",
                          __DIR__
                        )
-    @page_story_count 19
-    @page_story_pages [:overview, :cron, :limiters, :audit]
+    @page_story_count 49
+    @page_story_pages [:overview, :cron, :limiters, :audit, :jobs, :forensics]
     @page_story_activations [:none, :detail, :confirmation]
 
     @theme_choices [
@@ -956,6 +963,10 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
             clear_filters_href={@page_assigns.clear_filters_href}
             read_only_copy={@page_assigns.read_only_copy}
           />
+        <% :jobs -> %>
+          <JobsLive.page_content {@page_assigns} />
+        <% :forensics -> %>
+          <ForensicsLive.page_content {@page_assigns} />
       <% end %>
       """
     end
@@ -984,6 +995,41 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       story.fixtures
       |> Map.put(:detail_state, detail_state)
       |> Map.update!(:filter_form, &to_form(&1, as: :filters, id: "page-story-audit-filters"))
+    end
+
+    defp materialize_page_assigns(%{page: :jobs, fixtures: %{page_mode: :detail}} = story) do
+      story.fixtures
+      |> materialize_optional_page_form(
+        :confirmation_form,
+        :confirmation,
+        "page-story-job-confirmation"
+      )
+    end
+
+    defp materialize_page_assigns(%{page: :jobs} = story) do
+      story.fixtures
+      |> Map.update!(:filter_form, &to_form(&1, as: :filter, id: "page-story-jobs-filter"))
+      |> Map.update!(:selected_jobs, &MapSet.new/1)
+      |> materialize_optional_page_form(
+        :bulk_confirmation_form,
+        :confirmation,
+        "page-story-jobs-bulk-confirmation"
+      )
+    end
+
+    defp materialize_page_assigns(%{page: :forensics} = story) do
+      Map.update!(
+        story.fixtures,
+        :scope_form,
+        &to_form(&1, as: :scope, id: "page-story-forensics-scope")
+      )
+    end
+
+    defp materialize_optional_page_form(assigns, key, as, id) do
+      Map.update(assigns, key, nil, fn
+        nil -> nil
+        form -> to_form(form, as: as, id: id)
+      end)
     end
 
     attr(:story, :map, required: true)
