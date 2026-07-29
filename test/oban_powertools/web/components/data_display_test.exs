@@ -207,7 +207,9 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
           empty: "No rows match the current filters",
           error: "Data did not load",
           unavailable: "Data unavailable",
-          permission_denied: "Permission denied"
+          permission_denied: "Permission denied",
+          stale: "Job evidence is stale",
+          partial: "Job evidence is partial"
         ] do
       html =
         render_data(:data_table,
@@ -510,6 +512,23 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
     assert count(module_html, long_module) == 1
   end
 
+  test "machine_value automatically makes every truncated value expandable without title-only copy" do
+    long_value = "job_0123456789abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+    html =
+      render_data(:machine_value,
+        id: "auto-expand-job-id",
+        value: long_value,
+        kind: :id,
+        rest: %{"title" => long_value}
+      )
+
+    assert html =~ "<details"
+    assert html =~ "<summary"
+    assert count(html, long_value) == 1
+    refute html =~ ~s(title=)
+  end
+
   test "metric, empty, toast, and flash components keep explicit semantics and parent-owned actions" do
     metric =
       render_data(:metric_card,
@@ -661,8 +680,11 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
     assert code =~ ~s(<figure id="code" class="obpt-code-block" data-obpt-language="json")
     assert code =~ ~s(aria-describedby="code-help")
     assert code =~ ~s(data-testid="args-code")
-    assert code =~ "<figcaption>Args</figcaption>"
-    assert code =~ ~s(<pre class="obpt-code-block__region" tabindex="0")
+    assert code =~ ~s(<figcaption id="code-label">Args</figcaption>)
+
+    assert code =~
+             ~s(<pre class="obpt-code-block__region" tabindex="0" aria-labelledby="code-label")
+
     assert code =~ ~s(<code class="obpt-code-block__code")
     assert code =~ "&lt;b&gt;text&lt;/b&gt;"
     refute code =~ @secret
@@ -962,4 +984,6 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
   defp state_copy(:error), do: "Data did not load"
   defp state_copy(:unavailable), do: "Data unavailable"
   defp state_copy(:permission_denied), do: "Permission denied"
+  defp state_copy(:stale), do: "Job evidence is stale"
+  defp state_copy(:partial), do: "Job evidence is partial"
 end

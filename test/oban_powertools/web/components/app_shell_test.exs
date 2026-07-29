@@ -123,6 +123,9 @@ defmodule ObanPowertools.Web.Components.AppShellTest do
           rest: %{
             "id" => "safe-shell",
             "data-testid" => "app-shell-contract",
+            "data-obpt-effective-theme" => "dark",
+            "data-obpt-motion" => "reduce",
+            "data-obpt-theme" => "dark",
             "class" => "host-owned-class",
             "style" => "color: red"
           }
@@ -130,6 +133,9 @@ defmodule ObanPowertools.Web.Components.AppShellTest do
 
       assert html =~ ~s(id="safe-shell")
       assert html =~ ~s(data-testid="app-shell-contract")
+      refute html =~ ~s(data-obpt-effective-theme="dark")
+      refute html =~ ~s(data-obpt-motion="reduce")
+      refute html =~ ~s(data-obpt-theme="dark")
       refute html =~ "host-owned-class"
       refute html =~ "color: red"
     end
@@ -148,12 +154,17 @@ defmodule ObanPowertools.Web.Components.AppShellTest do
       refute html =~ @hostile
     end
 
-    test "rejects nav paths outside the native root boundary" do
-      for path <- ["/ops/jobs-archive", "/ops/jobs_evil"] do
-        assert_raise ArgumentError, "nav path must stay under /ops/jobs", fn ->
-          render_shell(nav_items: [%{key: "bad", label: "Bad", path: path}])
-        end
-      end
+    test "does not let callers replace the closed nine-surface navigation" do
+      html =
+        render_shell(
+          nav_items: [
+            %{key: "injected", label: "Injected surface", path: "/ops/jobs/injected"}
+          ]
+        )
+
+      assert count(html, ~s(data-obpt-nav-item)) == 9
+      refute html =~ "Injected surface"
+      refute html =~ "/ops/jobs/injected"
     end
   end
 
@@ -227,6 +238,9 @@ defmodule ObanPowertools.Web.Components.AppShellTest do
       for forbidden <- [":root", "document.documentElement", "<html", "<body", ".dark"] do
         refute source =~ forbidden, "TOKEN-04 forbids host theme mutation: #{forbidden}"
       end
+
+      refute source =~ ~r/attr\(?\s*:nav_items,\s*:list/,
+             "NAV-03 keeps the nine-surface primary navigation closed"
 
       refute source =~ ~s("/ops/jobs/oban")
       refute source =~ ~s('/ops/jobs/oban')
