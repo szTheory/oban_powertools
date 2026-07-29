@@ -117,8 +117,8 @@ None - no external service configuration, dependency, migration, route, or schem
 
 ## Verification
 
-- `mix test test/oban_powertools/forensics_test.exs test/oban_powertools/web/live/forensics_live_test.exs --seed 0` - 44 tests, 0 failures.
-- `mix test test/oban_powertools/audit_test.exs test/oban_powertools/forensics/evidence_bundle_test.exs --seed 0` - 13 tests, 0 failures.
+- `mix test test/oban_powertools/forensics_test.exs test/oban_powertools/web/live/forensics_live_test.exs --seed 0` - all 44 tests passed.
+- `mix test test/oban_powertools/audit_test.exs test/oban_powertools/forensics/evidence_bundle_test.exs --seed 0` - all 13 tests passed.
 - Exact three-file `mix format --check-formatted ...` command passed.
 - Exact three-file `git diff --check -- ...` command passed.
 - Source inspection confirms one workflow-step predicate combines `step.id`, `step.workflow_id`, and `step.step_name`.
