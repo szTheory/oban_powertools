@@ -359,34 +359,63 @@ test.describe("Phase 81 connected production page contracts", () => {
     ).toBeVisible();
   });
 
-  test("Lifeline distinguishes drifted, duplicate, disconnected, interrupted, partial, skipped, and failed outcomes", async ({
+  test("Lifeline race controls drive real drifted and duplicate production outcomes", async ({
     page,
     request,
   }) => {
     await openConnectedPage(page, lifelinePath());
     await closeResidualDialog(page);
-    const observedStates: string[] = [];
-    for (const command of [
-      "drift",
-      "duplicate",
-      "disconnect",
-      "interrupt",
-    ] as const) {
-      const result = await controlPhase81Race(request, {
-        command,
-        secret: fixtureSecret,
-      });
-      expect(result.command).toBe(command);
-      expect(result.state).toBe(command);
-      observedStates.push(result.state);
-    }
-    expect(new Set(observedStates).size).toBe(4);
+
+    await lifelinePreviewButton(page).click();
+    const drift = await controlPhase81Race(request, {
+      command: "drift",
+      secret: fixtureSecret,
+    });
+    expect(drift).toMatchObject({ command: "drift", state: "drift" });
+    await page
+      .getByRole("textbox", { name: /reason/i })
+      .fill("Verify that target drift blocks execution.");
+    await page.getByRole("button", { name: /execute remediation/i }).click();
+    await expect(
+      page.getByText(/preview drifted|fresh preview/i),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /open in audit/i }),
+    ).toHaveCount(0);
+
+    fixtureState = await resetPhase81BrowserFixture(request, {
+      secret: fixtureSecret,
+      project: test.info().project.name,
+    });
+    await authenticatePhase81Actor(page, {
+      actor: "ops",
+      secret: fixtureSecret,
+    });
+    await openConnectedPage(page, lifelinePath());
+    await lifelinePreviewButton(page).click();
+    const duplicate = await controlPhase81Race(request, {
+      command: "duplicate",
+      secret: fixtureSecret,
+    });
+    expect(duplicate).toMatchObject({
+      command: "duplicate",
+      state: "duplicate",
+    });
+    await page
+      .getByRole("textbox", { name: /reason/i })
+      .fill("Verify duplicate execution is suppressed.");
+    await page.getByRole("button", { name: /execute remediation/i }).click();
+    await expect(
+      page.getByText(/already consumed|fresh preview/i),
+    ).toBeVisible();
+
+    await page.goto("/ops/jobs/audit");
+    await expect(
+      page.getByText(/lifeline\\.repair_executed/i).first(),
+    ).toBeVisible();
     await expect(
       page.getByRole("region", { name: /runbook continuity/i }),
-    ).toContainText(/attempt state|legal next path|audit follow-up/i);
-    await expect(
-      page.getByText(/no remediation attempts recorded|fresh preview/i).last(),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expectOneTree(page);
   });
 

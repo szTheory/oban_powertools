@@ -14,10 +14,11 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
       Audit,
       Batch,
       BatchJob,
-      Callback
+      Callback,
+      Lifeline
     }
 
-    alias ObanPowertools.Lifeline.{ArchiveRun, Heartbeat, Incident}
+    alias ObanPowertools.Lifeline.{ArchiveRun, Heartbeat, Incident, RepairPreview}
     alias ObanPowertools.Workflow.{Edge, Result, Step, Workflow}
     alias PhoenixHost.Repo
 
@@ -79,7 +80,11 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
             other -> other
           end
 
-        if command != "status", do: put_race(names.key, state)
+        if command != "status" do
+          apply_race(names, command)
+          put_race(names.key, state)
+        end
+
         {:ok, %{"command" => command, "state" => state}}
       else
         _ -> {:error, :not_found}
@@ -493,6 +498,39 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
 
     defp fixture_exists?(names),
       do: Repo.exists?(from(batch in Batch, where: batch.id == ^names.batch_id))
+
+    defp apply_race(names, "drift") do
+      job = Repo.get!(Oban.Job, job_id(names.key, 0))
+
+      job
+      |> Ecto.Changeset.change(
+        meta: Map.put(job.meta || %{}, "executor_id", "#{names.prefix}-drifted-executor")
+      )
+      |> Repo.update!()
+    end
+
+    defp apply_race(names, "duplicate") do
+      preview =
+        Repo.one(
+          from(preview in RepairPreview,
+            where: preview.incident_id == ^hd(names.incident_ids) and preview.status == "ready",
+            order_by: [desc: preview.inserted_at],
+            limit: 1
+          )
+        )
+
+      if preview do
+        {:ok, _result} =
+          Lifeline.execute_repair(
+            Repo,
+            %{id: "phase81-operator", label: "ops", role: :ops},
+            preview.preview_token,
+            "Fixture executes the first duplicate attempt."
+          )
+      end
+    end
+
+    defp apply_race(_names, _command), do: :ok
 
     defp fixture_counts(names) do
       workflow_id = hd(names.workflow_ids)

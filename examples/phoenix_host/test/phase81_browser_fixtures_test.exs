@@ -10,8 +10,8 @@ defmodule PhoenixHostWeb.Phase81BrowserFixturesTest do
   if @enabled do
     import Ecto.Query
 
-    alias ObanPowertools.{Audit, BatchJob, Callback}
-    alias ObanPowertools.Lifeline.{ArchiveRun, Heartbeat, Incident}
+    alias ObanPowertools.{Audit, BatchJob, Callback, Lifeline}
+    alias ObanPowertools.Lifeline.{ArchiveRun, Heartbeat, Incident, RepairPreview}
     alias ObanPowertools.Workflow.{Edge, Result, Step, Workflow}
     alias PhoenixHost.Repo
 
@@ -159,6 +159,92 @@ defmodule PhoenixHostWeb.Phase81BrowserFixturesTest do
 
         assert decode(status) == %{"command" => "status", "state" => expected}
       end
+    end
+
+    test "drift and duplicate controls alter real Lifeline execution outcomes" do
+      state =
+        PhoenixHostWeb.Phase81BrowserFixtures.reset(%{
+          "project" => "chromium-wide",
+          "run" => "production-races"
+        })
+
+      assert {:ok, fixture} = state
+      key = "chromium-wide:production-races"
+      actor = %{id: "phase81-operator", label: "ops", role: :ops, phase81_key: key}
+
+      job =
+        Repo.one!(
+          from(job in Oban.Job,
+            where: fragment("?->>'phase81_key' = ?", job.meta, ^key) and job.state == "executing"
+          )
+        )
+
+      assert {:ok, drift_preview} =
+               Lifeline.preview_repair(Repo, actor, %{
+                 incident_fingerprint: fixture["handles"]["incidentId"],
+                 action: "job_rescue",
+                 target_type: "job",
+                 target_id: job.id
+               })
+
+      assert {:ok, %{"state" => "drift"}} =
+               PhoenixHostWeb.Phase81BrowserFixtures.control_race(
+                 %{
+                   "project" => "chromium-wide",
+                   "run" => "production-races",
+                   "command" => "drift"
+                 },
+                 "drift"
+               )
+
+      assert {:error, :preview_drifted} =
+               Lifeline.execute_repair(
+                 Repo,
+                 actor,
+                 drift_preview.preview_token,
+                 "Target changed after preview."
+               )
+
+      assert Repo.get!(RepairPreview, drift_preview.id).status == "drifted"
+
+      {:ok, fixture} =
+        PhoenixHostWeb.Phase81BrowserFixtures.reset(%{
+          "project" => "chromium-wide",
+          "run" => "production-races"
+        })
+
+      job =
+        Repo.one!(
+          from(job in Oban.Job,
+            where: fragment("?->>'phase81_key' = ?", job.meta, ^key) and job.state == "executing"
+          )
+        )
+
+      assert {:ok, duplicate_preview} =
+               Lifeline.preview_repair(Repo, actor, %{
+                 incident_fingerprint: fixture["handles"]["incidentId"],
+                 action: "job_rescue",
+                 target_type: "job",
+                 target_id: job.id
+               })
+
+      assert {:ok, %{"state" => "duplicate"}} =
+               PhoenixHostWeb.Phase81BrowserFixtures.control_race(
+                 %{
+                   "project" => "chromium-wide",
+                   "run" => "production-races",
+                   "command" => "duplicate"
+                 },
+                 "duplicate"
+               )
+
+      assert {:error, :preview_consumed} =
+               Lifeline.execute_repair(
+                 Repo,
+                 actor,
+                 duplicate_preview.preview_token,
+                 "Second execution must be suppressed."
+               )
     end
 
     test "credential, method, command, identity, and request schema fail closed", %{
