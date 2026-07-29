@@ -29,7 +29,8 @@ const validatorPrefix = [
 ];
 
 const unsafeEvidenceMode =
-  /(?:--grep|--grep-invert|--update-snapshots|--watch|--ui|--retries(?:=|\s)|(?:^|[^&])&(?:[^&]|$)|\|\|\s*true)\b/;
+  /(?:--grep|--grep-invert|--update-snapshots|--watch|--ui|--retries(?:=|\s)|\|\|\s*true)\b/;
+const detachedEvidence = /(?:^|[^&])&(?:[^&]|$)/;
 
 function validatePackageScripts(scripts, voiceOverSource) {
   const verifyPages = scripts?.["verify:pages"];
@@ -60,7 +61,12 @@ function validatePackageScripts(scripts, voiceOverSource) {
     assert.doesNotMatch(
       command,
       unsafeEvidenceMode,
-      `${scriptName} must never filter, mutate, retry, watch, detach, or ignore evidence`,
+      `${scriptName} must never filter, mutate, retry, watch, or ignore evidence`,
+    );
+    assert.doesNotMatch(
+      command,
+      detachedEvidence,
+      `${scriptName} must never detach evidence`,
     );
 
     const actualSpecs = command
