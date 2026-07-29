@@ -62,11 +62,11 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 
 - [x] **PAGE-01**: Engine Overview migrated to shell + components, zero behavior regression.
 - [x] **PAGE-02**: Jobs (list + detail, filter bar, big table) migrated; URL filter/search/bulk/deep-link behavior preserved.
-- [ ] **PAGE-03**: Batches (list + detail, chain steps) migrated; Lifeline-routed recovery unchanged.
-- [ ] **PAGE-04**: Workflows (list + detail, DAG/blocked state) migrated.
+- [x] **PAGE-03**: Batches (list + detail, chain steps) migrated; Lifeline-routed recovery unchanged.
+- [x] **PAGE-04**: Workflows (list + detail, DAG/blocked state) migrated.
 - [x] **PAGE-05**: Cron migrated; pause/resume/run preview-confirm flow unchanged.
 - [x] **PAGE-06**: Limiters migrated.
-- [ ] **PAGE-07**: Lifeline (incident triage, repair preview/reason/execute/audit) migrated with mutation flow unchanged.
+- [x] **PAGE-07**: Lifeline (incident triage, repair preview/reason/execute/audit) migrated with mutation flow unchanged.
 - [x] **PAGE-08**: Audit migrated; filters/retention controls unchanged.
 - [x] **PAGE-09**: Forensics (bundle inspection, timeline) migrated.
 - [x] **PAGE-10**: Cross-page consistency — identical concepts look and behave identically across all surfaces.

@@ -4,17 +4,17 @@ milestone: v2.0
 milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 81
 current_phase_name: Page Migration Wave 3 — Batches, Workflows, Lifeline
-status: verifying
-stopped_at: Completed 80-17-PLAN.md
-last_updated: "2026-07-29T05:13:38.379Z"
+status: executing
+stopped_at: Completed 81-07-PLAN.md
+last_updated: "2026-07-29T07:17:47.249Z"
 last_activity: 2026-07-29
 last_activity_desc: Phase 80 complete, transitioned to Phase 81
 progress:
   total_phases: 15
   completed_phases: 11
-  total_plans: 78
-  completed_plans: 78
-  percent: 73
+  total_plans: 93
+  completed_plans: 79
+  percent: 85
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 81 — Page Migration Wave 3 — Batches, Workflows, Lifeline
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-29 — Phase 80 complete, transitioned to Phase 81
+Plan: 1 of 15
+Status: In progress
+Last activity: 2026-07-29 — Completed Phase 81 Plan 07 connected fixture bridge
 
 ## Performance Metrics
 
@@ -90,6 +90,7 @@ Last activity: 2026-07-29 — Phase 80 complete, transitioned to Phase 81
 | Phase 80 P15 | 9m | 2 tasks | 6 files |
 | Phase 80 P16 | 40m | 2 tasks | 3 files |
 | Phase 80 P17 | 4m | 1 tasks | 4 files |
+| Phase 81 P07 | 35min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -118,8 +119,8 @@ Last activity: 2026-07-29 — Phase 80 complete, transitioned to Phase 81
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T04:57:11.766Z
-**Stopped at:** Completed 80-17-PLAN.md
+**Last session:** 2026-07-29T07:17:17.616Z
+**Stopped at:** Completed 81-07-PLAN.md
 **Resume file:** None
 
 - **Last Action:** Completed Plan 79-08's connected accessibility, motion, responsive, confidentiality, and page-only visual evidence.
@@ -283,6 +284,8 @@ Last activity: 2026-07-29 — Phase 80 complete, transitioned to Phase 81
 - [Phase 80]: Only exactly five-space repository test locations are eligible for outer ExUnit attribution; ten-space generated-host diagnostics are ignored. — This mechanically excludes nested output while preserving exact module, title, path, and line provenance.
 - [Phase 80]: Current inherited failures are accepted only when isolated calibration, full suite, and failed-test rerun reproduce byte-identical four-field tuples with matching status and printed totals. — Exact independent reproduction distinguishes current out-of-scope debt from a Phase 80 regression without weakening to counts.
 - [Phase 80]: Jobs quick review and full detail share one public parser accepting only positive IDs through PostgreSQL signed bigint maximum. — One exact database-bound identity rule prevents divergent authorization and repository safety boundaries.
+- [Phase 81]: Keep Wave 3 fixture authority in a distinct compile-gated endpoint so accepted Phase 79/80 contracts remain unchanged.
+- [Phase 81]: Return only deterministic public handles and finite state names; keep credentials, preview identities, snapshots, and domain authority server-side.
 
 ### Blockers
 
