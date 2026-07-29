@@ -1,8 +1,8 @@
 # Phase 82 ARIA Reconciliation
 
-**Status:** reviewed  
-**Inventory:** schema 8; 163 generated targets; 99 page stories; 3 viewport projects; 297 tracked ARIA snapshots  
-**Generation provenance:** generation-only; not completion evidence  
+**Status:** reviewed
+**Inventory:** schema 8; 163 generated targets; 99 page stories; 3 viewport projects; 297 tracked ARIA snapshots
+**Generation provenance:** generation-only; not completion evidence
 **Reviewer decision:** accept the 93 explained paths below; reject any other drift
 
 ## Provenance and Review Method

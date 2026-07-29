@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 82
 current_phase_name: Cross-Cutting A11y, Motion & Responsive Hardening Sweep
 status: executing
-stopped_at: Completed 82-15-PLAN.md
-last_updated: "2026-07-29T21:28:46.210Z"
+stopped_at: Completed 82-16-PLAN.md
+last_updated: "2026-07-29T21:44:02.659Z"
 last_activity: 2026-07-29
-last_activity_desc: Completed Phase 82 Plan 15 Batches, Workflows, and Lifeline copy hardening
+last_activity_desc: Completed Phase 82 Plan 16 exact ARIA baseline reconciliation
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 110
-  completed_plans: 105
-  percent: 95
+  completed_plans: 106
+  percent: 96
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 82 — Cross-Cutting A11y, Motion & Responsive Hardening Sweep
-Plan: 12 of 17
+Plan: 13 of 17
 Status: Ready to execute
-Last activity: 2026-07-29 — Completed Phase 82 Plan 15 Batches, Workflows, and Lifeline copy hardening
+Last activity: 2026-07-29 — Completed Phase 82 Plan 16 exact ARIA baseline reconciliation
 
 ## Performance Metrics
 
@@ -112,6 +112,7 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 15 Batches, Workflows, and
 | Phase 82 P07 | 8min | 1 tasks | 5 files |
 | Phase 82 P14 | 6min | 1 tasks | 4 files |
 | Phase 82 P15 | 7min | 1 tasks | 4 files |
+| Phase 82 P16 | 12min | 2 tasks | 94 files |
 
 ## Accumulated Context
 
@@ -140,11 +141,11 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 15 Batches, Workflows, and
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T21:28:46.203Z
-**Stopped at:** Completed 82-15-PLAN.md
+**Last session:** 2026-07-29T21:44:02.652Z
+**Stopped at:** Completed 82-16-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed Plan 82-15's Batches, Workflows, and Lifeline copy, recovery, and accessibility hardening.
+- **Last Action:** Completed Plan 82-16's exact 297-snapshot ARIA reconciliation and 93-path semantic review.
 - **Next Action:** Execute the next dependency-ready Phase 82 plan.
 
 ## Decisions
@@ -347,6 +348,8 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 15 Batches, Workflows, and
 - [Phase 82]: Preserve parent-owned events and descriptions while filtering component-owned native form state, identity, and value attributes. — Keeps LiveView authority with the parent and prevents caller rest attributes from contradicting rendered field semantics.
 - [Phase 82]: Keep Wave 3 permission copy exact while reducing untrusted backend failures to finite recovery text. — Preserves server authority and operator permission truth without rendering raw provider or domain errors.
 - [Phase 82]: Keep Workflows diagnosis-only and render the refusal label plus code as one complete machine value. — Closes the documented outcome-to-code ordering contract without changing workflow authority or exposing additional evidence.
+- [Phase 82]: Reject stale acceptance drift at its owning story contract instead of blessing snapshots around a failing generated case. — Keeps update mode generation-only and makes semantic acceptance fail closed.
+- [Phase 82]: Accept only the 93 explained ARIA paths after exact-set, cross-viewport parity, confidentiality, and semantic review. — Preserves the 99-story and 297-path contract without unexplained drift or story expansion.
 
 ### Blockers
 
