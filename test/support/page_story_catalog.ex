@@ -2165,23 +2165,7 @@ defmodule ObanPowertools.PageStoryCatalog do
   end
 
   defp phase81_story(id, page) do
-    activation =
-      cond do
-        String.contains?(id, "confirmation") or String.contains?(id, "preview-open") or
-          String.contains?(id, "invalid-short-reason") or
-          String.contains?(id, "execute-loading") or String.contains?(id, "drifted") or
-          String.contains?(id, "partial-skipped") or
-          String.contains?(id, "disconnected-interrupted") or
-            String.contains?(id, "clean-success") ->
-          :confirmation
-
-        String.contains?(id, "empty") or String.contains?(id, "many") or
-            String.contains?(id, "healthy-archive") ->
-          :none
-
-        true ->
-          :detail
-      end
+    activation = phase81_activation(page, id)
 
     page_label =
       page
@@ -2217,6 +2201,21 @@ defmodule ObanPowertools.PageStoryCatalog do
       }
     }
   end
+
+  defp phase81_activation(:lifeline, id) do
+    if String.contains?(id, "preview-open") or
+         String.contains?(id, "invalid-short-reason") or
+         String.contains?(id, "execute-loading") or String.contains?(id, "drifted") or
+         String.contains?(id, "partial-skipped") or
+         String.contains?(id, "disconnected-interrupted") or
+         String.contains?(id, "clean-success") do
+      :confirmation
+    else
+      :none
+    end
+  end
+
+  defp phase81_activation(page, _id) when page in [:batches, :workflows], do: :none
 
   defp phase81_components(:batches, _activation),
     do: [:app_shell, :data_table, :status_pill, :progress_bar]
