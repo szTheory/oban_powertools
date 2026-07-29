@@ -431,12 +431,12 @@
   3. Full keyboard traversal of every page; no horizontal scroll at 320px anywhere.
   4. A microcopy consistency audit passes against the BRAND-04 voice.
 
-**Plans**: 3/17 plans executed
+**Plans**: 4/17 plans executed
 
 - [x] 82-01-PLAN.md
 - [x] 82-02-PLAN.md
 - [x] 82-03-PLAN.md
-- [ ] 82-04-PLAN.md
+- [x] 82-04-PLAN.md
 - [ ] 82-05-PLAN.md
 - [ ] 82-06-PLAN.md
 - [ ] 82-07-PLAN.md
@@ -493,7 +493,7 @@
 | 79. Page Migration Wave 1 | 12/12 | Complete   | 2026-07-20 |
 | 80. Page Migration Wave 2 | 17/17 | Complete    | 2026-07-29 |
 | 81. Page Migration Wave 3 | 15/15 | Complete    | 2026-07-29 |
-| 82. Cross-Cutting A11y/Motion/Responsive Sweep | 3/17 | In Progress|  |
+| 82. Cross-Cutting A11y/Motion/Responsive Sweep | 4/17 | In Progress|  |
 | 83. Showcase Completion & Documentation | 0/TBD | Not started | — |
 | 84. v2.0 Milestone Audit & Idempotency Proof | 0/TBD | Not started | — |
 
