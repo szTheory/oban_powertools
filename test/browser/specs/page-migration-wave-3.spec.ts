@@ -411,7 +411,7 @@ test.describe("Phase 81 connected production page contracts", () => {
 
     await page.goto("/ops/jobs/audit");
     await expect(
-      page.getByText(/lifeline\\.repair_executed/i).first(),
+      page.getByText(/lifeline\.repair_executed/i).first(),
     ).toBeVisible();
     await expect(
       page.getByRole("region", { name: /runbook continuity/i }),
