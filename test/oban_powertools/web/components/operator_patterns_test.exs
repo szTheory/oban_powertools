@@ -606,6 +606,96 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
     refute html =~ @secret
   end
 
+  @tag phase82_slice: "copy-confirmation"
+  test "D-16/D-20 ConfirmActionDialog orders caller-owned truth before action-specific controls" do
+    html =
+      render_confirmation(:preview,
+        object_label: "12 selected jobs",
+        scope: "Includes the frozen 12-job selection.",
+        consequence: "Powertools requests a retry for each selected job.",
+        reversibility: "A retry request cannot be undone.",
+        support_boundary: "Completion remains host-owned.",
+        confirm_label: "Retry 12 jobs",
+        dismiss_label: "Keep all 12 jobs unchanged"
+      )
+
+    assert_in_order(html, [
+      "12 selected jobs",
+      "Includes the frozen 12-job selection.",
+      "Powertools requests a retry for each selected job.",
+      "A retry request cannot be undone.",
+      "Completion remains host-owned.",
+      "Reason",
+      "Explain why this action is needed. Do not enter secrets."
+    ])
+
+    assert last_index_of(html, "Retry 12 jobs") < index_of(html, "Keep all 12 jobs unchanged"),
+           "D-16 requires the action-specific submit before the safe-state dismiss"
+
+    assert html =~ ~s(for="confirmation_reason")
+    assert html =~ ~s(id="confirmation_reason")
+    assert html =~ ~s(aria-describedby="confirmation_reason-hint")
+    assert html =~ ~s(id="confirmation_reason-hint")
+    assert html =~ ~s(type="submit")
+
+    for ambiguous <- [">Confirm<", ">Cancel<", "Are you sure?", "Dismiss"] do
+      refute html =~ ambiguous
+    end
+
+    confirmation_source = read_source!() |> function_source(:confirm_action_dialog)
+
+    for forbidden_authority <- [
+          "preview_token",
+          "plan_hash",
+          "Repo.",
+          "Ecto.Query",
+          "authorize",
+          "push_patch",
+          "push_navigate"
+        ] do
+      refute confirmation_source =~ forbidden_authority
+    end
+  end
+
+  @tag phase82_slice: "copy-confirmation"
+  test "D-16 confirmation contract fails closed when a required section is missing or reordered" do
+    required = [
+      "object",
+      "scope",
+      "consequence",
+      "reversibility",
+      "support boundary",
+      "reason",
+      "submit",
+      "safe-state dismiss"
+    ]
+
+    for missing <- required do
+      markers = Enum.reject(required, &(&1 == missing))
+
+      assert_raise ExUnit.AssertionError,
+                   ~r/missing semantic section #{Regex.escape(missing)}/,
+                   fn ->
+                     assert_semantic_confirmation!(markers, required)
+                   end
+    end
+
+    reordered = [
+      "object",
+      "scope",
+      "reversibility",
+      "consequence",
+      "support boundary",
+      "reason",
+      "submit",
+      "safe-state dismiss"
+    ]
+
+    assert_raise ExUnit.AssertionError, ~r/out-of-order semantic section reversibility/, fn ->
+      assert_semantic_confirmation!(reordered, required)
+    end
+  end
+
   @tag phase78_slice: "confirmation"
   test "ConfirmActionDialog exposes named pending, ordered mixed results, and fresh-preview states" do
     pending =
@@ -899,6 +989,17 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
   defp assert_in_order(html, values) do
     indexes = Enum.map(values, &index_of(html, &1))
     assert indexes == Enum.sort(indexes)
+  end
+
+  defp assert_semantic_confirmation!(actual, required) do
+    Enum.reduce(required, -1, fn marker, previous_index ->
+      index =
+        Enum.find_index(actual, &(&1 == marker)) ||
+          flunk("missing semantic section #{marker}")
+
+      assert index > previous_index, "out-of-order semantic section #{marker}"
+      index
+    end)
   end
 
   defp count(text, needle), do: length(String.split(text, needle)) - 1
