@@ -44,12 +44,10 @@ export type Phase81FixtureState = {
     workflowEvidence: 26;
     batchMembers: 51;
     batchCallbacks: 26;
-    batchResults: 51;
     batchAudit: 26;
     incidents: 51;
     executors: 26;
     lifelineAudit: 51;
-    archiveRows: 26;
   };
   handles: {
     batchId: string;
@@ -182,12 +180,10 @@ function validateReset(
     workflowEvidence: 26,
     batchMembers: 51,
     batchCallbacks: 26,
-    batchResults: 51,
     batchAudit: 26,
     incidents: 51,
     executors: 26,
     lifelineAudit: 51,
-    archiveRows: 26,
   } as const;
 
   exactKeys(counts, Object.keys(expectedCounts), "reset counts");

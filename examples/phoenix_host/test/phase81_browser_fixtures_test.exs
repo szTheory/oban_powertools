@@ -12,7 +12,7 @@ defmodule PhoenixHostWeb.Phase81BrowserFixturesTest do
 
     alias ObanPowertools.{Audit, BatchJob, Callback}
     alias ObanPowertools.Lifeline.{ArchiveRun, Heartbeat, Incident}
-    alias ObanPowertools.Workflow.{Result, Step, Workflow}
+    alias ObanPowertools.Workflow.{Edge, Result, Step, Workflow}
     alias PhoenixHost.Repo
 
     setup do
@@ -50,12 +50,10 @@ defmodule PhoenixHostWeb.Phase81BrowserFixturesTest do
                "workflowEvidence" => 26,
                "batchMembers" => 51,
                "batchCallbacks" => 26,
-               "batchResults" => 51,
                "batchAudit" => 26,
                "incidents" => 51,
                "executors" => 26,
-               "lifelineAudit" => 51,
-               "archiveRows" => 26
+               "lifelineAudit" => 51
              }
 
       key = "chromium-wide:contract"
@@ -76,6 +74,11 @@ defmodule PhoenixHostWeb.Phase81BrowserFixturesTest do
                from(result in Result, where: result.workflow_id == ^workflow_id),
                :count
              ) == 51
+
+      assert Repo.aggregate(
+               from(edge in Edge, where: edge.workflow_id == ^workflow_id),
+               :count
+             ) == 26
 
       assert Repo.aggregate(from(member in BatchJob, where: member.batch_id == ^batch_id), :count) ==
                51

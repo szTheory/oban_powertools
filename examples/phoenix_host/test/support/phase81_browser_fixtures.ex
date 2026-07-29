@@ -18,7 +18,7 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
     }
 
     alias ObanPowertools.Lifeline.{ArchiveRun, Heartbeat, Incident}
-    alias ObanPowertools.Workflow.{Result, Step, Workflow}
+    alias ObanPowertools.Workflow.{Edge, Result, Step, Workflow}
     alias PhoenixHost.Repo
 
     @projects ~w(chromium-320 chromium-tablet chromium-wide)
@@ -28,21 +28,6 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
     @fixed_now ~U[2036-03-21 12:00:00.000000Z]
     @fixed_naive ~N[2036-03-21 12:00:00]
     @state_table :phoenix_host_phase81_browser_fixture_state
-
-    @counts %{
-      "workflows" => 51,
-      "workflowSteps" => 101,
-      "workflowResults" => 51,
-      "workflowEvidence" => 26,
-      "batchMembers" => 51,
-      "batchCallbacks" => 26,
-      "batchResults" => 51,
-      "batchAudit" => 26,
-      "incidents" => 51,
-      "executors" => 26,
-      "lifelineAudit" => 51,
-      "archiveRows" => 26
-    }
 
     def reset(%{"project" => project, "run" => run} = params) when map_size(params) == 2 do
       with :ok <- validate_identity(project, run) do
@@ -135,6 +120,7 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
       incident_ids = names.incident_ids
 
       Repo.delete_all(from(result in Result, where: result.workflow_id in ^workflow_ids))
+      Repo.delete_all(from(edge in Edge, where: edge.workflow_id in ^workflow_ids))
       Repo.delete_all(from(callback in Callback, where: callback.workflow_id in ^workflow_ids))
       Repo.delete_all(from(step in Step, where: step.workflow_id in ^workflow_ids))
 
@@ -235,6 +221,22 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
       Repo.insert_all(Step, step_rows)
       first_step = hd(step_rows)
 
+      edge_rows =
+        Enum.map(1..26, fn index ->
+          %{
+            id: uuid("edge:#{names.key}:#{index}"),
+            workflow_id: workflow_id,
+            from_step_id: Enum.at(step_rows, index - 1).id,
+            to_step_id: Enum.at(step_rows, index).id,
+            policy: "cancel",
+            terminal_snapshot: %{},
+            inserted_at: @fixed_naive,
+            updated_at: @fixed_naive
+          }
+        end)
+
+      Repo.insert_all(Edge, edge_rows)
+
       result_rows =
         Enum.map(1..51, fn attempt ->
           %{
@@ -263,8 +265,8 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
           name: "#{names.prefix}-batch",
           status: "exhausted",
           total_count: 51,
-          success_count: 25,
-          discard_count: 26,
+          success_count: 0,
+          discard_count: 51,
           cancelled_count: 0,
           snooze_count: 0,
           inserted_count: 51,
@@ -278,7 +280,7 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
 
       jobs =
         Enum.map(1..51, fn index ->
-          state = if(rem(index, 2) == 0, do: "discarded", else: "completed")
+          state = "discarded"
 
           %{
             id: job_id(names.key, index),
@@ -288,17 +290,12 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
             args: %{"batch_id" => names.batch_id, "member" => index},
             meta: %{"phase81_fixture" => true, "phase81_key" => names.key},
             tags: ["phase81-fixture", names.project, names.run],
-            errors:
-              if(state == "discarded",
-                do: [%{"attempt" => 1, "error" => "[redacted]"}],
-                else: []
-              ),
-            attempt: if(state == "discarded", do: 1, else: 0),
+            errors: [%{"attempt" => 1, "error" => "[redacted]"}],
+            attempt: 1,
             attempted_by: [],
             max_attempts: 20,
             priority: 0,
-            completed_at: if(state == "completed", do: @fixed_now),
-            discarded_at: if(state == "discarded", do: @fixed_now),
+            discarded_at: @fixed_now,
             inserted_at: @fixed_now,
             scheduled_at: @fixed_now
           }
@@ -336,7 +333,7 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
             id: uuid("member:#{names.key}:#{index}"),
             batch_id: names.batch_id,
             job_id: job_id(names.key, index),
-            state: if(rem(index, 2) == 0, do: "discarded", else: "completed"),
+            state: "discarded",
             inserted_at: @fixed_naive,
             updated_at: @fixed_naive
           }
@@ -483,7 +480,7 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
         "project" => names.project,
         "run" => names.run,
         "actors" => @actors,
-        "counts" => @counts,
+        "counts" => fixture_counts(names),
         "handles" => %{
           "batchId" => names.batch_id,
           "workflowId" => hd(names.workflow_ids),
@@ -496,6 +493,66 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
 
     defp fixture_exists?(names),
       do: Repo.exists?(from(batch in Batch, where: batch.id == ^names.batch_id))
+
+    defp fixture_counts(names) do
+      workflow_id = hd(names.workflow_ids)
+
+      %{
+        "workflows" =>
+          Repo.aggregate(
+            from(workflow in Workflow,
+              where: fragment("?->>'phase81_key' = ?", workflow.workflow_context, ^names.key)
+            ),
+            :count
+          ),
+        "workflowSteps" =>
+          Repo.aggregate(from(step in Step, where: step.workflow_id == ^workflow_id), :count),
+        "workflowResults" =>
+          Repo.aggregate(
+            from(result in Result, where: result.workflow_id == ^workflow_id),
+            :count
+          ),
+        "workflowEvidence" =>
+          Repo.aggregate(from(edge in Edge, where: edge.workflow_id == ^workflow_id), :count),
+        "batchMembers" =>
+          Repo.aggregate(
+            from(member in BatchJob, where: member.batch_id == ^names.batch_id),
+            :count
+          ),
+        "batchCallbacks" =>
+          Repo.aggregate(
+            from(callback in Callback, where: callback.batch_id == ^names.batch_id),
+            :count
+          ),
+        "batchAudit" => audit_count(names.key, "batch"),
+        "incidents" =>
+          Repo.aggregate(
+            from(incident in Incident,
+              where: fragment("?->>'phase81_key' = ?", incident.metadata, ^names.key)
+            ),
+            :count
+          ),
+        "executors" =>
+          Repo.aggregate(
+            from(heartbeat in Heartbeat,
+              where: fragment("?->>'phase81_key' = ?", heartbeat.metadata, ^names.key)
+            ),
+            :count
+          ),
+        "lifelineAudit" => audit_count(names.key, "incident")
+      }
+    end
+
+    defp audit_count(key, resource_type) do
+      Repo.aggregate(
+        from(event in Audit,
+          where:
+            fragment("?->>'phase81_key' = ?", event.metadata, ^key) and
+              event.resource_type == ^resource_type
+        ),
+        :count
+      )
+    end
 
     defp put_race(key, state) do
       ensure_state_table()

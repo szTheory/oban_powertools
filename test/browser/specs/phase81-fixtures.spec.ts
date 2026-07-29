@@ -32,12 +32,10 @@ test("resets deterministically with the exact saturated bounds and a connected p
     workflowEvidence: 26,
     batchMembers: 51,
     batchCallbacks: 26,
-    batchResults: 51,
     batchAudit: 26,
     incidents: 51,
     executors: 26,
     lifelineAudit: 51,
-    archiveRows: 26,
   });
 
   await authenticatePhase81Actor(page, { actor: "ops", secret });
