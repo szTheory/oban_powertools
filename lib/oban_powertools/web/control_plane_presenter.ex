@@ -19,7 +19,6 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
   @incident_limit 50
   @executor_limit 25
   @lifeline_audit_limit 50
-  @archive_limit 25
 
   @batch_states ~w[
     inserting executing exhausted insert_failed callback_failed completed
@@ -725,8 +724,6 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
 
   @doc "Projects the latest typed archive run as retained, never current, evidence."
   def present_archive_summary(%ArchiveRun{} = value) do
-    _ = @archive_limit
-
     status =
       lifeline_state(
         value.status,

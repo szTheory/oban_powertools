@@ -824,12 +824,14 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     for {constant, limit} <- [
           incident_limit: 50,
           executor_limit: 25,
-          lifeline_audit_limit: 50,
-          archive_limit: 25
+          lifeline_audit_limit: 50
         ] do
       assert source =~ "@#{constant} #{limit}"
       assert source =~ "@#{constant} + 1"
     end
+
+    refute source =~ "@archive_limit"
+    refute source =~ "_bounded_archive_window"
 
     refute source =~ "Preview Token"
     refute source =~ "defp state_copy(snapshot) when is_map(snapshot), do: inspect(snapshot)"

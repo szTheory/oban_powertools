@@ -16,7 +16,6 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     @incident_limit 50
     @executor_limit 25
     @lifeline_audit_limit 50
-    @archive_limit 25
 
     @impl true
     def mount(_params, %{"oban_dashboard_path" => dashboard_path}, socket) do
@@ -1027,11 +1026,6 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
       preview_state = (preview && preview_state(preview)) || :idle
       retention = Lifeline.retention_status(repo)
-
-      _bounded_archive_window =
-        retention.last_run
-        |> List.wrap()
-        |> Enum.take(@archive_limit + 1)
 
       socket
       |> assign(:active_incident_rows, active_incident_rows)

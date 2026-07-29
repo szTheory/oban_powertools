@@ -113,8 +113,7 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
           batch_audit_limit: 25,
           incident_limit: 50,
           executor_limit: 25,
-          lifeline_audit_limit: 50,
-          archive_limit: 25
+          lifeline_audit_limit: 50
         ] do
       assert source =~ "@#{constant} #{limit}",
              "Phase 81 requires @#{constant} #{limit} at the closed presentation boundary"
