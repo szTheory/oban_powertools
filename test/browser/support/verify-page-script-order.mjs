@@ -5,30 +5,199 @@ const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
 const hostLauncher = fs.readFileSync("scripts/with-showcase-server.sh", "utf8");
 const dockerLauncher = fs.readFileSync("scripts/playwright-docker.sh", "utf8");
 const ciWorkflow = fs.readFileSync(".github/workflows/ci.yml", "utf8");
+const voiceOverConfig = fs.readFileSync("voiceover.config.ts", "utf8");
 
 const orderedSpecs = [
   "test/browser/specs/page-migration-wave-1.spec.ts",
   "test/browser/specs/page-migration-wave-2.spec.ts",
   "test/browser/specs/phase81-fixtures.spec.ts",
   "test/browser/specs/page-migration-wave-3.spec.ts",
+  "test/browser/specs/system-quality-contract.spec.ts",
+  "test/browser/specs/system-quality.spec.ts",
   "test/browser/specs/page.acceptance.spec.ts",
   "test/browser/specs/showcase.a11y.spec.ts",
   "test/browser/specs/showcase.vrt.spec.ts",
 ];
 
+const validatorPrefix = [
+  "npm run showcase:manifest",
+  "node test/browser/support/verify-phase82-quality.mjs > test/browser/.generated/phase82-quality-report.json",
+  "node test/browser/support/verify-page-baselines.mjs",
+  "node test/browser/support/verify-page-aria-snapshots.mjs",
+  "node test/browser/support/verify-page-script-order.mjs",
+  "scripts/with-showcase-server.sh npm run verify:pages:docker --",
+];
+
+const unsafeEvidenceMode =
+  /(?:--grep|--grep-invert|--update-snapshots|--watch|--ui|--retries(?:=|\s)|(?:^|[^&])&(?:[^&]|$)|\|\|\s*true)\b/;
+
+function validatePackageScripts(scripts, voiceOverSource) {
+  const verifyPages = scripts?.["verify:pages"];
+  assert.equal(typeof verifyPages, "string", "verify:pages must exist");
+  assertOrdered(verifyPages, validatorPrefix, "verify:pages validator graph");
+  assert.equal(
+    verifyPages,
+    validatorPrefix.join(" && "),
+    "verify:pages must be the exact manifest-first quality graph",
+  );
+
+  for (const fragment of validatorPrefix) {
+    assert.equal(
+      verifyPages.split(fragment).length - 1,
+      1,
+      `verify:pages must include ${fragment} exactly once`,
+    );
+  }
+
+  for (const scriptName of ["verify:pages:host", "verify:pages:docker"]) {
+    const command = scripts?.[scriptName];
+    assert.equal(typeof command, "string", `${scriptName} must exist`);
+    assert.match(
+      command,
+      /^PAGE_QUALITY_ONLY=1 /,
+      `${scriptName} must be page-only`,
+    );
+    assert.doesNotMatch(
+      command,
+      unsafeEvidenceMode,
+      `${scriptName} must never filter, mutate, retry, watch, detach, or ignore evidence`,
+    );
+
+    const actualSpecs = command
+      .split(/\s+/)
+      .filter((token) => token.startsWith("test/browser/specs/"));
+    assert.deepEqual(
+      actualSpecs,
+      orderedSpecs,
+      `${scriptName} spec order changed`,
+    );
+
+    for (const spec of orderedSpecs) {
+      assert.equal(
+        command.split(spec).length - 1,
+        1,
+        `${scriptName} must include ${spec} exactly once`,
+      );
+    }
+  }
+
+  assert.match(
+    scripts["verify:pages:host"],
+    /^PAGE_QUALITY_ONLY=1 npx playwright test /,
+    "host quality must own the native Playwright command",
+  );
+  assert.match(
+    scripts["verify:pages:docker"],
+    /^PAGE_QUALITY_ONLY=1 scripts\/playwright-docker\.sh npx playwright test /,
+    "Docker quality must use the authoritative Docker launcher",
+  );
+
+  const voiceOverCommand = scripts["verify:voiceover"];
+  assert.equal(
+    voiceOverCommand,
+    "npx playwright test --config=voiceover.config.ts",
+    "VoiceOver evidence must use only the canonical config",
+  );
+  assert.doesNotMatch(
+    voiceOverCommand,
+    unsafeEvidenceMode,
+    "VoiceOver command must not override retry or evidence mode",
+  );
+
+  const retryDeclarations = [
+    ...voiceOverSource.matchAll(/^\s*retries\s*:\s*([^,\n]+),?\s*$/gm),
+  ];
+  assert.equal(
+    retryDeclarations.length,
+    1,
+    "VoiceOver config must declare retries exactly once",
+  );
+  assert.equal(
+    retryDeclarations[0][1].trim(),
+    "0",
+    "VoiceOver retries must be explicit numeric zero",
+  );
+}
+
+validatePackageScripts(packageJson.scripts, voiceOverConfig);
+
+function expectPackageMutationFailure(name, mutate) {
+  const scripts = structuredClone(packageJson.scripts);
+  const fixture = { scripts, voiceOverConfig };
+  const mutated = mutate(fixture);
+  assert.notDeepEqual(
+    mutated,
+    { scripts: packageJson.scripts, voiceOverConfig },
+    `${name} mutation fixture must change package/config input`,
+  );
+  assert.throws(
+    () => validatePackageScripts(mutated.scripts, mutated.voiceOverConfig),
+    undefined,
+    `${name} mutation must fail the package/config validator`,
+  );
+}
+
+expectPackageMutationFailure("omitted Phase 82 validator", (input) => {
+  input.scripts["verify:pages"] = input.scripts["verify:pages"].replace(
+    `${validatorPrefix[1]} && `,
+    "",
+  );
+  return input;
+});
+expectPackageMutationFailure("reordered connected sweep", (input) => {
+  const command = input.scripts["verify:pages:host"];
+  input.scripts["verify:pages:host"] = command
+    .replace(orderedSpecs[4], "__contract__")
+    .replace(orderedSpecs[5], orderedSpecs[4])
+    .replace("__contract__", orderedSpecs[5]);
+  return input;
+});
+expectPackageMutationFailure("duplicated connected sweep", (input) => {
+  input.scripts["verify:pages:docker"] += ` ${orderedSpecs[5]}`;
+  return input;
+});
+for (const unsafe of [
+  "--grep @phase82",
+  "--update-snapshots=changed",
+  "--watch",
+  "--ui",
+  "--retries=1",
+  "|| true",
+  "&",
+]) {
+  expectPackageMutationFailure(`${unsafe} browser bypass`, (input) => {
+    input.scripts["verify:pages:host"] += ` ${unsafe}`;
+    return input;
+  });
+}
+for (const retryValue of [undefined, '"0"', "1", "process.env.CI ? 1 : 0"]) {
+  expectPackageMutationFailure(
+    `VoiceOver retry ${String(retryValue)}`,
+    (input) => {
+      input.voiceOverConfig =
+        retryValue === undefined
+          ? input.voiceOverConfig.replace(/^\s*retries\s*:.*\n/m, "")
+          : input.voiceOverConfig.replace(
+              /^(\s*)retries\s*:.*$/m,
+              `$1retries: ${retryValue},`,
+            );
+      return input;
+    },
+  );
+}
+expectPackageMutationFailure("VoiceOver command retry override", (input) => {
+  input.scripts["verify:voiceover"] += " --retries=1";
+  return input;
+});
+
+/*
+ * The package contract above intentionally runs before launcher checks. A
+ * manifest or policy failure must stop before credentials, fixtures, or any
+ * browser evidence can start.
+ */
 for (const scriptName of ["verify:pages:host", "verify:pages:docker"]) {
   const command = packageJson.scripts?.[scriptName];
   assert.equal(typeof command, "string", `${scriptName} must exist`);
-  assert.match(
-    command,
-    /^PAGE_QUALITY_ONLY=1 /,
-    `${scriptName} must be page-only`,
-  );
-  assert.doesNotMatch(
-    command,
-    /(?:--update-snapshots|--watch|--ui)\b/,
-    `${scriptName} must never mutate or watch evidence`,
-  );
 
   const actualSpecs = command
     .split(/\s+/)
@@ -47,17 +216,6 @@ for (const scriptName of ["verify:pages:host", "verify:pages:docker"]) {
     );
   }
 }
-
-assert.match(
-  packageJson.scripts["verify:pages:host"],
-  /^PAGE_QUALITY_ONLY=1 npx playwright test /,
-  "host quality must own the native Playwright command",
-);
-assert.match(
-  packageJson.scripts["verify:pages:docker"],
-  /^PAGE_QUALITY_ONLY=1 scripts\/playwright-docker\.sh npx playwright test /,
-  "Docker quality must use the authoritative Docker launcher",
-);
 
 function assertOrdered(source, fragments, label) {
   let cursor = -1;
@@ -249,8 +407,7 @@ function parseCiJobs(source) {
           let stepEnd = stepCursor + 1;
           while (
             stepEnd < end &&
-            (lines[stepEnd].trim() === "" ||
-              leadingSpaces(lines[stepEnd]) > 6)
+            (lines[stepEnd].trim() === "" || leadingSpaces(lines[stepEnd]) > 6)
           ) {
             stepEnd += 1;
           }
@@ -351,7 +508,11 @@ validateCiWorkflow(ciWorkflow);
 
 function expectCiMutationFailure(name, mutate) {
   const mutated = mutate(ciWorkflow);
-  assert.notEqual(mutated, ciWorkflow, `${name} mutation fixture must change CI`);
+  assert.notEqual(
+    mutated,
+    ciWorkflow,
+    `${name} mutation fixture must change CI`,
+  );
   assert.throws(
     () => validateCiWorkflow(mutated),
     undefined,
