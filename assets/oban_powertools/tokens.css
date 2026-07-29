@@ -115,27 +115,27 @@
   --obpt-color-focus: var(--obpt-palette-indigo-600);
   --obpt-color-accent-fg: var(--obpt-palette-indigo-800);
   --obpt-color-accent-bg: var(--obpt-palette-indigo-50);
-  --obpt-color-accent-border: var(--obpt-palette-indigo-300);
+  --obpt-color-accent-border: var(--obpt-palette-indigo-600);
   --obpt-color-accent-solid: var(--obpt-palette-indigo-600);
   --obpt-color-accent-solid-fg: var(--obpt-palette-white);
   --obpt-color-info-fg: var(--obpt-palette-cyan-800);
   --obpt-color-info-bg: var(--obpt-palette-cyan-50);
-  --obpt-color-info-border: var(--obpt-palette-cyan-300);
+  --obpt-color-info-border: var(--obpt-palette-cyan-700);
   --obpt-color-info-solid: var(--obpt-palette-cyan-700);
   --obpt-color-info-solid-fg: var(--obpt-palette-white);
   --obpt-color-success-fg: var(--obpt-palette-emerald-800);
   --obpt-color-success-bg: var(--obpt-palette-emerald-50);
-  --obpt-color-success-border: var(--obpt-palette-emerald-300);
+  --obpt-color-success-border: var(--obpt-palette-emerald-700);
   --obpt-color-success-solid: var(--obpt-palette-emerald-700);
   --obpt-color-success-solid-fg: var(--obpt-palette-white);
   --obpt-color-warning-fg: var(--obpt-palette-amber-900);
   --obpt-color-warning-bg: var(--obpt-palette-amber-50);
-  --obpt-color-warning-border: var(--obpt-palette-amber-300);
+  --obpt-color-warning-border: var(--obpt-palette-amber-700);
   --obpt-color-warning-solid: var(--obpt-palette-amber-700);
   --obpt-color-warning-solid-fg: var(--obpt-palette-white);
   --obpt-color-danger-fg: var(--obpt-palette-red-800);
   --obpt-color-danger-bg: var(--obpt-palette-red-50);
-  --obpt-color-danger-border: var(--obpt-palette-red-300);
+  --obpt-color-danger-border: var(--obpt-palette-red-700);
   --obpt-color-danger-solid: var(--obpt-palette-red-700);
   --obpt-color-danger-solid-fg: var(--obpt-palette-white);
   --obpt-color-page-separator: var(--obpt-color-border);
@@ -164,27 +164,27 @@
   --obpt-color-focus: var(--obpt-palette-indigo-600);
   --obpt-color-accent-fg: var(--obpt-palette-indigo-800);
   --obpt-color-accent-bg: var(--obpt-palette-indigo-50);
-  --obpt-color-accent-border: var(--obpt-palette-indigo-300);
+  --obpt-color-accent-border: var(--obpt-palette-indigo-600);
   --obpt-color-accent-solid: var(--obpt-palette-indigo-600);
   --obpt-color-accent-solid-fg: var(--obpt-palette-white);
   --obpt-color-info-fg: var(--obpt-palette-cyan-800);
   --obpt-color-info-bg: var(--obpt-palette-cyan-50);
-  --obpt-color-info-border: var(--obpt-palette-cyan-300);
+  --obpt-color-info-border: var(--obpt-palette-cyan-700);
   --obpt-color-info-solid: var(--obpt-palette-cyan-700);
   --obpt-color-info-solid-fg: var(--obpt-palette-white);
   --obpt-color-success-fg: var(--obpt-palette-emerald-800);
   --obpt-color-success-bg: var(--obpt-palette-emerald-50);
-  --obpt-color-success-border: var(--obpt-palette-emerald-300);
+  --obpt-color-success-border: var(--obpt-palette-emerald-700);
   --obpt-color-success-solid: var(--obpt-palette-emerald-700);
   --obpt-color-success-solid-fg: var(--obpt-palette-white);
   --obpt-color-warning-fg: var(--obpt-palette-amber-900);
   --obpt-color-warning-bg: var(--obpt-palette-amber-50);
-  --obpt-color-warning-border: var(--obpt-palette-amber-300);
+  --obpt-color-warning-border: var(--obpt-palette-amber-700);
   --obpt-color-warning-solid: var(--obpt-palette-amber-700);
   --obpt-color-warning-solid-fg: var(--obpt-palette-white);
   --obpt-color-danger-fg: var(--obpt-palette-red-800);
   --obpt-color-danger-bg: var(--obpt-palette-red-50);
-  --obpt-color-danger-border: var(--obpt-palette-red-300);
+  --obpt-color-danger-border: var(--obpt-palette-red-700);
   --obpt-color-danger-solid: var(--obpt-palette-red-700);
   --obpt-color-danger-solid-fg: var(--obpt-palette-white);
 }
@@ -205,27 +205,27 @@
   --obpt-color-focus: var(--obpt-palette-indigo-300);
   --obpt-color-accent-fg: var(--obpt-palette-indigo-100);
   --obpt-color-accent-bg: var(--obpt-palette-indigo-900);
-  --obpt-color-accent-border: var(--obpt-palette-indigo-500);
+  --obpt-color-accent-border: var(--obpt-palette-indigo-300);
   --obpt-color-accent-solid: var(--obpt-palette-indigo-400);
   --obpt-color-accent-solid-fg: var(--obpt-palette-slate-950);
   --obpt-color-info-fg: var(--obpt-palette-cyan-100);
   --obpt-color-info-bg: var(--obpt-palette-cyan-900);
-  --obpt-color-info-border: var(--obpt-palette-cyan-500);
+  --obpt-color-info-border: var(--obpt-palette-cyan-300);
   --obpt-color-info-solid: var(--obpt-palette-cyan-300);
   --obpt-color-info-solid-fg: var(--obpt-palette-slate-950);
   --obpt-color-success-fg: var(--obpt-palette-emerald-100);
   --obpt-color-success-bg: var(--obpt-palette-emerald-900);
-  --obpt-color-success-border: var(--obpt-palette-emerald-500);
+  --obpt-color-success-border: var(--obpt-palette-emerald-300);
   --obpt-color-success-solid: var(--obpt-palette-emerald-300);
   --obpt-color-success-solid-fg: var(--obpt-palette-slate-950);
   --obpt-color-warning-fg: var(--obpt-palette-amber-100);
   --obpt-color-warning-bg: var(--obpt-palette-amber-900);
-  --obpt-color-warning-border: var(--obpt-palette-amber-500);
+  --obpt-color-warning-border: var(--obpt-palette-amber-300);
   --obpt-color-warning-solid: var(--obpt-palette-amber-300);
   --obpt-color-warning-solid-fg: var(--obpt-palette-slate-950);
   --obpt-color-danger-fg: var(--obpt-palette-red-100);
   --obpt-color-danger-bg: var(--obpt-palette-red-900);
-  --obpt-color-danger-border: var(--obpt-palette-red-500);
+  --obpt-color-danger-border: var(--obpt-palette-red-300);
   --obpt-color-danger-solid: var(--obpt-palette-red-300);
   --obpt-color-danger-solid-fg: var(--obpt-palette-slate-950);
 }
@@ -288,27 +288,27 @@
     --obpt-color-focus: var(--obpt-palette-indigo-300);
     --obpt-color-accent-fg: var(--obpt-palette-indigo-100);
     --obpt-color-accent-bg: var(--obpt-palette-indigo-900);
-    --obpt-color-accent-border: var(--obpt-palette-indigo-500);
+    --obpt-color-accent-border: var(--obpt-palette-indigo-300);
     --obpt-color-accent-solid: var(--obpt-palette-indigo-400);
     --obpt-color-accent-solid-fg: var(--obpt-palette-slate-950);
     --obpt-color-info-fg: var(--obpt-palette-cyan-100);
     --obpt-color-info-bg: var(--obpt-palette-cyan-900);
-    --obpt-color-info-border: var(--obpt-palette-cyan-500);
+    --obpt-color-info-border: var(--obpt-palette-cyan-300);
     --obpt-color-info-solid: var(--obpt-palette-cyan-300);
     --obpt-color-info-solid-fg: var(--obpt-palette-slate-950);
     --obpt-color-success-fg: var(--obpt-palette-emerald-100);
     --obpt-color-success-bg: var(--obpt-palette-emerald-900);
-    --obpt-color-success-border: var(--obpt-palette-emerald-500);
+    --obpt-color-success-border: var(--obpt-palette-emerald-300);
     --obpt-color-success-solid: var(--obpt-palette-emerald-300);
     --obpt-color-success-solid-fg: var(--obpt-palette-slate-950);
     --obpt-color-warning-fg: var(--obpt-palette-amber-100);
     --obpt-color-warning-bg: var(--obpt-palette-amber-900);
-    --obpt-color-warning-border: var(--obpt-palette-amber-500);
+    --obpt-color-warning-border: var(--obpt-palette-amber-300);
     --obpt-color-warning-solid: var(--obpt-palette-amber-300);
     --obpt-color-warning-solid-fg: var(--obpt-palette-slate-950);
     --obpt-color-danger-fg: var(--obpt-palette-red-100);
     --obpt-color-danger-bg: var(--obpt-palette-red-900);
-    --obpt-color-danger-border: var(--obpt-palette-red-500);
+    --obpt-color-danger-border: var(--obpt-palette-red-300);
     --obpt-color-danger-solid: var(--obpt-palette-red-300);
     --obpt-color-danger-solid-fg: var(--obpt-palette-slate-950);
   }
@@ -616,7 +616,6 @@
   background: var(--obpt-color-surface);
   color: var(--obpt-color-text);
   font-family: var(--obpt-font-sans);
-  overflow-x: hidden;
 }
 
 .obpt-root .obpt-app-shell__skip {
@@ -1075,7 +1074,7 @@
 
 .obpt-root .obpt-primitive-button {
   max-width: 100%;
-  min-block-size: calc(var(--obpt-space-6) + var(--obpt-space-2));
+  min-block-size: calc(var(--obpt-space-7) - var(--obpt-space-1));
   border-color: var(--obpt-color-border);
   line-height: var(--obpt-line-height-tight);
   text-align: center;
