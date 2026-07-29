@@ -330,9 +330,7 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
     assert has_element?(view, "a[href*='/ops/jobs/forensics?']")
 
     assert [_forensic_link] =
-             html
-             |> Floki.parse_document!()
-             |> Floki.find("a[href*='/ops/jobs/forensics?']")
+             Regex.scan(~r/href="\/ops\/jobs\/forensics\?[^"]+"/, html)
 
     assert has_element?(view, "a[href*='workflow_id=#{workflow.id}']")
     assert has_element?(view, "a[href*='step=sync_billing']")
