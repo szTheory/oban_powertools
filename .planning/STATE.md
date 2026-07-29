@@ -5,15 +5,15 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 81
 current_phase_name: Page Migration Wave 3 — Batches, Workflows, Lifeline
 status: executing
-stopped_at: Completed 81-08-PLAN.md
-last_updated: "2026-07-29T09:21:27.783Z"
+stopped_at: Completed 81-09-PLAN.md
+last_updated: "2026-07-29T10:02:47.963Z"
 last_activity: 2026-07-29
 last_activity_desc: Completed Phase 81 Plan 15 nine-family browser contracts
 progress:
   total_phases: 15
   completed_phases: 11
   total_plans: 93
-  completed_plans: 88
+  completed_plans: 89
   percent: 73
 ---
 
@@ -22,7 +22,7 @@ progress:
 ## Current Position
 
 Phase: 81 — Page Migration Wave 3 — Batches, Workflows, Lifeline
-Plan: 10 of 15
+Plan: 11 of 15
 Status: Ready to execute
 Last activity: 2026-07-29 — Completed Phase 81 Plan 15 nine-family browser contracts
 
@@ -98,6 +98,7 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 15 nine-family browser con
 | Phase 81 P15 | 9min | 1 tasks | 5 files |
 | Phase 81 P10 | 5min | 2 tasks | 4 files |
 | Phase 81 P08 | 1h20min | 3 tasks | 6 files |
+| Phase 81 P09 | 40min | 2 tasks | 271 files |
 
 ## Accumulated Context
 
@@ -126,8 +127,8 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 15 nine-family browser con
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T09:21:27.777Z
-**Stopped at:** Completed 81-08-PLAN.md
+**Last session:** 2026-07-29T10:02:47.958Z
+**Stopped at:** Completed 81-09-PLAN.md
 **Resume file:** None
 
 - **Last Action:** Completed Plan 79-08's connected accessibility, motion, responsive, confidentiality, and page-only visual evidence.
@@ -307,6 +308,8 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 15 nine-family browser con
 - [Phase 81]: Keep Wave 3 layout selectors composition-only and scoped to existing Batches, Workflows, and Lifeline semantic hooks. — Shared components retain chrome and behavior ownership while page CSS controls placement only.
 - [Phase 81]: Use token-backed grid and flex reflow at 24rem, 48rem, and 64rem without hiding or duplicating page trees. — One semantic tree preserves accessible identity, focus, and sensitive content across viewports.
 - [Phase 81]: Collapse interactive transitions through both system and explicit reduced-motion contracts. — Both operating-system preference and root-scoped user choice must remove nonessential timing.
+- [Phase 81]: Only advertise a Wave 3 overlay activation when the production-composed story renders a real dialog. — Keeps artifact harness expectations aligned with the rendered accessibility tree.
+- [Phase 81]: Run whole-nine-family artifact validators in Plan 81-14 after Plans 81-11 and 81-12 create their families. — The global exact-set validators cannot pass before the two later artifact families exist.
 
 ### Blockers
 
