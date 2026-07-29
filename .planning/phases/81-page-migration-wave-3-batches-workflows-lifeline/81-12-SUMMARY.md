@@ -10,7 +10,7 @@ requires:
 provides:
   - 60 exact Lifeline ARIA snapshots across three Chromium projects
   - 240 exact Lifeline PNG baselines across four themes and three Chromium projects
-  - semantically distinct deterministic Lifeline fixtures for triage, preview, stale, partial, failure, success, and Audit states
+  - semantically distinct deterministic Lifeline fixtures for triage, preview, supported stale states, success, and Audit states
 affects: [81-14, page-quality]
 tech-stack:
   added: []
@@ -63,7 +63,7 @@ status: complete
 ## Accomplishments
 
 - Generated the exact manifest-derived 20-story Lifeline matrix across three ARIA projects and four themes by three viewport projects.
-- Replaced generic confirmation fixtures with deterministic evidence for active and saturated incidents, workflow and callback causes, permission and unavailable states, preview and reason validation, submitting, drift, partial/skipped/failed outcomes, disconnect/interruption, clean success, host follow-up, and Audit eligibility.
+- Replaced generic confirmation fixtures with deterministic evidence for active and saturated incidents, workflow and callback causes, permission and unavailable states, preview and reason validation, submitting, supported drift/expiry/consumption recovery, clean success, host follow-up, and Audit eligibility.
 - Reviewed all 60 ARIA trees plus representative PNGs across wide dark preview, 320px high-contrast partial results, themes, and responsive dialog containment; confirmed expected reflow and scroll containment rather than clipping.
 - Proved update-mode residue is absent with fresh Docker compare-only runs: 60/60 ARIA and 240/240 VRT tests passed.
 - Closed the milestone-wide artifact gap: global validators pass all 297 ARIA snapshots and all 1,188 tracked PNG paths.
@@ -97,9 +97,9 @@ status: complete
 
 - **Found during:** Pre-wave artifact truth review
 - **Issue:** The initial named confirmation stories all supplied `repair_confirmation: nil` and `preview: nil`, so preview, reason, stale, partial, failure, success, disconnect, and Audit states would have produced false evidence.
-- **Fix:** Added deterministic, distinct fixture evidence and focused catalog/LiveView assertions covering triage, bounded preview, validation, submitting, drift, mixed outcomes, interrupted targets, clean success, and follow-up truth.
+- **Fix:** Added deterministic, distinct fixture evidence and focused catalog/LiveView assertions covering triage, bounded preview, validation, submitting, the supported stale preview states, clean success, and follow-up truth.
 - **Files modified:** `test/support/page_story_catalog.ex`, `test/oban_powertools/page_story_catalog_test.exs`, `test/oban_powertools/web/live/showcase_live_test.exs`, `lib/oban_powertools/web/dev/showcase_live.ex`, `lib/oban_powertools/web/lifeline_live.ex`.
-- **Verification:** Focused suites passed 42 tests; reviewed ARIA trees expose confirmation dialogs only for the six appropriate stories and distinct stale, skipped, failed, disconnected, interrupted, Audit, and host-follow-up evidence.
+- **Verification:** Focused suites passed 42 tests; reviewed ARIA trees expose confirmation dialogs only for appropriate stories and distinct supported stale, Audit, and host-follow-up evidence.
 - **Committed in:** `beafcef`.
 
 **2. [Rule 3 - Blocking] Used the exact family token instead of an impossible title anchor**

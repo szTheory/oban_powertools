@@ -139,7 +139,7 @@ defmodule PhoenixHostWeb.Phase81BrowserFixturesTest do
         assert response.resp_cookies["_phoenix_host_key"]
       end
 
-      for command <- ~w(revoke drift duplicate disconnect interrupt restore) do
+      for command <- ~w(revoke drift expire duplicate restore) do
         response =
           post_json(
             "/race",
@@ -161,7 +161,7 @@ defmodule PhoenixHostWeb.Phase81BrowserFixturesTest do
       end
     end
 
-    test "drift and duplicate controls alter real Lifeline execution outcomes" do
+    test "drift, expiry, and duplicate controls alter real Lifeline execution outcomes" do
       state =
         PhoenixHostWeb.Phase81BrowserFixtures.reset(%{
           "project" => "chromium-wide",
@@ -212,6 +212,51 @@ defmodule PhoenixHostWeb.Phase81BrowserFixturesTest do
           "project" => "chromium-wide",
           "run" => "production-races"
         })
+
+      refute Repo.get(RepairPreview, drift_preview.id)
+
+      job =
+        Repo.one!(
+          from(job in Oban.Job,
+            where: fragment("?->>'phase81_key' = ?", job.meta, ^key) and job.state == "executing"
+          )
+        )
+
+      assert {:ok, expired_preview} =
+               Lifeline.preview_repair(Repo, actor, %{
+                 incident_fingerprint: fixture["handles"]["incidentId"],
+                 action: "job_rescue",
+                 target_type: "job",
+                 target_id: job.id
+               })
+
+      assert {:ok, %{"state" => "expire"}} =
+               PhoenixHostWeb.Phase81BrowserFixtures.control_race(
+                 %{
+                   "project" => "chromium-wide",
+                   "run" => "production-races",
+                   "command" => "expire"
+                 },
+                 "expire"
+               )
+
+      assert {:error, :preview_expired} =
+               Lifeline.execute_repair(
+                 Repo,
+                 actor,
+                 expired_preview.preview_token,
+                 "Expired previews require a fresh preview."
+               )
+
+      assert Repo.get!(RepairPreview, expired_preview.id).status == "expired"
+
+      {:ok, fixture} =
+        PhoenixHostWeb.Phase81BrowserFixtures.reset(%{
+          "project" => "chromium-wide",
+          "run" => "production-races"
+        })
+
+      refute Repo.get(RepairPreview, expired_preview.id)
 
       job =
         Repo.one!(

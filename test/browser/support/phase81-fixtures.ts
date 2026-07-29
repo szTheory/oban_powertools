@@ -13,18 +13,16 @@ const raceCommands = [
   "revoke",
   "restore",
   "drift",
+  "expire",
   "duplicate",
-  "disconnect",
-  "interrupt",
   "status",
 ] as const;
 const raceStates = [
   "authorized",
   "revoke",
   "drift",
+  "expire",
   "duplicate",
-  "disconnect",
-  "interrupt",
 ] as const;
 const runPattern = /^[a-z0-9][a-z0-9_-]{0,47}$/;
 

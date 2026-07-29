@@ -197,11 +197,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
            socket
            |> assign(:preview, drifted_preview)
            |> assign(:preview_state, :drifted)
-           |> assign(:error_message, LiveAuth.mutation_error(:preview_drifted))
-           |> load_data(%{
-             view: socket.assigns.current_view,
-             row_id: row.id
-           })}
+           |> assign(:error_message, LiveAuth.mutation_error(:preview_drifted))}
 
         {:error, :reason_required} ->
           {:noreply, assign(socket, :error_message, LiveAuth.mutation_error(:reason_required))}
@@ -209,8 +205,25 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         {:error, :reason_too_short} ->
           {:noreply, assign(socket, :error_message, "Reason must be at least 8 characters.")}
 
+        {:error, :preview_expired} ->
+          expired_preview =
+            repo().get_by!(RepairPreview, [{repair_preview_key(), repair_preview_value(preview)}])
+
+          {:noreply,
+           socket
+           |> assign(:preview, expired_preview)
+           |> assign(:preview_state, :expired)
+           |> assign(:error_message, LiveAuth.mutation_error(:preview_expired))}
+
         {:error, :preview_consumed} ->
-          {:noreply, assign(socket, :error_message, LiveAuth.mutation_error(:preview_consumed))}
+          consumed_preview =
+            repo().get_by!(RepairPreview, [{repair_preview_key(), repair_preview_value(preview)}])
+
+          {:noreply,
+           socket
+           |> assign(:preview, consumed_preview)
+           |> assign(:preview_state, :consumed)
+           |> assign(:error_message, LiveAuth.mutation_error(:preview_consumed))}
 
         {:error, :unauthorized} ->
           {:noreply, assign(socket, :error_message, LiveAuth.permission_message(:execute_repair))}

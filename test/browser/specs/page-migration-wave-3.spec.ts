@@ -91,6 +91,16 @@ async function expectOneTree(page: Page): Promise<void> {
   expect(await page.getByRole("dialog").count()).toBeLessThanOrEqual(1);
 }
 
+async function expectDialogFocusContained(page: Page): Promise<void> {
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  expect(
+    await dialog.evaluate((element) =>
+      element.contains(document.activeElement),
+    ),
+  ).toBe(true);
+}
+
 async function expectNoOverflow(root: Locator): Promise<void> {
   const overflow = await root.evaluate((element) => ({
     contained: Math.ceil(element.scrollWidth - element.clientWidth),
@@ -332,10 +342,10 @@ test.describe("Phase 81 connected production page contracts", () => {
       .getByRole("button", { name: /execute remediation/i })
       .dblclick();
     await expect(page.getByRole("status")).toContainText(
-      /recorded|partial|failed/i,
+      /repair executed.*audit evidence.*outcome recorded/i,
     );
     await expect(
-      page.getByRole("link", { name: /open in audit/i }),
+      page.getByRole("link", { name: /open in audit/i }).first(),
     ).toBeVisible();
   });
 
@@ -357,16 +367,22 @@ test.describe("Phase 81 connected production page contracts", () => {
     await expect(
       page.getByText(/permission changed|fresh preview/i),
     ).toBeVisible();
+    await expect(
+      page
+        .getByRole("dialog")
+        .getByRole("link", { name: /open in audit/i }),
+    ).toHaveCount(0);
   });
 
-  test("Lifeline race controls drive real drifted and duplicate production outcomes", async ({
+  test("Lifeline presents every supported stale preview outcome from production execution", async ({
     page,
     request,
   }) => {
     await openConnectedPage(page, lifelinePath());
     await closeResidualDialog(page);
 
-    await lifelinePreviewButton(page).click();
+    const driftInvoker = lifelinePreviewButton(page);
+    await driftInvoker.click();
     const drift = await controlPhase81Race(request, {
       command: "drift",
       secret: fixtureSecret,
@@ -377,11 +393,31 @@ test.describe("Phase 81 connected production page contracts", () => {
       .fill("Verify that target drift blocks execution.");
     await page.getByRole("button", { name: /execute remediation/i }).click();
     await expect(
-      page.getByText(/preview drifted|fresh preview/i),
+      page.getByRole("dialog").getByRole("alert"),
+    ).toContainText("preview_drifted");
+    await expect(
+      page.getByRole("region", {
+        name: /this preview is out of date.*create a new preview/i,
+      }),
     ).toBeVisible();
     await expect(
-      page.getByRole("link", { name: /open in audit/i }),
+      page.getByRole("dialog").getByRole("button", {
+        name: /execute remediation/i,
+      }),
     ).toHaveCount(0);
+    await expect(
+      page.getByRole("dialog").getByRole("button", {
+        name: /cancel remediation/i,
+      }),
+    ).toBeVisible();
+    await expectDialogFocusContained(page);
+    await expect(
+      page
+        .getByRole("dialog")
+        .getByRole("link", { name: /open in audit/i }),
+    ).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
 
     fixtureState = await resetPhase81BrowserFixture(request, {
       secret: fixtureSecret,
@@ -392,7 +428,57 @@ test.describe("Phase 81 connected production page contracts", () => {
       secret: fixtureSecret,
     });
     await openConnectedPage(page, lifelinePath());
-    await lifelinePreviewButton(page).click();
+
+    const expiredInvoker = lifelinePreviewButton(page);
+    await expiredInvoker.click();
+    const expire = await controlPhase81Race(request, {
+      command: "expire",
+      secret: fixtureSecret,
+    });
+    expect(expire).toMatchObject({ command: "expire", state: "expire" });
+    await page
+      .getByRole("textbox", { name: /reason/i })
+      .fill("Verify expired previews require a fresh preview.");
+    await page.getByRole("button", { name: /execute remediation/i }).click();
+    await expect(
+      page.getByRole("dialog").getByRole("alert"),
+    ).toContainText("preview_expired");
+    await expect(
+      page.getByRole("region", {
+        name: /this preview expired.*create a new preview/i,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("dialog").getByRole("button", {
+        name: /execute remediation/i,
+      }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("dialog").getByRole("button", {
+        name: /cancel remediation/i,
+      }),
+    ).toBeVisible();
+    await expectDialogFocusContained(page);
+    await expect(
+      page
+        .getByRole("dialog")
+        .getByRole("link", { name: /open in audit/i }),
+    ).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    fixtureState = await resetPhase81BrowserFixture(request, {
+      secret: fixtureSecret,
+      project: test.info().project.name,
+    });
+    await authenticatePhase81Actor(page, {
+      actor: "ops",
+      secret: fixtureSecret,
+    });
+    await openConnectedPage(page, lifelinePath());
+
+    const consumedInvoker = lifelinePreviewButton(page);
+    await consumedInvoker.click();
     const duplicate = await controlPhase81Race(request, {
       command: "duplicate",
       secret: fixtureSecret,
@@ -406,10 +492,35 @@ test.describe("Phase 81 connected production page contracts", () => {
       .fill("Verify duplicate execution is suppressed.");
     await page.getByRole("button", { name: /execute remediation/i }).click();
     await expect(
-      page.getByText(/already consumed|fresh preview/i),
+      page.getByRole("dialog").getByRole("alert"),
+    ).toContainText("preview_consumed");
+    await expect(
+      page.getByRole("region", {
+        name: /this preview was already used.*create a new preview/i,
+      }),
     ).toBeVisible();
+    await expect(
+      page.getByRole("dialog").getByRole("button", {
+        name: /execute remediation/i,
+      }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("dialog").getByRole("button", {
+        name: /cancel remediation/i,
+      }),
+    ).toBeVisible();
+    await expectDialogFocusContained(page);
+    await expect(
+      page
+        .getByRole("dialog")
+        .getByRole("link", { name: /open in audit/i }),
+    ).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
 
-    await page.goto("/ops/jobs/audit");
+    await page.goto(
+      "/ops/jobs/audit?resource_type=job&event_type=lifeline.repair_executed",
+    );
     await expect(
       page.getByText(/lifeline\.repair_executed/i).first(),
     ).toBeVisible();

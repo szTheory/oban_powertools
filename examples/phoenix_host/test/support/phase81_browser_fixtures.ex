@@ -24,7 +24,7 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
 
     @projects ~w(chromium-320 chromium-tablet chromium-wide)
     @actors ~w(ops restricted)
-    @race_commands ~w(revoke restore drift duplicate disconnect interrupt status)
+    @race_commands ~w(revoke restore drift expire duplicate status)
     @run_pattern ~r/\A[a-z0-9][a-z0-9_-]{0,47}\z/
     @fixed_now ~U[2036-03-21 12:00:00.000000Z]
     @fixed_naive ~N[2036-03-21 12:00:00]
@@ -144,6 +144,7 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
       )
 
       Repo.delete_all(from(batch in Batch, where: batch.id == ^names.batch_id))
+      Repo.delete_all(from(preview in RepairPreview, where: preview.incident_id in ^incident_ids))
       Repo.delete_all(from(incident in Incident, where: incident.id in ^incident_ids))
       Repo.delete_all(from(heartbeat in Heartbeat, where: heartbeat.id in ^names.heartbeat_ids))
       Repo.delete_all(from(run in ArchiveRun, where: run.id in ^names.archive_ids))
@@ -527,6 +528,23 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
             preview.preview_token,
             "Fixture executes the first duplicate attempt."
           )
+      end
+    end
+
+    defp apply_race(names, "expire") do
+      preview =
+        Repo.one(
+          from(preview in RepairPreview,
+            where: preview.incident_id == ^hd(names.incident_ids) and preview.status == "ready",
+            order_by: [desc: preview.inserted_at],
+            limit: 1
+          )
+        )
+
+      if preview do
+        preview
+        |> RepairPreview.changeset(%{expires_at: DateTime.add(DateTime.utc_now(), -1, :second)})
+        |> Repo.update!()
       end
     end
 

@@ -102,7 +102,7 @@ render cap, truncation guidance, and closed presenter output at each bound.
 | Capability, reason, payload, exception, or evidence disclosure | Closed presenter, fixture confidentiality, DOM/attribute/URL/request/response scans | MITIGATED |
 | Client-side authority or stale execution | Server-owned preview/reason/reauthorization/execute LiveView contracts | MITIGATED |
 | Unbounded reads or rendering | Exact finite-bound SQL, presenter, catalog, and connected cases above | MITIGATED |
-| False clean completion | Partial/skipped/failed/drifted/disconnected/interrupted result contracts and ARIA evidence | MITIGATED |
+| False clean completion | Connected production execution proves ready, authorization refusal, drifted, expired, consumed, and success-with-Audit outcomes; unsupported partial/skipped/failed/disconnected/interrupted execution claims are excluded | MITIGATED |
 
 ## Sign-off
 

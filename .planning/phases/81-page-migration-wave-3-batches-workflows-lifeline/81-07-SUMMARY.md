@@ -53,7 +53,7 @@ status: complete
 
 ## Accomplishments
 
-- Added a POST-only Phase 81 test route with exact request schemas, constant-time credential checks, deterministic project/run isolation, actor setup, and explicit revoke/drift/duplicate/disconnect/interruption controls.
+- Added a POST-only Phase 81 test route with exact request schemas, constant-time credential checks, deterministic project/run isolation, actor setup, and explicit revoke/drift/expiry/duplicate controls. Each non-authorization control mutates the production preview or target consumed by `Lifeline.execute_repair/5`; disconnected/interrupted labels are intentionally not advertised because the single-target domain seam does not persist those outcomes.
 - Seeded all twelve Wave 3 bounded evidence families at their exact limit-plus-one cardinalities.
 - Added a fail-closed TypeScript client that validates exact response keys and rejects missing credentials, malformed payloads, sensitive fields, and failed requests.
 - Proved the six-test connected fixture contract through both the native showcase launcher and the authoritative Docker launcher.

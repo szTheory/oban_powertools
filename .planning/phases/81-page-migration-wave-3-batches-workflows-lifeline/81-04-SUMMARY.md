@@ -33,7 +33,7 @@ key-decisions:
   - "Incident denial and malformed sources return the same exact unavailable map without traversing evidence or metadata."
 patterns-established:
   - "Repair confirmation is consequence-only: action labels and proposed changes come from explicit safe context while the durable preview remains server-private."
-  - "Per-target outcomes are capped and non-atomic; partial, disconnected, and interrupted states direct operators back to current truth and durable evidence."
+  - "The production repair seam is single-target and non-atomic; its finite preview states direct operators back to current truth and durable evidence."
 requirements-completed: [PAGE-07, GROUP-01, GROUP-02, PAGE-10, A11Y-02, A11Y-04]
 duration: 7min
 completed: 2026-07-29
@@ -57,7 +57,7 @@ status: complete
 - Replaced generic Wave 3 passthroughs with exact typed projections for incident rows/details, support metrics, executor health, archive evidence, confirmation, results, receipts, and Audit entries.
 - Normalized incident, heartbeat, preview, and result states through `StatusTaxonomy` while keeping every shared-component state finite and text-backed.
 - Added exact-key, malformed/unauthorized equivalence, bounded-history, outcome exhaustiveness, route authorization, and recursive capability-sentinel tests.
-- Kept current diagnosis separate from retained history and made partial, skipped, failed, drifted, expired, consumed, disconnected, and interrupted outcomes explicit.
+- Kept current diagnosis separate from retained history and made the production preview states ready, drifted, expired, and consumed explicit. Successful execution remains a separate receipt with Audit evidence; unsupported aggregate or connection outcomes are not production claims.
 
 ## Task Commits
 
