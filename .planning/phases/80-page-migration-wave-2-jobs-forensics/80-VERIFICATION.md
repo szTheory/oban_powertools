@@ -1,120 +1,164 @@
 ---
 phase: 80-page-migration-wave-2-jobs-forensics
-verified: 2026-07-29T04:15:00Z
-status: passed
-score: "All corrected Plan 80-16 blocking gates passed"
+verified: 2026-07-29T04:31:29Z
+status: gaps_found
+score: "90/91 must-haves verified"
+behavior_unverified: 0
 requirements_total: 12
-requirements_satisfied: 12
-requirements_partial: 0
-next_action: "Create the Plan 80-16 Summary, then allow registered execute-plan handlers to complete Phase 80 tracking."
+requirements_satisfied: 11
+requirements_partial: 1
+requirements_blocked: 0
+review_findings:
+  critical_open: 0
+  warnings_open: 1
+gaps:
+  - id: WR-01
+    requirement: PAGE-02
+    severity: warning
+    summary: "The canonical full Jobs detail route accepts positive IDs above signed 64-bit range and passes them to Repo.get/2."
+    files:
+      - lib/oban_powertools/web/jobs_live.ex
+      - lib/oban_powertools/web/jobs_params.ex
+      - test/oban_powertools/web/live/jobs_live_test.exs
+    missing:
+      - "Bound normalize_detail_job_id/1 to 9_223_372_036_854_775_807 before authorization or Repo access."
+      - "Add connected regressions for the maximum accepted detail-path ID and an oversized detail-path ID that renders the uniform unavailable state without issuing an oban_jobs query."
+human_verification: []
+next_action: "Create and execute a gap-closure plan for WR-01, then re-run Phase 80 verification."
+next_command: "/gsd:plan-phase 80 --gaps"
 ---
 
-# Phase 80 Corrected Gap-Closure Reverification
+# Phase 80 Verification Report
 
-**Result:** Passed. The corrected five-space extractor was calibrated before
-real output, current repository residuals reproduced as five exact
-module/title/path/line tuples in all three authoritative runs, every product and
-page-quality gate passed fresh, and the five residual owner/support files stayed
-unchanged.
+**Phase Goal:** Migrate the data-dense Jobs and Forensics surfaces onto the
+shared filter, table, detail, and timeline patterns while preserving URL state,
+accessibility, visual evidence, and filter/search/bulk/deep-link behavior.
 
-## Actionable Gap Status
+**Result:** Gaps found. The Forensics authority gap, Jobs list/quick-review
+integer bounds, and frozen batch-result identity gaps are closed. The canonical
+full-detail Jobs route still has a distinct unbounded path-ID parser, so PAGE-02
+and the phase's no-deep-link-regression criterion are not fully achieved.
 
-| Gap | Status | Fresh evidence |
+## Goal Achievement
+
+| Goal | Status | Evidence |
 |---|---|---|
-| CR-01 | closed | PASS — the focused lane preserves relational workflow-step authority and uniform unavailable output. |
-| WR-01 | closed | PASS — the focused lane preserves signed-64-bit Jobs page/job URL bounds and canonical recovery. |
-| WR-02 | closed | PASS — the focused lane preserves exact unique frozen positions and fail-closed reconciliation. |
-| V-TEST-01 | closed | PASS — three additional coordinator runs passed 9 tests, 0 failures each. |
+| Jobs and Forensics use the shared production composition seams | VERIFIED | Actual `JobsLive`/`ForensicsLive` composition, focused suites, manifest, ARIA, and VRT evidence |
+| URL-owned filters, search, and typed Forensics scopes are preserved | VERIFIED | `JobsParams`, `Forensics.Scope`, selectors, LiveView tests, and connected page matrix |
+| Bulk execution remains bounded, frozen, and fail-closed | VERIFIED | Batch coordinator and JobsLive exact-position contracts; focused suite and repeated coordinator runs |
+| Full-detail and quick-review deep links are safe and behavior-preserving | PARTIAL | Quick-review IDs are signed-64-bit bounded; full-detail path IDs are not |
+| Adversarial VRT and accessibility gates are green | VERIFIED | 147 ARIA snapshots, 588 PNG baselines, seven VoiceOver cases discovered, and 1,392 compare-only page checks |
 
-## Blocking Gate Results
+## Blocking Gap
 
-| Gate | Current result |
-|---|---|
-| Extractor positive-with-nested fixture | PASS — exit 0 and exact expected tuple |
-| Extractor nested-only fixture | PASS — nonzero exit and existing zero-byte output |
-| Extractor duplicate-five-space fixture | PASS — nonzero exit and existing zero-byte output |
-| Focused five-file Jobs/Forensics lane | PASS — 112 tests, 0 failures |
-| Three coordinator reruns | PASS — 9 tests, 0 failures each |
-| Format check | PASS |
-| Forced warning-clean compile | PASS — 103 files compiled |
-| Isolated residual calibration | PASS — exit 2, 26 tests, 5 failures, 5 valid tuples |
-| Full suite | PASS — exit 2, 933 tests, 5 failures, the same 5 tuples |
-| Immediate `mix test --failed --seed 0` | PASS — exit 2, 5 tests, 5 failures, the same 5 tuples |
-| Owner/support source hash comparison | PASS — all five hashes unchanged |
-| Manifest | PASS — schema 8, 49 page stories, 113 targets |
-| Exact ARIA and PNG validators | PASS — 147 ARIA and 588 page artifacts |
-| Git-tracked inventory | PASS — exactly 147 YAML and 588 PNG files |
-| VoiceOver discovery | PASS — exactly 7 cases, including required Jobs and Forensics stories |
-| Compare-only page quality | PASS — 1,392 tests |
+### WR-01 — Full-detail Jobs path IDs are not signed-64-bit bounded
 
-## Exact Attribution Provenance
+`JobsParams.parse_job_id/1` correctly bounds the list's `job=<id>` quick-review
+selector, but `/ops/jobs/jobs/:id` does not use it.
+`JobsLive.normalize_detail_job_id/1` accepts every positive Erlang integer and
+`load_job_detail/3` then calls `Jobs.get(repo(), normalized_id)`, which delegates
+directly to `repo.get(Oban.Job, job_id)`.
 
-The source-location eligibility rule is literally
-`^     test/[^[:space:]:]+_test\.exs:[1-9][0-9]*$`: exactly five leading
-ASCII spaces and no trailing whitespace. Ten-space generated-host locations
-cannot increment the eligible-location count.
+Consequently, a 50-digit path ID can reach the Postgrex `bigint` binding instead
+of rendering the existing non-enumerating “Job unavailable” state. This is a
+real application-level crash/noisy-log path and a low-cost denial-of-service
+surface.
 
-All three sorted TSVs were byte-identical:
+This changes the phase status because it contradicts:
 
-```text
-ObanPowertools.DocsContractTest	visual regression and a11y guardrails stay locked in docs and CI	test/oban_powertools/docs_contract_test.exs	195
-ObanPowertools.ExampleHostContractTest	control-plane lane proves overview, audit, and bridge-only follow-up through the canonical fixture	test/oban_powertools/example_host_contract_test.exs	36
-ObanPowertools.ExampleHostContractTest	native-only lane compiles and resets cleanly	test/oban_powertools/example_host_contract_test.exs	12
-ObanPowertools.ExampleHostContractTest	upgrade lane proves ops-demo pauses nightly_sync with pause_cron_entry after the documented host updates	test/oban_powertools/example_host_contract_test.exs	51
-ObanPowertools.FreshHostContractTest	fresh host lane installs, compiles, migrates, and boots	test/oban_powertools/fresh_host_contract_test.exs	11
-```
+- Plan 80-15's must-have that a job ID above signed-64-bit range is rejected
+  before it reaches Repo;
+- Plan 80-15's key link promising a safe job ID before `get` Repo calls;
+- PAGE-02's preservation of Jobs list **and detail** deep-link behavior; and
+- Roadmap success criterion 3, “No functional regression in
+  filter/search/bulk/deep-link behavior.”
 
-Each identity file existed, every row had exactly four nonempty fields with an
-allowlisted module/path binding and positive source line, every TSV count
-matched its command's independently reparsed printed failure total, and each
-positive total was paired with exit 2. There was no count-only, stale-title, or
-missing-file fallback.
+The warning is not a critical security finding, but it is an unmet explicit
+phase truth. It therefore requires `gaps_found`, not an advisory-only passed
+status.
+
+## Corrected Gap-Closure Reconciliation
+
+| Previous gap | Status | Evidence |
+|---|---|---|
+| CR-01 — forged cross-workflow Forensics step | CLOSED | One relational Step predicate validates ID, workflow, and name before Audit; uniform unavailable regressions pass |
+| WR-01 — oversized Jobs URL integers | PARTIAL | List-page offsets and quick-review query IDs are bounded; full-detail path IDs remain unbounded |
+| WR-02 — frozen batch terminal identity | CLOSED | Target positions survive timeout/crash/out-of-order terminals and exact unique-position reconciliation fails closed |
+| V-TEST-01 — coordinator repeatability | CLOSED | Three additional coordinator runs passed 9 tests with 0 failures each |
+
+## Must-Have Accounting
+
+The 16 plan frontmatters define 91 truth-level must-haves. Actual source,
+tests, summaries, validation evidence, and the current review support 90.
+The one failed truth is Plan 80-15's broad signed-64-bit job-ID-before-Repo
+contract.
+
+All declared artifacts and key links exist. Summary claims are supported except
+where the closing records overstate the partial integer fix:
+
+- `80-15-SUMMARY.md` accurately says it bounded page offsets and
+  **quick-review** IDs, but its “Jobs URL safety” readiness statement is too
+  broad for the full-detail route.
+- `80-16-SUMMARY.md`, `80-VALIDATION.md`, and the prior verification mark
+  PAGE-02/WR-01 fully closed without checking the separate
+  `normalize_detail_job_id/1` path.
 
 ## Requirement Coverage
 
-| Requirement | Status | Current evidence |
+| Requirement | Status | Evidence |
 |---|---|---|
-| PAGE-02 | satisfied | Bounded Jobs URLs, canonical invalid recovery, and exact frozen batch positions pass in the focused lane and page aggregate. |
-| PAGE-09 | satisfied | Workflow-step evidence remains relationally authorized and unavailable selectors remain non-disclosing. |
-| FORM-03 | satisfied | Jobs and Forensics retain submit-owned validation and canonical applied URL truth. |
-| DATA-01 | satisfied | Shared bounded table, detail, timeline, progress, and explicit-state presentation remains green. |
-| DATA-02 | satisfied | Finite shared status taxonomy remains the only rendered status presentation. |
-| DATA-03 | satisfied | Exact 320/tablet/wide page matrix and bounded adversarial stories pass. |
-| DATA-04 | satisfied | Closed presenters and structural redaction remain green with confidential DOM checks. |
-| PAGE-10 | satisfied | Jobs and Forensics continue through the shared production composition seams. |
-| A11Y-01 | satisfied | Axe, ARIA, acceptance, and compare-only page gates pass fresh. |
-| A11Y-02 | satisfied | Keyboard, focus, modality, and semantic-tree contracts remain green. |
-| A11Y-03 | satisfied | Four themes, responsive geometry, contrast modes, and focus evidence pass. |
-| A11Y-04 | satisfied | Exact seven-case VoiceOver discovery is fresh; real transcripts retain the explicit supported-environment limitation and were not fabricated. |
+| PAGE-02 | PARTIAL | Jobs list, filters, bulk flows, quick review, and canonical detail composition are migrated; oversized full-detail path IDs can still reach Repo |
+| PAGE-09 | SATISFIED | Typed four-family Forensics scope, relational workflow-step authority, bounded evidence, and diagnosis-first timeline |
+| FORM-03 | SATISFIED | Submit-owned Jobs/Forensics validation and canonical URL-applied truth |
+| DATA-01 | SATISFIED | Shared table/detail/timeline/progress/explicit-state components are used |
+| DATA-02 | SATISFIED | Closed shared status taxonomy remains the rendered status source |
+| DATA-03 | SATISFIED | 320/tablet/wide and adversarial bounded page matrix passes |
+| DATA-04 | SATISFIED | Closed presenters and shared structural redaction pass confidentiality checks |
+| PAGE-10 | SATISFIED | Jobs and Forensics use shared production composition seams and generated story discovery |
+| A11Y-01 | SATISFIED | Page axe, ARIA, acceptance, and compare-only gates pass |
+| A11Y-02 | SATISFIED | Keyboard, focus, modal, and semantic-tree contracts pass |
+| A11Y-03 | SATISFIED | Four themes, responsive geometry, contrast modes, targets, and focus evidence pass |
+| A11Y-04 | SATISFIED WITH DOCUMENTED ENVIRONMENT LIMITATION | Seven production-composed VoiceOver cases are executable/discovered; real transcripts remain explicitly open because local Guidepup cannot start VoiceOver |
 
-## Security and Scope Disposition
+The current `REQUIREMENTS.md` marks PAGE-02 complete. That ledger state is
+premature while WR-01 remains open and should not be used to override actual
+behavioral verification.
 
-All high-severity Plan 80-16 threats are mitigated:
+## Fresh Evidence Reconciled
 
-- nested generated-host output is mechanically ineligible;
-- current residual identity is independently calibrated and exactly reproduced;
-- owner/support source hashes are unchanged;
-- no product, schema, migration, dependency, route, fixture, manifest contract,
-  baseline, CI, example-host, or prior plan/summary file was edited for closure;
-- no snapshot update or Guidepup setup ran, and no transcript was invented;
-- ROADMAP and REQUIREMENTS remained byte-identical to fresh snapshots throughout
-  Task 1.
+| Check | Result |
+|---|---|
+| Focused five-file Jobs/Forensics lane | 112 tests, 0 failures |
+| Full ExUnit suite | 933 tests, exactly 5 inherited failures |
+| Isolated/full/rerun attribution | Five byte-identical exact module/title/path/line tuples |
+| Compare-only page matrix | 1,392 passed |
+| ARIA artifact validator | 147 exact snapshots |
+| PNG baseline validator | 588 exact baselines |
+| VoiceOver discovery | Exactly 7 cases |
+| Code review | 0 critical, 1 open warning: WR-01 |
+| Schema and UI safety gates | Passed |
 
-## Supported-Environment Accessibility Note
+The five full-suite failures remain exactly attributable to inherited
+docs/example-host/fresh-host contract owners and do not change this phase's
+status. Codebase-drift output is advisory only. The `gaps_found` status is
+caused solely by the phase-owned full-detail Jobs path bound.
 
-Real VoiceOver transcript capture remains unavailable in the documented local
-Guidepup/macOS environment. Exact seven-case discovery passed, including
-`page-jobs-full-detail` and
-`page-forensics-incident-partial-remediation`. This supported-environment note
-is preserved; axe and ARIA evidence do not substitute for real transcripts.
+## Human Verification
 
-## Pre-Summary Bookkeeping Gate
+None required for this gap. It is mechanically fixable and should be closed by
+code plus a connected regression. The existing VoiceOver supported-environment
+limitation remains documented and is not reclassified as the WR-01 blocker.
 
-Before the executor creates `80-16-SUMMARY.md`:
+## Next Action
 
-- ROADMAP remains exactly 15/16 with `80-16-PLAN.md` unchecked;
-- PAGE-02, PAGE-09, and FORM-03 remain pending;
-- ROADMAP and REQUIREMENTS match their fresh snapshots;
-- STATE has no terminal Plan 80-16 completion marker, metric, or session record.
+Create a gap-closure plan that reuses a signed-64-bit-bounded job-ID parser (or
+applies the identical upper bound in `normalize_detail_job_id/1`) and proves
+that oversized detail-path IDs render the uniform unavailable state before any
+`oban_jobs` query:
 
-Registered Summary-first execute-plan handlers alone may advance those ledgers.
+`/gsd:plan-phase 80 --gaps`
+
+---
+
+_Verified: 2026-07-29_
+_Verifier: Codex_
