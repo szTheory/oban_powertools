@@ -337,19 +337,50 @@
   3. No functional regression in filter/search/bulk/deep-link behavior.
 
 **Plans**: 13/13 plans executed
+**Wave 1**
 
 - [x] 80-01-PLAN.md
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [x] 80-02-PLAN.md
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [x] 80-03-PLAN.md
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [x] 80-04-PLAN.md
 - [x] 80-05-PLAN.md
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [x] 80-06-PLAN.md
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
 - [x] 80-07-PLAN.md
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
 - [x] 80-08-PLAN.md
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
 - [x] 80-09-PLAN.md
 - [x] 80-10-PLAN.md
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
 - [x] 80-11-PLAN.md
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
 - [x] 80-12-PLAN.md
+
+**Wave 11** *(blocked on Wave 10 completion)*
+
 - [x] 80-13-PLAN.md
 
 ### Phase 81: Page Migration Wave 3 — Batches, Workflows, Lifeline
