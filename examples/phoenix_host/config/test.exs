@@ -2,7 +2,11 @@ import Config
 
 phase79_browser_fixtures? = System.get_env("PHASE79_BROWSER_FIXTURES") == "1"
 phase80_browser_fixtures? = System.get_env("PHASE80_BROWSER_FIXTURES") == "1"
-browser_fixtures? = phase79_browser_fixtures? or phase80_browser_fixtures?
+phase81_browser_fixtures? = System.get_env("PHASE81_BROWSER_FIXTURES") == "1"
+
+browser_fixtures? =
+  phase79_browser_fixtures? or phase80_browser_fixtures? or phase81_browser_fixtures?
+
 browser_fixture_server? = browser_fixtures? and not is_nil(System.get_env("PHX_SERVER"))
 
 repo_pool =
