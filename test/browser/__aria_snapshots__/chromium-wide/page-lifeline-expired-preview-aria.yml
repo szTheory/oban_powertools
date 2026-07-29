@@ -46,7 +46,7 @@
     - paragraph:
       - strong: "Affected records:"
       - text: No raw records available.
-    - link "Open forensic timeline":
+    - link "Open forensic evidence":
       - /url: /ops/jobs/forensics?incident_fingerprint=fixture-page-lifeline-expired-preview&view=active
     - region "Runbook continuity":
       - heading "Runbook continuity" [level=3]

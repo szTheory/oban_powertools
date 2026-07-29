@@ -44,5 +44,5 @@
     - text: Reason Required
     - textbox "Reason Required": Capacity is available again.
     - paragraph: Explain why this action is needed. Do not enter secrets.
-    - button "Keep paused"
     - button "Resume cron entry"
+    - button "Keep paused"

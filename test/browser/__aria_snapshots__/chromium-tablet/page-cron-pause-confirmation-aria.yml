@@ -44,5 +44,5 @@
     - text: Reason Required
     - textbox "Reason Required": Planned provider maintenance.
     - paragraph: Explain why this action is needed. Do not enter secrets.
-    - button "Keep running"
     - button "Pause cron entry"
+    - button "Keep running"

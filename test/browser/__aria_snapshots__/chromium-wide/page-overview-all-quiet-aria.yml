@@ -7,15 +7,15 @@
     - paragraph: Available evidence identifies no current native or bridge follow-up. Open Jobs to review individual job state.
     - link "Open Jobs":
       - /url: /ops/jobs/jobs
-    - heading "No needs review identified" [level=2]
+    - heading "No work needs review" [level=2]
     - paragraph: Available evidence identifies no work that needs review.
     - link "Review retryable jobs":
       - /url: /ops/jobs/jobs?state=retryable
-    - heading "No blocked limiters identified" [level=2]
+    - heading "No limiters are blocked" [level=2]
     - paragraph: Available evidence identifies no blocked limiter work.
     - link "Review limiters":
       - /url: /ops/jobs/limiters
-    - heading "No waiting work identified" [level=2]
+    - heading "No work is waiting" [level=2]
     - paragraph: Available evidence identifies no waiting work.
     - link "Review workflows":
       - /url: /ops/jobs/workflows

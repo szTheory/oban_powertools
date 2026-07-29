@@ -28,5 +28,5 @@
         - columnheader "Actions"
     - rowgroup
   - heading "No audit records recorded" [level=2]
-  - paragraph: Recorded operator actions will appear here when evidence is available.
+  - paragraph: Recorded operator actions will appear here when evidence is available. Review another operator page, then return after an action is recorded.
   - navigation "Audit pagination": Previous Next

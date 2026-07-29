@@ -46,7 +46,7 @@
     - paragraph:
       - strong: "Affected records:"
       - text: No raw records available.
-    - link "Open forensic timeline":
+    - link "Open forensic evidence":
       - /url: /ops/jobs/forensics?incident_fingerprint=fixture-page-lifeline-preview-open&view=active
     - region "Runbook continuity":
       - heading "Runbook continuity" [level=3]
@@ -94,8 +94,8 @@
     - text: Reason Required
     - textbox "Reason Required"
     - paragraph: Explain why this action is needed. Do not enter secrets.
-    - button "Keep current state"
     - button "Execute remediation"
+    - button "Keep current state"
   - region "Retained support evidence":
     - heading "Healthy Executors" [level=2]
     - list:

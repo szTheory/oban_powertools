@@ -44,5 +44,5 @@
     - text: Reason Required
     - textbox "Reason Required": Validate the recovered provider path.
     - paragraph: Explain why this action is needed. Do not enter secrets.
-    - button "Keep current schedule"
     - button "Run cron entry now"
+    - button "Keep current schedule"

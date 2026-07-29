@@ -140,5 +140,5 @@
     - paragraph: Explain why this action is needed. Do not enter secrets.
     - text: Type 1 to confirm Required
     - textbox "Type 1 to confirm Required"
-    - button "Keep current state"
     - button "Retry 1 failed jobs"
+    - button "Keep current state"

@@ -47,7 +47,7 @@
   - region "Event log":
     - heading "Event log" [level=2]
     - paragraph:
-      - strong: Event history unavailable.
+      - strong: Event log unavailable.
       - text: Current evidence may still be available, but this source cannot provide retained history.
     - list
   - region "Evidence limits and sources":

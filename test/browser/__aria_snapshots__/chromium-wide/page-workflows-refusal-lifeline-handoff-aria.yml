@@ -114,8 +114,6 @@
     - strong: "Venue:"
     - text: Powertools-native
   - text: Powertools-native Oban Web bridge host-owned follow-up
-  - link "evidence link":
-    - /url: /ops/jobs/forensics?resource_type=workflow_step&resource_id=workflow-step-3&workflow_id=workflow-001&step=publish
   - heading "Open the forensic bundle." [level=3]
   - paragraph: Supporting limiter and cron context stays labeled as supporting evidence.
   - link "Open forensic evidence":

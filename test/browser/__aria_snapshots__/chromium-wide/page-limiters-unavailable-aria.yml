@@ -34,3 +34,5 @@
       - paragraph: Data unavailable
       - paragraph: Refresh data
     - text: Unavailable
+    - region "Technical evidence":
+      - paragraph: The selected limiter is unavailable in the current scope. Close these details, then review another limiter.

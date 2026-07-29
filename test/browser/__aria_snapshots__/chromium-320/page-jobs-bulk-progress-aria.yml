@@ -56,7 +56,7 @@
       - heading "Support boundary" [level=3]
       - paragraph: Each Lifeline action records independent per-job evidence; the batch is not atomic.
       - paragraph: Each job is processed independently. Some actions may succeed while others are skipped or fail.
-      - paragraph: Closing this page will not stop work already started. A service restart may interrupt unfinished jobs; completed actions remain in the Audit log.
+      - paragraph: Closing this page will not stop work already started. A service restart may interrupt unfinished jobs; recorded actions remain in the Audit log.
     - text: Reason Required
     - textbox "Reason Required" [disabled]: Provider recovered; retry safely.
     - paragraph: Explain why this action is needed. Do not enter secrets.

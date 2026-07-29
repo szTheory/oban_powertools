@@ -16,4 +16,4 @@
     - status: Choose one supported evidence scope.
   - region "Evidence unavailable":
     - heading "Evidence unavailable" [level=2]
-    - paragraph: It may not exist, may no longer be retained, or you may not have access.
+    - paragraph: It may not exist, may no longer be retained, or you may not have access. Choose another evidence scope to continue.
