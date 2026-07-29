@@ -238,6 +238,43 @@ defmodule ObanPowertools.Web.CopyContractTest do
     assert "lib/oban_powertools/web/copy.ex" in contract.exclusions
   end
 
+  test "D-14/D-17 first page wave owns exact empty, unavailable, and recovery copy" do
+    overview = source!("engine_overview_live.ex")
+    cron = source!("cron_live.ex")
+    limiters = source!("limiters_live.ex")
+    audit = source!("audit_live.ex")
+
+    assert overview =~
+             "defp empty_lane_heading(:needs_review), do: \"No work needs review\""
+
+    assert overview =~
+             "defp empty_lane_heading(:blocked), do: \"No limiters are blocked\""
+
+    assert overview =~
+             "defp empty_lane_heading(:waiting), do: \"No work is waiting\""
+
+    assert cron =~
+             "defp confirmation_error_message(:preview_expired),\n      do: \"This preview expired. Create a new preview before continuing.\""
+
+    assert cron =~
+             "defp confirmation_error_message(:preview_drifted),\n      do: \"This preview is out of date. Create a new preview before retrying.\""
+
+    assert cron =~
+             "defp confirmation_error_message(:preview_consumed),\n      do: \"This preview was already used. Review current cron entry state before creating a new preview.\""
+
+    refute cron =~ "if is_binary(reason), do: assign(socket, :error_message, reason)"
+    refute cron =~ "defp confirmation_error_message(reason) when is_binary(reason), do: reason"
+
+    assert limiters =~
+             "The selected limiter is unavailable in the current scope. Close these details, then review another limiter."
+
+    assert audit =~
+             "The selected audit evidence is unavailable in the current filter scope. Close this evidence view, then select a listed record."
+
+    assert audit =~
+             "No operator actions are recorded in the current Audit scope. Review another operator page, then return after an action is recorded."
+  end
+
   defp audit_source(contract, path, source) do
     findings =
       source
@@ -370,4 +407,9 @@ defmodule ObanPowertools.Web.CopyContractTest do
 
   defp assert_finite!(value),
     do: flunk("copy contract contains non-finite value: #{inspect(value)}")
+
+  defp source!(filename) do
+    Path.join(["lib", "oban_powertools", "web", filename])
+    |> File.read!()
+  end
 end
