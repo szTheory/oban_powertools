@@ -5,15 +5,15 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 82
 current_phase_name: Cross-Cutting A11y, Motion & Responsive Hardening Sweep
 status: executing
-stopped_at: Completed 82-14-PLAN.md
-last_updated: "2026-07-29T21:18:36.176Z"
+stopped_at: Completed 82-15-PLAN.md
+last_updated: "2026-07-29T21:28:46.210Z"
 last_activity: 2026-07-29
-last_activity_desc: Completed Phase 82 Plan 14 Jobs and Forensics copy hardening
+last_activity_desc: Completed Phase 82 Plan 15 Batches, Workflows, and Lifeline copy hardening
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 110
-  completed_plans: 104
+  completed_plans: 105
   percent: 95
 ---
 
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 82 — Cross-Cutting A11y, Motion & Responsive Hardening Sweep
-Plan: 11 of 17
+Plan: 12 of 17
 Status: Ready to execute
-Last activity: 2026-07-29 — Completed Phase 82 Plan 14 Jobs and Forensics copy hardening
+Last activity: 2026-07-29 — Completed Phase 82 Plan 15 Batches, Workflows, and Lifeline copy hardening
 
 ## Performance Metrics
 
@@ -111,6 +111,7 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 14 Jobs and Forensics copy
 | Phase 82 P12 | 6min | 1 tasks | 4 files |
 | Phase 82 P07 | 8min | 1 tasks | 5 files |
 | Phase 82 P14 | 6min | 1 tasks | 4 files |
+| Phase 82 P15 | 7min | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -139,11 +140,11 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 14 Jobs and Forensics copy
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T21:18:36.168Z
-**Stopped at:** Completed 82-14-PLAN.md
+**Last session:** 2026-07-29T21:28:46.203Z
+**Stopped at:** Completed 82-15-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed Plan 82-14's Jobs and Forensics copy, recovery, and bounded-evidence hardening.
+- **Last Action:** Completed Plan 82-15's Batches, Workflows, and Lifeline copy, recovery, and accessibility hardening.
 - **Next Action:** Execute the next dependency-ready Phase 82 plan.
 
 ## Decisions
@@ -344,6 +345,8 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 14 Jobs and Forensics copy
 - [Phase 82]: Keep production motion traversal exclusively in verify-phase82-quality.mjs; ExUnit owns exact token, selector, and asset contracts.
 - [Phase 82]: Keep generic button and link accessible-name overrides compatible while icon buttons retain exclusive ownership of their required accessible label. — Preserves the existing public component API without allowing icon-only names to drift from their required label assign.
 - [Phase 82]: Preserve parent-owned events and descriptions while filtering component-owned native form state, identity, and value attributes. — Keeps LiveView authority with the parent and prevents caller rest attributes from contradicting rendered field semantics.
+- [Phase 82]: Keep Wave 3 permission copy exact while reducing untrusted backend failures to finite recovery text. — Preserves server authority and operator permission truth without rendering raw provider or domain errors.
+- [Phase 82]: Keep Workflows diagnosis-only and render the refusal label plus code as one complete machine value. — Closes the documented outcome-to-code ordering contract without changing workflow authority or exposing additional evidence.
 
 ### Blockers
 
