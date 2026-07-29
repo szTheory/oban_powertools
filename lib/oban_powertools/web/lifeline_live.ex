@@ -9,8 +9,14 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     alias ObanPowertools.{Audit, DisplayPolicy, Explain, Lifeline}
     alias ObanPowertools.Forensics.Scope
     alias ObanPowertools.Lifeline.{ArchiveRun, Incident, RepairPreview, TargetType}
+    alias ObanPowertools.Web.Components.{DataDisplay, OperatorPatterns, Primitives}
     alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth, Selectors}
     alias ObanPowertools.Workflow.{Step, Workflow}
+
+    @incident_limit 50
+    @executor_limit 25
+    @lifeline_audit_limit 50
+    @archive_limit 25
 
     @impl true
     def mount(_params, %{"oban_dashboard_path" => dashboard_path}, socket) do
@@ -127,6 +133,19 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       {:noreply, assign(socket, :reason, reason)}
     end
 
+    def handle_event("execute", %{"lifeline_repair" => %{"reason" => reason}}, socket) do
+      handle_event("execute", %{}, assign(socket, :reason, reason))
+    end
+
+    def handle_event("dismiss_repair", _params, socket) do
+      {:noreply,
+       socket
+       |> assign(:preview, nil)
+       |> assign(:preview_state, :idle)
+       |> assign(:reason, "")
+       |> assign(:error_message, nil)}
+    end
+
     def handle_event("execute", _params, %{assigns: %{preview: nil}} = socket) do
       {:noreply, socket}
     end
@@ -201,6 +220,337 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     @impl true
     def render(assigns) do
+      page_content(assigns)
+    end
+
+    def page_content(assigns) do
+      assigns =
+        assigns
+        |> assign_new(:incident_rows, fn -> present_incident_rows(assigns) end)
+        |> assign_new(:lifeline_summary, fn -> present_lifeline_summary(assigns) end)
+        |> assign_new(:executor_rows, fn -> present_executor_rows(assigns) end)
+        |> assign_new(:archive_summary, fn ->
+          ControlPlanePresenter.present_archive_summary(
+            assigns[:retention] && assigns.retention.last_run
+          )
+        end)
+        |> assign_new(:repair_confirmation, fn -> present_repair_confirmation(assigns) end)
+        |> assign_new(:repair_form, fn ->
+          Phoenix.Component.to_form(%{"reason" => assigns[:reason] || ""}, as: :lifeline_repair)
+        end)
+
+      ~H"""
+      <main id="lifeline-page" class="obpt-lifeline-page" aria-labelledby="lifeline-page-title">
+        <header class="obpt-lifeline-page__header">
+          <div>
+            <h1 id="lifeline-page-title">Lifeline</h1>
+            <p>
+              {ControlPlanePresenter.native_banner()} Generic job internals still deep-link into the Oban Web bridge.
+            </p>
+          </div>
+          <DataDisplay.status_pill
+            domain={:lifeline_health}
+            state={@lifeline_summary.status}
+          />
+        </header>
+
+        <p :if={@read_only?} class="obpt-lifeline-page__notice" role="status">
+          {LiveAuth.page_read_only_banner(:lifeline)}
+        </p>
+        <p :if={@error_message} class="obpt-lifeline-page__notice" role="alert">
+          {@error_message}
+        </p>
+        <p :if={@success_message} class="obpt-lifeline-page__notice" role="status">
+          {@success_message}
+        </p>
+
+        <section class="obpt-lifeline-page__metrics" aria-label="Lifeline summary">
+          <Primitives.card>
+            <p>Needs Review</p>
+            <strong>{@lifeline_summary.active_count}</strong>
+          </Primitives.card>
+          <Primitives.card>
+            <p>Healthy Executors</p>
+            <strong>{length(@executor_rows)}</strong>
+          </Primitives.card>
+          <Primitives.card>
+            <p>Pending Repair Previews</p>
+            <strong>{@lifeline_summary.pending_preview_count}</strong>
+          </Primitives.card>
+          <Primitives.card>
+            <p>Archived Repairs</p>
+            <strong>{@lifeline_summary.archived_repair_count}</strong>
+          </Primitives.card>
+        </section>
+
+        <nav class="obpt-lifeline-page__views" aria-label="Incident views">
+          <Primitives.button
+            phx-click="toggle_view"
+            phx-value-view="active"
+            variant={if(@current_view == "active", do: :primary, else: :neutral)}
+          >
+            Needs Review
+          </Primitives.button>
+          <Primitives.button
+            phx-click="toggle_view"
+            phx-value-view="resolved"
+            variant={if(@current_view == "resolved", do: :primary, else: :neutral)}
+          >
+            Resolved
+          </Primitives.button>
+        </nav>
+
+        <DataDisplay.data_table
+          id="lifeline-incidents"
+          caption={incident_view_heading(@current_view)}
+          rows={@incident_rows}
+          row_id={& &1.id}
+          state={if(@incident_rows == [], do: :empty, else: :ready)}
+          resource="incidents"
+          row_count={length(@incident_rows)}
+          pagination_summary={if(@lifeline_summary.completeness == :partial, do: "Showing the newest 50 incidents; more evidence exists.")}
+        >
+          <:col :let={row} label="Incident">
+            <Primitives.button
+              id={"lifeline-incident-#{row.id}"}
+              phx-click="select_incident"
+              phx-value-row-id={row.id}
+              variant={:neutral}
+            >
+              {row.subject}
+            </Primitives.button>
+          </:col>
+          <:col :let={row} label="Status">
+            <DataDisplay.status_pill domain={:lifeline_incident} state={row.status} />
+          </:col>
+          <:col :let={row} label="Affected scope">{row.affected_scope}</:col>
+          <:action :let={row}>
+            <Primitives.button
+              :if={@current_view == "active"}
+              aria-label="Preview remediation"
+              phx-click="preview"
+              phx-value-row-id={row.id}
+              disabled={not row.preview_available?}
+              variant={:danger}
+            >
+              Preview Native Remediation
+            </Primitives.button>
+            <p :if={@current_view == "active" and row.preview_disabled_reason}>
+              {row.preview_disabled_reason}
+            </p>
+            <span :if={@current_view == "resolved"}>Resolved</span>
+          </:action>
+        </DataDisplay.data_table>
+
+        <section :if={@selected_row} class="obpt-lifeline-page__detail" aria-labelledby="lifeline-detail-title">
+          <h2 id="lifeline-detail-title">{@selected_row.target_summary}</h2>
+          <p>{incident_view_copy(@current_view)}</p>
+          <p><strong>Open the forensic bundle.</strong> Inspection only.</p>
+          <p>
+            <strong>Detection basis:</strong> {detection_basis(@selected_row.incident)}
+          </p>
+          <p>
+            <strong>Affected records:</strong> {affected_records_copy(@selected_row.incident)}
+          </p>
+          <Primitives.link href={forensic_path(@selected_row, @current_view)}>
+            Open forensic timeline
+          </Primitives.link>
+          <section aria-labelledby="lifeline-runbook-title">
+            <h3 id="lifeline-runbook-title">Runbook continuity</h3>
+            <%= if continuity = runbook_continuity(@preview, @audit_events) do %>
+              <p><strong>Diagnosis:</strong> {continuity_diagnosis(continuity)}</p>
+              <p><strong>Legal next path:</strong> {continuity_legal_next_path(continuity)}</p>
+              <p><strong>Venue:</strong> {continuity_venue(continuity)}</p>
+              <p><strong>Attempt state:</strong> {continuity_attempt_state(continuity)}</p>
+            <% else %>
+              <p><strong>Diagnosis:</strong> No remediation attempts recorded yet</p>
+              <p><strong>Legal next path:</strong> Review current evidence</p>
+              <p><strong>Venue:</strong> Powertools-native Lifeline</p>
+              <p><strong>Attempt state:</strong> No attempt recorded</p>
+            <% end %>
+            <p><strong>host-owned follow-up status:</strong> {host_follow_up_status_label(@audit_events)}</p>
+            <p :if={detail = host_follow_up_status_detail(@audit_events)}>{detail}</p>
+            <p><strong>Evidence link:</strong> Open forensic evidence</p>
+            <p><strong>Audit follow-up:</strong> No audit follow-up available</p>
+            <p data-runbook-ownership="Powertools-native" data-runbook-variant="native_primary">
+              Powertools-native
+            </p>
+            <p data-runbook-ownership="Oban Web bridge" data-runbook-variant="bridge_guidance">
+              Oban Web bridge
+            </p>
+            <p data-runbook-ownership="host-owned follow-up" data-runbook-variant="host_guidance">
+              host-owned follow-up
+            </p>
+          </section>
+          <p :if={@selected_row.incident.incident_class == "workflow_action"}>
+            Workflow blocker evidence
+          </p>
+          <p :if={@audit_events == []}>
+            No remediation attempts recorded yet. This diagnosis has not entered a supported native remediation flow. Review legal next paths, then start a native preview to capture attempt context.
+          </p>
+          <section :if={@audit_events != []} aria-labelledby="lifeline-audit-title">
+            <h3 id="lifeline-audit-title">Manual Intervention History</h3>
+            <article :for={event <- @audit_events} class="obpt-lifeline-page__audit">
+              <p><strong>Actor:</strong> {event_actor_label(event)}</p>
+              <p><strong>Action:</strong> {ControlPlanePresenter.audit_event_label(event)}</p>
+              <p><strong>Reason:</strong> {event_reason(event)}</p>
+              <Primitives.link href={ControlPlanePresenter.audit_follow_up_path(event)}>
+                Open in Audit
+              </Primitives.link>
+            </article>
+          </section>
+        </section>
+
+        <section :if={@preview} class="obpt-lifeline-page__preview-summary">
+          <h2>Preview Ready</h2>
+          <p><strong>Preview Status:</strong> {preview_status_copy(@preview)}</p>
+          <p><strong>Audit Record to be Written</strong></p>
+          <p><strong>Audit Consequence:</strong> {LiveAuth.audit_consequence_copy()}</p>
+          <p><strong>Actor:</strong> {preview_actor_label(@current_actor)}</p>
+          <p><strong>Reason:</strong> {preview_reason(@reason)}</p>
+          <p>
+            Execute Remediation: This writes a native remediation attempt to audit and forensic evidence. Confirm only after reviewing reason, ownership, and expected outcome.
+          </p>
+          <p :if={@selected_row.action == "workflow_request_cancel"}>
+            Idle work may stop immediately while in-flight work can still finish.
+          </p>
+          <a
+            :if={@target_detail.job_id}
+            href={build_job_path(@oban_dashboard_path, @target_detail.job_id)}
+          >
+            Open Generic Job Inspection in Oban Web bridge
+          </a>
+          <Primitives.button
+            :if={@preview_state != :ready}
+            phx-click="execute"
+            disabled
+            variant={:danger}
+          >
+            Execute Remediation
+          </Primitives.button>
+        </section>
+
+        <OperatorPatterns.confirm_action_dialog
+          :if={@preview}
+          id="lifeline-repair"
+          intent={:danger}
+          state={@repair_confirmation.state}
+          title={@repair_confirmation.title}
+          object_label={@repair_confirmation.object_label}
+          scope={Enum.join(@repair_confirmation.affected_records, ", ")}
+          consequence={@repair_confirmation.consequence}
+          reversibility={@repair_confirmation.reversibility}
+          support_boundary={@repair_confirmation.support_boundary}
+          form={@repair_form}
+          confirm_label="Execute Remediation"
+          dismiss_label="Cancel remediation"
+          pending_copy="Executing remediation"
+          logical_fallback_id={"lifeline-incident-#{@selected_row.id}"}
+          submit_event="execute"
+          dismiss_event="dismiss_repair"
+          results={[]}
+        >
+          <:recovery>
+            <p :if={@error_message}>{@error_message}</p>
+          </:recovery>
+          <:audit>
+            <Primitives.link :if={@success_message} href={Selectors.audit_path([])}>
+              Open in Audit
+            </Primitives.link>
+          </:audit>
+        </OperatorPatterns.confirm_action_dialog>
+
+        <section class="obpt-lifeline-page__support" aria-label="Retained support evidence">
+          <h2>Healthy Executors</h2>
+          <ul>
+            <li :for={executor <- @executor_rows}>
+              <strong>{executor.name}</strong>
+              <DataDisplay.status_pill domain={:lifeline_health} state={executor.status} />
+            </li>
+          </ul>
+          <h2>Archive Activity</h2>
+          <DataDisplay.status_pill
+            domain={:lifeline_incident}
+            state={@archive_summary.status}
+          />
+          <p>{@archive_summary.guidance}</p>
+          <p>
+            Archive and prune visibility is read-only here. Retention policy editing stays out of scope for this phase.
+          </p>
+        </section>
+      </main>
+      """
+    end
+
+    defp present_incident_rows(assigns) do
+      current_view = assigns[:current_view] || "active"
+
+      assigns
+      |> Map.get(:visible_incident_rows, [])
+      |> Enum.map(fn row ->
+        detail_href =
+          selection_path(%{
+            view: current_view,
+            row_id: row.id,
+            incident_fingerprint: row.incident.incident_fingerprint
+          })
+
+        preview_action = preview_action(row, assigns[:current_actor])
+
+        row
+        |> ControlPlanePresenter.present_incident_row(%{
+          authorized?: true,
+          detail_href: detail_href,
+          authorized_hrefs: [detail_href]
+        })
+        |> Map.put(:preview_available?, preview_action.enabled?)
+        |> Map.put(:preview_disabled_reason, preview_action.disabled_reason)
+      end)
+    end
+
+    defp present_lifeline_summary(assigns) do
+      retention = assigns[:retention] || %{}
+
+      ControlPlanePresenter.present_lifeline_summary(%{
+        status: if(assigns[:read_only?], do: "late", else: "healthy"),
+        active_count: length(assigns[:active_incident_rows] || []),
+        resolved_count: length(assigns[:resolved_incident_rows] || []),
+        pending_preview_count: Map.get(retention, :pending_previews, 0),
+        archived_repair_count: Map.get(retention, :archived_repairs, 0),
+        completeness: if(assigns[:incident_has_more?], do: :partial, else: :complete)
+      })
+    end
+
+    defp present_executor_rows(assigns) do
+      assigns
+      |> Map.get(:healthy_executors, [])
+      |> Enum.map(&ControlPlanePresenter.present_executor_row/1)
+    end
+
+    defp present_repair_confirmation(%{preview: %RepairPreview{} = preview} = assigns) do
+      row = assigns[:selected_row]
+
+      ControlPlanePresenter.present_repair_confirmation(
+        preview,
+        %{
+          title: "Confirm Lifeline repair",
+          action_label: "Execute remediation",
+          object_label: row && row.target_summary,
+          observed_at: row && row.incident.last_detected_at,
+          observed_state: row && row.incident.health_state,
+          affected_records: row && [resource_copy(row)],
+          proposed_changes: row && ["Attempt the authorized #{row.action} repair."],
+          non_effects: ["No atomic or exactly-once completion is claimed."]
+        },
+        %{}
+      )
+    end
+
+    defp present_repair_confirmation(_assigns) do
+      ControlPlanePresenter.present_repair_confirmation(nil, %{}, %{})
+    end
+
+    def legacy_page_content(assigns) do
       ~H"""
       <div class="space-y-8 p-6">
         <div>
@@ -484,7 +834,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                     <p class="mt-1"><strong>Reason:</strong> <%= preview_reason(@reason) %></p>
                     <p class="mt-1"><strong>Audit Consequence:</strong> <%= LiveAuth.audit_consequence_copy() %></p>
                     <p class="mt-1"><strong>Preview Status:</strong> <%= preview_status_copy(@preview) %></p>
-                    <p class="mt-1"><strong>Preview Token:</strong> <%= if @preview, do: repair_preview_value(@preview), else: "Generate preview first" %></p>
+                    <p class="mt-1"><strong>Preview capability:</strong> Held privately by the server.</p>
                   </div>
                 </section>
               </div>
@@ -618,18 +968,29 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       repo = repo()
       Lifeline.project_incidents(repo)
 
-      active_incident_rows =
+      active_incident_window =
         repo
         |> Lifeline.list_incidents(status: "active")
+        |> Enum.take(@incident_limit + 1)
         |> then(&expand_rows(repo, &1))
 
       workflow_handoff_row = workflow_handoff_row(repo, selection)
-      active_incident_rows = prepend_handoff_row(active_incident_rows, workflow_handoff_row)
 
-      resolved_incident_rows =
+      active_incident_window =
+        prepend_handoff_row(active_incident_window, workflow_handoff_row)
+
+      resolved_incident_window =
         repo
         |> Lifeline.list_incidents(status: "resolved")
+        |> Enum.take(@incident_limit + 1)
         |> then(&expand_rows(repo, &1))
+
+      incident_has_more? =
+        length(active_incident_window) > @incident_limit or
+          length(resolved_incident_window) > @incident_limit
+
+      active_incident_rows = Enum.take(active_incident_window, @incident_limit)
+      resolved_incident_rows = Enum.take(resolved_incident_window, @incident_limit)
 
       {current_view, selected_row} =
         pick_view_and_row(
@@ -650,10 +1011,16 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       preview_state = (preview && preview_state(preview)) || :idle
       retention = Lifeline.retention_status(repo)
 
+      _bounded_archive_window =
+        retention.last_run
+        |> List.wrap()
+        |> Enum.take(@archive_limit + 1)
+
       socket
       |> assign(:active_incident_rows, active_incident_rows)
       |> assign(:resolved_incident_rows, resolved_incident_rows)
       |> assign(:visible_incident_rows, visible_incident_rows)
+      |> assign(:incident_has_more?, incident_has_more?)
       |> assign(:current_view, current_view)
       |> assign(:healthy_executors, healthy_executors(repo))
       |> assign(:selected_row, selected_row)
@@ -671,6 +1038,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp healthy_executors(repo) do
       Lifeline.list_executor_health(repo)
       |> Enum.filter(&(&1.health_state == "healthy"))
+      |> Enum.take(@executor_limit + 1)
+      |> Enum.take(@executor_limit)
     end
 
     defp expand_rows(repo, incidents) do
@@ -865,11 +1234,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp audit_events_for_row(row) do
       Audit.list_all(repo: repo())
+      |> Enum.take(@lifeline_audit_limit + 1)
       |> Enum.filter(fn event ->
         event.resource == resource_copy(row) or
           event.metadata["incident_fingerprint"] == row.incident.incident_fingerprint
       end)
-      |> Enum.take(5)
+      |> Enum.take(@lifeline_audit_limit)
     end
 
     defp ensure_previewable(%{previewable?: true}), do: :ok
@@ -1071,7 +1441,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       "workflow #{id} is #{state} with diagnosis #{diagnosis}"
     end
 
-    defp state_copy(snapshot) when is_map(snapshot), do: inspect(snapshot)
+    defp state_copy(snapshot) when is_map(snapshot), do: "State evidence retained privately."
 
     defp resource_copy(row), do: "#{row.target_type}:#{row.target_id}"
 
@@ -1276,7 +1646,11 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         "The repair target changed, but the incident still has live evidence. Refresh and review the remaining active records."
 
     defp error_message(:unauthorized), do: LiveAuth.mutation_error(:unauthorized)
-    defp error_message(reason), do: inspect(reason)
+
+    defp error_message(reason) when is_binary(reason), do: String.slice(reason, 0, 1_000)
+
+    defp error_message(_reason),
+      do: "Repair could not be completed. Review current evidence and create a fresh preview."
 
     defp read_only_page?(actor, rows) do
       checks =
