@@ -306,13 +306,21 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     state = finite_state(presentation_value(preview, :status), @repair_states)
     count = nonnegative(presentation_value(context, :selected_count))
 
+    noun =
+      context
+      |> presentation_value(:object_noun)
+      |> Kernel.||("failed job")
+      |> presentation_text("failed job")
+
+    plural_noun = "#{noun}#{if(count == 1, do: "", else: "s")}"
+
     %{
       state: state,
-      title: if(count > 1, do: "Retry failed jobs", else: "Retry failed job"),
+      title: "Retry #{plural_noun}",
       object_label: presentation_text(presentation_value(context, :object_label), "Batch"),
-      scope: "#{count} currently eligible failed #{if(count == 1, do: "job", else: "jobs")}",
+      scope: "#{count} currently eligible #{plural_noun}",
       consequence:
-        "Lifeline will revalidate each selected job immediately before attempting retry.",
+        "Lifeline will revalidate each selected #{noun} immediately before attempting retry.",
       reversibility:
         "Accepted retries cannot be recalled; changed or ineligible jobs are skipped and reported.",
       support_boundary:

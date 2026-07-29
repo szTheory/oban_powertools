@@ -173,7 +173,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
            :callback_preview_presentation,
            ControlPlanePresenter.present_batch_retry_preview(preview, %{
              selected_count: 1,
-             object_label: "Callback #{callback.event}"
+             object_label: "Callback #{callback.event}",
+             object_noun: "callback"
            })
          )
          |> assign(:bulk_preview?, false)

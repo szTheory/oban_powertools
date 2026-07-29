@@ -484,6 +484,17 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
     assert_raise ArgumentError, fn ->
       Presenter.present_batch_detail([], %{})
     end
+
+    callback =
+      Presenter.present_batch_retry_preview(
+        %{status: "ready", action: "callback_retry"},
+        %{selected_count: 1, object_label: "Callback completed", object_noun: "callback"}
+      )
+
+    assert callback.title == "Retry callback"
+    assert callback.scope == "1 currently eligible callback"
+    assert callback.consequence =~ "selected callback"
+    refute inspect(callback) =~ "failed job"
   end
 
   test "Forensics returns exactly eight diagnosis-first redaction-safe fields" do
