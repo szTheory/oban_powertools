@@ -218,9 +218,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       Enum.all?(buckets, &(&1.id not in quiet_ids or &1.count == 0))
     end
 
-    defp empty_lane_heading(:needs_review), do: "No needs review identified"
-    defp empty_lane_heading(:blocked), do: "No blocked limiters identified"
-    defp empty_lane_heading(:waiting), do: "No waiting work identified"
+    defp empty_lane_heading(:needs_review), do: "No work needs review"
+    defp empty_lane_heading(:blocked), do: "No limiters are blocked"
+    defp empty_lane_heading(:waiting), do: "No work is waiting"
 
     defp exemplar_detail(exemplar) do
       Map.get(exemplar, :attention_reason) || Map.get(exemplar, :fact)

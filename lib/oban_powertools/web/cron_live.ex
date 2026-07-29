@@ -104,11 +104,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
          )}
       else
         result =
-          with :ok <- LiveAuth.authorize_action(socket, auth_action(preview.action), resource),
-               {:ok, principal} <- LiveAuth.principal_for_action(socket),
+          with :ok <- authorize_execution(socket, preview.action, resource),
+               {:ok, principal} <- principal_for_execution(socket),
                {:ok, result} <- perform_action(preview, principal, reason) do
             {:ok, result}
           end
+          |> then(fn
+            {:authorization_error, message} -> {:error, {:safe_authorization, message}}
+            result -> result
+          end)
 
         {:noreply,
          apply_confirmation_result(socket, preview.action, entry_name, result, form, reason)}
@@ -380,10 +384,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       with %{name: entry_name} <- entry,
            true <- action_available?(entry, action),
            resource = %{type: :cron_entry, id: entry_name},
-           :ok <-
-             LiveAuth.authorize_action(socket, auth_action(action), resource,
-               message: unauthorized_preview_message(action)
-             ),
+           :ok <- authorize_preview(socket, action, resource),
            {:ok, preview} <- Cron.preview_entry_action(repo(), action, entry) do
         Telemetry.execute_operator_action(:previewed, %{count: 1}, %{
           action: action,
@@ -410,7 +411,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
            receipt: nil
          )}
       else
-        {:error, message} when is_binary(message) ->
+        {:authorization_error, message} ->
           {:noreply, assign(socket, :error_message, message)}
 
         {:error, reason} ->
@@ -452,9 +453,6 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> assign_recoverable_result(presentation, form, draft)
       |> assign(:error_message, confirmation_error_message(reason))
       |> assign(:confirmation_state, confirmation_state(state))
-      |> then(fn socket ->
-        if is_binary(reason), do: assign(socket, :error_message, reason), else: socket
-      end)
     end
 
     defp apply_clean_success(socket, entry_name, presentation) do
@@ -617,9 +615,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp safe_reason_draft(reason) when is_binary(reason), do: String.trim(reason)
     defp safe_reason_draft(_reason), do: ""
 
-    defp confirmation_error_message(:preview_expired), do: "This preview expired."
-    defp confirmation_error_message(:preview_drifted), do: "This preview is out of date."
-    defp confirmation_error_message(:preview_consumed), do: "This preview was already used."
+    defp confirmation_error_message(:preview_expired),
+      do: "This preview expired. Create a new preview before continuing."
+
+    defp confirmation_error_message(:preview_drifted),
+      do: "This preview is out of date. Create a new preview before retrying."
+
+    defp confirmation_error_message(:preview_consumed),
+      do:
+        "This preview was already used. Review current cron entry state before creating a new preview."
 
     defp confirmation_error_message(:preview_not_found),
       do: "This preview is unavailable. Create a new preview before continuing."
@@ -627,10 +631,37 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp confirmation_error_message(:preview_not_available),
       do: "This action is no longer available for the selected cron entry."
 
-    defp confirmation_error_message(reason) when is_binary(reason), do: reason
+    defp confirmation_error_message({:safe_authorization, message}) when is_binary(message),
+      do: message
+
+    defp confirmation_error_message(reason) when is_binary(reason),
+      do: "The cron action could not be recorded. Create a new preview before trying again."
 
     defp confirmation_error_message(_reason),
       do: "The cron action could not be recorded. Create a new preview before trying again."
+
+    defp authorize_preview(socket, action, resource) do
+      case LiveAuth.authorize_action(socket, auth_action(action), resource,
+             message: unauthorized_preview_message(action)
+           ) do
+        :ok -> :ok
+        {:error, message} when is_binary(message) -> {:authorization_error, message}
+      end
+    end
+
+    defp authorize_execution(socket, action, resource) do
+      case LiveAuth.authorize_action(socket, auth_action(action), resource) do
+        :ok -> :ok
+        {:error, message} when is_binary(message) -> {:authorization_error, message}
+      end
+    end
+
+    defp principal_for_execution(socket) do
+      case LiveAuth.principal_for_action(socket) do
+        {:ok, principal} -> {:ok, principal}
+        {:error, message} when is_binary(message) -> {:authorization_error, message}
+      end
+    end
 
     defp perform_action(%RepairPreview{action: "pause_cron_entry"} = preview, principal, reason),
       do:

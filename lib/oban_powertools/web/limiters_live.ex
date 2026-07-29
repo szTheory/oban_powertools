@@ -294,6 +294,11 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               </nav>
             </section>
           </:body>
+          <:evidence :if={@detail_state == :unavailable}>
+            <p>
+              The selected limiter is unavailable in the current scope. Close these details, then review another limiter.
+            </p>
+          </:evidence>
         </OperatorPatterns.detail_surface>
       </section>
       """

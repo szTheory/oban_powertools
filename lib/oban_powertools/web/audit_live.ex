@@ -267,7 +267,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           </:body>
           <:evidence :if={@detail_state == :unavailable}>
             <h3>Audit evidence is unavailable</h3>
-            <p>The selected evidence could not be loaded for this review scope.</p>
+            <p>
+              The selected audit evidence is unavailable in the current filter scope. Close this evidence view, then select a listed record.
+            </p>
           </:evidence>
         </OperatorPatterns.detail_surface>
       </section>
@@ -575,7 +577,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp empty_title(_filters), do: "No audit records match these filters"
 
     defp empty_description([]),
-      do: "Recorded operator actions will appear here when evidence is available."
+      do:
+        "Recorded operator actions will appear here when evidence is available. Review another operator page, then return after an action is recorded."
 
     defp empty_description(_filters),
       do: "Remove a filter or clear all filters to widen the review."
