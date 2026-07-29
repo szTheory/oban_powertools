@@ -129,7 +129,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                %{
                  type: :batch,
                  id: socket.assigns.batch_detail.id
-               }, message: "Permission changed. Refresh the batch and try again.") do
+               },
+               message: "Permission changed. Refresh the batch and try again."
+             ) do
         {:noreply,
          socket
          |> assign(:bulk_preview?, true)
