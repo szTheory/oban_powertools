@@ -17,7 +17,7 @@
 - [x] **Phase 78: Component Groups (Meta-Components)** — Operator meta-patterns encapsulating "explain, then act". (completed 2026-07-19)
 - [x] **Phase 79: Page Migration Wave 1** — Overview, Cron, Limiters, Audit. (completed 2026-07-20)
 - [x] **Phase 80: Page Migration Wave 2** — Jobs + Forensics. *[split-risk]* — verification gap closure required (completed 2026-07-29)
-- [ ] **Phase 81: Page Migration Wave 3** — Batches, Workflows, Lifeline. *[split-risk]*
+- [x] **Phase 81: Page Migration Wave 3** — Batches, Workflows, Lifeline. *[split-risk]* (completed 2026-07-29)
 - [ ] **Phase 82: Cross-Cutting A11y/Motion/Responsive Sweep** — System-wide AA + reduced-motion + 320→wide + microcopy closure.
 - [ ] **Phase 83: Showcase Completion & Documentation** — Full showcase coverage + design-system/idempotency docs.
 - [ ] **Phase 84: v2.0 Milestone Audit & Idempotency Proof** — Trace every REQ to shipped behavior + prove forward-only idempotency.
@@ -474,7 +474,7 @@
 | 78. Component Groups (Meta-Components) | 8/8 | Complete    | 2026-07-19 |
 | 79. Page Migration Wave 1 | 12/12 | Complete   | 2026-07-20 |
 | 80. Page Migration Wave 2 | 17/17 | Complete    | 2026-07-29 |
-| 81. Page Migration Wave 3 | 15/15 | In Progress|  |
+| 81. Page Migration Wave 3 | 15/15 | Complete    | 2026-07-29 |
 | 82. Cross-Cutting A11y/Motion/Responsive Sweep | 0/TBD | Not started | — |
 | 83. Showcase Completion & Documentation | 0/TBD | Not started | — |
 | 84. v2.0 Milestone Audit & Idempotency Proof | 0/TBD | Not started | — |

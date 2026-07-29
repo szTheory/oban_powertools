@@ -21,7 +21,7 @@ failures, and retries are not accepted as completion evidence.
 | Corrected quick suite | `mix test test/oban_powertools/web/live/batches_live_test.exs test/oban_powertools/web/live/workflows_live_test.exs test/oban_powertools/web/live/lifeline_live_test.exs test/oban_powertools/web/operator_pattern_presenter_test.exs test/oban_powertools/web/selectors_test.exs --seed 0` | PASS — 89 tests, 0 failures |
 | Catalog and manifest ownership | `mix test test/oban_powertools/page_story_catalog_test.exs test/oban_powertools/showcase_catalog_test.exs test/oban_powertools/web/live/showcase_live_test.exs --seed 0` | PASS — 50 tests, 0 failures |
 | Fixture authority disabled | `(cd examples/phoenix_host && mix test test/phase81_browser_fixtures_test.exs --seed 0)` | PASS — 2 tests, 0 failures |
-| Fixture authority enabled | `(cd examples/phoenix_host && PHASE81_BROWSER_FIXTURES=1 mix test test/phase81_browser_fixtures_test.exs --seed 0)` | PASS — 4 tests, 0 failures |
+| Fixture authority enabled | `(cd examples/phoenix_host && PHASE81_BROWSER_FIXTURES=1 mix test test/phase81_browser_fixtures_test.exs --seed 0)` | PASS — 5 tests, 0 failures |
 | Wave 3 browser inventory | `npx playwright test test/browser/specs/phase81-fixtures.spec.ts test/browser/specs/page-migration-wave-3.spec.ts --project=chromium-wide --list` | PASS — 16 tests in 2 files |
 | Native connected Wave 3 | `npm run showcase:manifest && scripts/with-showcase-server.sh npx playwright test test/browser/specs/phase81-fixtures.spec.ts test/browser/specs/page-migration-wave-3.spec.ts --project=chromium-wide` | PASS — 16 tests |
 | Docker connected Wave 3 | `npm run showcase:manifest && scripts/with-showcase-server.sh scripts/playwright-docker.sh npx playwright test test/browser/specs/phase81-fixtures.spec.ts test/browser/specs/page-migration-wave-3.spec.ts --project=chromium-wide` | PASS — 16 tests |
@@ -91,6 +91,55 @@ render cap, truncation guidance, and closed presenter output at each bound.
 | A11Y-03 | 320px, responsive, 200% zoom, theme/contrast, and VRT matrix | PASS |
 | A11Y-04 | Exact ARIA, reduced motion, focus recovery, and ten-target VoiceOver discovery | PASS |
 | MOTION-01, MOTION-02 | Token/source contracts and connected reduced-motion cases | PASS |
+
+## Nyquist task map
+
+The post-review audit reconciled all **30 executable tasks** in the 15 plans
+against their summaries, current tests, final verification, and the corrected
+Lifeline story inventory.
+
+| Plan | Tasks | Behavioral evidence | Status |
+|---|---|---|---|
+| 81-01 | 01–03 | Presenter/selector/page-seam contracts, exact 50-story inventory, and 16-case connected discovery/runtime suite | GREEN |
+| 81-02 | 01–02 | Exact closed Batches projections plus list/detail/retry/authorization/bounded-window LiveView behavior | GREEN |
+| 81-03 | 01–02 | Closed canonical Workflows selectors/presenters plus DAG, selected-step, PubSub, unavailable, and read-only handoff behavior | GREEN |
+| 81-04 | 01–02 | Exact Lifeline triage, confirmation, result, Audit, confidentiality, and finite-outcome projections | GREEN |
+| 81-05 | 01–02 | Server-private preview authority, reason validation, immediate reauthorization, execution/Audit continuity, and pure shared composition | GREEN |
+| 81-06 | 01 | Exact ordered 18/12/20 production-composed stories and all-nine-page delegation | GREEN |
+| 81-07 | 01–02 | Test-only opt-in host fixture, closed credential/schema boundary, deterministic reset/races, and fail-closed TypeScript client | GREEN |
+| 81-08 | 01–03 | Native/Docker connected Batches, Workflows, and Lifeline behavior plus required page-quality registration | GREEN |
+| 81-09 | 01–02 | Exact Batches 54 ARIA / 216 PNG artifact family and compare-only validators | GREEN |
+| 81-10 | 01–02 | Token-only responsive/focus/reduced-motion CSS, packaged asset equality, and repeat-build tests | GREEN |
+| 81-11 | 01–02 | Exact Workflows 36 ARIA / 144 PNG artifact family and compare-only validators | GREEN |
+| 81-12 | 01–02 | Exact Lifeline 60 ARIA / 240 PNG artifact family, including the corrected drifted/expired/consumed states | GREEN |
+| 81-13 | 01–02 | Exact three-target Wave 3 VoiceOver discovery and executable fail-closed CI graph validation | GREEN |
+| 81-14 | 01–02 | Full repository/page-quality regression evidence and truthful ledger closure | GREEN |
+| 81-15 | 01 | Schema-8 manifest ownership, exact inventory, and adversarial artifact/manifest validator self-tests | GREEN |
+
+No test-only gap was found: each task has a behavioral, integration, artifact,
+or fail-closed structural test capable of detecting its specified regression.
+No implementation or test files were changed by this audit.
+
+## Post-review Nyquist audit trail
+
+Fresh compare-only evidence collected after review-fix commit `305ae84`:
+
+| Scope | Fresh result |
+|---|---|
+| Combined Phase 81 ExUnit behavior and catalog/showcase suite | PASS — 141 tests, 0 failures |
+| Example-host fixture, disabled / enabled | PASS — 2 / 5 tests, 0 failures |
+| Manifest and exact global artifact validators | PASS — schema 8, 99 page stories, 163 targets, 297 ARIA, 1,188 PNG |
+| Exact Wave 3 family artifact counts | PASS — Batches 54/216, Workflows 36/144, Lifeline 60/240 |
+| Connected Playwright discovery | PASS — 16 tests in 2 files |
+| VoiceOver discovery | PASS — 10 total targets with exactly 3 Wave 3 representatives |
+| CI page-quality contract | PASS — exact unfiltered full graph remains merge-blocking |
+| Theme/assets suite and packaged CSS comparison | PASS — 24 tests; source and packaged CSS byte-identical |
+
+The interactive VoiceOver run remains manual-only because Guidepup requires an
+active macOS VoiceOver session. Phase 81 mechanically verifies the exact
+manifest-derived targets and executable test parsing; the broader interactive
+screen-reader hardening sweep remains explicitly owned by Phase 82. This is not
+an automated-coverage gap for a Phase 81 task.
 
 ## Security and evidence-boundary disposition
 
