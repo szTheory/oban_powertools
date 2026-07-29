@@ -2203,7 +2203,7 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
   defp job_result_recovery(:success), do: nil
 
   defp job_result_recovery(:drifted),
-    do: "Review the current job, then Create a new preview."
+    do: "Review the current job, then create a new preview."
 
   defp job_result_recovery(_state), do: "Create a new preview before trying again."
 

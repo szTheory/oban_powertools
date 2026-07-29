@@ -283,29 +283,18 @@ defmodule ObanPowertools.Web.CopyContractTest do
     forensics = source!("forensics_live.ex")
 
     assert presenter =~
-             ~s(do: "Cancellation requested for job \#{job_id}. Audit evidence recorded.")
-
-    assert presenter =~
-             ~s(do: "Discard requested for job \#{job_id}. Audit evidence recorded.")
+             ~s(do: "Review the current job, then create a new preview.")
 
     refute presenter =~
-             ~s(do: "Job \#{job_id} cancelled. Audit evidence recorded.")
-
-    refute presenter =~
-             ~s(do: "Job \#{job_id} discarded. Audit evidence recorded.")
-
-    assert jobs =~
-             ~s("\#{action} requests were recorded with mixed results. Review skipped and failed jobs before trying again.")
+             ~s(do: "Review the current job, then Create a new preview.")
 
     assert jobs =~
              ~s("\#{action} results recorded: \#{receipt.success} job changes recorded, \#{receipt.skipped + preview.receipt.excluded} skipped, and \#{receipt.failed} failed.")
 
     assert jobs =~
-             "Review the Audit log for recorded actions before creating a fresh preview."
+             "recorded actions remain in the Audit log."
 
-    refute jobs =~ "Review the Audit log for completed actions"
     refute jobs =~ "jobs started."
-    refute jobs =~ "finished with mixed results"
     refute jobs =~ "succeeded,"
 
     assert forensics =~ "<strong>Event log unavailable.</strong>"

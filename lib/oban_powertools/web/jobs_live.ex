@@ -842,7 +842,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 Each job is processed independently. Some actions may succeed while others are skipped or fail.
               </p>
               <p>
-                Closing this page will not stop work already started. A service restart may interrupt unfinished jobs; completed actions remain in the Audit log.
+                Closing this page will not stop work already started. A service restart may interrupt unfinished jobs; recorded actions remain in the Audit log.
               </p>
             </:support_details>
             <:recovery>
@@ -1599,7 +1599,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               )
               |> assign(
                 :bulk_announcement,
-                "#{bulk_action_noun(socket.assigns.bulk_action_kind)} for #{ready_count} jobs started."
+                "Recording #{socket.assigns.bulk_action_kind |> bulk_action_noun() |> String.downcase()} requests for #{ready_count} jobs."
               )
 
             {:error, _safe_reason} ->
@@ -1669,7 +1669,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           )
           |> assign(
             :bulk_announcement,
-            "#{action} finished: #{receipt.success} succeeded, #{receipt.skipped + preview.receipt.excluded} skipped, and #{receipt.failed} failed."
+            "#{action} results recorded: #{receipt.success} job changes recorded, #{receipt.skipped + preview.receipt.excluded} skipped, and #{receipt.failed} failed."
           )
           |> load_jobs(socket.assigns.filter)
           |> assign_bulk_result_page(1)

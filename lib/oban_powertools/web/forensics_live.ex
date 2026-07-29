@@ -29,7 +29,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     }
     @unavailable_notice %{
       heading: "Evidence unavailable",
-      copy: "It may not exist, may no longer be retained, or you may not have access."
+      copy:
+        "It may not exist, may no longer be retained, or you may not have access. Choose another evidence scope to continue."
     }
     @error_notice %{
       heading: "Evidence did not load",
@@ -390,7 +391,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           >
             <h2 id="forensics-event-log-heading">Event log</h2>
             <p :if={@events == []} class="obpt-forensics-history-unavailable">
-              <strong>Event history unavailable.</strong>
+              <strong>Event log unavailable.</strong>
               Current evidence may still be available, but this source cannot provide retained history.
             </p>
             <DataDisplay.timeline
