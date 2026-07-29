@@ -307,6 +307,50 @@ defmodule ObanPowertools.Web.CopyContractTest do
     refute forensics =~ "{:error, safe_reason}"
   end
 
+  test "D-14/D-17 Wave 3 pages keep receipts, recovery, and refusal evidence truthful" do
+    batches = source!("batches_live.ex")
+    workflows = source!("workflows_live.ex")
+    lifeline = source!("lifeline_live.ex")
+
+    assert batches =~
+             ~s("Batch retry complete: \#{successes} retry requests recorded. Review the Audit log for recorded actions.")
+
+    assert batches =~
+             ~s("Batch retry partial: \#{successes} retry requests recorded and \#{failures} skipped or failed. Review current batch evidence before creating a new preview.")
+
+    assert batches =~
+             "Callback retry requested and recorded. Review the Audit log for the recorded action."
+
+    assert batches =~
+             "This callback is not retry-eligible. Review current callback evidence before creating a new preview."
+
+    refute batches =~ "Batch retry complete: \#{successes} retried"
+    refute batches =~ "assign(socket, :error_message, \"callback_not_retryable\")"
+
+    assert workflows =~ ~s(value={"Machine code: \#{workflow_refusal.code}"})
+    assert workflows =~ ~s(value={"Machine code: \#{selected_step_refusal.code}"})
+
+    assert source_position(workflows, "<strong>Outcome:</strong>") <
+             source_position(workflows, "<strong>Reason:</strong>")
+
+    assert source_position(workflows, "<strong>Reason:</strong>") <
+             source_position(workflows, "<strong>Legal next move:</strong>")
+
+    assert source_position(workflows, "<strong>Legal next move:</strong>") <
+             source_position(workflows, "<strong>Venue:</strong>")
+
+    assert source_position(workflows, "<strong>Venue:</strong>") <
+             source_position(workflows, ~s(value={"Machine code: \#{workflow_refusal.code}"}))
+
+    assert lifeline =~ "Enter at least 8 characters."
+
+    assert lifeline =~
+             "The repair was not recorded. Review current evidence, then create a new preview."
+
+    refute lifeline =~
+             "defp error_message(reason) when is_binary(reason), do: String.slice(reason"
+  end
+
   defp audit_source(contract, path, source) do
     findings =
       source
@@ -443,5 +487,12 @@ defmodule ObanPowertools.Web.CopyContractTest do
   defp source!(filename) do
     Path.join(["lib", "oban_powertools", "web", filename])
     |> File.read!()
+  end
+
+  defp source_position(source, text) do
+    case :binary.match(source, text) do
+      {position, _length} -> position
+      :nomatch -> flunk("expected source to contain #{inspect(text)}")
+    end
   end
 end
