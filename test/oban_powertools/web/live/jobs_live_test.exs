@@ -1771,6 +1771,95 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       assert html =~ "Review the Audit log"
       assert has_element?(view, "#jobs-bulk-confirmation-dialog")
     end
+
+    test "duplicate and missing execution positions fail closed with interruption recovery", %{
+      conn: conn
+    } do
+      conn = bulk_conn(conn)
+
+      for positions <- [[0, 2, 2], [0, 2]] do
+        for index <- 1..3 do
+          insert_job!(
+            worker: "MyApp.MalformedResultWorker#{index}",
+            queue: :default,
+            state: "retryable"
+          )
+        end
+
+        {:ok, view, _html} = live(conn, "/ops/jobs/jobs?state=retryable")
+        view |> element("#jobs-page-selection") |> render_click()
+        view |> element("button[phx-value-action=\"job_retry\"]") |> render_click()
+
+        _html = render_until(view, &(&1 =~ ~s(id="jobs-bulk-confirmation-dialog")))
+        state = :sys.get_state(view.pid)
+        handle = state.socket.private[:oban_powertools_jobs_bulk_handle]
+        true = :erlang.suspend_process(handle.coordinator)
+
+        on_exit(fn ->
+          if Process.alive?(handle.coordinator) do
+            true = :erlang.resume_process(handle.coordinator)
+
+            Task.Supervisor.terminate_child(
+              ObanPowertools.Jobs.TaskSupervisor,
+              handle.coordinator
+            )
+          end
+        end)
+
+        view
+        |> form("#jobs-bulk-confirmation-form", %{
+          "confirmation" => %{
+            "reason" => "Retry after operator review",
+            "confirmation_count" => "3"
+          }
+        })
+        |> render_submit()
+
+        results =
+          Enum.map(positions, fn position ->
+            %{
+              position: position,
+              outcome: :success,
+              message: "The job action was recorded.",
+              recovery: nil
+            }
+          end)
+
+        send(
+          view.pid,
+          {:jobs_batch_complete, handle.run_ref,
+           %{
+             receipt: %{
+               stage: :execution,
+               action: :retry,
+               total: 3,
+               success: 3,
+               skipped: 0,
+               failed: 0,
+               all_success?: true
+             },
+             results: results
+           }}
+        )
+
+        html =
+          render_until(
+            view,
+            &String.contains?(
+              &1,
+              "This run may have been interrupted. Review the Audit log for completed actions before creating a fresh preview."
+            )
+          )
+
+        assert Process.alive?(view.pid)
+        assert html =~ ~s(data-obpt-confirm-state="failed")
+        assert html =~ "3 jobs selected"
+        assert html =~ "Review the Audit log"
+        assert html =~ "creating a fresh preview"
+        assert has_element?(view, "#jobs-bulk-confirmation-dialog")
+        refute html =~ "Retry requested for 3 jobs."
+      end
+    end
   end
 
   defp bulk_conn(conn) do
