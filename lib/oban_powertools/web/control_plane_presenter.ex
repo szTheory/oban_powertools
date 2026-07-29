@@ -5,7 +5,8 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
 
   alias ObanPowertools.{Audit, ControlPlane, DisplayPolicy, RuntimeConfig}
   alias ObanPowertools.Forensics.Chronology
-  alias ObanPowertools.Web.Selectors
+  alias ObanPowertools.Lifeline.{ArchiveRun, Incident, RepairPreview}
+  alias ObanPowertools.Web.{Selectors, StatusTaxonomy}
 
   @workflow_scan_limit 50
   @workflow_step_limit 100
@@ -30,6 +31,32 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
   @repair_states ~w[
     preview partial skipped failed drifted expired consumed disconnected interrupted success
   ]
+  @lifeline_result_states %{
+    "preview" => :preview,
+    "partial" => :partial,
+    "skipped" => :skipped,
+    "failed" => :failed,
+    "drifted" => :drifted,
+    "expired" => :expired,
+    "consumed" => :consumed,
+    "disconnected" => :disconnected,
+    "interrupted" => :interrupted,
+    "success" => :success
+  }
+  @lifeline_incident_states %{
+    "active" => :active,
+    "blocked" => :blocked,
+    "completed" => :completed,
+    "failed" => :failed,
+    "pending" => :pending,
+    "resolved" => :resolved,
+    "running" => :running
+  }
+  @lifeline_health_states %{
+    "healthy" => :healthy,
+    "late" => :late,
+    "missing" => :missing
+  }
   @workflow_states ~w[
     available scheduled executing retryable pending blocked cancelled discarded completed failed
     waiting runnable resolved needs_review unknown
@@ -435,54 +462,294 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     do:
       raise(ArgumentError, "workflow step detail source, context, and destinations must be maps")
 
-  def present_lifeline_summary(value),
-    do:
-      closed_wave3_map(
-        value,
-        %{_incident_limit: @incident_limit},
-        ~w[status active_count resolved_count completeness]a
-      )
+  @doc "Projects bounded Lifeline support counts without claiming complete system health."
+  def present_lifeline_summary(value) when is_map(value) and not is_struct(value) do
+    status = lifeline_state(presentation_value(value, :status), @lifeline_health_states, :missing)
 
-  def present_incident_row(value, context),
-    do: closed_wave3_map(value, context, ~w[id subject status severity observed_at detail_href]a)
-
-  def present_incident_detail(value, context),
-    do: closed_wave3_map(value, context, ~w[id subject status summary guidance completeness]a)
-
-  def present_repair_confirmation(value, context, destinations) do
-    closed_wave3_map(
-      value,
-      Map.merge(context, destinations),
-      ~w[state title object_label scope consequence reversibility support_boundary]a
-    )
+    %{
+      status: status,
+      status_spec: StatusTaxonomy.spec(:lifeline_health, status),
+      active_count: nonnegative(presentation_value(value, :active_count)),
+      resolved_count: nonnegative(presentation_value(value, :resolved_count)),
+      pending_preview_count: nonnegative(presentation_value(value, :pending_preview_count)),
+      archived_repair_count: nonnegative(presentation_value(value, :archived_repair_count)),
+      completeness: lifeline_completeness(presentation_value(value, :completeness))
+    }
   end
 
-  def present_repair_result(value, context),
-    do: closed_wave3_map(value, context, ~w[state message recovery audit_href receipt]a)
+  def present_lifeline_summary(_value) do
+    %{
+      status: :missing,
+      status_spec: StatusTaxonomy.spec(:lifeline_health, :missing),
+      active_count: 0,
+      resolved_count: 0,
+      pending_preview_count: 0,
+      archived_repair_count: 0,
+      completeness: :unavailable
+    }
+  end
 
-  def present_lifeline_audit_entry(value, context),
-    do:
-      closed_wave3_map(
-        value,
-        Map.put_new(context, :_audit_limit, @lifeline_audit_limit),
-        ~w[id event_label target_label recorded_at evidence_href]a
+  @doc "Projects one authorized typed incident row into an exact non-enumerating map."
+  def present_incident_row(%{incident: %Incident{} = incident} = value, context)
+      when is_map(context) do
+    if presentation_value(context, :authorized?) == false do
+      unavailable_incident_row()
+    else
+      status =
+        lifeline_state(
+          incident.status,
+          @lifeline_incident_states,
+          :pending
+        )
+
+      health =
+        lifeline_state(
+          incident.health_state,
+          @lifeline_health_states,
+          :missing
+        )
+
+      %{
+        id: presentation_text(presentation_value(value, :id), "incident-unavailable"),
+        subject: presentation_text(incident.summary, "Incident unavailable"),
+        status: status,
+        status_spec: StatusTaxonomy.spec(:lifeline_incident, status),
+        severity: StatusTaxonomy.spec(:lifeline_health, health).tone,
+        observed_at: safe_time(incident.last_detected_at || incident.first_detected_at),
+        affected_scope:
+          presentation_text(
+            presentation_value(value, :target_summary),
+            "Affected scope unavailable"
+          ),
+        preview_available?: presentation_value(value, :previewable?) == true,
+        detail_href: authorized_destination(presentation_value(context, :detail_href), context)
+      }
+    end
+  end
+
+  def present_incident_row(_value, _context), do: unavailable_incident_row()
+
+  @doc "Projects current incident diagnosis separately from bounded historical evidence."
+  def present_incident_detail(%{incident: %Incident{} = incident} = value, context)
+      when is_map(context) do
+    if presentation_value(context, :authorized?) == false do
+      unavailable_incident_detail()
+    else
+      status =
+        lifeline_state(
+          incident.status,
+          @lifeline_incident_states,
+          :pending
+        )
+
+      history =
+        context
+        |> presentation_value(:history)
+        |> bounded_lifeline_history()
+
+      %{
+        id: presentation_text(presentation_value(value, :id), "incident-unavailable"),
+        subject: presentation_text(incident.summary, "Incident unavailable"),
+        status: status,
+        status_spec: StatusTaxonomy.spec(:lifeline_incident, status),
+        current_diagnosis:
+          presentation_text(
+            presentation_value(context, :current_diagnosis),
+            "Current diagnosis unavailable."
+          ),
+        provenance:
+          presentation_text(
+            presentation_value(context, :provenance),
+            "Current retained evidence unavailable."
+          ),
+        affected_scope:
+          presentation_text(
+            presentation_value(value, :target_summary),
+            "Affected scope unavailable"
+          ),
+        legal_route: authorized_destination(presentation_value(context, :legal_route), context),
+        history: history.items,
+        completeness: if(history.has_more?, do: :partial, else: history.completeness)
+      }
+    end
+  end
+
+  def present_incident_detail(_value, _context), do: unavailable_incident_detail()
+
+  @doc "Projects consequence-only repair confirmation while leaving capability identity private."
+  def present_repair_confirmation(%RepairPreview{} = value, context, _destinations)
+      when is_map(context) do
+    preview_state = repair_preview_presentation_state(value.status)
+
+    %{
+      state: preview_state,
+      status_spec: repair_status_spec(preview_state),
+      title: presentation_text(presentation_value(context, :title), "Confirm Lifeline repair"),
+      action:
+        presentation_text(presentation_value(context, :action_label), "Execute remediation"),
+      object_label:
+        presentation_text(presentation_value(context, :object_label), "Lifeline incident"),
+      observed_at: safe_time(presentation_value(context, :observed_at)),
+      observed_state:
+        presentation_text(presentation_value(context, :observed_state), "State unavailable"),
+      affected_records:
+        bounded_lifeline_texts(presentation_value(context, :affected_records), @incident_limit),
+      proposed_changes:
+        bounded_lifeline_texts(presentation_value(context, :proposed_changes), @incident_limit),
+      non_effects:
+        bounded_lifeline_texts(presentation_value(context, :non_effects), @incident_limit),
+      consequence: "Lifeline revalidates and attempts each eligible target independently.",
+      reversibility:
+        "Accepted changes may not be reversible; changed or ineligible targets are reported.",
+      support_boundary:
+        "Execution is per target and non-atomic. It does not guarantee downstream recovery.",
+      progress: repair_progress(presentation_value(context, :progress))
+    }
+  end
+
+  def present_repair_confirmation(_value, _context, _destinations) do
+    failed_repair_confirmation()
+  end
+
+  @doc "Projects every finite repair outcome without overstating partial work."
+  def present_repair_result(value, context)
+      when is_map(value) and not is_struct(value) and is_map(context) do
+    state = lifeline_result_state(presentation_value(value, :state))
+    target_results = bounded_repair_results(presentation_value(value, :target_results))
+    clean_success? = state == :success
+
+    %{
+      state: state,
+      status_spec: repair_status_spec(state),
+      message: repair_result_message(state),
+      recovery: repair_result_recovery(state),
+      target_results: target_results.items,
+      completeness: if(target_results.has_more?, do: :partial, else: target_results.completeness),
+      audit_href:
+        if(clean_success?,
+          do: authorized_destination(presentation_value(context, :audit_href), context),
+          else: nil
+        ),
+      receipt:
+        if(clean_success?,
+          do: "Repair outcome recorded. Audit evidence is available.",
+          else: nil
+        ),
+      requires_fresh_preview?: not clean_success?
+    }
+  end
+
+  def present_repair_result(_value, _context) do
+    %{
+      state: :failed,
+      status_spec: repair_status_spec(:failed),
+      message: repair_result_message(:failed),
+      recovery: repair_result_recovery(:failed),
+      target_results: [],
+      completeness: :unavailable,
+      audit_href: nil,
+      receipt: nil,
+      requires_fresh_preview?: true
+    }
+  end
+
+  @doc "Projects immutable typed Lifeline Audit evidence through caller-owned safe labels."
+  def present_lifeline_audit_entry(%Audit{} = value, context) when is_map(context) do
+    %{
+      id: to_string(value.id || "audit"),
+      event_label:
+        Map.get(
+          @audit_event_labels,
+          value.event_type || value.action,
+          "Audit evidence recorded"
+        ),
+      target_label:
+        presentation_text(presentation_value(context, :target_label), "Target unavailable"),
+      actor_label:
+        presentation_text(presentation_value(context, :actor_label), "Actor unavailable"),
+      reason:
+        presentation_text(
+          presentation_value(context, :safe_reason),
+          "No operator reason available."
+        ),
+      recorded_at: safe_time(value.inserted_at),
+      evidence_href: authorized_destination(presentation_value(context, :evidence_href), context)
+    }
+  end
+
+  def present_lifeline_audit_entry(_value, _context) do
+    %{
+      id: "audit-unavailable",
+      event_label: "Audit evidence unavailable",
+      target_label: "Target unavailable",
+      actor_label: "Actor unavailable",
+      reason: "No operator reason available.",
+      recorded_at: nil,
+      evidence_href: nil
+    }
+  end
+
+  @doc "Projects one current executor heartbeat without exposing its raw heartbeat record."
+  def present_executor_row(value) when is_map(value) and not is_struct(value) do
+    _ = @executor_limit
+
+    status =
+      lifeline_state(
+        presentation_value(value, :health_state),
+        @lifeline_health_states,
+        :missing
       )
 
-  def present_executor_row(value),
-    do:
-      closed_wave3_map(
-        value,
-        %{_executor_limit: @executor_limit},
-        ~w[id name status observed_at guidance]a
+    id = presentation_text(presentation_value(value, :executor_id), "executor-unavailable")
+
+    %{
+      id: id,
+      name: id,
+      status: status,
+      status_spec: StatusTaxonomy.spec(:lifeline_health, status),
+      observed_at: safe_time(presentation_value(value, :last_heartbeat_at)),
+      guidance: executor_guidance(status)
+    }
+  end
+
+  def present_executor_row(_value),
+    do: present_executor_row(%{executor_id: "executor-unavailable", health_state: "missing"})
+
+  @doc "Projects the latest typed archive run as retained, never current, evidence."
+  def present_archive_summary(%ArchiveRun{} = value) do
+    _ = @archive_limit
+
+    status =
+      lifeline_state(
+        value.status,
+        @lifeline_incident_states,
+        :pending
       )
 
-  def present_archive_summary(value),
-    do:
-      closed_wave3_map(
-        value,
-        %{_archive_limit: @archive_limit},
-        ~w[status retained_count pruned_count completeness guidance]a
-      )
+    %{
+      status: status,
+      status_spec: StatusTaxonomy.spec(:lifeline_incident, status),
+      retained_count: nonnegative(value.archived_count),
+      pruned_count: nonnegative(value.pruned_count),
+      blocked_count: nonnegative(value.blocked_count),
+      observed_at: safe_time(value.finished_at || value.started_at),
+      completeness: if(status == :completed, do: :complete, else: :partial),
+      guidance: "Archive history is retained evidence, not current incident truth."
+    }
+  end
+
+  def present_archive_summary(_value) do
+    %{
+      status: :pending,
+      status_spec: StatusTaxonomy.spec(:lifeline_incident, :pending),
+      retained_count: 0,
+      pruned_count: 0,
+      blocked_count: 0,
+      observed_at: nil,
+      completeness: :unavailable,
+      guidance: "Archive history is unavailable."
+    }
+  end
 
   @doc """
   Projects one Overview bucket through the fixed Wave 1 presentation contract.
@@ -2954,41 +3221,209 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     if is_list(allowed) and href not in allowed, do: nil, else: href
   end
 
-  defp closed_wave3_map(value, context, keys) when is_map(value) and is_map(context) do
-    output =
-      keys
-      |> Enum.reduce(%{}, fn key, acc ->
-        case presentation_value(value, key) || presentation_value(context, key) do
-          nil -> acc
-          item -> Map.put(acc, key, closed_wave3_value(item))
-        end
+  defp lifeline_state(value, states, fallback) do
+    key = if is_atom(value), do: Atom.to_string(value), else: value
+    Map.get(states, key, fallback)
+  end
+
+  defp lifeline_completeness(value)
+       when value in [:complete, "complete", :partial, "partial", :unavailable, "unavailable"] do
+    case value do
+      "complete" -> :complete
+      "partial" -> :partial
+      "unavailable" -> :unavailable
+      atom -> atom
+    end
+  end
+
+  defp lifeline_completeness(_value), do: :unavailable
+
+  defp unavailable_incident_row do
+    %{
+      id: "incident-unavailable",
+      subject: "Incident unavailable",
+      status: :pending,
+      status_spec: StatusTaxonomy.spec(:lifeline_incident, :pending),
+      severity: :neutral,
+      observed_at: nil,
+      affected_scope: "Affected scope unavailable",
+      preview_available?: false,
+      detail_href: nil
+    }
+  end
+
+  defp unavailable_incident_detail do
+    %{
+      id: "incident-unavailable",
+      subject: "Incident unavailable",
+      status: :pending,
+      status_spec: StatusTaxonomy.spec(:lifeline_incident, :pending),
+      current_diagnosis: "Current diagnosis unavailable.",
+      provenance: "Current retained evidence unavailable.",
+      affected_scope: "Affected scope unavailable",
+      legal_route: nil,
+      history: [],
+      completeness: :unavailable
+    }
+  end
+
+  defp bounded_lifeline_history(values) when is_list(values) do
+    items =
+      values
+      |> Enum.take(@lifeline_audit_limit + 1)
+      |> Enum.take(@lifeline_audit_limit)
+      |> Enum.flat_map(fn
+        value when is_map(value) and not is_struct(value) ->
+          [
+            %{
+              label: presentation_text(presentation_value(value, :label), "Evidence unavailable"),
+              occurred_at: safe_time(presentation_value(value, :occurred_at))
+            }
+          ]
+
+        _value ->
+          []
       end)
 
-    ensure_safe_presentation_data!(output, "Wave 3 presentation")
-    output
+    %{
+      items: items,
+      has_more?: length(values) > @lifeline_audit_limit,
+      completeness: :complete
+    }
   end
 
-  defp closed_wave3_map(_value, _context, _keys),
-    do: raise(ArgumentError, "Wave 3 presentation source and context must be maps")
+  defp bounded_lifeline_history(_values),
+    do: %{items: [], has_more?: false, completeness: :unavailable}
 
-  defp closed_wave3_value(value)
-       when is_binary(value) or is_number(value) or is_boolean(value) or is_nil(value),
-       do: value
-
-  defp closed_wave3_value(value) when is_atom(value), do: value
-  defp closed_wave3_value(%DateTime{} = value), do: DateTime.to_iso8601(value)
-  defp closed_wave3_value(%NaiveDateTime{} = value), do: NaiveDateTime.to_iso8601(value)
-  defp closed_wave3_value(value) when is_list(value), do: Enum.map(value, &closed_wave3_value/1)
-
-  defp closed_wave3_value(value) when is_map(value) and not is_struct(value) do
-    value
-    |> Enum.reject(fn {key, _item} ->
-      sensitive_presentation_source_key?(normalize_presentation_source_key(key))
-    end)
-    |> Map.new(fn {key, item} -> {key, closed_wave3_value(item)} end)
+  defp bounded_lifeline_texts(values, limit) when is_list(values) do
+    values
+    |> Enum.take(limit)
+    |> Enum.map(&presentation_text(&1, "Unavailable"))
   end
 
-  defp closed_wave3_value(_value), do: "Unavailable"
+  defp bounded_lifeline_texts(_values, _limit), do: []
+
+  defp repair_preview_presentation_state(value)
+       when value in ["ready", "pending", :ready, :pending],
+       do: :preview
+
+  defp repair_preview_presentation_state(value), do: lifeline_result_state(value)
+
+  defp lifeline_result_state(value) do
+    key = if is_atom(value), do: Atom.to_string(value), else: value
+    Map.get(@lifeline_result_states, key, :failed)
+  end
+
+  defp repair_status_spec(state) when state in [:success, :failed, :skipped],
+    do: StatusTaxonomy.spec(:operator_result, state)
+
+  defp repair_status_spec(state), do: StatusTaxonomy.spec(:lifeline_preview, state)
+
+  defp repair_progress(value) when is_map(value) and not is_struct(value) do
+    total = nonnegative(presentation_value(value, :total))
+    completed = min(nonnegative(presentation_value(value, :completed)), total)
+
+    %{
+      completed: completed,
+      total: total,
+      percent: if(total == 0, do: 0, else: Float.round(completed / total * 100, 1))
+    }
+  end
+
+  defp repair_progress(_value), do: nil
+
+  defp failed_repair_confirmation do
+    %{
+      state: :failed,
+      status_spec: repair_status_spec(:failed),
+      title: "Confirm Lifeline repair",
+      action: "Execute remediation",
+      object_label: "Lifeline incident",
+      observed_at: nil,
+      observed_state: "State unavailable",
+      affected_records: [],
+      proposed_changes: [],
+      non_effects: [],
+      consequence: "Lifeline could not prepare a safe repair confirmation.",
+      reversibility: "No change is authorized from this presentation.",
+      support_boundary: "Create a new preview before trying again.",
+      progress: nil
+    }
+  end
+
+  defp bounded_repair_results(values) when is_list(values) do
+    items =
+      values
+      |> Enum.take(@incident_limit + 1)
+      |> Enum.take(@incident_limit)
+      |> Enum.flat_map(fn
+        value when is_map(value) and not is_struct(value) ->
+          state = lifeline_result_state(presentation_value(value, :state))
+
+          [
+            %{
+              state: state,
+              status_spec: repair_status_spec(state),
+              label: presentation_text(presentation_value(value, :label), "Target unavailable"),
+              message:
+                presentation_text(
+                  presentation_value(value, :message),
+                  repair_result_message(state)
+                )
+            }
+          ]
+
+        _value ->
+          []
+      end)
+
+    %{
+      items: items,
+      has_more?: length(values) > @incident_limit,
+      completeness: :complete
+    }
+  end
+
+  defp bounded_repair_results(_values),
+    do: %{items: [], has_more?: false, completeness: :unavailable}
+
+  defp repair_result_message(:success),
+    do: "Every reported target completed and durable Audit evidence was recorded."
+
+  defp repair_result_message(:partial),
+    do: "Some targets changed and others did not. Review every target result."
+
+  defp repair_result_message(:skipped),
+    do: "The repair was skipped because current target truth was not eligible."
+
+  defp repair_result_message(:failed), do: "The repair was not recorded as successful."
+  defp repair_result_message(:drifted), do: "Current target truth changed after preview."
+  defp repair_result_message(:expired), do: "The repair preview expired before execution."
+  defp repair_result_message(:consumed), do: "The repair preview was already used."
+
+  defp repair_result_message(:disconnected),
+    do: "The connection ended before completion was known."
+
+  defp repair_result_message(:interrupted),
+    do: "Execution was interrupted before completion was known."
+
+  defp repair_result_message(:preview), do: "The repair is ready for operator confirmation."
+
+  defp repair_result_recovery(:success), do: nil
+
+  defp repair_result_recovery(state) when state in [:partial, :disconnected, :interrupted],
+    do: "Review current truth and durable Audit evidence before creating a new preview."
+
+  defp repair_result_recovery(_state), do: "Create a new preview before trying again."
+
+  defp executor_guidance(:healthy),
+    do: "No Lifeline action is indicated by this current heartbeat."
+
+  defp executor_guidance(:late),
+    do: "Review the current heartbeat before considering remediation."
+
+  defp executor_guidance(:missing),
+    do: "Review the associated incident and authorize any remediation separately."
 
   defp humanize_presentation_key(key) do
     key

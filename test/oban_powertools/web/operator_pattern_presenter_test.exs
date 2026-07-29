@@ -175,8 +175,7 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
              observed_at: "2026-07-29T12:05:00Z",
              affected_scope: "3 affected jobs",
              preview_available?: true,
-             detail_href:
-               "/ops/jobs/lifeline?incident_fingerprint=dead_executor%3Aalpha"
+             detail_href: "/ops/jobs/lifeline?incident_fingerprint=dead_executor%3Aalpha"
            } = Presenter.present_incident_row(row_source, context)
 
     detail =
@@ -185,7 +184,8 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
         provenance: "Current retained Lifeline evidence",
         legal_route: "/ops/jobs/forensics?resource_type=lifeline_incident",
         authorized_hrefs: ["/ops/jobs/forensics?resource_type=lifeline_incident"],
-        history: Enum.map(1..51, &%{label: "Evidence #{&1}", occurred_at: ~U[2026-07-29 12:00:00Z]})
+        history:
+          Enum.map(1..51, &%{label: "Evidence #{&1}", occurred_at: ~U[2026-07-29 12:00:00Z]})
       })
 
     assert Map.keys(detail) |> Enum.sort() ==
@@ -321,7 +321,8 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
     assert confirmation.support_boundary =~ "non-atomic"
     refute confirmation.support_boundary =~ "exactly once"
 
-    for state <- ~w[success partial skipped failed drifted expired consumed disconnected interrupted] do
+    for state <-
+          ~w[success partial skipped failed drifted expired consumed disconnected interrupted] do
       result =
         Presenter.present_repair_result(
           %{state: state, target_results: [%{state: state, label: "Job 41"}]},
@@ -330,8 +331,18 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
 
       assert result.state == String.to_existing_atom(state)
       assert result.requires_fresh_preview? == (state != "success")
-      assert result.audit_href == if(state == "success", do: "/ops/jobs/audit?event_type=lifeline.repair_executed", else: nil)
-      assert result.receipt == if(state == "success", do: "Repair outcome recorded. Audit evidence is available.", else: nil)
+
+      assert result.audit_href ==
+               if(state == "success",
+                 do: "/ops/jobs/audit?event_type=lifeline.repair_executed",
+                 else: nil
+               )
+
+      assert result.receipt ==
+               if(state == "success",
+                 do: "Repair outcome recorded. Audit evidence is available.",
+                 else: nil
+               )
     end
 
     serialized = inspect({confirmation, Presenter.present_repair_result(%{state: "failed"}, %{})})
