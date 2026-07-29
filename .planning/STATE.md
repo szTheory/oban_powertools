@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 81
 current_phase_name: Page Migration Wave 3 — Batches, Workflows, Lifeline
 status: executing
-stopped_at: Completed 81-07-PLAN.md
-last_updated: "2026-07-29T07:27:03.480Z"
+stopped_at: Completed 81-04-PLAN.md
+last_updated: "2026-07-29T08:20:31.681Z"
 last_activity: 2026-07-29
-last_activity_desc: Completed Phase 81 Plan 07 connected fixture bridge
+last_activity_desc: Completed Phase 81 Plan 04 closed Lifeline presentation boundary
 progress:
   total_phases: 15
   completed_phases: 11
   total_plans: 93
-  completed_plans: 80
-  percent: 73
+  completed_plans: 83
+  percent: 89
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 81 — Page Migration Wave 3 — Batches, Workflows, Lifeline
-Plan: 2 of 15
+Plan: 5 of 15
 Status: Ready to execute
-Last activity: 2026-07-29 — Completed Phase 81 Plan 07 connected fixture bridge
+Last activity: 2026-07-29 — Completed Phase 81 Plan 04 closed Lifeline presentation boundary
 
 ## Performance Metrics
 
@@ -92,6 +92,7 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 07 connected fixture bridg
 | Phase 80 P17 | 4m | 1 tasks | 4 files |
 | Phase 81 P07 | 35min | 2 tasks | 8 files |
 | Phase 81 P01 | 12min | 3 tasks | 9 files |
+| Phase 81 P04 | 7min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -120,8 +121,8 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 07 connected fixture bridg
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T07:26:41.182Z
-**Stopped at:** Completed 81-07-PLAN.md
+**Last session:** 2026-07-29T08:20:31.534Z
+**Stopped at:** Completed 81-04-PLAN.md
 **Resume file:** None
 
 - **Last Action:** Completed Plan 79-08's connected accessibility, motion, responsive, confidentiality, and page-only visual evidence.
@@ -289,6 +290,9 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 07 connected fixture bridg
 - [Phase 81]: Return only deterministic public handles and finite state names; keep credentials, preview identities, snapshots, and domain authority server-side.
 - [Phase 81]: Wave 3 uses literal presenter seam names and exact finite source constants. — Later migrations cannot pass through generic raw fallbacks.
 - [Phase 81]: The locked catalog appends 18 Batches, 12 Workflows, and 20 Lifeline stories. — The existing 49-story prefix remains unchanged and browser inventory stays Elixir-owned.
+- [Phase 81]: Lifeline presenter outputs retain a finite state atom paired with the canonical StatusTaxonomy specification. — Shared components consume finite states while taxonomy remains the single source of labels, tones, icons, and screen-reader prefixes.
+- [Phase 81]: Only clean Lifeline repair success may emit a receipt or authorized Audit destination. — Partial and uncertain results must require a fresh preview and cannot imply durable clean completion.
+- [Phase 81]: Incident denial and malformed sources return the same exact unavailable map. — Uniform finite presentation prevents existence and policy enumeration without traversing retained evidence.
 
 ### Blockers
 
