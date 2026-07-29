@@ -298,6 +298,26 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
     assert {:error, {:redirect, %{to: "/"}}} = live(conn, "/ops/jobs/workflows")
   end
 
+  @tag phase81_slice: "contracts"
+  test "Wave 3 Workflows source exposes one pure bounded read-only composition seam" do
+    source = File.read!("lib/oban_powertools/web/workflows_live.ex")
+
+    assert source =~ "def page_content(assigns)"
+
+    for {constant, limit} <- [
+          workflow_scan_limit: 50,
+          workflow_step_limit: 100,
+          workflow_result_limit: 50,
+          workflow_evidence_limit: 25
+        ] do
+      assert source =~ "@#{constant} #{limit}"
+      assert source =~ "@#{constant} + 1"
+    end
+
+    refute source =~ "Repo.get!("
+    refute source =~ "phx-click=\"execute\""
+  end
+
   defp html_position(html, text) do
     case :binary.match(html, text) do
       {position, _length} -> position

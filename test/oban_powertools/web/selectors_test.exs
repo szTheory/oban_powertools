@@ -270,4 +270,35 @@ defmodule ObanPowertools.Web.SelectorsTest do
     refute path =~ "return_to"
     refute path =~ "unknown"
   end
+
+  @tag phase81_slice: "contracts"
+  test "Wave 3 selectors expose closed canonical Batches, Workflows, and Lifeline URLs" do
+    assert function_exported?(Selectors, :batches_path, 1)
+    assert function_exported?(Selectors, :batch_detail_path, 2)
+    assert function_exported?(Selectors, :workflows_path, 1)
+    assert function_exported?(Selectors, :workflow_detail_path, 2)
+    assert function_exported?(Selectors, :lifeline_path, 1)
+
+    hostile = "alpha&action=execute&preview_token=secret#fragment"
+
+    assert Selectors.batches_path(
+             status: "callback_failed",
+             query: hostile,
+             page: 3,
+             action: "execute",
+             preview_token: "secret"
+           ) ==
+             "/ops/jobs/batches?status=callback_failed&query=alpha%26action%3Dexecute%26preview_token%3Dsecret%23fragment&page=3"
+
+    assert Selectors.batch_detail_path("batch/42", status: "failed", page: 2, action: "retry") ==
+             "/ops/jobs/batches/batch%2F42?status=failed&page=2"
+
+    assert Selectors.workflows_path(workflow: "wf/42", step: hostile, action: "execute") ==
+             "/ops/jobs/workflows?workflow=wf%2F42&step=alpha%26action%3Dexecute%26preview_token%3Dsecret%23fragment"
+
+    assert Selectors.workflow_detail_path("wf/42", step: hostile, action: "execute") ==
+             "/ops/jobs/workflows/wf%2F42?step=alpha%26action%3Dexecute%26preview_token%3Dsecret%23fragment"
+
+    refute Selectors.lifeline_path(view: "active", action: "execute") =~ "action="
+  end
 end

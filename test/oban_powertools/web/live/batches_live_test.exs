@@ -233,6 +233,29 @@ defmodule ObanPowertools.Web.BatchesLiveTest do
     assert html =~ "preview_drifted"
   end
 
+  @tag phase81_slice: "contracts"
+  test "Wave 3 Batches source exposes pure composition and exact bounded windows" do
+    source = File.read!("lib/oban_powertools/web/batches_live.ex")
+
+    assert source =~ "def page_content(assigns)"
+    assert source =~ "def detail_page_content(assigns)"
+
+    for {constant, limit} <- [
+          batch_member_limit: 50,
+          batch_callback_limit: 25,
+          batch_result_limit: 50,
+          batch_audit_limit: 25
+        ] do
+      assert source =~ "@#{constant} #{limit}"
+
+      assert source =~ "@#{constant} + 1",
+             "#{constant} must fetch LIMIT + 1 source rows and render #{limit}"
+    end
+
+    refute source =~ "defp payload_copy"
+    refute source =~ "inspect(payload)"
+  end
+
   defp actor_conn(conn, permissions) do
     Plug.Test.init_test_session(conn, current_actor: %{id: "ops-1", permissions: permissions})
   end

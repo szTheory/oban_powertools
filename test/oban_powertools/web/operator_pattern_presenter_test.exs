@@ -27,6 +27,24 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
 
   @phase80_forensics_presenters [present_forensics: 2]
 
+  @phase81_presenters [
+    present_batch_row: 2,
+    present_batch_detail: 2,
+    present_batch_retry_preview: 2,
+    present_workflow_row: 2,
+    present_workflow_detail: 2,
+    present_workflow_step: 2,
+    present_workflow_step_detail: 3,
+    present_lifeline_summary: 1,
+    present_incident_row: 2,
+    present_incident_detail: 2,
+    present_repair_confirmation: 3,
+    present_repair_result: 2,
+    present_lifeline_audit_entry: 2,
+    present_executor_row: 1,
+    present_archive_summary: 1
+  ]
+
   test "exports all five finite Phase 78 presenter seams" do
     assert Code.ensure_loaded?(Presenter), "Phase 78 requires #{Presenter}"
 
@@ -63,6 +81,54 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
     for {presenter, arity} <- @phase80_forensics_presenters do
       assert function_exported?(Presenter, presenter, arity),
              "Phase 80 requires #{inspect(Presenter)}.#{presenter}/#{arity}"
+    end
+  end
+
+  @tag phase81_slice: "contracts"
+  test "exports every finite Wave 3 presenter seam before page composition changes" do
+    assert Code.ensure_loaded?(Presenter), "Phase 81 requires #{Presenter}"
+
+    missing =
+      Enum.reject(@phase81_presenters, fn {presenter, arity} ->
+        function_exported?(Presenter, presenter, arity)
+      end)
+
+    assert missing == [],
+           "Phase 81 closed presentation seams are missing: #{inspect(missing)}"
+  end
+
+  @tag phase81_slice: "contracts"
+  test "Wave 3 presenter source is fail-closed and names every finite render bound" do
+    source = File.read!(@source_path)
+
+    for {constant, limit} <- [
+          workflow_scan_limit: 50,
+          workflow_step_limit: 100,
+          workflow_result_limit: 50,
+          workflow_evidence_limit: 25,
+          batch_member_limit: 50,
+          batch_callback_limit: 25,
+          batch_result_limit: 50,
+          batch_audit_limit: 25,
+          incident_limit: 50,
+          executor_limit: 25,
+          lifeline_audit_limit: 50,
+          archive_limit: 25
+        ] do
+      assert source =~ "@#{constant} #{limit}",
+             "Phase 81 requires @#{constant} #{limit} at the closed presentation boundary"
+    end
+
+    for forbidden <- [
+          "preview_token",
+          "plan_hash",
+          "before_snapshot",
+          "after_snapshot",
+          "raw_metadata",
+          "provider_error"
+        ] do
+      refute Regex.match?(~r/\b#{forbidden}\s*:/, source),
+             "Phase 81 presenter output must not expose #{forbidden}"
     end
   end
 

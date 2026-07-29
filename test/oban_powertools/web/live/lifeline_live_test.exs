@@ -814,6 +814,27 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     |> TestRepo.insert!()
   end
 
+  @tag phase81_slice: "contracts"
+  test "Wave 3 Lifeline source keeps preview authority private and bounded" do
+    source = File.read!("lib/oban_powertools/web/lifeline_live.ex")
+
+    assert source =~ "def page_content(assigns)"
+
+    for {constant, limit} <- [
+          incident_limit: 50,
+          executor_limit: 25,
+          lifeline_audit_limit: 50,
+          archive_limit: 25
+        ] do
+      assert source =~ "@#{constant} #{limit}"
+      assert source =~ "@#{constant} + 1"
+    end
+
+    refute source =~ "Preview Token"
+    refute source =~ "defp state_copy(snapshot) when is_map(snapshot), do: inspect(snapshot)"
+    refute source =~ "defp error_message(reason), do: inspect(reason)"
+  end
+
   defp html_position(html, text) do
     {position, _length} = :binary.match(html, text)
     position
