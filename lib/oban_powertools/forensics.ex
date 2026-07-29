@@ -82,109 +82,117 @@ defmodule ObanPowertools.Forensics do
         {:unavailable, @unavailable_reason}
 
       workflow ->
-        steps =
-          repo.all(
-            from(step in Step,
-              where: step.workflow_id == ^workflow.id,
-              order_by: [asc: step.position]
-            )
-          )
+        case authoritative_workflow_scope(repo, scope) do
+          :unavailable ->
+            {:unavailable, @unavailable_reason}
 
-        selected_step =
-          Enum.find(steps, &(&1.step_name == scope.step)) ||
-            Enum.find(steps, &(&1.blocker_codes != [])) ||
-            List.first(steps)
+          {:ok, validated_step, audit_scope} ->
+            steps =
+              repo.all(
+                from(step in Step,
+                  where: step.workflow_id == ^workflow.id,
+                  order_by: [asc: step.position]
+                )
+              )
 
-        workflow_story = Explain.workflow_story(workflow, steps, repo: repo)
-        step_story = selected_step && Explain.step_story(selected_step, repo: repo)
-        audit_window = Audit.forensic_window(scope, repo: repo)
+            selected_step =
+              validated_step ||
+                Enum.find(steps, &(&1.step_name == scope.step)) ||
+                Enum.find(steps, &(&1.blocker_codes != [])) ||
+                List.first(steps)
 
-        native_chronology =
-          [
-            %{
-              occurred_at: workflow.inserted_at,
-              label: "Workflow evidence was recorded",
-              resource_type: "workflow",
-              resource_id: workflow.id,
-              source_family: "workflow",
-              strength: :durable,
-              event_type: "workflow.created",
-              status: workflow_status(workflow.state),
-              notes: workflow.name
-            },
-            selected_step &&
+            workflow_story = Explain.workflow_story(workflow, steps, repo: repo)
+            step_story = selected_step && Explain.step_story(selected_step, repo: repo)
+            audit_window = Audit.forensic_window(audit_scope, repo: repo)
+
+            native_chronology =
+              [
+                %{
+                  occurred_at: workflow.inserted_at,
+                  label: "Workflow evidence was recorded",
+                  resource_type: "workflow",
+                  resource_id: workflow.id,
+                  source_family: "workflow",
+                  strength: :durable,
+                  event_type: "workflow.created",
+                  status: workflow_status(workflow.state),
+                  notes: workflow.name
+                },
+                selected_step &&
+                  %{
+                    occurred_at: selected_step.updated_at || selected_step.inserted_at,
+                    label: "Workflow step diagnosis was recorded",
+                    resource_type: "workflow_step",
+                    resource_id: selected_step.id,
+                    source_family: "workflow",
+                    strength: :durable,
+                    event_type: "workflow.step_state",
+                    status: workflow_status(selected_step.state),
+                    notes: step_story && step_story.diagnosis
+                  }
+              ]
+              |> Enum.reject(&is_nil/1)
+
+            chronology = native_chronology ++ Enum.map(audit_window.events, &audit_item/1)
+            completeness = workflow_completeness(chronology, audit_window.events)
+
+            bundle =
               %{
-                occurred_at: selected_step.updated_at || selected_step.inserted_at,
-                label: "Workflow step diagnosis was recorded",
-                resource_type: "workflow_step",
-                resource_id: selected_step.id,
-                source_family: "workflow",
-                strength: :durable,
-                event_type: "workflow.step_state",
-                status: workflow_status(selected_step.state),
-                notes: step_story && step_story.diagnosis
+                subject: %{
+                  type: "workflow",
+                  id: workflow.id,
+                  label: workflow.name,
+                  step: selected_step && selected_step.step_name,
+                  resource_type:
+                    audit_scope.resource_type || selected_resource_type(selected_step),
+                  resource_id:
+                    audit_scope.resource_id || selected_resource_id(selected_step) || workflow.id,
+                  entry_surface: "Powertools-native workflows"
+                },
+                diagnosis_summary: %{
+                  title: "Workflow diagnosis",
+                  current: workflow_story.diagnosis,
+                  detail:
+                    (selected_step &&
+                       "Selected step #{selected_step.step_name} currently reports #{step_story.diagnosis || "unknown"}.") ||
+                      "Workflow diagnosis recomputes from durable state on every request.",
+                  provenance: :durable
+                },
+                chronology: chronology,
+                related_evidence: [
+                  %{
+                    title: "Workflow timeline anchor",
+                    summary: "Workflow and step state are the primary forensic anchors.",
+                    provenance: :supporting
+                  },
+                  %{
+                    title: "Audit context",
+                    summary: "Scoped Audit events remain supporting retained evidence.",
+                    provenance: :bridge_only
+                  }
+                ],
+                linked_resources: [
+                  %{
+                    label: "Workflow detail",
+                    path: workflow_path(workflow, selected_step),
+                    venue: "Powertools-native"
+                  },
+                  %{
+                    label: "Audit follow-up",
+                    path: audit_path(selected_step || workflow),
+                    venue: "Inspection only"
+                  }
+                ],
+                legal_next_paths:
+                  workflow_next_paths(workflow, selected_step, workflow_story, step_story),
+                completeness: completeness,
+                coverage: workflow_coverage(native_chronology, audit_window, completeness)
               }
-          ]
-          |> Enum.reject(&is_nil/1)
+              |> EvidenceBundle.build()
+              |> enrich_runbook_entry()
 
-        chronology = native_chronology ++ Enum.map(audit_window.events, &audit_item/1)
-        completeness = workflow_completeness(chronology, audit_window.events)
-
-        bundle =
-          %{
-            subject: %{
-              type: "workflow",
-              id: workflow.id,
-              label: workflow.name,
-              step: selected_step && selected_step.step_name,
-              resource_type: scope.resource_type || selected_resource_type(selected_step),
-              resource_id:
-                scope.resource_id || selected_resource_id(selected_step) || workflow.id,
-              entry_surface: "Powertools-native workflows"
-            },
-            diagnosis_summary: %{
-              title: "Workflow diagnosis",
-              current: workflow_story.diagnosis,
-              detail:
-                (selected_step &&
-                   "Selected step #{selected_step.step_name} currently reports #{step_story.diagnosis || "unknown"}.") ||
-                  "Workflow diagnosis recomputes from durable state on every request.",
-              provenance: :durable
-            },
-            chronology: chronology,
-            related_evidence: [
-              %{
-                title: "Workflow timeline anchor",
-                summary: "Workflow and step state are the primary forensic anchors.",
-                provenance: :supporting
-              },
-              %{
-                title: "Audit context",
-                summary: "Scoped Audit events remain supporting retained evidence.",
-                provenance: :bridge_only
-              }
-            ],
-            linked_resources: [
-              %{
-                label: "Workflow detail",
-                path: workflow_path(workflow, selected_step),
-                venue: "Powertools-native"
-              },
-              %{
-                label: "Audit follow-up",
-                path: audit_path(selected_step || workflow),
-                venue: "Inspection only"
-              }
-            ],
-            legal_next_paths:
-              workflow_next_paths(workflow, selected_step, workflow_story, step_story),
-            completeness: completeness,
-            coverage: workflow_coverage(native_chronology, audit_window, completeness)
-          }
-          |> EvidenceBundle.build()
-          |> enrich_runbook_entry()
-
-        {:ok, bundle}
+            {:ok, bundle}
+        end
     end
   end
 
@@ -361,6 +369,44 @@ defmodule ObanPowertools.Forensics do
 
   defp enrich_runbook_entry(bundle) do
     Map.put(bundle, :runbook_entry, RunbookEntry.from_bundle(bundle))
+  end
+
+  defp authoritative_workflow_scope(
+         repo,
+         %Scope{
+           resource_type: "workflow_step",
+           resource_id: resource_id,
+           workflow_id: workflow_id,
+           step: step_name
+         }
+       ) do
+    case resolve_workflow_step(repo, resource_id, workflow_id, step_name) do
+      nil -> :unavailable
+      %Step{} = step -> {:ok, step, validated_workflow_step_scope(step)}
+    end
+  end
+
+  defp authoritative_workflow_scope(_repo, %Scope{} = scope), do: {:ok, nil, scope}
+
+  defp resolve_workflow_step(repo, resource_id, workflow_id, step_name) do
+    repo.one(
+      from(step in Step,
+        where:
+          step.id == ^resource_id and
+            step.workflow_id == ^workflow_id and
+            step.step_name == ^step_name
+      )
+    )
+  end
+
+  defp validated_workflow_step_scope(%Step{} = step) do
+    %Scope{
+      kind: :workflow,
+      resource_type: "workflow_step",
+      resource_id: step.id,
+      workflow_id: step.workflow_id,
+      step: step.step_name
+    }
   end
 
   defp audit_item(event) do
