@@ -312,7 +312,9 @@ function inlineList(value, label) {
 }
 
 function parseStep(lines, start, end, label) {
-  const step = {};
+  const step = {
+    source: lines.slice(start, end).join("\n"),
+  };
   const first = lines[start].match(/^ {6}-\s*(.*)$/);
   assert.ok(first, `${label} must start with a YAML sequence item`);
 
@@ -344,7 +346,9 @@ function parseStep(lines, start, end, label) {
       }
 
       step.run = block.join("\n").trim();
-    } else if (["run", "name", "if", "continue-on-error"].includes(key)) {
+    } else if (
+      ["run", "name", "if", "uses", "continue-on-error"].includes(key)
+    ) {
       step[key] = scalar(rawValue);
     }
   }
@@ -439,6 +443,7 @@ function parseCiJobs(source) {
 }
 
 const requiredPageCommand = "npm run verify:pages";
+const requiredVisualCommand = "npm run visual:a11y";
 const requiredGateNeeds = [
   "format",
   "compile",
@@ -452,17 +457,21 @@ const requiredGateNeeds = [
 function validateCiWorkflow(source) {
   const jobs = parseCiJobs(source);
   assert.ok(jobs.page_quality, "CI must define jobs.page_quality");
+  assert.ok(jobs.visual_a11y, "CI must define jobs.visual_a11y");
   assert.ok(jobs["ci-gate"], "CI must define jobs.ci-gate");
 
-  const commandSteps = Object.entries(jobs).flatMap(([jobName, job]) =>
-    job.steps
-      .filter(
-        (step) =>
-          typeof step.run === "string" &&
-          step.run.includes(requiredPageCommand),
-      )
-      .map((step) => ({ jobName, job, step })),
-  );
+  function findCommandSteps(requiredCommand) {
+    return Object.entries(jobs).flatMap(([jobName, job]) =>
+      job.steps
+        .filter(
+          (step) =>
+            typeof step.run === "string" && step.run.includes(requiredCommand),
+        )
+        .map((step) => ({ jobName, job, step })),
+    );
+  }
+
+  const commandSteps = findCommandSteps(requiredPageCommand);
 
   assert.equal(
     commandSteps.length,
@@ -492,6 +501,73 @@ function validateCiWorkflow(source) {
     `${requiredPageCommand} must not ignore failure`,
   );
 
+  const visualCommandSteps = findCommandSteps(requiredVisualCommand);
+  assert.equal(
+    visualCommandSteps.length,
+    1,
+    `${requiredVisualCommand} must occur in exactly one structured run step`,
+  );
+  const [{ jobName: visualJobName, job: visualJob, step: visualStep }] =
+    visualCommandSteps;
+  assert.equal(
+    visualStep.run,
+    requiredVisualCommand,
+    `${requiredVisualCommand} must be exact and unfiltered`,
+  );
+  assert.equal(
+    visualJobName,
+    "visual_a11y",
+    `${requiredVisualCommand} must belong to jobs.visual_a11y`,
+  );
+  assert.notEqual(
+    visualJob.continueOnError,
+    true,
+    "jobs.visual_a11y must not ignore failure",
+  );
+  assert.notEqual(
+    visualStep["continue-on-error"],
+    true,
+    `${requiredVisualCommand} must not ignore failure`,
+  );
+
+  const pageArtifactSteps = jobs.page_quality.steps.filter(
+    (candidate) =>
+      candidate.source.includes(
+        "uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+      ),
+  );
+  assert.equal(
+    pageArtifactSteps.length,
+    1,
+    "page_quality must have exactly one pinned artifact upload",
+  );
+  const [pageArtifacts] = pageArtifactSteps;
+  assert.equal(
+    pageArtifacts.if,
+    "failure()",
+    "page_quality artifacts must upload only on failure",
+  );
+  for (const artifactPath of [
+    "playwright-report/",
+    "test-results/",
+    "test/browser/.generated/showcase-manifest.json",
+    "test/browser/.generated/phase82-quality-report.json",
+  ]) {
+    assert.match(
+      pageArtifacts.source,
+      new RegExp(
+        `^\\s+${artifactPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`,
+        "m",
+      ),
+      `page_quality artifacts must include bounded path ${artifactPath}`,
+    );
+  }
+  assert.match(
+    pageArtifacts.source,
+    /^\s+retention-days:\s*7\s*$/m,
+    "page_quality artifacts must retain bounded evidence for seven days",
+  );
+
   const gateNeeds = jobs["ci-gate"].needs;
   assert.deepEqual(
     [...new Set(gateNeeds)],
@@ -507,6 +583,11 @@ function validateCiWorkflow(source) {
     gateNeeds.filter((dependency) => dependency === "page_quality").length,
     1,
     "jobs.page_quality must be a direct ci-gate.needs dependency exactly once",
+  );
+  assert.equal(
+    gateNeeds.filter((dependency) => dependency === "visual_a11y").length,
+    1,
+    "jobs.visual_a11y must be a direct ci-gate.needs dependency exactly once",
   );
 }
 
@@ -538,13 +619,34 @@ expectCiMutationFailure("filtered verify:pages", (source) =>
     "      - run: npm run verify:pages -- --grep page-batches",
   ),
 );
+expectCiMutationFailure("filtered visual:a11y", (source) =>
+  source.replace(
+    "      - run: npm run visual:a11y",
+    "      - run: npm run visual:a11y -- --grep @phase82",
+  ),
+);
 expectCiMutationFailure("wrong verify:pages job", (source) =>
   source.replace("  page_quality:\n", "  detached_page_quality:\n"),
+);
+expectCiMutationFailure("wrong visual:a11y job", (source) =>
+  source.replace("  visual_a11y:\n", "  detached_visual_a11y:\n"),
 );
 expectCiMutationFailure("optional page_quality job", (source) =>
   source.replace(
     "  page_quality:\n    name: Page Quality",
     "  page_quality:\n    continue-on-error: true\n    name: Page Quality",
+  ),
+);
+expectCiMutationFailure("optional visual_a11y job", (source) =>
+  source.replace(
+    "  visual_a11y:\n    name: Full Showcase Visual & A11y",
+    "  visual_a11y:\n    continue-on-error: true\n    name: Full Showcase Visual & A11y",
+  ),
+);
+expectCiMutationFailure("missing bounded Phase 82 report", (source) =>
+  source.replace(
+    "            test/browser/.generated/phase82-quality-report.json\n",
+    "",
   ),
 );
 expectCiMutationFailure("missing page_quality gate dependency", (source) =>
