@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 82
 current_phase_name: Cross-Cutting A11y, Motion & Responsive Hardening Sweep
 status: executing
-stopped_at: Completed 82-02-PLAN.md
-last_updated: "2026-07-29T20:12:23.295Z"
+stopped_at: Completed 82-03-PLAN.md
+last_updated: "2026-07-29T20:20:25.089Z"
 last_activity: 2026-07-29
-last_activity_desc: Completed Phase 82 Plan 02 RED copy contracts
+last_activity_desc: Completed Phase 82 Plan 03 sole static quality policy
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 110
-  completed_plans: 95
-  percent: 86
+  completed_plans: 96
+  percent: 87
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 82 — Cross-Cutting A11y, Motion & Responsive Hardening Sweep
-Plan: 2 of 17
+Plan: 3 of 17
 Status: Ready to execute
-Last activity: 2026-07-29 — Completed Phase 82 Plan 02 RED copy contracts
+Last activity: 2026-07-29 — Completed Phase 82 Plan 03 sole static quality policy
 
 ## Performance Metrics
 
@@ -102,6 +102,7 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 02 RED copy contracts
 | Phase 81 P13 | 8min | 2 tasks | 2 files |
 | Phase 82 P01 | 18min | 2 tasks | 2 files |
 | Phase 82 P02 | 3min | 2 tasks | 2 files |
+| Phase 82 P03 | 8min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -130,8 +131,8 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 02 RED copy contracts
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T20:12:23.289Z
-**Stopped at:** Completed 82-02-PLAN.md
+**Last session:** 2026-07-29T20:20:25.082Z
+**Stopped at:** Completed 82-03-PLAN.md
 **Resume file:** None
 
 - **Last Action:** Completed Plan 82-02's finite Copy policy and confirmation-order RED contracts.
@@ -321,6 +322,9 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 02 RED copy contracts
 - [Phase 82]: Keep unique page consequence and support-boundary sentences outside the finite Copy registry. — Preserves page-specific support truth and avoids centralizing runtime prose.
 - [Phase 82]: Require action-specific submit before safe-state dismiss as an executable D-16 confirmation contract. — Turns confirmation order into a named semantic assertion rather than subjective review.
 - [Phase 82]: Bound copy diagnostics to path, line, rule, phrase, and replacement without raw operator or provider data. — Provides precise failures without opening a confidentiality channel.
+- [Phase 82]: Derive Phase 82 target, page, and route-family counts directly from the generated schema-8 manifest without a production target-ID list.
+- [Phase 82]: Keep Phase 82 public Node validators pure over structured inputs while the CLI owns exact repository traversal and bounded diagnostics.
+- [Phase 82]: Parse source CSS into one structured motion inventory and compare packaged CSS byte-for-byte at the same policy owner boundary.
 
 ### Blockers
 
