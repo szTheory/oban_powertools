@@ -182,7 +182,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
          socket
          |> assign(:reason, "")
          |> assign(:error_message, nil)
-         |> assign(:success_message, "Repair executed and audit evidence was written.")
+         |> assign(
+           :success_message,
+           "Repair executed and audit evidence was written. Outcome recorded."
+         )
          |> assign(:preview, nil)
          |> assign(:preview_state, :idle)
          |> load_data(next_selection)}
@@ -205,7 +208,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           {:noreply, assign(socket, :error_message, LiveAuth.mutation_error(:reason_required))}
 
         {:error, :reason_too_short} ->
-          {:noreply, assign(socket, :error_message, LiveAuth.mutation_error(:reason_too_short))}
+          {:noreply, assign(socket, :error_message, "Reason must be at least 8 characters.")}
 
         {:error, :preview_consumed} ->
           {:noreply, assign(socket, :error_message, LiveAuth.mutation_error(:preview_consumed))}
@@ -263,6 +266,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         <p :if={@success_message} class="obpt-lifeline-page__notice" role="status">
           {@success_message}
         </p>
+        <Primitives.link :if={@success_message} href={Selectors.audit_path([])}>
+          Open in Audit
+        </Primitives.link>
 
         <section class="obpt-lifeline-page__metrics" aria-label="Lifeline summary">
           <Primitives.card>
@@ -450,6 +456,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           dismiss_event="dismiss_repair"
           results={[]}
         >
+          <:support_details>
+            <p :if={@error_message} role="alert">{@error_message}</p>
+          </:support_details>
           <:recovery>
             <p :if={@error_message}>{@error_message}</p>
           </:recovery>

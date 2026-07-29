@@ -149,7 +149,7 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
       Repo.delete_all(from(member in BatchJob, where: member.batch_id == ^names.batch_id))
 
       Repo.delete_all(
-        from(job in Oban.Job, where: job.id in ^Enum.map(1..51, &job_id(names.key, &1)))
+        from(job in Oban.Job, where: job.id in ^Enum.map(0..51, &job_id(names.key, &1)))
       )
 
       Repo.delete_all(from(batch in Batch, where: batch.id == ^names.batch_id))
@@ -306,6 +306,30 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
 
       Repo.insert_all(Oban.Job, jobs)
 
+      Repo.insert_all(Oban.Job, [
+        %{
+          id: job_id(names.key, 0),
+          state: "executing",
+          queue: "#{names.prefix}-default",
+          worker: "PhoenixHost.Workers.Phase81RecoveryWorker",
+          args: %{"public" => "lifeline-recovery"},
+          meta: %{
+            "phase81_fixture" => true,
+            "phase81_key" => names.key,
+            "executor_id" => "#{names.prefix}-executor-25"
+          },
+          tags: ["phase81-fixture", names.project, names.run],
+          errors: [],
+          attempt: 1,
+          attempted_by: [],
+          max_attempts: 20,
+          priority: 0,
+          attempted_at: @fixed_now,
+          inserted_at: @fixed_now,
+          scheduled_at: @fixed_now
+        }
+      ])
+
       members =
         Enum.map(1..51, fn index ->
           %{
@@ -347,10 +371,18 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
         |> Enum.map(fn {id, index} ->
           %{
             id: id,
-            incident_class: "executor_missing",
+            incident_class: "dead_executor",
             status: if(index == 50, do: "resolved", else: "active"),
-            executor_id: "#{names.prefix}-executor-#{rem(index, 26)}",
-            incident_fingerprint: "#{names.prefix}:incident:#{index}",
+            executor_id:
+              if(index == 0,
+                do: "#{names.prefix}-executor-25",
+                else: "#{names.prefix}-executor-#{rem(index, 26)}"
+              ),
+            incident_fingerprint:
+              if(index == 0,
+                do: "dead_executor:#{names.prefix}-executor-25",
+                else: "#{names.prefix}:incident:#{index}"
+              ),
             health_state: if(index == 50, do: "healthy", else: "missing"),
             summary: "Deterministic fixture incident #{index}",
             affected_counts: %{"jobs" => index + 1},
@@ -377,7 +409,11 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
             queue: "default",
             producer_scope: "all",
             health_state: if(index == 25, do: "missing", else: "healthy"),
-            last_heartbeat_at: DateTime.add(@fixed_now, -index, :second),
+            last_heartbeat_at:
+              if(index == 25,
+                do: ~U[2020-01-01 00:00:00.000000Z],
+                else: DateTime.add(@fixed_now, -index, :second)
+              ),
             warning_threshold_ms: 45_000,
             missing_threshold_ms: 120_000,
             metadata: %{"phase81_key" => names.key},
@@ -452,7 +488,7 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
           "batchId" => names.batch_id,
           "workflowId" => hd(names.workflow_ids),
           "workflowStep" => "step-0",
-          "incidentId" => hd(names.incident_ids)
+          "incidentId" => "dead_executor:#{names.prefix}-executor-25"
         },
         "race" => %{"state" => race_state(names.key)}
       }
