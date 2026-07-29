@@ -5,15 +5,15 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 81
 current_phase_name: Page Migration Wave 3 — Batches, Workflows, Lifeline
 status: executing
-stopped_at: Completed 81-09-PLAN.md
-last_updated: "2026-07-29T10:02:47.963Z"
+stopped_at: Completed 81-13-PLAN.md
+last_updated: "2026-07-29T11:25:11.319Z"
 last_activity: 2026-07-29
 last_activity_desc: Completed Phase 81 Plan 15 nine-family browser contracts
 progress:
   total_phases: 15
   completed_phases: 11
   total_plans: 93
-  completed_plans: 89
+  completed_plans: 92
   percent: 73
 ---
 
@@ -22,7 +22,7 @@ progress:
 ## Current Position
 
 Phase: 81 — Page Migration Wave 3 — Batches, Workflows, Lifeline
-Plan: 11 of 15
+Plan: 14 of 15
 Status: Ready to execute
 Last activity: 2026-07-29 — Completed Phase 81 Plan 15 nine-family browser contracts
 
@@ -99,6 +99,7 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 15 nine-family browser con
 | Phase 81 P10 | 5min | 2 tasks | 4 files |
 | Phase 81 P08 | 1h20min | 3 tasks | 6 files |
 | Phase 81 P09 | 40min | 2 tasks | 271 files |
+| Phase 81 P13 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -127,7 +128,7 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 15 nine-family browser con
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T10:02:47.958Z
+**Last session:** 2026-07-29T11:23:19.820Z
 **Stopped at:** Completed 81-09-PLAN.md
 **Resume file:** None
 
@@ -310,6 +311,8 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 15 nine-family browser con
 - [Phase 81]: Collapse interactive transitions through both system and explicit reduced-motion contracts. — Both operating-system preference and root-scoped user choice must remove nonessential timing.
 - [Phase 81]: Only advertise a Wave 3 overlay activation when the production-composed story renders a real dialog. — Keeps artifact harness expectations aligned with the rendered accessibility tree.
 - [Phase 81]: Run whole-nine-family artifact validators in Plan 81-14 after Plans 81-11 and 81-12 create their families. — The global exact-set validators cannot pass before the two later artifact families exist.
+- [Phase 81]: Use the bulk-confirmation, selected-blocked-step, and partial-skipped-failed stories as the three exact Wave 3 VoiceOver representatives. — They expose consequence, dependency-blocker, and mixed preview/result truth in committed accessibility artifacts.
+- [Phase 81]: Treat the existing uncommitted CI workflow as user-owned while validating its exact page_quality and ci-gate structure without restaging it. — Preserves shared dirty-worktree ownership while still adding executable policy enforcement.
 
 ### Blockers
 
