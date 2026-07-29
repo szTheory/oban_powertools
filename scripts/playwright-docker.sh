@@ -18,6 +18,10 @@ if [ -n "${PHASE80_BROWSER_FIXTURE_SECRET:-}" ]; then
   DOCKER_ARGS+=(-e PHASE80_BROWSER_FIXTURE_SECRET)
 fi
 
+if [ -n "${PHASE81_BROWSER_FIXTURE_SECRET:-}" ]; then
+  DOCKER_ARGS+=(-e PHASE81_BROWSER_FIXTURE_SECRET)
+fi
+
 if [ "$(uname -s)" = "Linux" ]; then
   DOCKER_ARGS+=(--network host --add-host=host.docker.internal:host-gateway)
 fi
