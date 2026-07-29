@@ -11,6 +11,22 @@ defmodule ObanPowertools.Web.Components.Forms do
 
   @input_types ~w[text search email number password tel url]
   @input_variants ~w[default filter]a
+  @component_owned_attrs ~w[
+    aria-disabled
+    aria-invalid
+    aria-label
+    aria-labelledby
+    checked
+    class
+    disabled
+    name
+    readonly
+    required
+    role
+    style
+    type
+    value
+  ]
 
   attr(:field, Phoenix.HTML.FormField, required: true)
   attr(:label, :string, required: true)
@@ -325,7 +341,7 @@ defmodule ObanPowertools.Web.Components.Forms do
 
     rest
     |> Map.new(fn {key, value} -> {to_string(key), value} end)
-    |> drop_keys(["class", "style", "role" | popup_attributes])
+    |> drop_keys(@component_owned_attrs ++ popup_attributes)
   end
 
   defp drop_keys(map, keys), do: Map.drop(map, keys)

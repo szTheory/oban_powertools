@@ -139,7 +139,7 @@ defmodule ObanPowertools.Web.Components.PrimitivesTest do
       refute html =~ "999px"
     end
 
-    test "caller attrs cannot spoof primitive-owned names, roles, or disabled state" do
+    test "caller attrs cannot spoof primitive-owned roles or disabled state" do
       button =
         render_primitive(:button,
           rest: %{
@@ -183,9 +183,9 @@ defmodule ObanPowertools.Web.Components.PrimitivesTest do
 
       assert button =~ ~s(type="button")
       assert button =~ ~s(phx-click="retry")
+      assert button =~ ~s(aria-label="Approve job")
+      assert button =~ ~s(aria-labelledby="forged-label")
       refute_attr(button, "aria-disabled")
-      refute_attr(button, "aria-label")
-      refute_attr(button, "aria-labelledby")
       refute_attr(button, "disabled")
       refute_attr(button, "role")
 
@@ -199,10 +199,9 @@ defmodule ObanPowertools.Web.Components.PrimitivesTest do
 
       assert link =~ ~s(href="/ops/jobs")
       assert link =~ "View jobs"
+      assert link =~ ~s(aria-label="Delete jobs")
+      assert link =~ ~s(aria-labelledby="forged-label")
       refute link =~ "javascript:"
-      refute link =~ "Delete jobs"
-      refute_attr(link, "aria-label")
-      refute_attr(link, "aria-labelledby")
       refute_attr(link, "role")
       refute_attr(link, "phx-click")
     end

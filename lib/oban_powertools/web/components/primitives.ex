@@ -15,6 +15,9 @@ defmodule ObanPowertools.Web.Components.Primitives do
   @sizes ~w[sm md]a
   @surface_variants ~w[plain elevated inset attention]a
   @icon_names ~w[alert check info dot]a
+  @button_owned_attrs ~w[aria-disabled disabled role type]
+  @icon_button_owned_attrs ~w[aria-disabled aria-label aria-labelledby disabled role type]
+  @link_owned_attrs ~w[data-phx-link data-phx-link-state href role]
 
   @doc """
   Renders a semantic action button.
@@ -40,7 +43,10 @@ defmodule ObanPowertools.Web.Components.Primitives do
 
     rest =
       assigns.rest
-      |> visual_safe_rest(suppress_actions?: described?)
+      |> visual_safe_rest(
+        suppress_actions?: described?,
+        owned_attrs: @button_owned_attrs
+      )
 
     {describedby, rest} =
       if described? do
@@ -106,7 +112,10 @@ defmodule ObanPowertools.Web.Components.Primitives do
 
     rest =
       assigns.rest
-      |> visual_safe_rest(suppress_actions?: described?)
+      |> visual_safe_rest(
+        suppress_actions?: described?,
+        owned_attrs: @icon_button_owned_attrs
+      )
 
     {describedby, rest} =
       if described? do
@@ -172,7 +181,13 @@ defmodule ObanPowertools.Web.Components.Primitives do
     assigns =
       assigns
       |> assign(:href, safe_href!(assigns.href))
-      |> assign(:rest, visual_safe_rest(assigns.rest, suppress_actions?: true))
+      |> assign(
+        :rest,
+        visual_safe_rest(assigns.rest,
+          suppress_actions?: true,
+          owned_attrs: @link_owned_attrs
+        )
+      )
 
     ~H"""
     <Phoenix.Component.link :if={present?(@href)} href={@href} class="obpt-link" {@rest}>
@@ -497,9 +512,11 @@ defmodule ObanPowertools.Web.Components.Primitives do
   end
 
   defp visual_safe_rest(rest, opts) do
+    owned_attrs = Keyword.get(opts, :owned_attrs, [])
+
     rest
     |> normalize_rest()
-    |> Enum.reject(fn {key, _value} -> key in ["class", "style"] end)
+    |> Enum.reject(fn {key, _value} -> key in ["class", "style" | owned_attrs] end)
     |> Enum.reject(fn {key, _value} ->
       Keyword.get(opts, :suppress_actions?, false) and action_attr?(key)
     end)
