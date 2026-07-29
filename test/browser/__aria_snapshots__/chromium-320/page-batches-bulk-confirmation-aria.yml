@@ -23,11 +23,30 @@
     - progressbar "Batch progress": "0"
     - text: 0/2 0%
     - paragraph: Two failed members remain. Review current evidence before retrying.
-  - heading "Why this batch is blocked" [level=2]
-  - text: Failed members need review
-  - paragraph: Two failed members remain. Review current evidence before retrying.
-  - term: Evidence window
-  - definition: 2 current failed members
+  - region "Why this batch is blocked":
+    - heading "Why this batch is blocked" [level=2]
+    - paragraph: Failed members need review
+    - list:
+      - listitem:
+        - paragraph: Current state
+        - heading "Evidence window" [level=3]
+        - paragraph: 2 current failed members
+        - term: Clearing condition
+        - definition: Review current evidence and follow the supported Lifeline recovery path.
+        - term: Evidence source
+        - definition: Two failed members remain. Review current evidence before retrying.
+    - region "Impact":
+      - heading "Impact" [level=3]
+      - paragraph: Two failed members remain. Review current evidence before retrying.
+    - region "Evidence freshness":
+      - heading "Evidence freshness" [level=3]
+      - paragraph: Current blocker evidence is complete.
+      - paragraph:
+        - text: Observed
+        - time: 2026-07-19T14:05:00Z
+      - paragraph:
+        - text: "Evidence completeness:"
+        - strong: Complete
   - heading "Failed Members" [level=2]
   - paragraph: Retryable selections are page-local and validated from current batch evidence.
   - strong: 1 failed job selected

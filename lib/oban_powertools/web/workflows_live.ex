@@ -98,8 +98,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       ~H"""
       <div id="workflows-page" class="obpt-page obpt-workflows-page">
         <header class="obpt-page__header">
-          <h1>Workflows</h1>
-          <p>
+          <h1 class="obpt-page__title">Workflows</h1>
+          <p class="obpt-page__intro">
             Review workflow progress, understand blocked steps, and follow the supported recovery path.
           </p>
         </header>
@@ -114,6 +114,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           rows={@workflows}
           row_id={:id}
           state={if(@workflows == [], do: :empty, else: :ready)}
+          state_heading="No workflows available"
+          state_body="Persisted workflow definitions will appear here when evidence is available."
           row_count={length(@workflows)}
           pagination_summary={
             if(@workflow_scan_complete?,
@@ -141,16 +143,20 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         <section
           :if={@workflow_unavailable?}
           id="workflow-unavailable"
-          aria-labelledby="workflow-unavailable-title"
+          aria-label="Workflow unavailable"
         >
-          <h2 id="workflow-unavailable-title">Workflow unavailable</h2>
-          <DataDisplay.state_message
+          <DataDisplay.empty_state
             id="workflow-unavailable-state"
-            state={:unavailable}
-            resource="workflow"
+            heading="Workflow unavailable"
+            body="It may not exist, may no longer be retained, or you may not have access. Return to Workflows and choose another workflow."
+            data-obpt-data-state="unavailable"
           >
-            The workflow is unavailable.
-          </DataDisplay.state_message>
+            <:action>
+              <.link navigate={Selectors.workflows_path([])}>
+                Return to Workflows
+              </.link>
+            </:action>
+          </DataDisplay.empty_state>
         </section>
 
         <section :if={@workflow} class="obpt-workflows-page__diagnosis" aria-labelledby="workflow-title">
@@ -293,7 +299,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           <section class="obpt-workflows-page__forensics">
             <h3>Open the forensic bundle.</h3>
             <p>Supporting limiter and cron context stays labeled as supporting evidence.</p>
-            <.link navigate={forensic_path(@workflow, @selected_step)}>Open forensic timeline</.link>
+            <.link navigate={forensic_path(@workflow, @selected_step)}>Open forensic evidence</.link>
           </section>
 
           <section :if={result_display.available?} aria-labelledby="workflow-result-title">
@@ -600,9 +606,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp follow_up_row_class(path_or_venue) do
       case ControlPlanePresenter.follow_up_render_variant(path_or_venue) do
-        :native_primary -> "rounded border border-indigo-300 bg-indigo-100 px-2 py-1"
-        :bridge_guidance -> "rounded border border-slate-300 bg-white px-2 py-1"
-        :host_guidance -> "rounded border border-amber-300 bg-amber-100 px-2 py-1"
+        :native_primary -> "obpt-runbook-ownership obpt-runbook-ownership--native"
+        :bridge_guidance -> "obpt-runbook-ownership obpt-runbook-ownership--bridge"
+        :host_guidance -> "obpt-runbook-ownership obpt-runbook-ownership--host"
       end
     end
 

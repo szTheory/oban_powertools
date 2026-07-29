@@ -47,10 +47,8 @@
       - row:
         - cell:
           - status:
-            - heading "No rows match the current filters" [level=2]
-            - paragraph: Clear filters or widen the time window.
-            - strong: No batches match this view
-            - text: Choose another status or clear the name filter to widen the review.
+            - heading "No batches match this view" [level=2]
+            - paragraph: Choose another status or clear the name filter to widen the review.
   - navigation "Batch pages":
     - button "Previous" [disabled]
     - button "Next" [disabled]

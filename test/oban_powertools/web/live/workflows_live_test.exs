@@ -338,6 +338,21 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
     assert {:error, {:redirect, %{to: "/"}}} = live(conn, "/ops/jobs/workflows")
   end
 
+  test "renders locked empty-state recovery copy and token-owned page hierarchy", %{conn: conn} do
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_workflows]}
+      )
+
+    {:ok, view, html} = live(conn, "/ops/jobs/workflows")
+
+    assert has_element?(view, "h1.obpt-page__title", "Workflows")
+    assert has_element?(view, "p.obpt-page__intro")
+    assert html =~ "No workflows available"
+    assert html =~ "Persisted workflow definitions will appear here when evidence is available."
+    refute html =~ "No rows match the current filters"
+  end
+
   @tag phase81_slice: "contracts"
   test "Wave 3 Workflows source exposes one pure bounded read-only composition seam" do
     source = File.read!("lib/oban_powertools/web/workflows_live.ex")
@@ -356,6 +371,11 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
 
     refute source =~ "Repo.get!("
     refute source =~ "phx-click=\"execute\""
+    refute source =~ "border-indigo-"
+    refute source =~ "border-slate-"
+    refute source =~ "border-amber-"
+    assert source =~ "Open forensic evidence"
+    assert source =~ "obpt-runbook-ownership--native"
   end
 
   defp html_position(html, text) do

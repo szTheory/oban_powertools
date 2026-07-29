@@ -284,6 +284,9 @@ defmodule ObanPowertools.Web.BatchesLiveTest do
     refute source =~ "bg-white"
     assert source =~ "DataDisplay.data_table"
     assert source =~ "OperatorPatterns.confirm_action_dialog"
+    assert source =~ "OperatorPatterns.why_blocked"
+    assert source =~ ~s(class="obpt-page__title")
+    assert source =~ ~s(class="obpt-page__intro")
   end
 
   defp actor_conn(conn, permissions) do

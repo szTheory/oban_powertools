@@ -46,10 +46,8 @@
       - row:
         - cell:
           - status:
-            - heading "No rows match the current filters" [level=2]
-            - paragraph: Clear filters or widen the time window.
-            - strong: No batches available
-            - text: Batch evidence will appear here when this host records batch work.
+            - heading "No batches available" [level=2]
+            - paragraph: Batch evidence will appear here when this host records batch work.
   - navigation "Batch pages":
     - button "Previous" [disabled]
     - button "Next" [disabled]

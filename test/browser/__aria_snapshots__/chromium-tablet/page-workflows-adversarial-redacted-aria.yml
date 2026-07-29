@@ -89,7 +89,7 @@
     - /url: /ops/jobs/forensics?resource_type=workflow_step&resource_id=workflow-step-4&workflow_id=workflow-001&step=notify+%E2%80%A2+final
   - heading "Open the forensic bundle." [level=3]
   - paragraph: Supporting limiter and cron context stays labeled as supporting evidence.
-  - link "Open forensic timeline":
+  - link "Open forensic evidence":
     - /url: /ops/jobs/forensics?resource_type=workflow_step&resource_id=workflow-step-4&workflow_id=workflow-001&step=notify+%E2%80%A2+final
   - region "Dependency Reasons":
     - heading "Dependency Reasons" [level=3]

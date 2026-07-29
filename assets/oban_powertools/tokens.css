@@ -1657,6 +1657,9 @@
 }
 
 .obpt-root .obpt-data-table__cell-value {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--obpt-space-2);
   min-width: 0;
   max-width: 100%;
   overflow-wrap: anywhere;
@@ -1794,7 +1797,7 @@
   .obpt-root .obpt-data-table__cell,
   .obpt-root .obpt-data-table__row:last-child .obpt-data-table__cell {
     display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    grid-template-columns: minmax(6.5rem, 2fr) minmax(0, 3fr);
     align-items: start;
     gap: var(--obpt-space-2);
     border-block-end: 1px solid var(--obpt-color-border);
@@ -1808,7 +1811,14 @@
   .obpt-root .obpt-data-table__mobile-label {
     display: block;
     min-width: 0;
-    overflow-wrap: anywhere;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
+  }
+
+  .obpt-root .obpt-data-table__cell:not([data-obpt-value-kind="machine"]) .obpt-data-table__cell-value {
+    overflow-wrap: break-word;
+    word-break: normal;
   }
 
   .obpt-root .obpt-data-table__state-row,
@@ -3553,7 +3563,7 @@
 }
 
 .obpt-root .obpt-showcase-token span,
-.obpt-root .obpt-showcase-story header p {
+.obpt-root .obpt-showcase-story > header > p {
   margin: 0;
   color: var(--obpt-color-muted);
   font-size: var(--obpt-font-size-xs);
@@ -4216,6 +4226,26 @@
   overflow-wrap: anywhere;
 }
 
+.obpt-root .obpt-runbook-ownership {
+  border: 1px solid var(--obpt-color-border);
+  border-radius: var(--obpt-radius-md);
+  background: var(--obpt-color-elevated);
+  color: var(--obpt-color-text);
+  padding: var(--obpt-space-2);
+}
+
+.obpt-root .obpt-runbook-ownership--native {
+  border-color: var(--obpt-color-accent-border);
+  background: var(--obpt-color-accent-bg);
+  color: var(--obpt-color-accent-fg);
+}
+
+.obpt-root .obpt-runbook-ownership--host {
+  border-color: var(--obpt-color-warning-border);
+  background: var(--obpt-color-warning-bg);
+  color: var(--obpt-color-warning-fg);
+}
+
 .obpt-root .obpt-lifeline-page__support > ul {
   display: grid;
   gap: 0;
@@ -4266,6 +4296,11 @@
     padding: var(--obpt-space-4);
   }
 
+  .obpt-root .obpt-data-table__cell,
+  .obpt-root .obpt-data-table__row:last-child .obpt-data-table__cell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .obpt-root .obpt-workflows-page__diagnosis,
   .obpt-root .obpt-workflows-page__steps,
   .obpt-root .obpt-workflows-page__selected-step,
@@ -4312,8 +4347,7 @@
 }
 
 .obpt-root .obpt-batches-page__header > div:first-child,
-.obpt-root .obpt-batches-page__filters,
-.obpt-root .obpt-batches-page .obpt-data-table__cell-value {
+.obpt-root .obpt-batches-page__filters {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--obpt-space-3);

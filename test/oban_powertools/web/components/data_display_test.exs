@@ -250,6 +250,24 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
     refute ready =~ ~s(class="obpt-data-state")
   end
 
+  test "data_table accepts page-owned state copy without leaking generic filter guidance" do
+    html =
+      render_data(:data_table,
+        id: "workflow-state",
+        caption: "Current workflows",
+        rows: [],
+        row_id: & &1.id,
+        state: :empty,
+        state_heading: "No workflows available",
+        state_body: "Persisted workflow definitions will appear here when evidence is available."
+      )
+
+    assert html =~ "No workflows available"
+    assert html =~ "Persisted workflow definitions will appear here when evidence is available."
+    refute html =~ "No rows match the current filters"
+    refute html =~ "Clear filters or widen the time window"
+  end
+
   test "data_table filters hostile wrapper overrides while retaining safe descriptive attrs" do
     html =
       render_data(:data_table,

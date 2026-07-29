@@ -768,6 +768,18 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     assert css =~ ".obpt-root .obpt-lifeline-page__metrics"
     assert css =~ ".obpt-root .obpt-lifeline-page__views"
     assert css =~ ".obpt-root .obpt-lifeline-page__detail"
+    assert css =~ ".obpt-root .obpt-showcase-story > header > p"
+    refute css =~ ".obpt-root .obpt-showcase-story header p"
+    assert css =~ ".obpt-root .obpt-runbook-ownership--native"
+    assert css =~ ".obpt-root .obpt-runbook-ownership--host"
+    assert css =~ "grid-template-columns: minmax(6.5rem, 2fr) minmax(0, 3fr)"
+
+    assert css =~ """
+             .obpt-root .obpt-data-table__cell,
+             .obpt-root .obpt-data-table__row:last-child .obpt-data-table__cell {
+               grid-template-columns: minmax(0, 1fr);
+             }
+           """
 
     jobs_result_blocks = blocks_for(css, ".obpt-root #jobs-results-region")
 

@@ -20,7 +20,6 @@
           - text: Inspect workflow
 - region "Workflow unavailable":
   - heading "Workflow unavailable" [level=2]
-  - status:
-    - paragraph: Data unavailable
-    - paragraph: Refresh data
-    - text: The workflow is unavailable.
+  - paragraph: It may not exist, may no longer be retained, or you may not have access. Return to Workflows and choose another workflow.
+  - link "Return to Workflows":
+    - /url: /ops/jobs/workflows

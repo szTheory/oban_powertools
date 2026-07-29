@@ -386,7 +386,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <strong>Affected records:</strong> {affected_records_copy(@selected_row.incident)}
           </p>
           <Primitives.link href={forensic_path(@selected_row, @current_view)}>
-            Open forensic timeline
+            Open forensic evidence
           </Primitives.link>
           <section aria-labelledby="lifeline-runbook-title">
             <h3 id="lifeline-runbook-title">Runbook continuity</h3>

@@ -13,5 +13,5 @@
     - row:
       - cell:
         - status:
-          - heading "No rows match the current filters" [level=2]
-          - paragraph: Clear filters or widen the time window.
+          - heading "No workflows available" [level=2]
+          - paragraph: Persisted workflow definitions will appear here when evidence is available.

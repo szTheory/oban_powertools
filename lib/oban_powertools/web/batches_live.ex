@@ -349,8 +349,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       <main id={@batch_page_id} class="obpt-batches-page obpt-batches-page--detail">
         <%= if @batch_not_found? do %>
           <header class="obpt-page__header">
-            <h1>Batch unavailable</h1>
-            <p>It may not exist, may no longer be retained, or you may not have access. Return to Batches and choose another batch.</p>
+            <h1 class="obpt-page__title">Batch unavailable</h1>
+            <p class="obpt-page__intro">It may not exist, may no longer be retained, or you may not have access. Return to Batches and choose another batch.</p>
             <Primitives.link navigate={Selectors.batches_path([{"status", "all"}])}>
               Back to Batches
             </Primitives.link>
@@ -358,8 +358,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         <% else %>
           <header class="obpt-page__header obpt-batches-page__header">
             <div>
-              <h1>Batch {batch_name(@batch_detail)}</h1>
-              <p>Review current progress, bounded failure evidence, callback posture, and safe Lifeline recovery paths.</p>
+              <h1 class="obpt-page__title">Batch {batch_name(@batch_detail)}</h1>
+              <p class="obpt-page__intro">Review current progress, bounded failure evidence, callback posture, and safe Lifeline recovery paths.</p>
             </div>
             <div class="obpt-batches-page__header-actions">
               <DataDisplay.status_pill domain={:batch} state={@batch_detail.status} />
@@ -413,19 +413,17 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             </Primitives.surface>
           </section>
 
-          <Primitives.surface variant={:attention}>
-            <h2>Why this batch is blocked</h2>
-            <Primitives.badge
-              label={@batch_detail.blocked_state.title}
-              tone={batch_blocked_tone(@batch_detail.blocked_state.severity)}
-            />
-            <p>{@batch_detail.blocked_state.copy}</p>
-            <DataDisplay.description_list id="batch-blocker-evidence">
-              <:item :for={item <- @batch_detail.blocked_state.evidence} label={item.label}>
-                {item.value}
-              </:item>
-            </DataDisplay.description_list>
-          </Primitives.surface>
+          <OperatorPatterns.why_blocked
+            id="batch-blockers"
+            title="Why this batch is blocked"
+            summary={@batch_detail.blocked_state.title}
+            impact={@batch_detail.blocked_state.copy}
+            observed_at={timestamp_copy(@batch_detail.updated_at)}
+            observed_datetime={batch_observed_datetime(@batch_detail.updated_at)}
+            evidence_state={:current}
+            completeness={batch_blocker_completeness(@batch_detail.blocked_state)}
+            blockers={batch_blockers(@batch_detail.blocked_state)}
+          />
 
           <Primitives.surface variant={:plain}>
             <div class="obpt-batches-page__section-header">
@@ -689,8 +687,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       ~H"""
       <main id="batches-page" class="obpt-batches-page">
         <header class="obpt-page__header">
-          <h1>Batches</h1>
-          <p>
+          <h1 class="obpt-page__title">Batches</h1>
+          <p class="obpt-page__intro">
             Review batch and chain progress, understand blocked work, and follow Lifeline-routed recovery with recorded evidence.
           </p>
         </header>
@@ -743,16 +741,19 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           resource="batches"
           row_count={length(@batches)}
           pagination_summary={"Page #{@filter.page}; up to #{@filter.page_size} batches per page."}
+          state_heading={
+            if(batches_filtered?(@filter),
+              do: "No batches match this view",
+              else: "No batches available"
+            )
+          }
+          state_body={
+            if(batches_filtered?(@filter),
+              do: "Choose another status or clear the name filter to widen the review.",
+              else: "Batch evidence will appear here when this host records batch work."
+            )
+          }
         >
-          <:state_detail>
-            <%= if batches_filtered?(@filter) do %>
-              <strong>No batches match this view</strong>
-              <span>Choose another status or clear the name filter to widen the review.</span>
-            <% else %>
-              <strong>No batches available</strong>
-              <span>Batch evidence will appear here when this host records batch work.</span>
-            <% end %>
-          </:state_detail>
           <:col :let={batch} label="Batch" value_kind={:id}>
             <strong>{batch.name || batch.short_id}</strong>
             <DataDisplay.machine_value id={"batch-#{batch.id}-id"} value={batch.id} />
@@ -1080,10 +1081,46 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         filter.chain_only
     end
 
-    defp batch_blocked_tone(:success), do: :success
-    defp batch_blocked_tone(:warning), do: :warning
-    defp batch_blocked_tone(:danger), do: :danger
-    defp batch_blocked_tone(_severity), do: :neutral
+    defp batch_blocker_completeness(%{evidence: evidence}) when is_list(evidence),
+      do: if(evidence == [], do: :unknown, else: :complete)
+
+    defp batch_blocker_completeness(_blocked_state), do: :unknown
+
+    defp batch_blockers(%{evidence: evidence, copy: copy}) when is_list(evidence) do
+      evidence
+      |> Enum.with_index()
+      |> Enum.map(fn {item, index} ->
+        %{
+          id: "batch-blocker-#{index + 1}",
+          evidence_kind: :current,
+          label: item.label,
+          summary: item.value,
+          affected_scope: nil,
+          clearing_condition:
+            "Review current evidence and follow the supported Lifeline recovery path.",
+          evidence_source: copy
+        }
+      end)
+    end
+
+    defp batch_blockers(_blocked_state), do: []
+
+    defp batch_observed_datetime(%DateTime{} = timestamp), do: DateTime.to_iso8601(timestamp)
+
+    defp batch_observed_datetime(%NaiveDateTime{} = timestamp) do
+      timestamp
+      |> DateTime.from_naive!("Etc/UTC")
+      |> DateTime.to_iso8601()
+    end
+
+    defp batch_observed_datetime(timestamp) when is_binary(timestamp) do
+      case DateTime.from_iso8601(timestamp) do
+        {:ok, _datetime, _offset} -> timestamp
+        {:error, _reason} -> "1970-01-01T00:00:00Z"
+      end
+    end
+
+    defp batch_observed_datetime(_timestamp), do: "1970-01-01T00:00:00Z"
 
     defp selected_jobs_copy(selected) do
       case MapSet.size(selected) do

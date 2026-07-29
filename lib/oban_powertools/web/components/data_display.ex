@@ -51,6 +51,8 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   attr(:sort_key, :string, default: nil)
   attr(:sort_direction, :atom, default: :none, values: @sort_directions)
   attr(:sort_event, :string, default: nil)
+  attr(:state_heading, :string, default: nil)
+  attr(:state_body, :string, default: nil)
   attr(:rest, :global, default: %{})
   slot(:toolbar)
   slot(:selection)
@@ -102,7 +104,13 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
         <tbody>
           <tr :if={@state != :ready} class="obpt-data-table__state-row">
             <td class="obpt-data-table__state-cell" colspan={state_colspan(assigns)}>
-              <.state_message id={"#{@id}-state"} state={@state} resource={@state_resource}>
+              <.state_message
+                id={"#{@id}-state"}
+                state={@state}
+                resource={@state_resource}
+                heading={@state_heading}
+                body={@state_body}
+              >
                 {render_slot(@state_detail)}
               </.state_message>
             </td>
@@ -140,12 +148,19 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
   attr(:id, :string, required: true)
   attr(:state, :atom, required: true)
   attr(:resource, :string, required: true)
+  attr(:heading, :string, default: nil)
+  attr(:body, :string, default: nil)
   slot(:inner_block)
 
   def state_message(assigns) do
+    default_copy = state_copy(assigns.state, assigns.resource)
+
     assigns =
       assigns
-      |> assign(:copy, state_copy(assigns.state, assigns.resource))
+      |> assign(:copy, %{
+        heading: assigns.heading || default_copy.heading,
+        body: assigns.body || default_copy.body
+      })
       |> assign(:role, if(assigns.state == :error, do: "alert", else: "status"))
 
     ~H"""
