@@ -2,6 +2,7 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
   use ExUnit.Case, async: true
 
   alias ObanPowertools.Audit
+  alias ObanPowertools.Lifeline.{ArchiveRun, Incident, RepairPreview}
   alias ObanPowertools.Web.ControlPlanePresenter, as: Presenter
 
   @source_path "lib/oban_powertools/web/control_plane_presenter.ex"
@@ -130,6 +131,253 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
       refute Regex.match?(~r/\b#{forbidden}\s*:/, source),
              "Phase 81 presenter output must not expose #{forbidden}"
     end
+  end
+
+  @tag phase81_slice: "lifeline"
+  test "Lifeline incident projections are exact, taxonomy-backed, and uniformly unavailable" do
+    incident = %Incident{
+      id: "5ca1dafe-cd96-42e0-a5ed-f5887e7e02a1",
+      incident_class: "dead_executor",
+      status: "active",
+      incident_fingerprint: "dead_executor:alpha",
+      health_state: "missing",
+      summary: "Executor alpha stopped reporting",
+      affected_counts: %{"jobs" => 3},
+      first_detected_at: ~U[2026-07-29 12:00:00Z],
+      last_detected_at: ~U[2026-07-29 12:05:00Z],
+      evidence: %{"preview_token" => "SYNTHETIC_PREVIEW_TOKEN"},
+      metadata: %{"plan_hash" => "SYNTHETIC_PLAN_HASH"}
+    }
+
+    row_source = %{
+      id: "incident-row-1",
+      incident: incident,
+      target_summary: "3 affected jobs",
+      previewable?: true
+    }
+
+    context = %{
+      detail_href: "/ops/jobs/lifeline?incident_fingerprint=dead_executor%3Aalpha",
+      authorized_hrefs: ["/ops/jobs/lifeline?incident_fingerprint=dead_executor%3Aalpha"]
+    }
+
+    assert %{
+             id: "incident-row-1",
+             subject: "Executor alpha stopped reporting",
+             status: :active,
+             status_spec: %{
+               label: "Active",
+               tone: :warning,
+               icon: :alert,
+               sr_prefix: "Lifeline incident status"
+             },
+             severity: :danger,
+             observed_at: "2026-07-29T12:05:00Z",
+             affected_scope: "3 affected jobs",
+             preview_available?: true,
+             detail_href:
+               "/ops/jobs/lifeline?incident_fingerprint=dead_executor%3Aalpha"
+           } = Presenter.present_incident_row(row_source, context)
+
+    detail =
+      Presenter.present_incident_detail(row_source, %{
+        current_diagnosis: "The executor is missing.",
+        provenance: "Current retained Lifeline evidence",
+        legal_route: "/ops/jobs/forensics?resource_type=lifeline_incident",
+        authorized_hrefs: ["/ops/jobs/forensics?resource_type=lifeline_incident"],
+        history: Enum.map(1..51, &%{label: "Evidence #{&1}", occurred_at: ~U[2026-07-29 12:00:00Z]})
+      })
+
+    assert Map.keys(detail) |> Enum.sort() ==
+             ~w[
+               affected_scope completeness current_diagnosis history id legal_route provenance
+               status status_spec subject
+             ]a
+
+    assert length(detail.history) == 50
+    assert detail.completeness == :partial
+
+    unavailable_context = %{authorized?: false}
+
+    assert Presenter.present_incident_detail(row_source, unavailable_context) ==
+             Presenter.present_incident_detail(%{malformed: true}, unavailable_context)
+
+    serialized = inspect({Presenter.present_incident_row(row_source, context), detail})
+    refute serialized =~ "SYNTHETIC_PREVIEW_TOKEN"
+    refute serialized =~ "SYNTHETIC_PLAN_HASH"
+  end
+
+  @tag phase81_slice: "lifeline"
+  test "Lifeline support evidence is finite, exact, and taxonomy-backed" do
+    summary =
+      Presenter.present_lifeline_summary(%{
+        status: "healthy",
+        active_count: 2,
+        resolved_count: 4,
+        pending_preview_count: 1,
+        archived_repair_count: 8,
+        completeness: :partial
+      })
+
+    assert summary == %{
+             status: :healthy,
+             status_spec: %{
+               label: "Healthy",
+               tone: :success,
+               icon: :check,
+               sr_prefix: "Lifeline health"
+             },
+             active_count: 2,
+             resolved_count: 4,
+             pending_preview_count: 1,
+             archived_repair_count: 8,
+             completeness: :partial
+           }
+
+    assert Presenter.present_executor_row(%{
+             executor_id: "executor-alpha",
+             health_state: "healthy",
+             last_heartbeat_at: ~U[2026-07-29 12:00:00Z]
+           }) == %{
+             id: "executor-alpha",
+             name: "executor-alpha",
+             status: :healthy,
+             status_spec: %{
+               label: "Healthy",
+               tone: :success,
+               icon: :check,
+               sr_prefix: "Lifeline health"
+             },
+             observed_at: "2026-07-29T12:00:00Z",
+             guidance: "No Lifeline action is indicated by this current heartbeat."
+           }
+
+    archive = %ArchiveRun{
+      id: "b107d26d-39e2-49d8-8ec1-c2ec584283ba",
+      status: "completed",
+      archived_count: 8,
+      pruned_count: 3,
+      blocked_count: 1,
+      started_at: ~U[2026-07-29 11:00:00Z],
+      finished_at: ~U[2026-07-29 11:05:00Z],
+      metadata: %{"secret" => "SYNTHETIC_SECRET"}
+    }
+
+    assert Presenter.present_archive_summary(archive) == %{
+             status: :completed,
+             status_spec: %{
+               label: "Completed",
+               tone: :success,
+               icon: :check,
+               sr_prefix: "Lifeline incident status"
+             },
+             retained_count: 8,
+             pruned_count: 3,
+             blocked_count: 1,
+             observed_at: "2026-07-29T11:05:00Z",
+             completeness: :complete,
+             guidance: "Archive history is retained evidence, not current incident truth."
+           }
+  end
+
+  @tag phase81_slice: "lifeline"
+  test "repair confirmation and outcomes never project capability identity or atomicity claims" do
+    preview = %RepairPreview{
+      status: "ready",
+      action: "job_rescue",
+      affected_counts: %{"jobs" => 2},
+      preview_token: "1d4e55f8-f78b-46a0-a6db-e042f654a0fd",
+      plan_hash: "SYNTHETIC_PLAN_HASH",
+      before_snapshot: %{"secret" => "SYNTHETIC_BEFORE"},
+      after_snapshot: %{"secret" => "SYNTHETIC_AFTER"},
+      evidence: %{"provider_error" => "SYNTHETIC_PROVIDER_ERROR"}
+    }
+
+    confirmation =
+      Presenter.present_repair_confirmation(
+        preview,
+        %{
+          action_label: "Rescue affected jobs",
+          object_label: "Dead executor incident",
+          observed_at: ~U[2026-07-29 12:05:00Z],
+          observed_state: "Executor missing",
+          affected_records: ["Job 41", "Job 42"],
+          proposed_changes: ["Mark each eligible job retryable"],
+          non_effects: ["Does not guarantee downstream completion"]
+        },
+        %{}
+      )
+
+    assert Map.keys(confirmation) |> Enum.sort() ==
+             ~w[
+               action affected_records consequence non_effects object_label observed_at
+               observed_state progress proposed_changes reversibility state status_spec
+               support_boundary title
+             ]a
+
+    assert confirmation.state == :preview
+    assert confirmation.progress == nil
+    assert confirmation.support_boundary =~ "per target"
+    assert confirmation.support_boundary =~ "non-atomic"
+    refute confirmation.support_boundary =~ "exactly once"
+
+    for state <- ~w[success partial skipped failed drifted expired consumed disconnected interrupted] do
+      result =
+        Presenter.present_repair_result(
+          %{state: state, target_results: [%{state: state, label: "Job 41"}]},
+          %{audit_href: "/ops/jobs/audit?event_type=lifeline.repair_executed"}
+        )
+
+      assert result.state == String.to_existing_atom(state)
+      assert result.requires_fresh_preview? == (state != "success")
+      assert result.audit_href == if(state == "success", do: "/ops/jobs/audit?event_type=lifeline.repair_executed", else: nil)
+      assert result.receipt == if(state == "success", do: "Repair outcome recorded. Audit evidence is available.", else: nil)
+    end
+
+    serialized = inspect({confirmation, Presenter.present_repair_result(%{state: "failed"}, %{})})
+
+    for sentinel <- ~w[
+          SYNTHETIC_PLAN_HASH SYNTHETIC_BEFORE SYNTHETIC_AFTER SYNTHETIC_PROVIDER_ERROR
+          1d4e55f8-f78b-46a0-a6db-e042f654a0fd
+        ] do
+      refute serialized =~ sentinel
+    end
+  end
+
+  @tag phase81_slice: "lifeline"
+  test "Lifeline Audit projection is typed, bounded by caller reads, and route-authorized" do
+    event = %Audit{
+      id: 42,
+      actor_id: "operator-1",
+      action: "lifeline.repair_executed",
+      event_type: "lifeline.repair_executed",
+      resource: "job:41",
+      resource_type: "job",
+      resource_id: "41",
+      inserted_at: ~N[2026-07-29 12:10:00],
+      metadata: %{
+        "reason" => "SYNTHETIC_RAW_REASON",
+        "preview_token" => "SYNTHETIC_PREVIEW_TOKEN"
+      }
+    }
+
+    href = "/ops/jobs/audit?resource_type=job&resource_id=41"
+
+    assert Presenter.present_lifeline_audit_entry(event, %{
+             actor_label: "Operator 1",
+             target_label: "Job 41",
+             safe_reason: "Incident response approved",
+             evidence_href: href,
+             authorized_hrefs: [href]
+           }) == %{
+             id: "42",
+             event_label: "Repair executed",
+             target_label: "Job 41",
+             actor_label: "Operator 1",
+             reason: "Incident response approved",
+             recorded_at: "2026-07-29T12:10:00",
+             evidence_href: href
+           }
   end
 
   @tag phase81_slice: "batches"
