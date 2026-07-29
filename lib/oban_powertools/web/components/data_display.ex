@@ -13,7 +13,7 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
     host_follow_up job lifeline_health lifeline_incident lifeline_preview limiter output
     operator_result workflow workflow_await workflow_result workflow_signal workflow_step
   ]a
-  @data_states ~w[ready loading empty error unavailable permission_denied]a
+  @data_states ~w[ready loading empty error unavailable permission_denied stale partial]a
   @sort_directions ~w[asc desc none]a
   @machine_kinds ~w[id module url literal]a
   @code_languages ~w[json text elixir stacktrace]
@@ -251,16 +251,17 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
     assigns =
       assign(assigns,
         display: display,
+        expandable: assigns.expand or display != assigns.value,
         rest: visual_safe_rest(assigns.rest, suppress_actions?: true)
       )
 
     ~H"""
     <span id={@id} class="obpt-machine-value" data-obpt-kind={@kind} {@rest}>
-      <details :if={@expand} class="obpt-machine-value__details">
+      <details :if={@expandable} class="obpt-machine-value__details">
         <summary class="obpt-machine-value__summary">{@display}</summary>
         <span class="obpt-machine-value__full">{@value}</span>
       </details>
-      <span :if={!@expand} class="obpt-machine-value__display">{@display}</span>
+      <span :if={!@expandable} class="obpt-machine-value__display">{@display}</span>
     </span>
     """
   end
@@ -393,8 +394,13 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
 
     ~H"""
     <figure id={@id} class="obpt-code-block" data-obpt-language={@language} {@rest}>
-      <figcaption>{@label}</figcaption>
-      <pre class="obpt-code-block__region" tabindex="0"><code class="obpt-code-block__code">{@content}</code></pre>
+      <figcaption id={"#{@id}-label"}>{@label}</figcaption>
+      <pre
+        class="obpt-code-block__region"
+        tabindex="0"
+        aria-labelledby={"#{@id}-label"}
+        data-obpt-machine-scroller
+      ><code class="obpt-code-block__code">{@content}</code></pre>
     </figure>
     """
   end
@@ -641,6 +647,15 @@ defmodule ObanPowertools.Web.Components.DataDisplay do
 
   defp state_copy(:permission_denied, _resource),
     do: %{heading: "Permission denied", body: "Ask an administrator for access."}
+
+  defp state_copy(:stale, resource),
+    do: %{heading: "Evidence is stale", body: "Refresh #{resource} before acting."}
+
+  defp state_copy(:partial, resource),
+    do: %{
+      heading: "Evidence is partial",
+      body: "Review available #{resource}, then refresh for complete evidence."
+    }
 
   defp state_copy(_state, resource), do: %{heading: "Showing #{resource}", body: ""}
 

@@ -11,7 +11,6 @@ defmodule ObanPowertools.Web.Components.AppShell do
   alias ObanPowertools.Auth
 
   @root_path "/ops/jobs"
-  @bridge_path @root_path <> "/oban"
   @nav_state_values ~w[closed open]
   @nav_items [
     %{key: "overview", label: "Overview", path: @root_path, detail_label: nil},
@@ -47,7 +46,6 @@ defmodule ObanPowertools.Web.Components.AppShell do
   attr(:actor_label, :string, default: nil)
   attr(:context_label, :string, default: nil)
   attr(:nav_state, :any, default: :closed)
-  attr(:nav_items, :list, default: nil)
   attr(:id_scope, :string, default: nil)
   attr(:rest, :global, default: %{})
   slot(:inner_block, required: true)
@@ -55,7 +53,7 @@ defmodule ObanPowertools.Web.Components.AppShell do
   def app_shell(assigns) do
     current_path = current_path(assigns.current_path, assigns.current_uri)
     nav_state = normalize_nav_state!(assigns.nav_state)
-    nav_items = assigns.nav_items |> nav_items_for_render(current_path)
+    nav_items = nav_items_for_render(current_path)
     breadcrumbs = breadcrumb_items(current_path)
     actor_label = present_text(assigns.actor_label) || actor_label(assigns.current_actor)
     primary_nav_id = scoped_id("obpt-primary-nav", assigns.id_scope)
@@ -212,46 +210,22 @@ defmodule ObanPowertools.Web.Components.AppShell do
     end
   end
 
-  defp nav_items_for_render(nil, current_path), do: nav_items_for_render(@nav_items, current_path)
+  defp nav_items_for_render(current_path) do
+    active_key = active_nav_item(current_path).key
 
-  defp nav_items_for_render(items, current_path) when is_list(items) do
-    normalized = Enum.map(items, &normalize_nav_item!/1)
-    active_key = active_nav_item(current_path, normalized).key
-
-    Enum.map(normalized, fn item ->
+    Enum.map(@nav_items, fn item ->
       Map.put(item, :current?, item.key == active_key)
     end)
   end
 
-  defp nav_items_for_render(_items, _current_path) do
-    raise ArgumentError, "nav_items must be a list"
-  end
-
-  defp normalize_nav_item!(item) when is_map(item) do
-    label = require_safe_label!(Map.get(item, :label) || Map.get(item, "label"), "nav label")
-    path = require_safe_path!(Map.get(item, :path) || Map.get(item, "path"))
-    key = Map.get(item, :key) || Map.get(item, "key") || key_from_path(path)
-
-    %{
-      key: require_safe_key!(key),
-      label: label,
-      path: path,
-      detail_label: present_text(Map.get(item, :detail_label) || Map.get(item, "detail_label"))
-    }
-  end
-
-  defp normalize_nav_item!(_item) do
-    raise ArgumentError, "nav item must be a map with label and path"
-  end
-
-  defp active_nav_item(current_path, items \\ @nav_items) do
+  defp active_nav_item(current_path) do
     current_path = current_path(current_path, nil)
 
-    items
+    @nav_items
     |> Enum.sort_by(fn item -> String.length(item.path) end, :desc)
     |> Enum.find(fn item ->
       item.path == current_path or String.starts_with?(current_path, item.path <> "/")
-    end) || hd(items)
+    end) || hd(@nav_items)
   end
 
   defp detail_path?(current_path, item), do: String.starts_with?(current_path, item.path <> "/")
@@ -329,7 +303,15 @@ defmodule ObanPowertools.Web.Components.AppShell do
   defp visual_safe_rest(rest) do
     rest
     |> normalize_rest()
-    |> Enum.reject(fn {key, _value} -> key in ["class", "style"] end)
+    |> Enum.reject(fn {key, _value} ->
+      key in [
+        "class",
+        "data-obpt-effective-theme",
+        "data-obpt-motion",
+        "data-obpt-theme",
+        "style"
+      ]
+    end)
     |> Enum.reject(fn {_key, value} -> is_nil(value) or value == false end)
     |> Map.new()
   end
@@ -338,57 +320,6 @@ defmodule ObanPowertools.Web.Components.AppShell do
 
   defp normalize_rest(rest) when is_map(rest) do
     Map.new(rest, fn {key, value} -> {to_string(key), value} end)
-  end
-
-  defp require_safe_label!(value, name) do
-    value = require_text!(value, name)
-
-    if String.contains?(value, ["<", ">"]) do
-      raise ArgumentError, "#{name} cannot contain markup"
-    end
-
-    value
-  end
-
-  defp require_safe_path!(value) do
-    path = require_text!(value, "nav path")
-
-    cond do
-      path == @bridge_path ->
-        raise ArgumentError, "bridge path is not a primary nav surface"
-
-      path != @root_path and not String.starts_with?(path, @root_path <> "/") ->
-        raise ArgumentError, "nav path must stay under #{@root_path}"
-
-      String.contains?(path, ["<", ">", " "]) ->
-        raise ArgumentError, "nav path cannot contain unsafe characters"
-
-      true ->
-        path
-    end
-  end
-
-  defp require_safe_key!(value) do
-    key = value |> to_string() |> require_text!("nav key")
-
-    if Regex.match?(~r/^[a-z0-9]+(?:-[a-z0-9]+)*$/, key) do
-      key
-    else
-      raise ArgumentError, "nav key must be a stable slug"
-    end
-  end
-
-  defp key_from_path(@root_path), do: "overview"
-
-  defp key_from_path(path) do
-    path
-    |> String.replace_prefix(@root_path <> "/", "")
-    |> String.split("/", parts: 2)
-    |> hd()
-  end
-
-  defp require_text!(value, name) do
-    present_text(value) || raise ArgumentError, "#{name} is required"
   end
 
   defp present_text(nil), do: nil

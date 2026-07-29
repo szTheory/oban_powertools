@@ -208,8 +208,8 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
           error: "Data did not load",
           unavailable: "Data unavailable",
           permission_denied: "Permission denied",
-          stale: "Job evidence is stale",
-          partial: "Job evidence is partial"
+          stale: "Evidence is stale",
+          partial: "Evidence is partial"
         ] do
       html =
         render_data(:data_table,
@@ -685,6 +685,7 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
     assert code =~
              ~s(<pre class="obpt-code-block__region" tabindex="0" aria-labelledby="code-label")
 
+    assert code =~ "data-obpt-machine-scroller"
     assert code =~ ~s(<code class="obpt-code-block__code")
     assert code =~ "&lt;b&gt;text&lt;/b&gt;"
     refute code =~ @secret
@@ -984,6 +985,6 @@ defmodule ObanPowertools.Web.Components.DataDisplayTest do
   defp state_copy(:error), do: "Data did not load"
   defp state_copy(:unavailable), do: "Data unavailable"
   defp state_copy(:permission_denied), do: "Permission denied"
-  defp state_copy(:stale), do: "Job evidence is stale"
-  defp state_copy(:partial), do: "Job evidence is partial"
+  defp state_copy(:stale), do: "Evidence is stale"
+  defp state_copy(:partial), do: "Evidence is partial"
 end
