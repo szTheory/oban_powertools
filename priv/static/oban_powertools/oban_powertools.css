@@ -4077,3 +4077,218 @@
 .obpt-root[data-obpt-motion="reduce"] :is(#overview-page, .obpt-cron-page, .obpt-limiters-page, .obpt-audit-page, .obpt-jobs-page, .obpt-forensics-page) :is(.obpt-link, .obpt-button) {
   transition-duration: var(--obpt-motion-duration-instant);
 }
+
+.obpt-root .obpt-batches-page,
+.obpt-root .obpt-workflows-page,
+.obpt-root .obpt-lifeline-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--obpt-space-6);
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--obpt-space-6);
+}
+
+.obpt-root :is(.obpt-batches-page, .obpt-workflows-page, .obpt-lifeline-page) > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.obpt-root :is(.obpt-batches-page, .obpt-workflows-page, .obpt-lifeline-page) :where(p, li, dd, dt, code, time) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.obpt-root :is(.obpt-batches-page, .obpt-workflows-page, .obpt-lifeline-page) :where(a, button, input, select, textarea, summary):focus-visible {
+  scroll-margin-block: var(--obpt-space-5);
+}
+
+.obpt-root .obpt-workflows-page__diagnosis,
+.obpt-root .obpt-workflows-page__selected-step,
+.obpt-root .obpt-workflows-page__handoff,
+.obpt-root .obpt-workflows-page__runbook,
+.obpt-root .obpt-workflows-page__forensics,
+.obpt-root .obpt-lifeline-page__detail,
+.obpt-root .obpt-lifeline-page__preview-summary,
+.obpt-root .obpt-lifeline-page__support {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--obpt-space-4);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.obpt-root .obpt-workflows-page__steps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--obpt-space-3);
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding-inline-start: var(--obpt-space-5);
+}
+
+.obpt-root .obpt-workflows-page__step,
+.obpt-root .obpt-lifeline-page__audit,
+.obpt-root .obpt-lifeline-page__support > ul > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--obpt-space-2);
+  min-width: 0;
+  max-width: 100%;
+  padding-block: var(--obpt-space-3);
+}
+
+.obpt-root .obpt-workflows-page__step + .obpt-workflows-page__step,
+.obpt-root .obpt-lifeline-page__audit + .obpt-lifeline-page__audit,
+.obpt-root .obpt-lifeline-page__support > ul > li + li {
+  border-block-start: 1px solid var(--obpt-color-page-separator);
+}
+
+.obpt-root .obpt-lifeline-page__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--obpt-space-4);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.obpt-root .obpt-lifeline-page__header > div {
+  display: grid;
+  gap: var(--obpt-space-2);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.obpt-root .obpt-lifeline-page__header :where(h1, p),
+.obpt-root .obpt-lifeline-page__detail :where(h2, h3, p),
+.obpt-root .obpt-lifeline-page__preview-summary :where(h2, p),
+.obpt-root .obpt-lifeline-page__support :where(h2, p, ul) {
+  margin: 0;
+}
+
+.obpt-root .obpt-lifeline-page__header h1 {
+  color: var(--obpt-color-text);
+  font-size: var(--obpt-font-size-page-title);
+  font-weight: var(--obpt-font-weight-semibold);
+  line-height: var(--obpt-line-height-tight);
+  overflow-wrap: anywhere;
+}
+
+.obpt-root .obpt-lifeline-page__header p {
+  max-inline-size: calc(var(--obpt-space-7) * 14);
+  color: var(--obpt-color-muted);
+  font-size: var(--obpt-font-size-md);
+  line-height: var(--obpt-line-height-relaxed);
+}
+
+.obpt-root .obpt-lifeline-page__metrics {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--obpt-space-4);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.obpt-root .obpt-lifeline-page__views {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--obpt-space-2);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.obpt-root .obpt-lifeline-page__views > .obpt-button {
+  min-block-size: calc(var(--obpt-space-7) - var(--obpt-space-1));
+}
+
+.obpt-root .obpt-lifeline-page__notice {
+  margin: 0;
+  color: var(--obpt-color-text);
+  overflow-wrap: anywhere;
+}
+
+.obpt-root .obpt-lifeline-page__support > ul {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 48rem) {
+  .obpt-root .obpt-lifeline-page__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .obpt-root .obpt-workflows-page__steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 64rem) {
+  .obpt-root .obpt-lifeline-page__metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .obpt-root .obpt-workflows-page__diagnosis,
+  .obpt-root .obpt-workflows-page__selected-step,
+  .obpt-root .obpt-lifeline-page__detail,
+  .obpt-root .obpt-lifeline-page__support {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .obpt-root .obpt-workflows-page__diagnosis > :is(h2, .obpt-description-list, .obpt-workflows-page__semantics, .obpt-evidence-completeness, .obpt-workflows-page__refusal),
+  .obpt-root .obpt-workflows-page__selected-step > :is(h2, .obpt-description-list, .obpt-workflows-page__refusal),
+  .obpt-root .obpt-lifeline-page__detail > :is(h2, p),
+  .obpt-root .obpt-lifeline-page__support > :is(h2, p, ul) {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 24rem) {
+  .obpt-root .obpt-batches-page,
+  .obpt-root .obpt-workflows-page,
+  .obpt-root .obpt-lifeline-page {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--obpt-space-5);
+    padding: var(--obpt-space-4);
+  }
+
+  .obpt-root .obpt-workflows-page__diagnosis,
+  .obpt-root .obpt-workflows-page__steps,
+  .obpt-root .obpt-workflows-page__selected-step,
+  .obpt-root .obpt-lifeline-page__metrics,
+  .obpt-root .obpt-lifeline-page__detail,
+  .obpt-root .obpt-lifeline-page__support {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .obpt-root .obpt-lifeline-page__header,
+  .obpt-root .obpt-lifeline-page__views {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .obpt-root .obpt-lifeline-page__views > * {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .obpt-root :is(.obpt-batches-page, .obpt-workflows-page, .obpt-lifeline-page) :is(.obpt-link, .obpt-button) {
+    transition-duration: var(--obpt-motion-duration-instant);
+  }
+}
+
+.obpt-root[data-obpt-motion="reduce"] :is(.obpt-batches-page, .obpt-workflows-page, .obpt-lifeline-page) :is(.obpt-link, .obpt-button) {
+  transition-duration: var(--obpt-motion-duration-instant);
+}
