@@ -16,7 +16,7 @@
 - [x] **Phase 77: Data-Display & Operator Patterns** — Shared data components + unified status taxonomy. *[split-risk]* — verification gap closure required (completed 2026-07-13)
 - [x] **Phase 78: Component Groups (Meta-Components)** — Operator meta-patterns encapsulating "explain, then act". (completed 2026-07-19)
 - [x] **Phase 79: Page Migration Wave 1** — Overview, Cron, Limiters, Audit. (completed 2026-07-20)
-- [ ] **Phase 80: Page Migration Wave 2** — Jobs + Forensics. *[split-risk]* — verification gap closure required
+- [x] **Phase 80: Page Migration Wave 2** — Jobs + Forensics. *[split-risk]* — verification gap closure required (completed 2026-07-29)
 - [ ] **Phase 81: Page Migration Wave 3** — Batches, Workflows, Lifeline. *[split-risk]*
 - [ ] **Phase 82: Cross-Cutting A11y/Motion/Responsive Sweep** — System-wide AA + reduced-motion + 320→wide + microcopy closure.
 - [ ] **Phase 83: Showcase Completion & Documentation** — Full showcase coverage + design-system/idempotency docs.
@@ -336,9 +336,9 @@
   2. VRT + a11y green over adversarial fixtures (thousands of rows, redacted args, deep timelines).
   3. No functional regression in filter/search/bulk/deep-link behavior.
 
-**Plans**: 16/17 plans executed
+**Plans**: 17/17 plans complete
 
-- [ ] 80-17-PLAN.md
+- [x] 80-17-PLAN.md
 
 - [x] 80-14-PLAN.md
 - [x] 80-15-PLAN.md
@@ -457,7 +457,7 @@
 | 77. Data-Display & Operator Patterns | 9/9 | Complete    | 2026-07-13 |
 | 78. Component Groups (Meta-Components) | 8/8 | Complete    | 2026-07-19 |
 | 79. Page Migration Wave 1 | 12/12 | Complete   | 2026-07-20 |
-| 80. Page Migration Wave 2 | 16/17 | In Progress|  |
+| 80. Page Migration Wave 2 | 17/17 | Complete   | 2026-07-29 |
 | 81. Page Migration Wave 3 | 0/TBD | Not started | — |
 | 82. Cross-Cutting A11y/Motion/Responsive Sweep | 0/TBD | Not started | — |
 | 83. Showcase Completion & Documentation | 0/TBD | Not started | — |

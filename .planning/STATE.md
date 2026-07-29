@@ -4,16 +4,16 @@ milestone: v2.0
 milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 80
 current_phase_name: page-migration-wave-2-jobs-forensics
-status: gaps_found
-stopped_at: Phase 80 verification gap WR-01
-last_updated: "2026-07-29T04:31:29Z"
+status: verifying
+stopped_at: Completed 80-17-PLAN.md
+last_updated: "2026-07-29T04:57:23.898Z"
 last_activity: 2026-07-29
 last_activity_desc: Phase 80 execution started
 progress:
   total_phases: 15
   completed_phases: 11
-  total_plans: 77
-  completed_plans: 77
+  total_plans: 78
+  completed_plans: 78
   percent: 73
 ---
 
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 80 (page-migration-wave-2-jobs-forensics) — EXECUTING
-Plan: 16 of 16
-Status: Verification gaps found — WR-01 requires gap closure
-Last activity: 2026-07-29 — Phase 80 verification found one PAGE-02 gap
+Plan: 17 of 17
+Status: Phase complete — ready for verification
+Last activity: 2026-07-29 — Phase 80 execution started
 
 ## Performance Metrics
 
@@ -89,6 +89,7 @@ Last activity: 2026-07-29 — Phase 80 verification found one PAGE-02 gap
 | Phase 80 P14 | 5m | 1 tasks | 3 files |
 | Phase 80 P15 | 9m | 2 tasks | 6 files |
 | Phase 80 P16 | 40m | 2 tasks | 3 files |
+| Phase 80 P17 | 4m | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -117,8 +118,8 @@ Last activity: 2026-07-29 — Phase 80 verification found one PAGE-02 gap
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T04:16:31.626Z
-**Stopped at:** Completed 80-16-PLAN.md
+**Last session:** 2026-07-29T04:57:11.766Z
+**Stopped at:** Completed 80-17-PLAN.md
 **Resume file:** None
 
 - **Last Action:** Completed Plan 79-08's connected accessibility, motion, responsive, confidentiality, and page-only visual evidence.
@@ -281,6 +282,7 @@ Last activity: 2026-07-29 — Phase 80 verification found one PAGE-02 gap
 - [Phase 80]: LiveView accepts execution results only when their count and exact unique integer position set equal the ready preview positions. — Malformed post-effect results fail closed with interruption and Audit recovery before any result-map lookup.
 - [Phase 80]: Only exactly five-space repository test locations are eligible for outer ExUnit attribution; ten-space generated-host diagnostics are ignored. — This mechanically excludes nested output while preserving exact module, title, path, and line provenance.
 - [Phase 80]: Current inherited failures are accepted only when isolated calibration, full suite, and failed-test rerun reproduce byte-identical four-field tuples with matching status and printed totals. — Exact independent reproduction distinguishes current out-of-scope debt from a Phase 80 regression without weakening to counts.
+- [Phase 80]: Jobs quick review and full detail share one public parser accepting only positive IDs through PostgreSQL signed bigint maximum. — One exact database-bound identity rule prevents divergent authorization and repository safety boundaries.
 
 ### Blockers
 
