@@ -449,7 +449,7 @@
 - [ ] 82-14-PLAN.md
 - [ ] 82-15-PLAN.md
 - [ ] 82-16-PLAN.md
-- [ ] 82-17-PLAN.md
+- [x] 82-17-PLAN.md
 
 ### Phase 83: Showcase Completion & Documentation
 
