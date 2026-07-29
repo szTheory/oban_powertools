@@ -293,7 +293,6 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             >
               {ControlPlanePresenter.runbook_ownership_label(ownership)}
             </div>
-            <.link navigate={forensic_path(@workflow, @selected_step)}>evidence link</.link>
           </section>
 
           <section class="obpt-workflows-page__forensics">

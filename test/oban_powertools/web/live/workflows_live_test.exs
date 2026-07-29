@@ -328,6 +328,12 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
     assert html =~ "Open the forensic bundle."
     assert html =~ "supporting evidence"
     assert has_element?(view, "a[href*='/ops/jobs/forensics?']")
+
+    assert [_forensic_link] =
+             html
+             |> Floki.parse_document!()
+             |> Floki.find("a[href*='/ops/jobs/forensics?']")
+
     assert has_element?(view, "a[href*='workflow_id=#{workflow.id}']")
     assert has_element?(view, "a[href*='step=sync_billing']")
   end
