@@ -5,15 +5,15 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 82
 current_phase_name: Cross-Cutting A11y, Motion & Responsive Hardening Sweep
 status: executing
-stopped_at: Completed 82-17-PLAN.md
-last_updated: "2026-07-29T20:33:48.000Z"
+stopped_at: Completed 82-05-PLAN.md
+last_updated: "2026-07-29T20:39:43.056Z"
 last_activity: 2026-07-29
 last_activity_desc: Completed Phase 82 Plan 17 finite copy policy and manifest projection
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 110
-  completed_plans: 98
+  completed_plans: 99
   percent: 80
 ---
 
@@ -22,7 +22,7 @@ progress:
 ## Current Position
 
 Phase: 82 — Cross-Cutting A11y, Motion & Responsive Hardening Sweep
-Plan: 5 of 17
+Plan: 6 of 17
 Status: Ready to execute
 Last activity: 2026-07-29 — Completed Phase 82 Plan 17 finite copy policy and manifest projection
 
@@ -105,6 +105,7 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 17 finite copy policy and 
 | Phase 82 P03 | 8min | 1 tasks | 1 files |
 | Phase 82 P04 | 16min | 2 tasks | 3 files |
 | Phase 82 P17 | 5min | 2 tasks | 5 files |
+| Phase 82 P05 | 3min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -133,8 +134,8 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 17 finite copy policy and 
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T20:33:48.000Z
-**Stopped at:** Completed 82-17-PLAN.md
+**Last session:** 2026-07-29T20:39:43.049Z
+**Stopped at:** Completed 82-05-PLAN.md
 **Resume file:** None
 
 - **Last Action:** Completed Plan 82-17's production Copy policy and schema-8 projection.
@@ -327,6 +328,9 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 17 finite copy policy and 
 - [Phase 82]: Derive Phase 82 target, page, and route-family counts directly from the generated schema-8 manifest without a production target-ID list.
 - [Phase 82]: Keep Phase 82 public Node validators pure over structured inputs while the CLI owns exact repository traversal and bounded diagnostics.
 - [Phase 82]: Parse source CSS into one structured motion inventory and compare packaged CSS byte-for-byte at the same policy owner boundary.
+- [Phase 82]: Use stronger Tier-2 semantic borders for meaningful boundaries while decorative separators retain the ordinary border token.
+- [Phase 82]: Remove shell overflow clipping so ordinary content must reflow and only bounded labelled machine regions scroll.
+- [Phase 82]: Keep production motion traversal exclusively in verify-phase82-quality.mjs; ExUnit owns exact token, selector, and asset contracts.
 
 ### Blockers
 
