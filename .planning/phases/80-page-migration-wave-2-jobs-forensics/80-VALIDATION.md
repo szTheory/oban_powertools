@@ -5,13 +5,13 @@ status: complete
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-07-27
-updated: 2026-07-28
+updated: 2026-07-29
 ---
 
 # Phase 80 — Validation Evidence Ledger
 
 This ledger reconciles every implementation task and high threat from Plans 80-01
-through 80-13 against fresh closure evidence. All automatable product, connected,
+through 80-17 against fresh closure evidence. All automatable product, connected,
 accessibility, artifact, and compare-only gates are green. The two production
 VoiceOver transcript rows remain explicitly open because this Mac lacks the
 one-time Guidepup OS setup required to start VoiceOver.
@@ -24,6 +24,7 @@ one-time Guidepup OS setup required to start VoiceOver.
 | `mix compile --warnings-as-errors` | pass | green |
 | Phase 80 focused non-docs/non-host suite | 901 tests, 0 failures, 7 excluded | green |
 | Jobs/Forensics quick suite | 109 tests, 0 failures | green |
+| Nyquist audit focused Jobs/Forensics suite | 134 tests, 0 failures | green |
 | Full `mix test --seed 0` | 927 tests, 5 failures | inherited residual |
 | Page manifest | schema 8, 49 page stories, 113 targets, 4 themes, 3 viewports | green |
 | Tracked page artifacts | 147 ARIA YAML, 588 PNG | green |
@@ -56,8 +57,12 @@ product lane above; no Phase 80 failure is hidden by that focused command.
 | 80-11 | 80-11-01 connected Jobs/Forensics and aggregate ordering | retained evidence: Wave 2 24/24 and combined Wave 1+2 69/69; exact package order remains Wave 1, Wave 2, axe, VRT | green |
 | 80-12 | 80-12-01 deterministic token-owned styles; 80-12-02 freeze 57 Wave 1 ARIA; 80-12-03 generate/review Phase 80 evidence | asset/theme suite: 23 tests, 0 failures; source/static CSS and JS byte-equal; 147/147 ARIA and 588/588 PNG validators; retained compare-only 1,323/1,323 | green |
 | 80-13 | 80-13-01 closure ledger; 80-13-02 exact seven-story VoiceOver harness and locked browser closure | exact list 7/7; manifest hash stable; 147/588 validators green; final aggregate 1,392/1,392; Guidepup OS startup limitation recorded without invented transcripts | green with supported-environment gap |
+| 80-14 | 80-14-01 relational workflow-step evidence authority | Forensics context + connected suites: 44 tests, 0 failures; Audit + evidence-bundle compatibility: 13 tests, 0 failures; forged cross-workflow selector performs zero Audit reads | green |
+| 80-15 | 80-15-01 signed-int64-safe Jobs URL values; 80-15-02 exact frozen batch positions and fail-closed reconciliation | Jobs params + LiveView: 59 tests, 0 failures; coordinator: 9 tests, 0 failures across three consecutive runs; adjacent Jobs/auth/application/Lifeline suites green | green |
+| 80-16 | 80-16-01 exact residual attribution and all blocked closeout gates; 80-16-02 registered Summary-first completion | focused lane 112/112; coordinator 9/9 three times; exact five-row residual identity stable across calibration/full/rerun; 147/588 validators and 1,392/1,392 page aggregate green | green |
+| 80-17 | 80-17-01 canonical signed-int64 full-detail Jobs IDs before authorization and Repo | params + JobsLive 62/62; Jobs/auth/router 28/28; maximum accepted, maximum-plus-one and malformed values perform the specified bounded/zero-query behavior | green |
 
-All 25 tasks in Plans 80-01 through 80-13 are represented above. Their plan
+All 31 tasks in Plans 80-01 through 80-17 are represented above. Their plan
 summaries, atomic task commits, declared file scopes, and fresh owning commands
 agree; there is no missing task, accepted RED state, skipped test, or summary-only
 completion claim.
@@ -66,7 +71,7 @@ completion claim.
 
 | Requirement | Evidence | Status |
 |---|---|---|
-| PAGE-02 | Bounded Jobs queries; canonical browse/detail; single and frozen bulk actions; 18 production-composed stories; connected and artifact evidence | green |
+| PAGE-02 | Bounded Jobs queries; signed-int64-safe canonical browse/detail authorization and Repo identity; single and frozen bulk actions; 18 production-composed stories; connected and artifact evidence | green |
 | PAGE-09 | Four-family typed Forensics scope; bounded evidence; diagnosis-first page; 12 production-composed stories; connected and artifact evidence | green |
 | FORM-03 | Submit-only canonical filters/scopes, exact field errors, and shared Lifeline confirmation/focus contracts | green |
 | DATA-* | SQL-bounded reads, exact/has-more truth, structural redaction, fixed presentation maps, no raw error/payload/token fallback | green |
@@ -91,7 +96,9 @@ completion claim.
   Repo/context read, `DateTime.utc_now/0`, or Task/process work. Reads and current
   time capture happen before assigns cross the render seam.
 - **URL grammars:** Jobs accepts exactly `state queue worker tags args meta page
-  job`; Forensics accepts exactly `resource_type resource_id workflow_id step
+  job`, bounds database-bound page/job values to their signed integer ranges,
+  and shares the signed-int64 parser with full detail before authorization or
+  Repo access; Forensics accepts exactly `resource_type resource_id workflow_id step
   incident_fingerprint view`. Unknown, duplicate, mixed, or malformed values
   canonicalize before reads.
 - **Semantic-tree bounds:** LiveView and browser contracts prove exactly one Jobs
@@ -175,8 +182,11 @@ migration is implied.
 | T-80-11-FALSE/AUTH/LEAK/A11Y/MANIFEST/PORT | real production URLs/effects, auth races/frozen scope, cross-channel sentinels, keyboard/reflow/target assertions, exact Wave 1 prefix, one serial launcher | mitigated |
 | T-80-12-OMIT/SCOPE/LEAK/THEME/HOST/A11Y | tracked exact sets, prefix/inventory hashes, closed stories, four-theme review, root-scoped byte-equal assets, axe/ARIA/VRT closure | mitigated |
 | T-80-13-FALSEGREEN/SCOPE/LEAK/A11Y/VRT/GAP | fresh explicit counts, isolated timeout diagnosis and hardening, exact Phase 80 attribution, confidentiality reconciliation, exact seven-story discovery, unchanged 147/588 tracked sets, final 1,392/1,392 compare, and complete source audit | mitigated; real transcripts remain honestly open for supported environment |
+| T-80-14-CR01/CONF/SPOOF/ENUM/BOUND | one three-predicate Step lookup before Audit, database-derived downstream scope, zero-Audit-read mismatch proof, and uniform unavailable output | mitigated |
+| T-80-15-INT64/POSITION/RECONCILE | Postgrex-safe URL bounds, frozen-position terminal results, exact ready-position validation, and repeated coordinator coverage | mitigated |
+| T-80-17-DOS/AUTH/ENUM/DRIFT/SCOPE | one signed-int64 parser before host authorization and Repo, canonical decimal-string/nil resources, zero-query overflow/malformed proof, and unchanged route/schema scope | mitigated |
 
-No high threat from Plans 80-01 through 80-13 remains open. The only outstanding
+No high threat from Plans 80-01 through 80-17 remains open. The only outstanding
 accessibility observation is the platform-bound VoiceOver transcript gate below.
 
 ## Multi-Source Coverage Audit
@@ -449,3 +459,18 @@ supported-environment disposition, not a fabricated accessibility claim.
 Before Summary creation, ROADMAP and REQUIREMENTS remained byte-identical to
 their fresh snapshots, ROADMAP still reported 15/16 with Plan 80-16 unchecked,
 the Summary was absent, and STATE contained no terminal Plan 80-16 marker.
+
+## Validation Audit 2026-07-29
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+The retroactive Nyquist audit read all 17 Plan/Summary pairs and cross-referenced
+all 31 tasks and Phase 80 requirement families against their owning tests.
+Plan 80-17 was missing from the ledger, but not from automated coverage. A fresh
+focused command covering Jobs queries/params/bulk/LiveView and Forensics
+context/evidence/LiveView completed with 134 tests and 0 failures. No new test
+file was required.
