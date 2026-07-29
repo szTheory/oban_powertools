@@ -563,42 +563,50 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       max_id = "9223372036854775807"
       overflow_id = "9223372036854775808"
       huge_id = "88888888888888888888888888888888888888888888888888"
+      max_conn = get(conn, "/ops/jobs/jobs/#{max_id}")
+      _static_calls = collect_authorizations([])
 
       {{{:ok, _view, max_html}, max_queries}, max_calls} =
         capture_authorizations(fn ->
-          capture_job_queries(fn -> live(conn, "/ops/jobs/jobs/#{max_id}") end)
+          capture_job_queries(fn -> live(max_conn) end)
         end)
 
       assert length(max_queries) == 1
 
-      assert max_calls == [
+      assert detail_authorizations(max_calls) == [
                {:view_job_detail, %{type: :job, id: max_id}},
                {:view_job_detail, %{type: :job, id: max_id}}
              ]
 
       assert max_html =~ "Job unavailable"
 
+      missing_conn = get(conn, "/ops/jobs/jobs/999999999")
+      _static_calls = collect_authorizations([])
+
       {{{:ok, _view, missing_html}, missing_queries}, missing_calls} =
         capture_authorizations(fn ->
-          capture_job_queries(fn -> live(conn, "/ops/jobs/jobs/999999999") end)
+          capture_job_queries(fn -> live(missing_conn) end)
         end)
 
       assert length(missing_queries) == 1
 
-      assert missing_calls == [
+      assert detail_authorizations(missing_calls) == [
                {:view_job_detail, %{type: :job, id: "999999999"}},
                {:view_job_detail, %{type: :job, id: "999999999"}}
              ]
 
       for invalid_id <- [overflow_id, huge_id, "not-an-id"] do
+        invalid_conn = get(conn, "/ops/jobs/jobs/#{invalid_id}")
+        _static_calls = collect_authorizations([])
+
         {{{:ok, view, html}, queries}, calls} =
           capture_authorizations(fn ->
-            capture_job_queries(fn -> live(conn, "/ops/jobs/jobs/#{invalid_id}") end)
+            capture_job_queries(fn -> live(invalid_conn) end)
           end)
 
         assert Process.alive?(view.pid)
         assert queries == []
-        assert calls == [{:view_job_detail, %{type: :job, id: nil}}]
+        assert detail_authorizations(calls) == [{:view_job_detail, %{type: :job, id: nil}}]
         assert body_text(html) == body_text(missing_html)
         assert html =~ ~s(id="job-unavailable")
         assert html =~ "Job unavailable"
@@ -1687,6 +1695,10 @@ defmodule ObanPowertools.Web.JobsLiveTest do
     after
       0 -> Enum.reverse(calls)
     end
+  end
+
+  defp detail_authorizations(calls) do
+    Enum.filter(calls, fn {action, _resource} -> action == :view_job_detail end)
   end
 
   # ---------------------------------------------------------------------------

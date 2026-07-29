@@ -28,7 +28,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
       {permission, resource_type, resource_id} =
         case action do
-          :show -> {:view_job_detail, :job, params["id"]}
+          :show -> {:view_job_detail, :job, detail_resource_id(params["id"])}
           _ -> {:view_jobs, :page, "jobs"}
         end
 
@@ -1095,7 +1095,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       actor = Map.get(socket.assigns, :current_actor)
       back_path = Selectors.jobs_path(return_params)
 
-      with {:ok, normalized_id} <- normalize_detail_job_id(job_id),
+      with {:ok, normalized_id} <- JobsParams.parse_job_id(job_id),
            true <-
              LiveAuth.authorized?(actor, :view_job_detail, %{
                type: :job,
@@ -1937,16 +1937,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       do:
         "The bulk action is unavailable. Review current job truth before creating a fresh preview."
 
-    defp normalize_detail_job_id(value) when is_integer(value) and value > 0, do: {:ok, value}
-
-    defp normalize_detail_job_id(value) when is_binary(value) do
-      case Integer.parse(value) do
-        {id, ""} when id > 0 -> {:ok, id}
-        _invalid -> :error
+    defp detail_resource_id(job_id) do
+      case JobsParams.parse_job_id(job_id) do
+        {:ok, normalized_id} -> Integer.to_string(normalized_id)
+        :error -> nil
       end
     end
-
-    defp normalize_detail_job_id(_value), do: :error
 
     defp recorded_output_display(%Oban.Job{} = job) do
       context = %{surface: :jobs, field: :recorded, job: job}

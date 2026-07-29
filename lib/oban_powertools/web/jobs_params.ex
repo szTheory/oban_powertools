@@ -47,7 +47,7 @@ defmodule ObanPowertools.Web.JobsParams do
     {args, invalid_args?} = parse_json_object(raw_params["args"])
     {meta, invalid_meta?} = parse_json_object(raw_params["meta"])
     {page, invalid_page?} = parse_page(raw_params["page"])
-    {quick_review_id, invalid_review?} = parse_job_id(raw_params["job"])
+    {quick_review_id, invalid_review?} = parse_optional_job_id(raw_params["job"])
 
     query = %Jobs{
       state: state,
@@ -83,6 +83,25 @@ defmodule ObanPowertools.Web.JobsParams do
       notices: if(invalid?, do: [@invalid_url_notice], else: [])
     }
   end
+
+  @doc """
+  Parses a canonical Jobs resource ID within PostgreSQL's signed `bigint` range.
+
+  Accepts only positive integers or full-string decimal binaries from `1`
+  through `9_223_372_036_854_775_807`.
+  """
+  def parse_job_id(value)
+      when is_integer(value) and value > 0 and value <= @max_int64,
+      do: {:ok, value}
+
+  def parse_job_id(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {parsed, ""} when parsed > 0 and parsed <= @max_int64 -> {:ok, parsed}
+      _invalid -> :error
+    end
+  end
+
+  def parse_job_id(_value), do: :error
 
   @doc """
   Validates retained optional-filter draft strings without creating patch intent.
@@ -206,7 +225,15 @@ defmodule ObanPowertools.Web.JobsParams do
   defp parse_json_object(_value), do: {nil, true}
 
   defp parse_page(value), do: parse_bounded_positive_integer(value, 1, @max_page)
-  defp parse_job_id(value), do: parse_bounded_positive_integer(value, nil, @max_int64)
+
+  defp parse_optional_job_id(nil), do: {nil, false}
+
+  defp parse_optional_job_id(value) do
+    case parse_job_id(value) do
+      {:ok, id} -> {id, false}
+      :error -> {nil, true}
+    end
+  end
 
   defp parse_bounded_positive_integer(nil, default, _maximum), do: {default, false}
 
