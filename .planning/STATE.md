@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 81
 current_phase_name: Page Migration Wave 3 — Batches, Workflows, Lifeline
 status: executing
-stopped_at: Completed 81-04-PLAN.md
-last_updated: "2026-07-29T08:20:31.681Z"
+stopped_at: Completed 81-05-PLAN.md
+last_updated: "2026-07-29T08:33:34.841Z"
 last_activity: 2026-07-29
 last_activity_desc: Completed Phase 81 Plan 04 closed Lifeline presentation boundary
 progress:
   total_phases: 15
   completed_phases: 11
   total_plans: 93
-  completed_plans: 83
-  percent: 89
+  completed_plans: 84
+  percent: 73
 ---
 
 # Project State
@@ -22,7 +22,7 @@ progress:
 ## Current Position
 
 Phase: 81 — Page Migration Wave 3 — Batches, Workflows, Lifeline
-Plan: 5 of 15
+Plan: 6 of 15
 Status: Ready to execute
 Last activity: 2026-07-29 — Completed Phase 81 Plan 04 closed Lifeline presentation boundary
 
@@ -93,6 +93,7 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 04 closed Lifeline present
 | Phase 81 P07 | 35min | 2 tasks | 8 files |
 | Phase 81 P01 | 12min | 3 tasks | 9 files |
 | Phase 81 P04 | 7min | 2 tasks | 2 files |
+| Phase 81 P05 | 24min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -121,8 +122,8 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 04 closed Lifeline present
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T08:20:31.534Z
-**Stopped at:** Completed 81-04-PLAN.md
+**Last session:** 2026-07-29T08:33:34.836Z
+**Stopped at:** Completed 81-05-PLAN.md
 **Resume file:** None
 
 - **Last Action:** Completed Plan 79-08's connected accessibility, motion, responsive, confidentiality, and page-only visual evidence.
@@ -293,7 +294,11 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 04 closed Lifeline present
 - [Phase 81]: Lifeline presenter outputs retain a finite state atom paired with the canonical StatusTaxonomy specification. — Shared components consume finite states while taxonomy remains the single source of labels, tones, icons, and screen-reader prefixes.
 - [Phase 81]: Only clean Lifeline repair success may emit a receipt or authorized Audit destination. — Partial and uncertain results must require a fresh preview and cannot imply durable clean completion.
 - [Phase 81]: Incident denial and malformed sources return the same exact unavailable map. — Uniform finite presentation prevents existence and policy enumeration without traversing retained evidence.
+- [Phase 81]: Keep the existing preview and execute handlers as the sole mutation authority; shared confirmation receives only closed consequence copy and a reason form. — Preserves server-owned authorization and capability confidentiality.
+- [Phase 81]: Preserve legacy recovery and runbook wording as presentation evidence without rendering preview identity, raw snapshots, or arbitrary errors. — Maintains operator parity while closing disclosure channels.
+- [Phase 81]: Record the connected fixture class mismatch in its owning Plan 81-07 scope instead of coupling production Lifeline behavior to test-only metadata. — Keeps test fixtures from becoming production domain authority.
 
 ### Blockers
 
 - Phase 79 validation is approved by machine evidence; the advisory VoiceOver nightly may harden into a required lane after its quarantine period.
+- Plan 81-07 seeds Lifeline incident_class executor_missing; production projection resolves it, so connected Lifeline preview runtime must be rerun after the fixture uses the owned dead_executor class.

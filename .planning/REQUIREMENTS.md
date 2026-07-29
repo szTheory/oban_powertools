@@ -81,7 +81,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 ### Motion (MOTION)
 
 - [x] **MOTION-01**: Motion tokens (duration/easing) live in the token layer; components use them, never inline timings.
-- [ ] **MOTION-02**: Transitions are purposeful, interruptible, and reduced-motion-safe; overlays are origin-aware where feasible; no motion blocks operator action or obscures feedback.
+- [x] **MOTION-02**: Transitions are purposeful, interruptible, and reduced-motion-safe; overlays are origin-aware where feasible; no motion blocks operator action or obscures feedback.
 
 ### Microcopy / Voice (COPY)
 
@@ -152,7 +152,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 | PAGE-03, PAGE-04, PAGE-07 | Phase 81 | Pending |
 | PAGE-10 | Phases 79–81 | Complete |
 | A11Y-02, A11Y-03, A11Y-04 | Phase 82 | Pending |
-| MOTION-02 | Phase 82 | Pending |
+| MOTION-02 | Phase 82 | Complete |
 | COPY-01, COPY-02 | Phase 82 | Pending |
 | DOC-01..03 | Phase 83 | Pending |
 
