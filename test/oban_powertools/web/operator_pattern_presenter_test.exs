@@ -132,6 +132,101 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
     end
   end
 
+  @tag phase81_slice: "batches"
+  test "Batches detail projection is exact, bounded, and confidentiality safe" do
+    members =
+      for id <- 1..51 do
+        %{
+          job_id: id,
+          worker: "MyApp.Worker",
+          queue: "default",
+          oban_state: "discarded",
+          attempt: 1,
+          max_attempts: 20,
+          last_error_display: {:string, "safe failure"},
+          bridge_path: "/ops/jobs/oban/jobs/#{id}",
+          retry_eligible?: true,
+          args: %{"secret" => "must-not-render"}
+        }
+      end
+
+    callbacks =
+      for id <- 1..26 do
+        %{
+          id: "callback-#{id}",
+          event: "batch.exhausted",
+          dedupe_key: "dedupe-#{id}",
+          status: "failed",
+          attempts: 1,
+          last_error_display: {:string, "safe callback failure"},
+          retry_eligible?: true,
+          payload: %{"secret" => "must-not-render"}
+        }
+      end
+
+    detail =
+      Presenter.present_batch_detail(
+        %{
+          id: "batch-1",
+          name: "Billing replay",
+          status: "callback_failed",
+          progress: %{total_count: 51, completed_count: 2, percent: 3.9},
+          blocked_state: %{
+            name: :callback_failed,
+            severity: :warning,
+            title: "Callback failed",
+            copy: "A callback requires review.",
+            evidence: %{discard_count: 2, provider_error: "must-not-render"}
+          },
+          failed_members: members,
+          callbacks: callbacks,
+          callback_summary: %{total: 26, failed: 26},
+          chain_context: %{chain?: true, chain_id: "chain-1"},
+          audit_events: []
+        },
+        %{back_href: "/ops/jobs/batches?status=all"}
+      )
+
+    assert Map.keys(detail) |> Enum.sort() ==
+             ~w[
+               audit_events audit_evidence back_href blocked_state callback_evidence
+               callback_summary callbacks chain_context completed_at failed_members id
+               inserted_at member_evidence name progress result_evidence results status updated_at
+             ]a
+             |> Enum.sort()
+
+    assert length(detail.failed_members) == 50
+    assert length(detail.callbacks) == 25
+    refute detail.member_evidence.complete?
+    refute detail.callback_evidence.complete?
+    assert detail.member_evidence.guidance =~ "partial evidence"
+    refute inspect(detail) =~ "must-not-render"
+  end
+
+  @tag phase81_slice: "batches"
+  test "Batches retry projection omits preview authority and preserves finite outcome truth" do
+    presentation =
+      Presenter.present_batch_retry_preview(
+        %{
+          status: "drifted",
+          action: "job_retry",
+          preview_token: "must-not-render",
+          plan_hash: "must-not-render"
+        },
+        %{selected_count: 2, object_label: "Batch billing"}
+      )
+
+    assert presentation.state == :drifted
+    assert presentation.scope == "2 currently eligible failed jobs"
+    refute Map.has_key?(presentation, :preview_token)
+    refute Map.has_key?(presentation, :plan_hash)
+    refute inspect(presentation) =~ "must-not-render"
+
+    assert_raise ArgumentError, fn ->
+      Presenter.present_batch_detail([], %{})
+    end
+  end
+
   test "Forensics returns exactly eight diagnosis-first redaction-safe fields" do
     lifeline_href =
       "/ops/jobs/lifeline?incident_fingerprint=dead_executor%3Aalpha&view=active"

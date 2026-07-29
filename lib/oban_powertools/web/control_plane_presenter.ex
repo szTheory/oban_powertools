@@ -7,6 +7,30 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
   alias ObanPowertools.Forensics.Chronology
   alias ObanPowertools.Web.Selectors
 
+  @workflow_scan_limit 50
+  @workflow_step_limit 100
+  @workflow_result_limit 50
+  @workflow_evidence_limit 25
+  @batch_member_limit 50
+  @batch_callback_limit 25
+  @batch_result_limit 50
+  @batch_audit_limit 25
+  @incident_limit 50
+  @executor_limit 25
+  @lifeline_audit_limit 50
+  @archive_limit 25
+
+  @batch_states ~w[
+    inserting executing exhausted insert_failed callback_failed completed
+  ]
+  @batch_member_states ~w[
+    available scheduled executing retryable cancelled discarded completed failed unknown
+  ]
+  @callback_states ~w[pending claimed delivered failed lease_expired unknown]
+  @repair_states ~w[
+    preview partial skipped failed drifted expired consumed disconnected interrupted success
+  ]
+
   @status_labels %{
     needs_review: "Needs Review",
     blocked: "Blocked",
@@ -159,6 +183,197 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
     audit: ~w[resource_type resource_id page event event_type]
   }
   @forensic_note_limit 1_000
+
+  @doc """
+  Projects one authorized batch list row into a finite presentation map.
+
+  The context supplies navigation destinations and observation time. Domain
+  structs, callback payloads, job args, and mutation authority are deliberately
+  excluded from the result.
+  """
+  def present_batch_row(batch, context) when is_map(batch) and is_map(context) do
+    progress = batch_progress(presentation_value(batch, :progress))
+
+    %{
+      id: presentation_text(presentation_value(batch, :id), "Unavailable"),
+      name: batch_name(batch),
+      status: finite_state(presentation_value(batch, :status), @batch_states),
+      progress: progress,
+      failed_count: nonnegative(presentation_value(batch, :failed_count)),
+      retryable_failed_count: nonnegative(presentation_value(batch, :retryable_failed_count)),
+      callback_summary: batch_callback_summary(presentation_value(batch, :callback_summary)),
+      chain?: presentation_value(batch, :chain?) == true,
+      blocked_state: batch_blocked_state(presentation_value(batch, :blocked_state)),
+      updated_at: safe_time(presentation_value(batch, :updated_at)),
+      detail_href:
+        authorized_destination(
+          presentation_value(context, :detail_href) ||
+            Selectors.batch_detail_path(presentation_value(batch, :id)),
+          context
+        )
+    }
+  end
+
+  def present_batch_row(_batch, _context),
+    do: raise(ArgumentError, "batch row source and context must be maps")
+
+  @doc """
+  Projects an authorized batch detail and applies every finite render cap.
+  """
+  def present_batch_detail(detail, context) when is_map(detail) and is_map(context) do
+    members =
+      detail
+      |> presentation_value(:failed_members)
+      |> bounded_collection(@batch_member_limit, &present_batch_member/1)
+
+    callbacks =
+      detail
+      |> presentation_value(:callbacks)
+      |> bounded_collection(@batch_callback_limit, &present_batch_callback/1)
+
+    results =
+      detail
+      |> presentation_value(:results)
+      |> bounded_collection(@batch_result_limit, &present_batch_result/1)
+
+    audit =
+      detail
+      |> presentation_value(:audit_events)
+      |> bounded_collection(@batch_audit_limit, &present_batch_audit/1)
+
+    %{
+      id: presentation_text(presentation_value(detail, :id), "Unavailable"),
+      name: batch_name(detail),
+      status: finite_state(presentation_value(detail, :status), @batch_states),
+      progress: batch_progress(presentation_value(detail, :progress)),
+      blocked_state: batch_blocked_state(presentation_value(detail, :blocked_state)),
+      failed_members: members.items,
+      callbacks: callbacks.items,
+      results: results.items,
+      audit_events: audit.items,
+      member_evidence: completeness(members, "members"),
+      callback_evidence: completeness(callbacks, "callbacks"),
+      result_evidence: completeness(results, "results"),
+      audit_evidence: completeness(audit, "audit entries"),
+      callback_summary: batch_callback_summary(presentation_value(detail, :callback_summary)),
+      chain_context: batch_chain_context(presentation_value(detail, :chain_context)),
+      inserted_at: safe_time(presentation_value(detail, :inserted_at)),
+      updated_at: safe_time(presentation_value(detail, :updated_at)),
+      completed_at: safe_time(presentation_value(detail, :completed_at)),
+      back_href: authorized_destination(presentation_value(context, :back_href), context)
+    }
+  end
+
+  def present_batch_detail(_detail, _context),
+    do: raise(ArgumentError, "batch detail source and context must be maps")
+
+  @doc """
+  Converts a parent-owned retry preview into consequence-only confirmation copy.
+  """
+  def present_batch_retry_preview(preview, context)
+      when is_map(preview) and is_map(context) do
+    state = finite_state(presentation_value(preview, :status), @repair_states)
+    count = nonnegative(presentation_value(context, :selected_count))
+
+    %{
+      state: state,
+      title: if(count > 1, do: "Retry failed jobs", else: "Retry failed job"),
+      object_label: presentation_text(presentation_value(context, :object_label), "Batch"),
+      scope: "#{count} currently eligible failed #{if(count == 1, do: "job", else: "jobs")}",
+      consequence:
+        "Lifeline will revalidate each selected job immediately before attempting retry.",
+      reversibility:
+        "Accepted retries cannot be recalled; changed or ineligible jobs are skipped and reported.",
+      support_boundary:
+        "This preview is not authorization and does not prove that retried jobs will complete.",
+      action: finite_text(presentation_value(preview, :action), "job_retry")
+    }
+  end
+
+  def present_batch_retry_preview(_preview, _context),
+    do: raise(ArgumentError, "batch retry preview source and context must be maps")
+
+  # Wave 3 declares all finite seams up front. Subsequent page slices refine
+  # these closed allowlists without permitting raw domain values through them.
+  def present_workflow_row(value, context),
+    do:
+      closed_wave3_map(
+        value,
+        Map.put_new(context, :_render_limit, @workflow_scan_limit),
+        ~w[id name status progress detail_href]a
+      )
+
+  def present_workflow_detail(value, context),
+    do:
+      closed_wave3_map(
+        value,
+        Map.merge(context, %{
+          _step_limit: @workflow_step_limit,
+          _result_limit: @workflow_result_limit,
+          _evidence_limit: @workflow_evidence_limit
+        }),
+        ~w[id name status progress completeness]a
+      )
+
+  def present_workflow_step(value, context),
+    do: closed_wave3_map(value, context, ~w[id name status position blocked]a)
+
+  def present_workflow_step_detail(value, context, destinations) do
+    closed_wave3_map(
+      value,
+      Map.merge(context, destinations),
+      ~w[id name status summary guidance]a
+    )
+  end
+
+  def present_lifeline_summary(value),
+    do:
+      closed_wave3_map(
+        value,
+        %{_incident_limit: @incident_limit},
+        ~w[status active_count resolved_count completeness]a
+      )
+
+  def present_incident_row(value, context),
+    do: closed_wave3_map(value, context, ~w[id subject status severity observed_at detail_href]a)
+
+  def present_incident_detail(value, context),
+    do: closed_wave3_map(value, context, ~w[id subject status summary guidance completeness]a)
+
+  def present_repair_confirmation(value, context, destinations) do
+    closed_wave3_map(
+      value,
+      Map.merge(context, destinations),
+      ~w[state title object_label scope consequence reversibility support_boundary]a
+    )
+  end
+
+  def present_repair_result(value, context),
+    do: closed_wave3_map(value, context, ~w[state message recovery audit_href receipt]a)
+
+  def present_lifeline_audit_entry(value, context),
+    do:
+      closed_wave3_map(
+        value,
+        Map.put_new(context, :_audit_limit, @lifeline_audit_limit),
+        ~w[id event_label target_label recorded_at evidence_href]a
+      )
+
+  def present_executor_row(value),
+    do:
+      closed_wave3_map(
+        value,
+        %{_executor_limit: @executor_limit},
+        ~w[id name status observed_at guidance]a
+      )
+
+  def present_archive_summary(value),
+    do:
+      closed_wave3_map(
+        value,
+        %{_archive_limit: @archive_limit},
+        ~w[status retained_count pruned_count completeness guidance]a
+      )
 
   @doc """
   Projects one Overview bucket through the fixed Wave 1 presentation contract.
@@ -2287,6 +2502,314 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
       {:ok, value} -> value
       :error -> Map.get(map, Atom.to_string(key))
     end
+  end
+
+  defp batch_name(batch) do
+    presentation_text(
+      presentation_value(batch, :name) || presentation_value(batch, :short_id),
+      "Unnamed batch"
+    )
+  end
+
+  defp batch_progress(progress) when is_map(progress) do
+    total = nonnegative(presentation_value(progress, :total_count))
+    completed = min(nonnegative(presentation_value(progress, :completed_count)), total)
+
+    %{
+      total_count: total,
+      completed_count: completed,
+      inserted_count: nonnegative(presentation_value(progress, :inserted_count)),
+      success_count: nonnegative(presentation_value(progress, :success_count)),
+      discard_count: nonnegative(presentation_value(progress, :discard_count)),
+      cancelled_count: nonnegative(presentation_value(progress, :cancelled_count)),
+      snooze_count: nonnegative(presentation_value(progress, :snooze_count)),
+      percent:
+        case presentation_value(progress, :percent) do
+          value when is_number(value) -> value |> max(0) |> min(100)
+          _ -> if(total == 0, do: 0, else: Float.round(completed / total * 100, 1))
+        end
+    }
+  end
+
+  defp batch_progress(_progress),
+    do: %{
+      total_count: 0,
+      completed_count: 0,
+      inserted_count: 0,
+      success_count: 0,
+      discard_count: 0,
+      cancelled_count: 0,
+      snooze_count: 0,
+      percent: 0
+    }
+
+  defp batch_callback_summary(summary) when is_map(summary) do
+    Map.new(~w[total pending failed claimed delivered stuck]a, fn key ->
+      {key, nonnegative(presentation_value(summary, key))}
+    end)
+  end
+
+  defp batch_callback_summary(_summary),
+    do: %{total: 0, pending: 0, failed: 0, claimed: 0, delivered: 0, stuck: 0}
+
+  defp batch_blocked_state(state) when is_map(state) do
+    %{
+      name: finite_atom(presentation_value(state, :name), :unknown),
+      severity:
+        finite_atom(
+          presentation_value(state, :severity),
+          :neutral,
+          ~w[neutral info success warning danger]a
+        ),
+      title: presentation_text(presentation_value(state, :title), "Status unavailable"),
+      copy:
+        presentation_text(
+          presentation_value(state, :copy),
+          "Current retained evidence does not explain this state."
+        ),
+      evidence: batch_blocked_evidence(presentation_value(state, :evidence))
+    }
+  end
+
+  defp batch_blocked_state(_state) do
+    %{
+      name: :unknown,
+      severity: :neutral,
+      title: "Status unavailable",
+      copy: "Current retained evidence does not explain this state.",
+      evidence: []
+    }
+  end
+
+  defp batch_blocked_evidence(evidence) when is_map(evidence) do
+    ~w[
+      remaining_count discard_count inserted_count total_count failed_chunk failure_kind
+      upstream_job_id chain_step_name chain_step_index chain_step_count completed_at failed_at
+    ]a
+    |> Enum.flat_map(fn key ->
+      case safe_scalar(presentation_value(evidence, key)) do
+        nil -> []
+        value -> [%{label: humanize_presentation_key(key), value: to_string(value)}]
+      end
+    end)
+  end
+
+  defp batch_blocked_evidence(_evidence), do: []
+
+  defp present_batch_member(member) when is_map(member) do
+    %{
+      job_id: normalize_nonnegative_integer!(presentation_value(member, :job_id), "batch job id"),
+      worker: presentation_text(presentation_value(member, :worker), "Unknown"),
+      queue: presentation_text(presentation_value(member, :queue), "Unknown"),
+      state:
+        finite_state(
+          presentation_value(member, :oban_state) ||
+            presentation_value(member, :batch_member_state),
+          @batch_member_states
+        ),
+      attempt: nonnegative(presentation_value(member, :attempt)),
+      max_attempts: nonnegative(presentation_value(member, :max_attempts)),
+      error: safe_display_text(presentation_value(member, :last_error_display)),
+      bridge_href: presentation_text(presentation_value(member, :bridge_path), "#"),
+      retry_eligible?: presentation_value(member, :retry_eligible?) == true
+    }
+  end
+
+  defp present_batch_member(_member),
+    do: raise(ArgumentError, "batch member source must be a map")
+
+  defp present_batch_callback(callback) when is_map(callback) do
+    %{
+      id: presentation_text(presentation_value(callback, :id), "Unavailable"),
+      event: presentation_text(presentation_value(callback, :event), "Unknown event"),
+      dedupe_key: presentation_text(presentation_value(callback, :dedupe_key), "Unavailable"),
+      status: finite_state(presentation_value(callback, :status), @callback_states),
+      attempts: nonnegative(presentation_value(callback, :attempts)),
+      available_at: safe_time(presentation_value(callback, :available_at)),
+      claimed_at: safe_time(presentation_value(callback, :claimed_at)),
+      lease_expires_at: safe_time(presentation_value(callback, :lease_expires_at)),
+      delivered_at: safe_time(presentation_value(callback, :delivered_at)),
+      error: safe_display_text(presentation_value(callback, :last_error_display)),
+      retry_eligible?: presentation_value(callback, :retry_eligible?) == true
+    }
+  end
+
+  defp present_batch_callback(_callback),
+    do: raise(ArgumentError, "batch callback source must be a map")
+
+  defp present_batch_result(result) when is_map(result) do
+    %{
+      id: presentation_text(presentation_value(result, :id), "result"),
+      state: finite_state(presentation_value(result, :state), @repair_states),
+      message:
+        presentation_text(presentation_value(result, :message), "No result detail available.")
+    }
+  end
+
+  defp present_batch_result(_result),
+    do: raise(ArgumentError, "batch result source must be a map")
+
+  defp present_batch_audit(event) when is_map(event) do
+    %{
+      id: presentation_text(presentation_value(event, :id), "audit"),
+      event_label: audit_event_label(event),
+      resource_label: audit_resource_label(event),
+      inserted_at: safe_time(presentation_value(event, :inserted_at))
+    }
+  end
+
+  defp present_batch_audit(_event),
+    do: raise(ArgumentError, "batch audit source must be a map")
+
+  defp batch_chain_context(context) when is_map(context) do
+    %{
+      chain?: presentation_value(context, :chain?) == true,
+      chain_id: safe_scalar(presentation_value(context, :chain_id)),
+      chain_step_name: safe_scalar(presentation_value(context, :chain_step_name)),
+      chain_step_index: safe_scalar(presentation_value(context, :chain_step_index)),
+      chain_step_count: safe_scalar(presentation_value(context, :chain_step_count)),
+      upstream_job_id: safe_scalar(presentation_value(context, :upstream_job_id)),
+      next_step: safe_scalar(presentation_value(context, :next_step))
+    }
+  end
+
+  defp batch_chain_context(_context),
+    do: %{
+      chain?: false,
+      chain_id: nil,
+      chain_step_name: nil,
+      chain_step_index: nil,
+      chain_step_count: nil,
+      upstream_job_id: nil,
+      next_step: nil
+    }
+
+  defp bounded_collection(values, limit, projector) do
+    values =
+      case values do
+        list when is_list(list) -> Enum.take(list, limit + 1)
+        nil -> []
+        _ -> raise ArgumentError, "bounded presentation source must be a list"
+      end
+
+    %{
+      items: values |> Enum.take(limit) |> Enum.map(projector),
+      complete?: length(values) <= limit
+    }
+  end
+
+  defp completeness(%{items: items, complete?: complete?}, noun) do
+    %{
+      complete?: complete?,
+      rendered_count: length(items),
+      guidance:
+        if(
+          complete?,
+          do: "All retained #{noun} in this bounded view are shown.",
+          else: "More #{noun} exist; this view shows a bounded partial evidence window."
+        )
+    }
+  end
+
+  defp finite_state(value, allowed) do
+    normalized = value |> to_string() |> String.downcase()
+    if normalized in allowed, do: safe_atom(normalized), else: :unknown
+  end
+
+  defp finite_atom(value, fallback, allowed \\ nil)
+  defp finite_atom(value, _fallback, nil) when is_atom(value), do: value
+
+  defp finite_atom(value, fallback, allowed) when is_list(allowed) do
+    atom = if is_atom(value), do: value, else: safe_atom(to_string(value))
+    if atom in allowed, do: atom, else: fallback
+  end
+
+  defp finite_atom(_value, fallback, _allowed), do: fallback
+
+  defp nonnegative(value) when is_integer(value), do: max(value, 0)
+  defp nonnegative(value) when is_float(value), do: max(trunc(value), 0)
+  defp nonnegative(_value), do: 0
+
+  defp safe_time(nil), do: nil
+  defp safe_time(%DateTime{} = value), do: DateTime.to_iso8601(value)
+  defp safe_time(%NaiveDateTime{} = value), do: NaiveDateTime.to_iso8601(value)
+  defp safe_time(value) when is_binary(value), do: String.slice(value, 0, 100)
+  defp safe_time(_value), do: nil
+
+  defp safe_scalar(value) when is_binary(value), do: String.slice(value, 0, 500)
+  defp safe_scalar(value) when is_number(value) or is_boolean(value), do: value
+  defp safe_scalar(%DateTime{} = value), do: DateTime.to_iso8601(value)
+  defp safe_scalar(%NaiveDateTime{} = value), do: NaiveDateTime.to_iso8601(value)
+  defp safe_scalar(_value), do: nil
+
+  defp safe_display_text({kind, value})
+       when kind in [:raw_json, :string, :fallback] and is_binary(value),
+       do: String.slice(value, 0, 1_000)
+
+  defp safe_display_text(value) when is_binary(value), do: String.slice(value, 0, 1_000)
+  defp safe_display_text(_value), do: "Unavailable"
+
+  defp presentation_text(value, _fallback) when is_atom(value), do: Atom.to_string(value)
+
+  defp presentation_text(value, fallback) when is_binary(value) do
+    case String.trim(value) do
+      "" -> fallback
+      text -> String.slice(text, 0, 1_000)
+    end
+  end
+
+  defp presentation_text(_value, fallback), do: fallback
+  defp finite_text(value, fallback), do: presentation_text(value, fallback)
+
+  defp authorized_destination(nil, _context), do: nil
+
+  defp authorized_destination(destination, context) do
+    href = presentation_text(destination, "#")
+    allowed = presentation_value(context, :authorized_hrefs)
+    if is_list(allowed) and href not in allowed, do: nil, else: href
+  end
+
+  defp closed_wave3_map(value, context, keys) when is_map(value) and is_map(context) do
+    output =
+      keys
+      |> Enum.reduce(%{}, fn key, acc ->
+        case presentation_value(value, key) || presentation_value(context, key) do
+          nil -> acc
+          item -> Map.put(acc, key, closed_wave3_value(item))
+        end
+      end)
+
+    ensure_safe_presentation_data!(output, "Wave 3 presentation")
+    output
+  end
+
+  defp closed_wave3_map(_value, _context, _keys),
+    do: raise(ArgumentError, "Wave 3 presentation source and context must be maps")
+
+  defp closed_wave3_value(value)
+       when is_binary(value) or is_number(value) or is_boolean(value) or is_nil(value),
+       do: value
+
+  defp closed_wave3_value(value) when is_atom(value), do: value
+  defp closed_wave3_value(%DateTime{} = value), do: DateTime.to_iso8601(value)
+  defp closed_wave3_value(%NaiveDateTime{} = value), do: NaiveDateTime.to_iso8601(value)
+  defp closed_wave3_value(value) when is_list(value), do: Enum.map(value, &closed_wave3_value/1)
+
+  defp closed_wave3_value(value) when is_map(value) and not is_struct(value) do
+    value
+    |> Enum.reject(fn {key, _item} ->
+      sensitive_presentation_source_key?(normalize_presentation_source_key(key))
+    end)
+    |> Map.new(fn {key, item} -> {key, closed_wave3_value(item)} end)
+  end
+
+  defp closed_wave3_value(_value), do: "Unavailable"
+
+  defp humanize_presentation_key(key) do
+    key
+    |> Atom.to_string()
+    |> String.replace("_", " ")
+    |> String.capitalize()
   end
 
   defp required_presentation_text!(value, field) do
