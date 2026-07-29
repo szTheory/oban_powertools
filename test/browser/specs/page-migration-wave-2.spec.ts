@@ -14,6 +14,13 @@ import {
   type Phase80FixtureState,
   type Phase80Target,
 } from "../support/phase80-fixtures";
+import {
+  auditFocusedElement,
+  auditReflow,
+  collectInteractiveTargetGeometry,
+  evaluateTargetGeometry,
+  with200PercentZoom,
+} from "../support/system-quality";
 
 test.describe.configure({ mode: "serial" });
 test.setTimeout(90_000);
@@ -121,105 +128,56 @@ async function openConnectedPage(page: Page, path: string): Promise<void> {
 }
 
 async function expectNoHorizontalOverflow(root: Locator): Promise<void> {
-  const overflow = await root.evaluate((element) => ({
-    root: Math.ceil(element.scrollWidth - element.clientWidth),
-    body: Math.ceil(document.body.scrollWidth - document.body.clientWidth),
-    document: Math.ceil(
-      document.documentElement.scrollWidth -
-        document.documentElement.clientWidth,
-    ),
-  }));
-
-  expect(overflow.root).toBeLessThanOrEqual(1);
-  expect(overflow.body).toBeLessThanOrEqual(1);
-  expect(overflow.document).toBeLessThanOrEqual(1);
+  const selector = await exactIdSelector(root, "reflow root");
+  await auditReflow(root.page(), {
+    target: `wave-2 ${selector} reflow`,
+    selector,
+    pageSelector: selector,
+    machineScrollerSelector: "[data-obpt-machine-scroller]",
+  });
 }
 
-async function expectVisibleFocus(locator: Locator, label: string): Promise<void> {
-  await expect(locator, `${label} should be focused`).toBeFocused();
-  const evidence = await locator.evaluate((element) => {
-    const style = getComputedStyle(element);
-    const rect = element.getBoundingClientRect();
-    return {
-      outline: style.outlineStyle,
-      outlineWidth: Number.parseFloat(style.outlineWidth),
-      visible:
-        rect.width > 0 &&
-        rect.height > 0 &&
-        rect.right > 0 &&
-        rect.bottom > 0 &&
-        rect.left < window.innerWidth &&
-        rect.top < window.innerHeight,
-    };
+async function expectVisibleFocus(
+  locator: Locator,
+  label: string,
+): Promise<void> {
+  const selector = await exactIdSelector(locator, label);
+  await auditFocusedElement(locator.page(), {
+    target: `wave-2 ${label}`,
+    selector,
+    minimumThickness: 2,
+    minimumContrast: 3,
   });
-
-  expect(evidence.outline).not.toBe("none");
-  expect(evidence.outlineWidth).toBeGreaterThan(0);
-  expect(evidence.visible).toBe(true);
 }
 
 async function expectMinimumTargets(
   root: Locator,
   selectors: string,
 ): Promise<void> {
-  const targets = await root.locator(selectors).evaluateAll((elements) =>
-    elements
-      .filter((element) => {
-        const style = getComputedStyle(element);
-        const rect = element.getBoundingClientRect();
-        return (
-          style.visibility !== "hidden" &&
-          style.display !== "none" &&
-          rect.width > 0 &&
-          rect.height > 0
-        );
-      })
-      .map((element) => {
-        const rect = element.getBoundingClientRect();
-        return {
-          id: element.id,
-          label:
-            element.getAttribute("aria-label") ??
-            element.textContent?.trim() ??
-            element.tagName,
-          width: rect.width,
-          height: rect.height,
-        };
-      }),
+  const rootSelector = await exactIdSelector(root, "target root");
+  await expect(root.locator(selectors)).not.toHaveCount(0);
+  const targets = await collectInteractiveTargetGeometry(
+    root.page(),
+    rootSelector,
   );
-
-  expect(targets.length).toBeGreaterThan(0);
-  for (const target of targets) {
-    expect(
-      Math.max(target.width, target.height),
-      `${target.id || target.label} needs a 44px target in at least one axis`,
-    ).toBeGreaterThanOrEqual(44);
-  }
+  const result = evaluateTargetGeometry({
+    target: `wave-2 ${rootSelector} targets`,
+    viewport: root.page().viewportSize()?.width.toString() ?? "unknown",
+    targets,
+    exceptions: [],
+    comfortSelectors: [],
+  });
+  expect(result.violations).toEqual([]);
 }
 
-async function apply200PercentZoom(page: Page): Promise<void> {
-  const original = page.viewportSize();
-  if (!original) throw new Error("200% zoom requires a configured viewport");
-
-  const session = await page.context().newCDPSession(page);
-  await session.send("Emulation.setDeviceMetricsOverride", {
-    width: Math.floor(original.width / 2),
-    height: Math.floor(original.height / 2),
-    screenWidth: original.width,
-    screenHeight: original.height,
-    deviceScaleFactor: 2,
-    mobile: false,
-  });
-
-  expect(
-    await page.evaluate(() => ({
-      ratio: window.devicePixelRatio,
-      width: window.innerWidth,
-    })),
-  ).toEqual({
-    ratio: 2,
-    width: Math.floor(original.width / 2),
-  });
+async function exactIdSelector(
+  locator: Locator,
+  label: string,
+): Promise<string> {
+  const id = await locator.getAttribute("id");
+  if (!id)
+    throw new Error(`${label} requires a stable id for strict diagnostics`);
+  return `#${id}`;
 }
 
 function confidentialitySentinels(): string[] {
@@ -247,7 +205,9 @@ async function expectConfidentialityChannelsSafe(
       documentElement.outerHTML,
       document.title,
       document.URL,
-      JSON.stringify(performance.getEntriesByType("resource").map((entry) => entry.name)),
+      JSON.stringify(
+        performance.getEntriesByType("resource").map((entry) => entry.name),
+      ),
     ];
 
     for (const form of Array.from(document.forms)) {
@@ -294,15 +254,17 @@ function jobCheckbox(page: Page, id: number): Locator {
   return page.locator(`#job-select-${id}`);
 }
 
-function scopedJobsPath(params: {
-  state?: string;
-  queue?: string;
-  worker?: string;
-  tags?: string;
-  args?: string;
-  page?: number;
-  job?: number;
-} = {}): string {
+function scopedJobsPath(
+  params: {
+    state?: string;
+    queue?: string;
+    worker?: string;
+    tags?: string;
+    args?: string;
+    page?: number;
+    job?: number;
+  } = {},
+): string {
   const query = new URLSearchParams();
   query.set("state", params.state ?? "available");
   if (params.queue) query.set("queue", params.queue);
@@ -322,18 +284,21 @@ function scopedJobsPath(params: {
 
 async function openRetryableTargetPage(page: Page): Promise<void> {
   for (const pageNumber of [1, 2, 3, 4, 5]) {
-    await openConnectedPage(page, scopedJobsPath({
-      state: "retryable",
-      page: pageNumber,
-    }));
-    if (
-      await jobCheckbox(page, fixtureState.jobs.targets.eligible).count()
-    ) {
+    await openConnectedPage(
+      page,
+      scopedJobsPath({
+        state: "retryable",
+        page: pageNumber,
+      }),
+    );
+    if (await jobCheckbox(page, fixtureState.jobs.targets.eligible).count()) {
       return;
     }
   }
 
-  throw new Error("Phase 80 target jobs were not found in the bounded retryable pages");
+  throw new Error(
+    "Phase 80 target jobs were not found in the bounded retryable pages",
+  );
 }
 
 async function selectTargets(
@@ -343,22 +308,24 @@ async function selectTargets(
   await openRetryableTargetPage(page);
   for (const target of targets) {
     const checkbox = jobCheckbox(page, fixtureState.jobs.targets[target]);
-    await expect(checkbox, `${target} target should share the target page`).toHaveCount(
-      1,
-    );
+    await expect(
+      checkbox,
+      `${target} target should share the target page`,
+    ).toHaveCount(1);
     await checkbox.check();
   }
   await expect(page.locator("#jobs-selection-summary")).toContainText(
-    targets.length === 1
-      ? "1 job selected"
-      : `${targets.length} jobs selected`,
+    targets.length === 1 ? "1 job selected" : `${targets.length} jobs selected`,
   );
 }
 
 async function waitForBulkDialog(page: Page): Promise<Locator> {
   const dialog = page.locator("#jobs-bulk-confirmation-dialog");
   await expect(dialog).toBeVisible();
-  await expect(dialog).toHaveAttribute("data-obpt-confirm-state", /preview|failed/);
+  await expect(dialog).toHaveAttribute(
+    "data-obpt-confirm-state",
+    /preview|failed/,
+  );
   return dialog;
 }
 
@@ -369,8 +336,12 @@ async function assertOneProductionTree(page: Page): Promise<void> {
   expect(await page.locator("#jobs-page").count()).toBeLessThanOrEqual(1);
   expect(await page.locator("#forensics-page").count()).toBeLessThanOrEqual(1);
   expect(await page.locator("#jobs-results").count()).toBeLessThanOrEqual(1);
-  expect(await page.locator("#job-quick-review").count()).toBeLessThanOrEqual(1);
-  expect(await page.locator("#forensics-events").count()).toBeLessThanOrEqual(1);
+  expect(await page.locator("#job-quick-review").count()).toBeLessThanOrEqual(
+    1,
+  );
+  expect(await page.locator("#forensics-events").count()).toBeLessThanOrEqual(
+    1,
+  );
   expect(await page.getByRole("dialog").count()).toBeLessThanOrEqual(1);
 }
 
@@ -381,8 +352,12 @@ test.describe("Phase 80 connected production page contracts", () => {
     await openConnectedPage(page, scopedJobsPath({ state: "retryable" }));
     const reviewButtons = page.locator('[id^="job-review-"]');
     await expect(reviewButtons).toHaveCount(20);
-    const firstId = Number((await reviewButtons.nth(0).getAttribute("id"))?.split("-").at(-1));
-    const secondId = Number((await reviewButtons.nth(1).getAttribute("id"))?.split("-").at(-1));
+    const firstId = Number(
+      (await reviewButtons.nth(0).getAttribute("id"))?.split("-").at(-1),
+    );
+    const secondId = Number(
+      (await reviewButtons.nth(1).getAttribute("id"))?.split("-").at(-1),
+    );
     expect(firstId).toBeGreaterThan(0);
     expect(secondId).toBeGreaterThan(0);
 
@@ -392,29 +367,43 @@ test.describe("Phase 80 connected production page contracts", () => {
     await expect
       .poll(() => new URL(page.url()).searchParams.get("job"))
       .toBe(String(firstId));
-    expect(await page.evaluate(() => history.length)).toBe(initialHistoryLength + 1);
+    expect(await page.evaluate(() => history.length)).toBe(
+      initialHistoryLength + 1,
+    );
 
     await page.locator(`#job-review-${secondId}`).dispatchEvent("click");
-    await expect(page.locator("#job-quick-review")).toContainText(String(secondId));
+    await expect(page.locator("#job-quick-review")).toContainText(
+      String(secondId),
+    );
     await expect
       .poll(() => new URL(page.url()).searchParams.get("job"))
       .toBe(String(secondId));
-    expect(await page.evaluate(() => history.length)).toBe(initialHistoryLength + 1);
+    expect(await page.evaluate(() => history.length)).toBe(
+      initialHistoryLength + 1,
+    );
 
     await page.getByRole("button", { name: "Close job review" }).click();
     await expect(page.locator("#job-quick-review")).toHaveCount(0);
-    await expect.poll(() => new URL(page.url()).searchParams.has("job")).toBe(false);
-    expect(await page.evaluate(() => history.length)).toBe(initialHistoryLength + 1);
+    await expect
+      .poll(() => new URL(page.url()).searchParams.has("job"))
+      .toBe(false);
+    expect(await page.evaluate(() => history.length)).toBe(
+      initialHistoryLength + 1,
+    );
 
     await page.goBack();
     await expect(page.locator("#jobs-page")).toBeVisible();
-    await expect.poll(() => new URL(page.url()).searchParams.has("job")).toBe(false);
+    await expect
+      .poll(() => new URL(page.url()).searchParams.has("job"))
+      .toBe(false);
 
     await openConnectedPage(
       page,
       scopedJobsPath({ state: "retryable", job: 999999999999 }),
     );
-    await expect.poll(() => new URL(page.url()).searchParams.has("job")).toBe(false);
+    await expect
+      .poll(() => new URL(page.url()).searchParams.has("job"))
+      .toBe(false);
 
     const draftUrl = page.url();
     const queue = page.getByRole("textbox", { name: "Queue" });
@@ -439,23 +428,35 @@ test.describe("Phase 80 connected production page contracts", () => {
       page,
       `${jobsPath}?state=retryable&args=%7Bbad&unknown=1&page=0`,
     );
-    await expect(page.getByRole("heading", { name: "Some filters were not applied" })).toBeVisible();
-    await expect.poll(() => new URL(page.url()).search).toBe("?state=retryable");
+    await expect(
+      page.getByRole("heading", { name: "Some filters were not applied" }),
+    ).toBeVisible();
+    await expect
+      .poll(() => new URL(page.url()).search)
+      .toBe("?state=retryable");
 
-    await openConnectedPage(page, scopedJobsPath({
-      state: "retryable",
-      queue: fixtureState.jobs.boundaryQueue,
-      page: 2,
-      job: firstId,
-    }));
+    await openConnectedPage(
+      page,
+      scopedJobsPath({
+        state: "retryable",
+        queue: fixtureState.jobs.boundaryQueue,
+        page: 2,
+        job: firstId,
+      }),
+    );
     await expect(page.locator("#job-quick-review")).toBeVisible();
-    const detailLink = page.getByRole("link", { name: "Open full job details" });
+    const detailLink = page.getByRole("link", {
+      name: "Open full job details",
+    });
     const detailHref = await detailLink.getAttribute("href");
-    const expectedDetailQuery = new URL(scopedJobsPath({
-      state: "retryable",
-      queue: fixtureState.jobs.boundaryQueue,
-      page: 2,
-    }), "http://example.test").search;
+    const expectedDetailQuery = new URL(
+      scopedJobsPath({
+        state: "retryable",
+        queue: fixtureState.jobs.boundaryQueue,
+        page: 2,
+      }),
+      "http://example.test",
+    ).search;
     expect(detailHref).toBe(`${jobsPath}/${firstId}${expectedDetailQuery}`);
     await detailLink.click();
     await expect(page.locator("#job-detail-page")).toBeVisible();
@@ -463,7 +464,9 @@ test.describe("Phase 80 connected production page contracts", () => {
       "[hidden by example host display policy]",
     );
     await page.getByRole("link", { name: "Back to Jobs" }).click();
-    await expect.poll(() => new URL(page.url()).search).toBe(expectedDetailQuery);
+    await expect
+      .poll(() => new URL(page.url()).search)
+      .toBe(expectedDetailQuery);
     await expectConfidentialityChannelsSafe(page);
   });
 
@@ -482,7 +485,9 @@ test.describe("Phase 80 connected production page contracts", () => {
       "20 jobs selected",
     );
     await page.locator("#jobs-next-page").click();
-    await expect.poll(() => new URL(page.url()).searchParams.get("page")).toBe("2");
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("page"))
+      .toBe("2");
     await expect(
       page.getByRole("navigation", { name: "Jobs pages" }),
     ).toContainText("Showing 21–40 of 40");
@@ -573,7 +578,9 @@ test.describe("Phase 80 connected production page contracts", () => {
     await page.getByRole("button", { name: "Retry jobs" }).click();
     const dialog = await waitForBulkDialog(page);
     await expect(dialog).toContainText(/selected, \d+ ready, \d+ excluded/);
-    await expect(dialog).toContainText("New matching jobs will not be included.");
+    await expect(dialog).toContainText(
+      "New matching jobs will not be included.",
+    );
     const readyCount = Number(
       (await dialog.getByRole("heading", { level: 2 }).textContent())?.match(
         /Retry (\d+) ready jobs/,
@@ -585,9 +592,13 @@ test.describe("Phase 80 connected production page contracts", () => {
     await dialog
       .getByRole("textbox", { name: `Type ${readyCount} to confirm` })
       .fill("0");
-    await dialog.getByRole("button", { name: `Retry ${readyCount} jobs` }).click();
+    await dialog
+      .getByRole("button", { name: `Retry ${readyCount} jobs` })
+      .click();
     await expect(dialog).toContainText("Enter at least 8 characters.");
-    await expect(dialog).toContainText(`Type exactly ${readyCount} to confirm.`);
+    await expect(dialog).toContainText(
+      `Type exactly ${readyCount} to confirm.`,
+    );
 
     for (const target of [
       "drifted",
@@ -610,12 +621,17 @@ test.describe("Phase 80 connected production page contracts", () => {
     const announcements: string[] = [];
     await page.locator("#jobs-bulk-announcement").evaluate((element) => {
       const observed: string[] = [];
-      (window as unknown as { phase80Announcements?: string[] }).phase80Announcements =
-        observed;
+      (
+        window as unknown as { phase80Announcements?: string[] }
+      ).phase80Announcements = observed;
       new MutationObserver(() => {
         const text = element.textContent?.trim() ?? "";
         if (text && observed.at(-1) !== text) observed.push(text);
-      }).observe(element, { childList: true, subtree: true, characterData: true });
+      }).observe(element, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
     });
 
     await dialog
@@ -624,8 +640,13 @@ test.describe("Phase 80 connected production page contracts", () => {
     await dialog
       .getByRole("textbox", { name: `Type ${readyCount} to confirm` })
       .fill(String(readyCount));
-    await dialog.getByRole("button", { name: `Retry ${readyCount} jobs` }).click();
-    await expect(dialog).toHaveAttribute("data-obpt-confirm-state", "submitting");
+    await dialog
+      .getByRole("button", { name: `Retry ${readyCount} jobs` })
+      .click();
+    await expect(dialog).toHaveAttribute(
+      "data-obpt-confirm-state",
+      "submitting",
+    );
     const progress = dialog.getByRole("progressbar");
     await expect(progress).toHaveCount(1);
     await expect(progress).toHaveAttribute("max", String(readyCount));
@@ -649,7 +670,9 @@ test.describe("Phase 80 connected production page contracts", () => {
     expect(new Set(announcements).size).toBeLessThanOrEqual(4);
     await expect(page.locator("#jobs-bulk-announcement")).toHaveCount(1);
 
-    const evidence = await readPhase80Evidence(request, { secret: fixtureSecret });
+    const evidence = await readPhase80Evidence(request, {
+      secret: fixtureSecret,
+    });
     expect(evidence.counts.auditedEffects).toBeGreaterThan(0);
     expect(evidence.audit.complete).toBe(true);
     await expectConfidentialityChannelsSafe(page, evidence);
@@ -703,11 +726,12 @@ test.describe("Phase 80 connected production page contracts", () => {
     await dialog
       .getByRole("textbox", { name: "Reason" })
       .fill("Continue accepted work after disconnect");
-    await dialog
-      .getByRole("textbox", { name: "Type 1 to confirm" })
-      .fill("1");
+    await dialog.getByRole("textbox", { name: "Type 1 to confirm" }).fill("1");
     await dialog.getByRole("button", { name: "Retry 1 jobs" }).click();
-    await expect(dialog).toHaveAttribute("data-obpt-confirm-state", "submitting");
+    await expect(dialog).toHaveAttribute(
+      "data-obpt-confirm-state",
+      "submitting",
+    );
     await page.close();
 
     await controlPhase80Batch(request, {
@@ -777,17 +801,25 @@ test.describe("Phase 80 connected production page contracts", () => {
     await openConnectedPage(page, forensicsPath);
     const evidenceType = page.getByRole("combobox", { name: "Evidence type" });
     await evidenceType.selectOption("workflow");
-    await expect(page.getByRole("textbox", { name: "Workflow ID" })).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { name: "Workflow ID" }),
+    ).toBeVisible();
     await expect(page.getByRole("textbox", { name: "Step" })).toBeVisible();
     await evidenceType.selectOption("incident");
     await expect(
       page.getByRole("textbox", { name: "Incident fingerprint" }),
     ).toBeVisible();
-    await expect(page.getByRole("combobox", { name: "Incident view" })).toBeVisible();
+    await expect(
+      page.getByRole("combobox", { name: "Incident view" }),
+    ).toBeVisible();
     await evidenceType.selectOption("cron");
-    await expect(page.getByRole("textbox", { name: "Cron entry ID" })).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { name: "Cron entry ID" }),
+    ).toBeVisible();
     await evidenceType.selectOption("limiter");
-    await expect(page.getByRole("textbox", { name: "Limiter ID" })).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { name: "Limiter ID" }),
+    ).toBeVisible();
 
     const sixKey = new URLSearchParams([
       ["resource_type", "workflow_step"],
@@ -827,7 +859,9 @@ test.describe("Phase 80 connected production page contracts", () => {
         "data-obpt-state",
         "ready",
       );
-      await expect(page.locator("#forensics-investigation-summary")).toBeVisible();
+      await expect(
+        page.locator("#forensics-investigation-summary"),
+      ).toBeVisible();
       await expect(page.locator("#forensics-event-log")).toBeVisible();
       await expect(page.locator("#forensics-evidence-coverage")).toBeVisible();
       await assertOneProductionTree(page);
@@ -911,8 +945,7 @@ test.describe("Phase 80 connected production page contracts", () => {
       .locator("#forensics-next-steps a[href]")
       .evaluateAll((links) =>
         links.map(
-          (link) =>
-            `${link.textContent?.trim()}:${link.getAttribute("href")}`,
+          (link) => `${link.textContent?.trim()}:${link.getAttribute("href")}`,
         ),
       );
     expect(new Set(guidanceDestinations).size).toBe(
@@ -936,7 +969,9 @@ test.describe("Phase 80 connected production page contracts", () => {
       "#jobs-next-page, #jobs-previous-page, [data-obpt-filter-toggle]",
     );
     expect(
-      await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches),
+      await page.evaluate(
+        () => matchMedia("(prefers-reduced-motion: reduce)").matches,
+      ),
     ).toBe(true);
     const motionDuration = await jobsRoot.evaluate((element) =>
       Array.from(element.querySelectorAll<HTMLElement>("button, a"))
@@ -950,13 +985,19 @@ test.describe("Phase 80 connected production page contracts", () => {
         .reduce((maximum, duration) => Math.max(maximum, duration), 0),
     );
     expect(motionDuration).toBeLessThanOrEqual(0.01);
-    await jobsRoot.getByRole("button", { name: /Review job/ }).first().focus();
+    await jobsRoot
+      .getByRole("button", { name: /Review job/ })
+      .first()
+      .focus();
     await expectVisibleFocus(
       jobsRoot.getByRole("button", { name: /Review job/ }).first(),
       "Jobs review action",
     );
 
-    await jobsRoot.getByRole("button", { name: /Review job/ }).first().click();
+    await jobsRoot
+      .getByRole("button", { name: /Review job/ })
+      .first()
+      .click();
     const detail = page.locator("#job-quick-review");
     const narrow = testInfo.project.name !== "chromium-wide";
     await expect(detail).toHaveAttribute(
@@ -969,7 +1010,9 @@ test.describe("Phase 80 connected production page contracts", () => {
       await close.focus();
       await page.keyboard.press("Tab");
       expect(
-        await detail.evaluate((element) => element.contains(document.activeElement)),
+        await detail.evaluate((element) =>
+          element.contains(document.activeElement),
+        ),
       ).toBe(true);
       await page.keyboard.press("Escape");
       await expect(detail).toHaveCount(0);
@@ -994,17 +1037,22 @@ test.describe("Phase 80 connected production page contracts", () => {
     await chooser.focus();
     await expectVisibleFocus(chooser, "Forensics evidence chooser");
 
-    await apply200PercentZoom(page);
-    await openConnectedPage(
+    await with200PercentZoom(
       page,
-      `${forensicsPath}?workflow_id=${encodeURIComponent(
-        fixtureState.forensics.workflowId,
-      )}`,
+      { target: "wave-2 Forensics", selector: "#forensics-page" },
+      async () => {
+        await openConnectedPage(
+          page,
+          `${forensicsPath}?workflow_id=${encodeURIComponent(
+            fixtureState.forensics.workflowId,
+          )}`,
+        );
+        await expect(page.locator("#forensics-page")).toHaveCount(1);
+        await assertOneProductionTree(page);
+        await expectNoHorizontalOverflow(page.locator("#forensics-page"));
+        await expect(page.locator('[aria-live="polite"]')).toHaveCount(1);
+        await expectConfidentialityChannelsSafe(page);
+      },
     );
-    await expect(page.locator("#forensics-page")).toHaveCount(1);
-    await assertOneProductionTree(page);
-    await expectNoHorizontalOverflow(page.locator("#forensics-page"));
-    await expect(page.locator('[aria-live="polite"]')).toHaveCount(1);
-    await expectConfidentialityChannelsSafe(page);
   });
 });

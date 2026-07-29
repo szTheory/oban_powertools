@@ -6,6 +6,12 @@ import {
   resetPhase81BrowserFixture,
   type Phase81FixtureState,
 } from "../support/phase81-fixtures";
+import {
+  auditReflow,
+  collectInteractiveTargetGeometry,
+  evaluateTargetGeometry,
+  with200PercentZoom,
+} from "../support/system-quality";
 
 test.describe.configure({ mode: "serial" });
 test.setTimeout(90_000);
@@ -85,9 +91,12 @@ async function closeResidualDialog(page: Page): Promise<void> {
 }
 
 async function expectOneTree(page: Page): Promise<void> {
-  await expect(
-    page.locator("[data-obpt-mobile-copy], [data-obpt-desktop-copy]"),
-  ).toHaveCount(0);
+  await auditReflow(page, {
+    target: "wave-3 production responsive tree",
+    selector: ".obpt-root",
+    pageSelector: ".obpt-root",
+    machineScrollerSelector: "[data-obpt-machine-scroller]",
+  });
   expect(await page.getByRole("dialog").count()).toBeLessThanOrEqual(1);
 }
 
@@ -102,17 +111,13 @@ async function expectDialogFocusContained(page: Page): Promise<void> {
 }
 
 async function expectNoOverflow(root: Locator): Promise<void> {
-  const overflow = await root.evaluate((element) => ({
-    contained: Math.ceil(element.scrollWidth - element.clientWidth),
-    body: Math.ceil(document.body.scrollWidth - document.body.clientWidth),
-    document: Math.ceil(
-      document.documentElement.scrollWidth -
-        document.documentElement.clientWidth,
-    ),
-  }));
-  expect(overflow.body).toBeLessThanOrEqual(1);
-  expect(overflow.document).toBeLessThanOrEqual(1);
-  expect(overflow.contained).toBeGreaterThanOrEqual(0);
+  const selector = await exactIdSelector(root, "reflow root");
+  await auditReflow(root.page(), {
+    target: `wave-3 ${selector} reflow`,
+    selector,
+    pageSelector: selector,
+    machineScrollerSelector: "[data-obpt-machine-scroller]",
+  });
 }
 
 function batchPath(): string {
@@ -143,54 +148,27 @@ function lifelinePreviewButton(page: Page): Locator {
 }
 
 async function expectMinimumTargets(root: Locator): Promise<void> {
-  const targets = await root
-    .locator("a, button, input, select, textarea")
-    .evaluateAll((elements) =>
-      elements
-        .filter((element) => {
-          const style = getComputedStyle(element);
-          const rect = element.getBoundingClientRect();
-          return (
-            style.visibility !== "hidden" &&
-            style.display !== "none" &&
-            rect.width > 0 &&
-            rect.height > 0
-          );
-        })
-        .map((element) => {
-          const rect = element.getBoundingClientRect();
-          return {
-            label:
-              element.getAttribute("aria-label") ??
-              element.textContent?.trim() ??
-              element.tagName,
-            width: rect.width,
-            height: rect.height,
-          };
-        }),
-    );
+  const selector = await exactIdSelector(root, "target root");
+  const targets = await collectInteractiveTargetGeometry(root.page(), selector);
   expect(targets.length).toBeGreaterThan(0);
-  for (const target of targets) {
-    expect(
-      Math.max(target.width, target.height),
-      `${target.label} needs a 44px target in at least one axis`,
-    ).toBeGreaterThanOrEqual(44);
-  }
+  const result = evaluateTargetGeometry({
+    target: `wave-3 ${selector} targets`,
+    viewport: root.page().viewportSize()?.width.toString() ?? "unknown",
+    targets,
+    exceptions: [],
+    comfortSelectors: [],
+  });
+  expect(result.violations).toEqual([]);
 }
 
-async function apply200PercentZoom(page: Page): Promise<void> {
-  const viewport = page.viewportSize();
-  if (!viewport) throw new Error("200% zoom requires a configured viewport");
-  const session = await page.context().newCDPSession(page);
-  await session.send("Emulation.setDeviceMetricsOverride", {
-    width: Math.floor(viewport.width / 2),
-    height: Math.floor(viewport.height / 2),
-    screenWidth: viewport.width,
-    screenHeight: viewport.height,
-    deviceScaleFactor: 2,
-    mobile: false,
-  });
-  expect(await page.evaluate(() => window.devicePixelRatio)).toBe(2);
+async function exactIdSelector(
+  locator: Locator,
+  label: string,
+): Promise<string> {
+  const id = await locator.getAttribute("id");
+  if (!id)
+    throw new Error(`${label} requires a stable id for strict diagnostics`);
+  return `#${id}`;
 }
 
 async function expectConfidentialityChannelsSafe(page: Page): Promise<void> {
@@ -368,9 +346,7 @@ test.describe("Phase 81 connected production page contracts", () => {
       page.getByText(/permission changed|fresh preview/i),
     ).toBeVisible();
     await expect(
-      page
-        .getByRole("dialog")
-        .getByRole("link", { name: /open in audit/i }),
+      page.getByRole("dialog").getByRole("link", { name: /open in audit/i }),
     ).toHaveCount(0);
   });
 
@@ -392,9 +368,9 @@ test.describe("Phase 81 connected production page contracts", () => {
       .getByRole("textbox", { name: /reason/i })
       .fill("Verify that target drift blocks execution.");
     await page.getByRole("button", { name: /execute remediation/i }).click();
-    await expect(
-      page.getByRole("dialog").getByRole("alert"),
-    ).toContainText("preview_drifted");
+    await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
+      "preview_drifted",
+    );
     await expect(
       page.getByRole("region", {
         name: /this preview is out of date.*create a new preview/i,
@@ -412,9 +388,7 @@ test.describe("Phase 81 connected production page contracts", () => {
     ).toBeVisible();
     await expectDialogFocusContained(page);
     await expect(
-      page
-        .getByRole("dialog")
-        .getByRole("link", { name: /open in audit/i }),
+      page.getByRole("dialog").getByRole("link", { name: /open in audit/i }),
     ).toHaveCount(0);
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -440,9 +414,9 @@ test.describe("Phase 81 connected production page contracts", () => {
       .getByRole("textbox", { name: /reason/i })
       .fill("Verify expired previews require a fresh preview.");
     await page.getByRole("button", { name: /execute remediation/i }).click();
-    await expect(
-      page.getByRole("dialog").getByRole("alert"),
-    ).toContainText("preview_expired");
+    await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
+      "preview_expired",
+    );
     await expect(
       page.getByRole("region", {
         name: /this preview expired.*create a new preview/i,
@@ -460,9 +434,7 @@ test.describe("Phase 81 connected production page contracts", () => {
     ).toBeVisible();
     await expectDialogFocusContained(page);
     await expect(
-      page
-        .getByRole("dialog")
-        .getByRole("link", { name: /open in audit/i }),
+      page.getByRole("dialog").getByRole("link", { name: /open in audit/i }),
     ).toHaveCount(0);
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -491,9 +463,9 @@ test.describe("Phase 81 connected production page contracts", () => {
       .getByRole("textbox", { name: /reason/i })
       .fill("Verify duplicate execution is suppressed.");
     await page.getByRole("button", { name: /execute remediation/i }).click();
-    await expect(
-      page.getByRole("dialog").getByRole("alert"),
-    ).toContainText("preview_consumed");
+    await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
+      "preview_consumed",
+    );
     await expect(
       page.getByRole("region", {
         name: /this preview was already used.*create a new preview/i,
@@ -511,9 +483,7 @@ test.describe("Phase 81 connected production page contracts", () => {
     ).toBeVisible();
     await expectDialogFocusContained(page);
     await expect(
-      page
-        .getByRole("dialog")
-        .getByRole("link", { name: /open in audit/i }),
+      page.getByRole("dialog").getByRole("link", { name: /open in audit/i }),
     ).toHaveCount(0);
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -559,8 +529,11 @@ test.describe("Phase 81 connected production page contracts", () => {
     await expectNoOverflow(root);
     await expectOneTree(page);
     await expectMinimumTargets(root);
-    await apply200PercentZoom(page);
-    await expectNoOverflow(root);
+    await with200PercentZoom(
+      page,
+      { target: "wave-3 Batches detail", selector: "#batch-detail-page" },
+      () => expectNoOverflow(root),
+    );
   });
 
   test("Wave 3 excludes preview identity, snapshots, raw reasons, metadata, provider errors, and fixture credentials from browser channels", async ({

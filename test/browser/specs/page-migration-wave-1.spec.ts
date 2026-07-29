@@ -6,6 +6,11 @@ import {
   type Page,
 } from "@playwright/test";
 import * as manifestSupport from "../support/manifest";
+import {
+  auditFocusedElement,
+  auditReflow,
+  with200PercentZoom,
+} from "../support/system-quality";
 
 type PageStory = {
   id: string;
@@ -271,51 +276,47 @@ function auditEvidenceButton(page: Page, eventId: string): Locator {
 }
 
 async function expectNoHorizontalOverflow(root: Locator): Promise<void> {
-  const overflow = await root.evaluate((element) => ({
-    root: Math.ceil(element.scrollWidth - element.clientWidth),
-    body: Math.ceil(document.body.scrollWidth - document.body.clientWidth),
-    document: Math.ceil(
-      document.documentElement.scrollWidth -
-        document.documentElement.clientWidth,
-    ),
-  }));
-
-  expect(overflow.root).toBeLessThanOrEqual(1);
-  expect(overflow.body).toBeLessThanOrEqual(1);
-  expect(overflow.document).toBeLessThanOrEqual(1);
+  const selector = await exactIdSelector(root, "reflow root");
+  await auditReflow(root.page(), {
+    target: `wave-1 ${selector} reflow`,
+    selector,
+    pageSelector: selector,
+    machineScrollerSelector: "[data-obpt-machine-scroller]",
+  });
 }
 
 async function expectVisibleFocus(
   locator: Locator,
   label: string,
 ): Promise<void> {
-  await expect(locator, `${label} should be focused`).toBeFocused();
-
-  const evidence = await locator.evaluate((element) => {
-    const style = getComputedStyle(element);
-    const rect = element.getBoundingClientRect();
-    return {
-      outlineStyle: style.outlineStyle,
-      outlineWidth: Number.parseFloat(style.outlineWidth),
-      visible:
-        rect.width > 0 &&
-        rect.height > 0 &&
-        rect.top >= 0 &&
-        rect.left >= 0 &&
-        rect.right <= window.innerWidth &&
-        rect.bottom <= window.innerHeight,
-    };
+  const selector = await locator.evaluate((element) => {
+    if (element.id) return `#${element.id}`;
+    element.setAttribute("data-phase82-focus-audit", "wave-1");
+    return '[data-phase82-focus-audit="wave-1"]';
   });
-
-  expect(evidence.outlineStyle).not.toBe("none");
-  expect(evidence.outlineWidth).toBeGreaterThan(0);
-  expect(evidence.visible).toBe(true);
+  try {
+    await auditFocusedElement(locator.page(), {
+      target: `wave-1 ${label}`,
+      selector,
+      minimumThickness: 2,
+      minimumContrast: 3,
+    });
+  } finally {
+    await locator
+      .evaluate((element) =>
+        element.removeAttribute("data-phase82-focus-audit"),
+      )
+      .catch(() => undefined);
+  }
 }
 
 async function expectOneResponsiveTree(page: Page): Promise<void> {
-  await expect(
-    page.locator("[data-obpt-mobile-copy], [data-obpt-desktop-copy]"),
-  ).toHaveCount(0);
+  await auditReflow(page, {
+    target: "wave-1 production responsive tree",
+    selector: ".obpt-root",
+    pageSelector: ".obpt-root",
+    machineScrollerSelector: "[data-obpt-machine-scroller]",
+  });
 
   for (const selector of [
     "#cron-entry-detail",
@@ -326,6 +327,16 @@ async function expectOneResponsiveTree(page: Page): Promise<void> {
   }
 
   expect(await page.getByRole("dialog").count()).toBeLessThanOrEqual(1);
+}
+
+async function exactIdSelector(
+  locator: Locator,
+  label: string,
+): Promise<string> {
+  const id = await locator.getAttribute("id");
+  if (!id)
+    throw new Error(`${label} requires a stable id for strict diagnostics`);
+  return `#${id}`;
 }
 
 async function expectConfidentialityChannelsSafe(page: Page): Promise<void> {
@@ -370,29 +381,6 @@ async function expectConfidentialityChannelsSafe(page: Page): Promise<void> {
     }, sentinels);
 
   expect(leaks).toEqual([]);
-}
-
-async function apply200PercentZoom(page: Page): Promise<void> {
-  const original = page.viewportSize();
-  if (!original)
-    throw new Error("200% zoom requires a configured Chromium viewport");
-
-  const session = await page.context().newCDPSession(page);
-  await session.send("Emulation.setDeviceMetricsOverride", {
-    width: Math.floor(original.width / 2),
-    height: Math.floor(original.height / 2),
-    screenWidth: original.width,
-    screenHeight: original.height,
-    deviceScaleFactor: 2,
-    mobile: false,
-  });
-
-  expect(
-    await page.evaluate(() => ({
-      ratio: window.devicePixelRatio,
-      width: window.innerWidth,
-    })),
-  ).toEqual({ ratio: 2, width: Math.floor(original.width / 2) });
 }
 
 function exactUrl(path: string): RegExp {
@@ -797,15 +785,19 @@ test.describe("Phase 79 connected page contracts", () => {
       page,
       `/ops/jobs/audit?event=${encodeURIComponent(fixtureState.audit.firstEvent)}`,
     );
-    await apply200PercentZoom(page);
-
-    const detail = page.locator("#audit-detail");
-    await expect(detail).toHaveAttribute("data-obpt-detail-mode", "drawer");
-    const close = detail.locator("[data-obpt-detail-close]");
-    await close.focus();
-    await expectVisibleFocus(close, "200% zoom Audit close control");
-    await expectOneResponsiveTree(page);
-    await expectNoHorizontalOverflow(detail);
+    await with200PercentZoom(
+      page,
+      { target: "wave-1 Audit detail", selector: "#audit-detail" },
+      async () => {
+        const detail = page.locator("#audit-detail");
+        await expect(detail).toHaveAttribute("data-obpt-detail-mode", "drawer");
+        const close = detail.locator("[data-obpt-detail-close]");
+        await close.focus();
+        await expectVisibleFocus(close, "200% zoom Audit close control");
+        await expectOneResponsiveTree(page);
+        await expectNoHorizontalOverflow(detail);
+      },
+    );
   });
 
   test("reduced motion keeps detail and confirmation immediate without hiding content", async ({
