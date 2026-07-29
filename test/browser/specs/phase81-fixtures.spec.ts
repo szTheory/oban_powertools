@@ -9,6 +9,7 @@ test.use({ trace: "off", screenshot: "off" });
 test.describe.configure({ mode: "serial" });
 
 const endpoint = "/__phase81_browser_fixtures__";
+const fixtureRun = "fixture-contract";
 
 function credential(): string {
   const value = process.env.PHASE81_BROWSER_FIXTURE_SECRET?.trim() ?? "";
@@ -22,8 +23,14 @@ test("resets deterministically with the exact saturated bounds and a connected p
   request,
 }) => {
   const secret = credential();
-  const first = await resetPhase81BrowserFixture(request, { secret });
-  const second = await resetPhase81BrowserFixture(request, { secret });
+  const first = await resetPhase81BrowserFixture(request, {
+    secret,
+    run: fixtureRun,
+  });
+  const second = await resetPhase81BrowserFixture(request, {
+    secret,
+    run: fixtureRun,
+  });
   expect(second).toEqual(first);
   expect(second.counts).toEqual({
     workflows: 51,
@@ -45,7 +52,10 @@ test("resets deterministically with the exact saturated bounds and a connected p
 
 test("keeps project identities isolated", async ({ request }, testInfo) => {
   const secret = credential();
-  const active = await resetPhase81BrowserFixture(request, { secret });
+  const active = await resetPhase81BrowserFixture(request, {
+    secret,
+    run: fixtureRun,
+  });
   const otherProject =
     testInfo.project.name === "chromium-wide"
       ? "chromium-tablet"
@@ -60,29 +70,54 @@ test("keeps project identities isolated", async ({ request }, testInfo) => {
   expect(other.handles.workflowId).not.toBe(active.handles.workflowId);
 });
 
-test("sets both actors and exposes every explicit race state", async ({
+test("sets both actors and exposes all and only the supported fixture controls", async ({
   page,
   request,
 }) => {
   const secret = credential();
-  await resetPhase81BrowserFixture(request, { secret });
+  await resetPhase81BrowserFixture(request, { secret, run: fixtureRun });
 
   for (const actor of ["ops", "restricted"] as const) {
     await authenticatePhase81Actor(page, { actor, secret });
   }
 
-  for (const command of [
-    "revoke",
-    "drift",
-    "duplicate",
-    "disconnect",
-    "interrupt",
-    "restore",
-  ] as const) {
+  const supportedControls = [
+    ["status", "authorized"],
+    ["revoke", "revoke"],
+    ["restore", "authorized"],
+    ["drift", "drift"],
+    ["expire", "expire"],
+    ["duplicate", "duplicate"],
+  ] as const;
+
+  for (const [command, expectedState] of supportedControls) {
     const result = await controlPhase81Race(request, { command, secret });
-    expect(result.command).toBe(command);
-    expect(result.state).toBe(command === "restore" ? "authorized" : command);
+    expect(result).toEqual({ command, state: expectedState });
+
+    const status = await controlPhase81Race(request, {
+      command: "status",
+      secret,
+    });
+    expect(status).toEqual({ command: "status", state: expectedState });
   }
+
+  let requests = 0;
+  const localRequest = {
+    post: async () => {
+      requests += 1;
+      throw new Error("network access must not occur");
+    },
+  } as unknown as APIRequestContext;
+
+  for (const command of ["disconnect", "interrupt", "execute"]) {
+    await expect(
+      controlPhase81Race(localRequest, {
+        command: command as never,
+        secret,
+      }),
+    ).rejects.toThrow("Phase 81 race command is outside the set");
+  }
+  expect(requests).toBe(0);
 });
 
 test("fails locally before network access without a credential", async () => {
