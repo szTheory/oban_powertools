@@ -218,20 +218,20 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
 
             <div class="obpt-confirm-action__actions">
               <Primitives.button
-                :if={@dismissible}
-                type="button"
-                variant={:neutral}
-                phx-click={@dismiss_command}
-              >
-                {@dismiss_label}
-              </Primitives.button>
-              <Primitives.button
                 type="submit"
                 variant={@intent}
                 disabled={@fields_disabled}
                 phx-disable-with={@pending_copy}
               >
                 {@confirm_label}
+              </Primitives.button>
+              <Primitives.button
+                :if={@dismissible}
+                type="button"
+                variant={:neutral}
+                phx-click={@dismiss_command}
+              >
+                {@dismiss_label}
               </Primitives.button>
             </div>
           </.form>
@@ -335,7 +335,7 @@ defmodule ObanPowertools.Web.Components.OperatorPatterns do
   Renders one adaptive native-dialog tree from parent-owned selection and content truth.
 
   Callers must close or leave modal detail before opening a confirmation dialog. The
-  component never fetches, authorizes, changes URL state, or renders nested dialogs.
+  component never fetches, performs authorization, changes URL state, or renders nested dialogs.
   """
   def detail_surface(assigns) do
     id = require_text!(assigns.id, "detail surface id")

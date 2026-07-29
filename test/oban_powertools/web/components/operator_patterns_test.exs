@@ -596,7 +596,7 @@ defmodule ObanPowertools.Web.Components.OperatorPatternsTest do
       "Keep current state"
     ])
 
-    assert last_index_of(html, "Retry 12 jobs") > index_of(html, "Keep current state")
+    assert last_index_of(html, "Retry 12 jobs") < index_of(html, "Keep current state")
 
     for generic <- ["Are you sure?", ">Confirm<", ">Cancel<", "Something went wrong", "N/A"] do
       refute html =~ generic
