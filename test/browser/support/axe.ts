@@ -215,7 +215,14 @@ export async function evaluateAxePolicy(input: {
         Boolean(now) &&
         expiry >= now!.getTime() &&
         !policyErrors.some((error) => error.includes(signature));
-      const compensated = valid ? await exception.compensation() : false;
+      let compensated = false;
+      if (valid) {
+        try {
+          compensated = await exception.compensation();
+        } catch {
+          policyErrors.push(`${signature} compensating assertion threw`);
+        }
+      }
       if (!compensated) {
         policyErrors.push(`${signature} compensating assertion failed`);
         findingBlocked = true;
@@ -340,12 +347,21 @@ function redactAxeResults(results: AxeResults): object {
       orientationType: results.testEnvironment.orientationType,
     },
     timestamp: results.timestamp,
-    url: results.url,
+    url: redactedUrl(results.url),
     violations: results.violations.map(redact),
     passes: results.passes.map(redact),
     incomplete: results.incomplete.map(redact),
     inapplicable: results.inapplicable.map(redact),
   };
+}
+
+function redactedUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return "[redacted-invalid-url]";
+  }
 }
 
 function safeSegment(value: string): string {
