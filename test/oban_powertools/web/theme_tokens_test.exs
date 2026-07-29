@@ -215,6 +215,17 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     .obpt-overview__exemplars
     .obpt-overview__exemplar
     .obpt-page-story
+    .obpt-batches-page
+    .obpt-workflows-page
+    .obpt-workflows-page__diagnosis
+    .obpt-workflows-page__steps
+    .obpt-workflows-page__step
+    .obpt-workflows-page__selected-step
+    .obpt-lifeline-page
+    .obpt-lifeline-page__header
+    .obpt-lifeline-page__metrics
+    .obpt-lifeline-page__views
+    .obpt-lifeline-page__detail
   ]
 
   @production_page_seams ~w[
@@ -224,6 +235,9 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     .obpt-audit-page
     .obpt-jobs-page
     .obpt-forensics-page
+    .obpt-batches-page
+    .obpt-workflows-page
+    .obpt-lifeline-page
   ]
 
   @shared_component_chrome_classes ~w[
@@ -747,6 +761,13 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     assert css =~ ".obpt-root #jobs-results-region:focus-visible"
     assert css =~ ".obpt-root #jobs-results-region > #jobs-results > table"
     assert css =~ ".obpt-root #job-quick-review"
+    assert css =~ ".obpt-root .obpt-batches-page"
+    assert css =~ ".obpt-root .obpt-workflows-page"
+    assert css =~ ".obpt-root .obpt-lifeline-page"
+    assert css =~ ".obpt-root .obpt-workflows-page__steps"
+    assert css =~ ".obpt-root .obpt-lifeline-page__metrics"
+    assert css =~ ".obpt-root .obpt-lifeline-page__views"
+    assert css =~ ".obpt-root .obpt-lifeline-page__detail"
 
     jobs_result_blocks = blocks_for(css, ".obpt-root #jobs-results-region")
 
@@ -815,6 +836,42 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
                "ordinary page copy must not drop below the 13px floor: #{selector}"
       end
     end
+  end
+
+  test "Wave 3 page composition keeps one responsive tree and token-owned motion" do
+    css = read_contract_file!(@tokens_path)
+
+    for family <- ~w[obpt-batches-page obpt-workflows-page obpt-lifeline-page] do
+      blocks = blocks_for(css, ".#{family}")
+
+      assert blocks != [], "expected composition blocks for #{family}"
+
+      for {selector, body} <- blocks do
+        for part <- selector_parts(selector) do
+          assert String.starts_with?(part, ".obpt-root"),
+                 "Wave 3 selector is not scoped below .obpt-root: #{part}"
+        end
+
+        refute body =~ ~r/display\s*:\s*none/,
+               "Wave 3 composition must not swap duplicate trees: #{selector}"
+
+        refute body =~ ~r/\b\d+(?:\.\d+)?m?s\b/,
+               "Wave 3 composition uses a raw motion duration: #{selector}"
+
+        refute body =~ ~r/cubic-bezier\(/,
+               "Wave 3 composition uses a raw easing curve: #{selector}"
+      end
+    end
+
+    assert css =~ "@media (min-width: 48rem)"
+    assert css =~ "@media (min-width: 64rem)"
+    assert css =~ "@media (max-width: 24rem)"
+    assert css =~ "@media (prefers-reduced-motion: reduce)"
+
+    assert css =~
+             ~s|.obpt-root[data-obpt-motion="reduce"] :is(.obpt-batches-page, .obpt-workflows-page, .obpt-lifeline-page)|
+
+    assert css =~ "transition-duration: var(--obpt-motion-duration-instant)"
   end
 
   test "theme selector blocks only remap semantic color/focus variables" do
