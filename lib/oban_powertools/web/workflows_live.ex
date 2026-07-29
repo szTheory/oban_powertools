@@ -384,24 +384,30 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           )
         )
 
-      results =
+      result_window =
         repo().all(
           from(result in Result,
             where: result.workflow_id == ^workflow.id,
-            order_by: [desc: result.recorded_at],
+            order_by: [desc: result.recorded_at, desc: result.id],
             limit: @workflow_result_limit + 1
           )
         )
 
       step_evidence_complete? = length(steps) <= @workflow_step_limit
-      result_evidence_complete? = length(results) <= @workflow_result_limit
+      result_evidence_complete? = length(result_window) <= @workflow_result_limit
       diagnostic_evidence_complete? = length(edges) <= @workflow_evidence_limit
       steps = Enum.take(steps, @workflow_step_limit)
       edges = Enum.take(edges, @workflow_evidence_limit)
+      step_ids = Enum.map(steps, & &1.id)
 
       results =
-        results
-        |> Enum.take(@workflow_result_limit)
+        repo().all(
+          from(result in Result,
+            where: result.workflow_id == ^workflow.id and result.step_id in ^step_ids,
+            distinct: result.step_id,
+            order_by: [asc: result.step_id, desc: result.recorded_at, desc: result.id]
+          )
+        )
         |> Map.new(&{&1.step_id, &1})
 
       selected_step =

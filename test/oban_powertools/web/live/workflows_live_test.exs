@@ -97,6 +97,45 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
     assert html =~ "Redaction outcome: hidden by display policy."
   end
 
+  test "renders the newest result attempt for the selected step", %{conn: conn} do
+    {:ok, workflow} =
+      WorkflowFixtures.workflow_fixture(name: "latest-result") |> Workflow.insert(TestRepo)
+
+    step = TestRepo.get_by!(Step, workflow_id: workflow.id, step_name: "fetch_customer")
+    now = DateTime.utc_now()
+
+    for {attempt, recorded_at, summary} <- [
+          {1, now, "newest result"},
+          {2, DateTime.add(now, -60, :second), "stale result"}
+        ] do
+      %Result{}
+      |> Result.changeset(%{
+        workflow_id: workflow.id,
+        step_id: step.id,
+        attempt: attempt,
+        status: "completed",
+        payload: %{},
+        payload_bytes: 0,
+        retention: "standard",
+        redacted: false,
+        summary: summary,
+        recorded_at: recorded_at
+      })
+      |> TestRepo.insert!()
+    end
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        current_actor: %{id: "ops-1", permissions: [:view_workflows]}
+      )
+
+    {:ok, _view, html} =
+      live(conn, "/ops/jobs/workflows/#{workflow.id}?step=fetch_customer")
+
+    assert html =~ "policy summary: newest result"
+    refute html =~ "policy summary: stale result"
+  end
+
   test "preserves selected node across workflow refresh", %{conn: conn} do
     {:ok, workflow} = WorkflowFixtures.workflow_fixture() |> Workflow.insert(TestRepo)
 
