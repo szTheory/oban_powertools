@@ -1,14 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
+import * as axeImplementation from "../support/axe";
+import * as qualityImplementation from "../support/system-quality";
 
-type SystemQuality = typeof import("../support/system-quality");
-type AxePolicy = typeof import("../support/axe");
-
-async function quality(): Promise<SystemQuality> {
-  return import("../support/system-quality");
+async function quality() {
+  return qualityImplementation;
 }
 
-async function axePolicy(): Promise<AxePolicy> {
-  return import("../support/axe");
+async function axePolicy() {
+  return axeImplementation;
 }
 
 const diagnostic = {
