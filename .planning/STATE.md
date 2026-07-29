@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 82
 current_phase_name: Cross-Cutting A11y, Motion & Responsive Hardening Sweep
 status: executing
-stopped_at: Completed 82-12-PLAN.md
-last_updated: "2026-07-29T21:00:18.082Z"
+stopped_at: Completed 82-07-PLAN.md
+last_updated: "2026-07-29T21:09:28.000Z"
 last_activity: 2026-07-29
-last_activity_desc: Completed Phase 82 Plan 12 shell and responsive data semantics
+last_activity_desc: Completed Phase 82 Plan 07 first page copy hardening
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 110
-  completed_plans: 102
-  percent: 93
+  completed_plans: 103
+  percent: 94
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 82 — Cross-Cutting A11y, Motion & Responsive Hardening Sweep
-Plan: 9 of 17
+Plan: 10 of 17
 Status: Ready to execute
-Last activity: 2026-07-29 — Completed Phase 82 Plan 12 shell and responsive data semantics
+Last activity: 2026-07-29 — Completed Phase 82 Plan 07 first page copy hardening
 
 ## Performance Metrics
 
@@ -109,6 +109,7 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 12 shell and responsive da
 | Phase 82 P06 | 4min | 1 tasks | 4 files |
 | Phase 82 P13 | 2min | 1 tasks | 2 files |
 | Phase 82 P12 | 6min | 1 tasks | 4 files |
+| Phase 82 P07 | 8min | 1 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -137,15 +138,16 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 12 shell and responsive da
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T21:00:18.075Z
-**Stopped at:** Completed 82-12-PLAN.md
+**Last session:** 2026-07-29T21:09:28.000Z
+**Stopped at:** Completed 82-07-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed Plan 82-12's closed shell, responsive data-state, long-value, and bounded machine-region semantic hardening.
+- **Last Action:** Completed Plan 82-07's first-wave page copy, recovery, and raw-error hardening.
 - **Next Action:** Execute the next dependency-ready Phase 82 plan.
 
 ## Decisions
 
+- [Phase 82]: Keep page-specific recovery copy in its owning LiveView and tag LiveAuth-safe messages separately from untrusted backend failures. — Preserves parent/server authority and exact permission truth without rendering raw provider or domain errors.
 - [Phase 82]: Keep primary navigation fixed to the production-owned nine-surface model and reserve theme/effective-theme/motion attributes for the enclosing ThemeShell root. — Prevents caller escape hatches from adding routes or moving isolated theme ownership below `.obpt-root`.
 - [Phase 82]: Automatically render native expansion whenever truncation changes visible machine copy. — Keeps every complete value keyboard/touch accessible without relying on `title` or caller opt-in.
 - [Phase 82]: Place the action-specific confirmation submit before safe-state dismissal while retaining the existing LiveView/native focus system and caller-owned operational authority. — Makes the D-16 order executable without creating a second focus or mutation controller.
