@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 82
 current_phase_name: Cross-Cutting A11y, Motion & Responsive Hardening Sweep
 status: executing
-stopped_at: Completed 82-09-PLAN.md
-last_updated: "2026-07-29T22:42:11.812Z"
+stopped_at: Completed 82-10-PLAN.md
+last_updated: "2026-07-29T22:53:08.552Z"
 last_activity: 2026-07-29
-last_activity_desc: Completed Phase 82 Plan 09 connected production quality coverage
+last_activity_desc: Completed Phase 82 Plan 10 merge-blocking quality graph
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 110
-  completed_plans: 108
-  percent: 98
+  completed_plans: 109
+  percent: 99
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 82 — Cross-Cutting A11y, Motion & Responsive Hardening Sweep
-Plan: 15 of 17
+Plan: 16 of 17
 Status: Ready to execute
-Last activity: 2026-07-29 — Completed Phase 82 Plan 09 connected production quality coverage
+Last activity: 2026-07-29 — Completed Phase 82 Plan 10 merge-blocking quality graph
 
 ## Performance Metrics
 
@@ -115,6 +115,7 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 09 connected production qu
 | Phase 82 P16 | 12min | 2 tasks | 94 files |
 | Phase 82 P08 | 40min | 2 tasks | 6 files |
 | Phase 82 P09 | 30min | 3 tasks | 5 files |
+| Phase 82 P10 | 5min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -143,15 +144,18 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 09 connected production qu
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T22:42:11.796Z
-**Stopped at:** Completed 82-09-PLAN.md
+**Last session:** 2026-07-29T22:53:08.545Z
+**Stopped at:** Completed 82-10-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed Plan 82-09's exact connected route matrix, four-theme production quality lane, and Wave 1-3 strict auditor reuse.
-- **Next Action:** Execute the next dependency-ready Phase 82 plan.
+- **Last Action:** Completed Plan 82-10's exact package/CI quality graph, bounded report ownership, and zero-retry VoiceOver configuration.
+- **Next Action:** Execute Plan 82-11's fresh unfiltered repository and artifact closure.
 
 ## Decisions
 
+- [Phase 82]: Run the Plan 82-03 CLI once in the manifest-first validator prefix and persist only its bounded JSON report for CI failure evidence. — Preserves one policy owner while making exact counts available on failed page-quality runs.
+- [Phase 82]: Keep PAGE_QUALITY_ONLY exact for the ordered page lane while retaining the separate full unfiltered visual_a11y lane. — Focused page execution cannot replace exhaustive showcase evidence, and both remain direct ci-gate dependencies.
+- [Phase 82]: Make the canonical VoiceOver config the sole retry owner with explicit numeric retries zero and forbid command-line overrides. — Prevents CI-only retry inheritance from turning flaky assistive-technology evidence green.
 - [Phase 82]: Keep completed Powertools action receipts and server-owned operational flow unchanged while narrowing Jobs batch announcements to requested, recorded, and changed truth. — Prevents downstream outcome overclaims without weakening established authority or mutation evidence.
 - [Phase 82]: Add the same legal recovery action to every Forensics unavailable result and use the canonical Event log term. — Preserves non-enumeration across missing, unretained, and unauthorized evidence while giving operators a truthful next step.
 - [Phase 82]: Keep page-specific recovery copy in its owning LiveView and tag LiveAuth-safe messages separately from untrusted backend failures. — Preserves parent/server authority and exact permission truth without rendering raw provider or domain errors.
