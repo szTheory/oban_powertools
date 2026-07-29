@@ -138,6 +138,74 @@ defmodule ObanPowertools.Web.Components.PrimitivesTest do
       refute html =~ "host-visual-class"
       refute html =~ "999px"
     end
+
+    test "caller attrs cannot spoof primitive-owned names, roles, or disabled state" do
+      button =
+        render_primitive(:button,
+          rest: %{
+            "aria-disabled" => "true",
+            "aria-label" => "Approve job",
+            "aria-labelledby" => "forged-label",
+            "disabled" => true,
+            "role" => "link",
+            "type" => "submit",
+            "phx-click" => "retry"
+          },
+          inner_block: slot("Retry job")
+        )
+
+      icon =
+        render_primitive(:icon_button,
+          label: "Refresh jobs",
+          rest: %{
+            "aria-disabled" => "true",
+            "aria-label" => "Delete jobs",
+            "aria-labelledby" => "forged-label",
+            "disabled" => true,
+            "role" => "link",
+            "phx-click" => "refresh"
+          },
+          inner_block: slot("↻")
+        )
+
+      link =
+        render_primitive(:link,
+          href: "/ops/jobs",
+          rest: %{
+            "aria-label" => "Delete jobs",
+            "aria-labelledby" => "forged-label",
+            "href" => "javascript:alert(1)",
+            "role" => "button",
+            "phx-click" => "delete"
+          },
+          inner_block: slot("View jobs")
+        )
+
+      assert button =~ ~s(type="button")
+      assert button =~ ~s(phx-click="retry")
+      refute_attr(button, "aria-disabled")
+      refute_attr(button, "aria-label")
+      refute_attr(button, "aria-labelledby")
+      refute_attr(button, "disabled")
+      refute_attr(button, "role")
+
+      assert icon =~ ~s(aria-label="Refresh jobs")
+      assert icon =~ ~s(phx-click="refresh")
+      refute icon =~ "Delete jobs"
+      refute_attr(icon, "aria-disabled")
+      refute_attr(icon, "aria-labelledby")
+      refute_attr(icon, "disabled")
+      refute_attr(icon, "role")
+
+      assert link =~ ~s(href="/ops/jobs")
+      assert link =~ "View jobs"
+      refute link =~ "javascript:"
+      refute link =~ "Delete jobs"
+      refute_attr(link, "aria-label")
+      refute_attr(link, "aria-labelledby")
+      refute_attr(link, "role")
+      refute_attr(link, "phx-click")
+    end
   end
 
   describe "icon_button/1" do

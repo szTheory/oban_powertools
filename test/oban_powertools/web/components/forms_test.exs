@@ -181,20 +181,29 @@ defmodule ObanPowertools.Web.Components.FormsTest do
       assert readonly =~ "cannot be changed"
     end
 
-    test "allows semantic, LiveView, aria, data, and native attrs but filters class and style" do
+    test "keeps parent events and descriptions while component-owned names and states stay truthful" do
       html =
         render_form(:input,
           field: field(:worker, ""),
           label: "Worker name",
+          required: true,
           rest: %{
             "id" => "safe-worker",
             "phx-change" => "filter",
             "phx-debounce" => "250",
-            "aria-label" => "Worker filter",
+            "aria-describedby" => "worker-context",
+            "aria-invalid" => "true",
+            "aria-label" => "Delete jobs",
+            "aria-labelledby" => "forged-label",
             "data-testid" => "worker-filter",
             "autocomplete" => "off",
             "placeholder" => "All workers",
-            "required" => true,
+            "disabled" => true,
+            "readonly" => true,
+            "role" => "combobox",
+            "type" => "password",
+            "name" => "forged[name]",
+            "value" => "forged",
             "class" => "host-visual-class",
             "style" => "color: red"
           }
@@ -204,13 +213,25 @@ defmodule ObanPowertools.Web.Components.FormsTest do
       assert html =~ ~s(for="safe-worker")
       assert html =~ ~s(phx-change="filter")
       assert html =~ ~s(phx-debounce="250")
-      assert html =~ ~s(aria-label="Worker filter")
+      assert html =~ ~s(aria-describedby="worker-context")
       assert html =~ ~s(data-testid="worker-filter")
       assert html =~ ~s(autocomplete="off")
       assert html =~ ~s(placeholder="All workers")
       assert_attr(html, "required")
+      assert html =~ ~s(type="text")
+      assert html =~ ~s(name="filter[worker]")
+      assert html =~ ~s(value="")
+      assert html =~ ~s(data-obpt-state="default")
+      refute_attr(html, "aria-invalid")
+      refute_attr(html, "aria-label")
+      refute_attr(html, "aria-labelledby")
+      refute_attr(html, "disabled")
+      refute_attr(html, "readonly")
+      refute_attr(html, "role")
       refute html =~ "host-visual-class"
       refute html =~ "color: red"
+      refute html =~ "forged"
+      refute html =~ "Delete jobs"
     end
 
     test "plain filter inputs keep native search semantics without fake combobox state" do
