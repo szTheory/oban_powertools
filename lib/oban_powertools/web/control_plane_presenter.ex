@@ -30,6 +30,10 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
   @repair_states ~w[
     preview partial skipped failed drifted expired consumed disconnected interrupted success
   ]
+  @workflow_states ~w[
+    available scheduled executing retryable pending blocked cancelled discarded completed failed
+    waiting runnable resolved needs_review unknown
+  ]
 
   @status_labels %{
     needs_review: "Needs Review",
@@ -293,38 +297,143 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
   def present_batch_retry_preview(_preview, _context),
     do: raise(ArgumentError, "batch retry preview source and context must be maps")
 
-  # Wave 3 declares all finite seams up front. Subsequent page slices refine
-  # these closed allowlists without permitting raw domain values through them.
-  def present_workflow_row(value, context),
-    do:
-      closed_wave3_map(
-        value,
-        Map.put_new(context, :_render_limit, @workflow_scan_limit),
-        ~w[id name status progress detail_href]a
-      )
+  @doc "Projects an authorized workflow scan row into a closed finite map."
+  def present_workflow_row(value, context) when is_map(value) and is_map(context) do
+    context = Map.put_new(context, :render_limit, @workflow_scan_limit)
 
-  def present_workflow_detail(value, context),
-    do:
-      closed_wave3_map(
-        value,
-        Map.merge(context, %{
-          _step_limit: @workflow_step_limit,
-          _result_limit: @workflow_result_limit,
-          _evidence_limit: @workflow_evidence_limit
-        }),
-        ~w[id name status progress completeness]a
-      )
-
-  def present_workflow_step(value, context),
-    do: closed_wave3_map(value, context, ~w[id name status position blocked]a)
-
-  def present_workflow_step_detail(value, context, destinations) do
-    closed_wave3_map(
-      value,
-      Map.merge(context, destinations),
-      ~w[id name status summary guidance]a
-    )
+    %{
+      id: presentation_text(presentation_value(value, :id), "Unavailable"),
+      name: presentation_text(presentation_value(value, :name), "Unnamed workflow"),
+      status:
+        finite_state(
+          presentation_value(value, :status) || presentation_value(value, :state),
+          @workflow_states
+        ),
+      step_count: nonnegative(presentation_value(value, :step_count)),
+      runnable_step_count: nonnegative(presentation_value(value, :runnable_step_count)),
+      completed_step_count: nonnegative(presentation_value(value, :completed_step_count)),
+      detail_href:
+        authorized_destination(
+          presentation_value(context, :detail_href) ||
+            Selectors.workflow_detail_path(presentation_value(value, :id)),
+          context
+        )
+    }
   end
+
+  def present_workflow_row(_value, _context),
+    do: raise(ArgumentError, "workflow row source and context must be maps")
+
+  @doc "Projects workflow diagnosis and applies all finite evidence windows."
+  def present_workflow_detail(value, context) when is_map(value) and is_map(context) do
+    steps =
+      value
+      |> presentation_value(:steps)
+      |> bounded_collection(@workflow_step_limit, fn step ->
+        present_workflow_step(step, context)
+      end)
+
+    results =
+      value
+      |> presentation_value(:results)
+      |> bounded_collection(@workflow_result_limit, &present_workflow_result/1)
+
+    evidence =
+      value
+      |> presentation_value(:evidence)
+      |> bounded_collection(@workflow_evidence_limit, &present_workflow_evidence/1)
+
+    %{
+      id: presentation_text(presentation_value(value, :id), "Unavailable"),
+      name: presentation_text(presentation_value(value, :name), "Unnamed workflow"),
+      status:
+        finite_state(
+          presentation_value(value, :status) || presentation_value(value, :state),
+          @workflow_states
+        ),
+      diagnosis:
+        presentation_text(presentation_value(value, :diagnosis), "Diagnosis unavailable."),
+      semantics: workflow_semantics(presentation_value(value, :semantics)),
+      callback_posture: workflow_callback_posture(presentation_value(value, :callback_posture)),
+      latest_recovery_session: safe_scalar(presentation_value(value, :latest_recovery_session)),
+      refusal: workflow_refusal(presentation_value(value, :rejection_summary)),
+      steps: steps.items,
+      results: results.items,
+      evidence: evidence.items,
+      step_evidence: completeness(steps, "workflow steps"),
+      result_evidence: completeness(results, "workflow results"),
+      diagnostic_evidence: completeness(evidence, "diagnostic evidence")
+    }
+  end
+
+  def present_workflow_detail(_value, _context),
+    do: raise(ArgumentError, "workflow detail source and context must be maps")
+
+  @doc "Projects one semantic workflow step without raw input or context."
+  def present_workflow_step(value, context) when is_map(value) and is_map(context) do
+    blocker_codes =
+      value
+      |> presentation_value(:blocker_codes)
+      |> case do
+        values when is_list(values) -> Enum.map(values, &presentation_text(&1, "unknown"))
+        _ -> []
+      end
+
+    %{
+      id: presentation_text(presentation_value(value, :id), "Unavailable"),
+      name:
+        presentation_text(
+          presentation_value(value, :name) || presentation_value(value, :step_name),
+          "Unnamed step"
+        ),
+      status:
+        finite_state(
+          presentation_value(value, :status) || presentation_value(value, :state),
+          @workflow_states
+        ),
+      position: nonnegative(presentation_value(value, :position)),
+      blocked?: blocker_codes != [],
+      blocker_codes: blocker_codes,
+      detail_href: authorized_destination(presentation_value(context, :detail_href), context)
+    }
+  end
+
+  def present_workflow_step(_value, _context),
+    do: raise(ArgumentError, "workflow step source and context must be maps")
+
+  @doc "Projects selected-step diagnosis and only pre-authorized destinations."
+  def present_workflow_step_detail(value, context, destinations)
+      when is_map(value) and is_map(context) and is_map(destinations) do
+    %{
+      id: presentation_text(presentation_value(value, :id), "Unavailable"),
+      name:
+        presentation_text(
+          presentation_value(value, :name) || presentation_value(value, :step_name),
+          "Unnamed step"
+        ),
+      worker: presentation_text(presentation_value(value, :worker), "Unavailable"),
+      status:
+        finite_state(
+          presentation_value(value, :status) || presentation_value(value, :state),
+          @workflow_states
+        ),
+      diagnosis:
+        presentation_text(presentation_value(value, :diagnosis), "Diagnosis unavailable."),
+      dependency_labels: workflow_dependency_labels(presentation_value(value, :dependencies)),
+      refusal: workflow_refusal(presentation_value(value, :rejection_summary)),
+      result: present_workflow_result(presentation_value(value, :result) || %{}),
+      lifeline_href:
+        authorized_destination(presentation_value(destinations, :lifeline_href), context),
+      forensics_href:
+        authorized_destination(presentation_value(destinations, :forensics_href), context),
+      oban_web_href:
+        authorized_destination(presentation_value(destinations, :oban_web_href), context)
+    }
+  end
+
+  def present_workflow_step_detail(_value, _context, _destinations),
+    do:
+      raise(ArgumentError, "workflow step detail source, context, and destinations must be maps")
 
   def present_lifeline_summary(value),
     do:
@@ -2683,6 +2792,82 @@ defmodule ObanPowertools.Web.ControlPlanePresenter do
       upstream_job_id: nil,
       next_step: nil
     }
+
+  defp workflow_semantics(value) when is_map(value) do
+    %{
+      label: presentation_text(presentation_value(value, :label), "Unavailable"),
+      mode: presentation_text(presentation_value(value, :mode), "Unavailable")
+    }
+  end
+
+  defp workflow_semantics(_value), do: %{label: "Unavailable", mode: "Unavailable"}
+
+  defp workflow_callback_posture(value) when is_map(value) do
+    %{
+      delivered: nonnegative(presentation_value(value, :delivered)),
+      failed: nonnegative(presentation_value(value, :failed)),
+      pending: nonnegative(presentation_value(value, :pending))
+    }
+  end
+
+  defp workflow_callback_posture(_value), do: %{delivered: 0, failed: 0, pending: 0}
+
+  defp workflow_dependency_labels(values) when is_list(values) do
+    Enum.map(values, fn
+      value when is_binary(value) ->
+        presentation_text(value, "Unknown dependency")
+
+      value when is_map(value) ->
+        presentation_text(
+          presentation_value(value, :step_name) || presentation_value(value, :name),
+          "Unknown dependency"
+        )
+
+      _value ->
+        "Unknown dependency"
+    end)
+  end
+
+  defp workflow_dependency_labels(_values), do: []
+
+  defp present_workflow_result(value) when is_map(value) do
+    %{
+      status:
+        finite_state(
+          presentation_value(value, :status),
+          ~w[available completed failed expired unavailable unknown]
+        ),
+      summary: presentation_text(presentation_value(value, :summary), "No retained result."),
+      payload: safe_display_text(presentation_value(value, :payload)),
+      redacted?: presentation_value(value, :redacted?) == true
+    }
+    |> ensure_safe_presentation_data!("workflow result")
+  end
+
+  defp present_workflow_result(_value),
+    do: %{
+      status: :unavailable,
+      summary: "No retained result.",
+      payload: "Unavailable",
+      redacted?: false
+    }
+
+  defp present_workflow_evidence(value) when is_map(value) do
+    value
+    |> Enum.reject(fn {key, _item} ->
+      sensitive_presentation_source_key?(normalize_presentation_source_key(key))
+    end)
+    |> Enum.take(8)
+    |> Map.new(fn {key, item} ->
+      {to_string(key), safe_scalar(item) || "Redacted"}
+    end)
+    |> ensure_safe_presentation_data!("workflow evidence")
+  end
+
+  defp present_workflow_evidence(value) when is_binary(value),
+    do: %{"summary" => presentation_text(value, "Unavailable")}
+
+  defp present_workflow_evidence(_value), do: %{"summary" => "Unavailable"}
 
   defp bounded_collection(values, limit, projector) do
     values =

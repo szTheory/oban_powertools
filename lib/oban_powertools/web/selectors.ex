@@ -43,11 +43,15 @@ defmodule ObanPowertools.Web.Selectors do
     limiters: "/ops/jobs/limiters",
     cron: "/ops/jobs/cron",
     jobs: "/ops/jobs/jobs",
-    batches: "/ops/jobs/batches"
+    batches: "/ops/jobs/batches",
+    workflows: "/ops/jobs/workflows"
   }
   @forensic_keys ~w(resource_type resource_id workflow_id step incident_fingerprint view)
   @jobs_keys ~w(state queue worker tags args meta page job)
   @job_detail_return_keys ~w(state queue worker tags args meta page)
+  @batch_detail_return_keys ~w(status page)
+  @workflow_keys ~w(workflow step)
+  @workflow_detail_keys ~w(step)
 
   @doc """
   Encodes `params` for the given `destination` atom and returns the full path.
@@ -71,7 +75,14 @@ defmodule ObanPowertools.Web.Selectors do
   end
 
   @doc "Returns the `/ops/jobs/lifeline` path with the given params encoded."
-  def lifeline_path(params), do: encode(:lifeline, params)
+  def lifeline_path(params) do
+    params =
+      Enum.reject(params, fn {key, value} ->
+        to_string(key) == "action" and to_string(value) == "execute"
+      end)
+
+    encode(:lifeline, params)
+  end
 
   @doc """
   Returns the `/ops/jobs/forensics` path with exactly six keys in canonical order.
@@ -117,10 +128,32 @@ defmodule ObanPowertools.Web.Selectors do
   end
 
   @doc "Returns the `/ops/jobs/batches` path with the given params encoded."
-  def batches_path(params \\ []), do: encode(:batches, params)
+  def batches_path(params \\ []) do
+    encode(
+      :batches,
+      Enum.reject(params, fn {key, _value} ->
+        to_string(key) in ["action", "preview_token"]
+      end)
+    )
+  end
 
   @doc "Returns the path for a specific batch detail page."
-  def batch_detail_path(id), do: "#{@canonical_paths.batches}/#{id}"
+  def batch_detail_path(id), do: batch_detail_path(id, [])
+
+  def batch_detail_path(id, params) do
+    base = "#{@canonical_paths.batches}/#{encode_segment(id)}"
+    encode_path(base, ordered_params(params, @batch_detail_return_keys))
+  end
+
+  @doc "Returns the `/ops/jobs/workflows` path with closed selector state."
+  def workflows_path(params \\ []),
+    do: encode(:workflows, ordered_params(params, @workflow_keys))
+
+  @doc "Returns a workflow detail path preserving only the selected step."
+  def workflow_detail_path(id, params \\ []) do
+    base = "#{@canonical_paths.workflows}/#{encode_segment(id)}"
+    encode_path(base, ordered_params(params, @workflow_detail_keys))
+  end
 
   defp ordered_params(params, keys) do
     values = Map.new(params, fn {key, value} -> {to_string(key), value} end)
@@ -135,4 +168,6 @@ defmodule ObanPowertools.Web.Selectors do
 
     if query == "", do: base, else: "#{base}?#{query}"
   end
+
+  defp encode_segment(value), do: value |> to_string() |> URI.encode_www_form()
 end
