@@ -67,7 +67,8 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
         session_actor = %{
           "id" => "phase81-#{actor}-#{project}-#{run}",
           "label" => actor,
-          "role" => if(actor == "ops", do: "ops", else: "read_only")
+          "role" => if(actor == "ops", do: "ops", else: "read_only"),
+          "phase81_key" => "#{project}:#{run}"
         }
 
         {:ok, session_actor, %{"actor" => actor, "state" => "authenticated"}}
@@ -101,6 +102,10 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
     end
 
     def control_race(_params, _command), do: {:error, :not_found}
+
+    def authorization_state(%{"phase81_key" => key}) when is_binary(key), do: race_state(key)
+    def authorization_state(%{phase81_key: key}) when is_binary(key), do: race_state(key)
+    def authorization_state(_actor), do: "authorized"
 
     defp validate_identity(project, run) when project in @projects and is_binary(run) do
       if Regex.match?(@run_pattern, run), do: :ok, else: {:error, :not_found}
@@ -142,6 +147,11 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
       Repo.delete_all(from(workflow in Workflow, where: workflow.id in ^workflow_ids))
       Repo.delete_all(from(callback in Callback, where: callback.batch_id == ^names.batch_id))
       Repo.delete_all(from(member in BatchJob, where: member.batch_id == ^names.batch_id))
+
+      Repo.delete_all(
+        from(job in Oban.Job, where: job.id in ^Enum.map(1..51, &job_id(names.key, &1)))
+      )
+
       Repo.delete_all(from(batch in Batch, where: batch.id == ^names.batch_id))
       Repo.delete_all(from(incident in Incident, where: incident.id in ^incident_ids))
       Repo.delete_all(from(heartbeat in Heartbeat, where: heartbeat.id in ^names.heartbeat_ids))
@@ -265,6 +275,36 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
           updated_at: @fixed_naive
         }
       ])
+
+      jobs =
+        Enum.map(1..51, fn index ->
+          state = if(rem(index, 2) == 0, do: "discarded", else: "completed")
+
+          %{
+            id: job_id(names.key, index),
+            state: state,
+            queue: "#{names.prefix}-default",
+            worker: "PhoenixHost.Workers.Phase81BatchWorker",
+            args: %{"batch_id" => names.batch_id, "member" => index},
+            meta: %{"phase81_fixture" => true, "phase81_key" => names.key},
+            tags: ["phase81-fixture", names.project, names.run],
+            errors:
+              if(state == "discarded",
+                do: [%{"attempt" => 1, "error" => "[redacted]"}],
+                else: []
+              ),
+            attempt: if(state == "discarded", do: 1, else: 0),
+            attempted_by: [],
+            max_attempts: 20,
+            priority: 0,
+            completed_at: if(state == "completed", do: @fixed_now),
+            discarded_at: if(state == "discarded", do: @fixed_now),
+            inserted_at: @fixed_now,
+            scheduled_at: @fixed_now
+          }
+        end)
+
+      Repo.insert_all(Oban.Job, jobs)
 
       members =
         Enum.map(1..51, fn index ->
@@ -481,7 +521,7 @@ if Mix.env() == :test and System.get_env("PHASE81_BROWSER_FIXTURES") == "1" do
       with :ok <- authenticate(conn),
            {:ok, session_actor, state} <- Phase81BrowserFixtures.set_actor(params, actor) do
         conn
-        |> put_session(:oban_powertools_actor, session_actor)
+        |> put_session("ops_actor", session_actor)
         |> json(state)
       else
         _ -> not_found(conn)

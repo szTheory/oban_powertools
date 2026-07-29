@@ -16,10 +16,14 @@ defmodule PhoenixHostWeb.ObanPowertoolsAuth do
   def authorize(nil, _action, _resource), do: {:error, :unauthorized}
 
   def authorize(actor, action, _resource) when is_map(actor) do
-    case Map.get(actor, :role, Map.get(actor, "role")) do
-      role when role in [:ops, "ops"] -> :ok
-      role when role in [:read_only, "read_only"] and action in [:view_cron, :view_audit] -> :ok
-      _role -> {:error, :unauthorized}
+    if phase81_revoked?(actor) do
+      {:error, :unauthorized}
+    else
+      case Map.get(actor, :role, Map.get(actor, "role")) do
+        role when role in [:ops, "ops"] -> :ok
+        role when role in [:read_only, "read_only"] and action in [:view_cron, :view_audit] -> :ok
+        _role -> {:error, :unauthorized}
+      end
     end
   end
 
@@ -38,5 +42,13 @@ defmodule PhoenixHostWeb.ObanPowertoolsAuth do
 
   def demo_actor do
     %{id: "ops-demo", label: "ops-demo", role: :ops}
+  end
+
+  defp phase81_revoked?(actor) do
+    fixtures = Module.concat(PhoenixHostWeb, Phase81BrowserFixtures)
+
+    Code.ensure_loaded?(fixtures) and
+      function_exported?(fixtures, :authorization_state, 1) and
+      apply(fixtures, :authorization_state, [actor]) == "revoke"
   end
 end

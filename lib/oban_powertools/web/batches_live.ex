@@ -5,9 +5,14 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     use Phoenix.LiveView
 
     alias ObanPowertools.{Batches, DisplayPolicy, Lifeline}
+    alias ObanPowertools.Web.Components.DataDisplay
     alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth, Selectors}
 
     @valid_statuses ~w(all inserting executing exhausted insert_failed callback_failed completed)
+    @batch_member_limit 50
+    @batch_callback_limit 25
+    @batch_result_limit 50
+    @batch_audit_limit 25
     @output_unavailable_copy "A chain step needs upstream output that is missing, expired, or was not recorded. Review the failed callback and retry only after the upstream output contract is corrected."
 
     @impl true
@@ -118,14 +123,18 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       with true <- MapSet.size(socket.assigns.selected_failed_jobs) > 0,
            true <- socket.assigns.can_retry_batch_jobs?,
            :ok <-
-             LiveAuth.authorize_action(socket, :preview_repair, %{
-               type: :batch,
-               id: socket.assigns.batch_detail.id
-             }) do
+             LiveAuth.authorize_action(
+               socket,
+               :preview_repair,
+               %{
+                 type: :batch,
+                 id: socket.assigns.batch_detail.id
+               }, message: "Permission changed. Refresh the batch and try again.") do
         {:noreply,
          socket
          |> assign(:bulk_preview?, true)
          |> assign(:callback_preview, nil)
+         |> assign(:callback_preview_presentation, nil)
          |> assign(:reason, "")
          |> assign(:error_message, nil)}
       else
@@ -141,7 +150,13 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     def handle_event("preview_callback_retry", %{"id" => id}, socket) do
       with {:ok, callback} <- find_retryable_callback(socket, id),
            true <- callback_retry_allowed?(socket, callback.id),
-           :ok <- LiveAuth.authorize_action(socket, :preview_repair, %{type: :callback, id: id}),
+           :ok <-
+             LiveAuth.authorize_action(
+               socket,
+               :preview_repair,
+               %{type: :callback, id: id},
+               message: "Permission changed. Refresh the batch and try again."
+             ),
            {:ok, preview} <-
              Lifeline.preview_repair(repo(), socket.assigns.current_actor, %{
                incident_id: nil,
@@ -152,6 +167,13 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         {:noreply,
          socket
          |> assign(:callback_preview, preview)
+         |> assign(
+           :callback_preview_presentation,
+           ControlPlanePresenter.present_batch_retry_preview(preview, %{
+             selected_count: 1,
+             object_label: "Callback #{callback.event}"
+           })
+         )
          |> assign(:bulk_preview?, false)
          |> assign(:reason, "")
          |> assign(:error_message, nil)}
@@ -182,6 +204,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
        assign(socket,
          bulk_preview?: false,
          callback_preview: nil,
+         callback_preview_presentation: nil,
          reason: "",
          error_message: nil
        )}
@@ -277,6 +300,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               |> put_flash(:info, message)
               |> assign(:success_message, message)
               |> assign(:callback_preview, nil)
+              |> assign(:callback_preview_presentation, nil)
               |> assign(:reason, "")
               |> assign(:error_message, nil)
 
@@ -303,9 +327,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     @impl true
-    def render(%{live_action: :show} = assigns) do
+    def render(%{live_action: :show} = assigns), do: detail_page_content(assigns)
+    def render(assigns), do: page_content(assigns)
+
+    def detail_page_content(assigns) do
       ~H"""
-      <div class="space-y-6 p-6">
+      <div id="batch-detail-page" class="obpt-batches-page obpt-batches-page--detail space-y-6 p-6">
         <%= if @batch_not_found? do %>
           <div class="rounded-lg border bg-white p-6">
             <h1 class="text-2xl font-semibold">Batch not found</h1>
@@ -325,9 +352,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               </p>
             </div>
             <div class="flex items-center gap-3">
-              <span class={"rounded border px-2 py-1 text-xs font-semibold " <> status_badge_class(@batch_detail.status)}>
-                <%= @batch_detail.status %>
-              </span>
+              <DataDisplay.status_pill domain={:batch} state={@batch_detail.status} />
               <.link navigate={@back_path} class="text-sm font-semibold text-indigo-700 underline">
                 Back to Batches
               </.link>
@@ -386,9 +411,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                   </span>
                   <span><%= @batch_detail.progress.percent %>%</span>
                 </div>
-                <div class="h-2 overflow-hidden rounded bg-slate-100">
-                  <div class="h-2 bg-indigo-600" style={"width: #{progress_width(@batch_detail.progress.percent)}"}></div>
-                </div>
+                <DataDisplay.progress_bar
+                  id="batch-detail-progress"
+                  label="Batch progress"
+                  value={@batch_detail.progress.completed_count}
+                  max={max(@batch_detail.progress.total_count, 1)}
+                />
                 <p class="text-zinc-600"><%= @batch_detail.blocked_state.copy %></p>
               </div>
             </div>
@@ -403,7 +431,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 </span>
                 <span><%= @batch_detail.blocked_state.copy %></span>
               </div>
-              <pre class="mt-3 overflow-x-auto rounded bg-white p-3 text-xs"><%= payload_copy(@batch_detail.blocked_state.evidence) %></pre>
+              <dl class="mt-3 grid gap-2 text-xs">
+                <div :for={item <- @batch_detail.blocked_state.evidence}>
+                  <dt class="font-semibold"><%= item.label %></dt>
+                  <dd><%= item.value %></dd>
+                </div>
+              </dl>
             </div>
           </section>
 
@@ -416,15 +449,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 </p>
               </div>
               <div class="flex items-center gap-3">
-                <button
+                <span
                   :if={MapSet.size(@selected_failed_jobs) == 0}
-                  type="button"
-                  phx-click="preview_bulk_retry"
-                  disabled={not @can_retry_batch_jobs? or MapSet.size(@selected_failed_jobs) == 0}
-                  class={primary_button_class(@can_retry_batch_jobs? and MapSet.size(@selected_failed_jobs) > 0)}
+                  class="text-sm font-semibold text-zinc-500"
                 >
                   Retry Failed Jobs
-                </button>
+                </span>
               </div>
             </div>
 
@@ -433,10 +463,17 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             </p>
 
             <div :if={MapSet.size(@selected_failed_jobs) > 0} class="mt-4 flex items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3">
-              <span class="text-sm font-semibold text-indigo-800"><%= MapSet.size(@selected_failed_jobs) %> failed jobs selected</span>
+              <span class="text-sm font-semibold text-indigo-800">
+                <%= if MapSet.size(@selected_failed_jobs) == 1 do %>
+                  1 failed job selected
+                <% else %>
+                  <%= MapSet.size(@selected_failed_jobs) %> failed jobs selected
+                <% end %>
+              </span>
               <button
                 type="button"
                 phx-click="preview_bulk_retry"
+                aria-label={"Preview failed job retries for #{MapSet.size(@selected_failed_jobs)} selected jobs"}
                 disabled={not @can_retry_batch_jobs?}
                 class={primary_button_class(@can_retry_batch_jobs?)}
               >
@@ -447,12 +484,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <%= if @batch_detail.failed_members == [] do %>
               <p class="mt-4 text-sm text-zinc-600">No failed members are currently recorded for this batch.</p>
             <% else %>
-              <div class="mt-4 overflow-hidden rounded-lg border">
+              <div id="batch-members" class="mt-4 overflow-hidden rounded-lg border">
                 <table class="min-w-full divide-y">
                   <thead class="bg-slate-50 text-left text-sm">
                     <tr>
                       <th class="w-10 px-4 py-3 font-semibold">
-                        <input type="checkbox" phx-click="toggle_all_failed_jobs" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" aria-label="Select all retry-eligible failed jobs" />
+                        <button type="button" phx-click="toggle_all_failed_jobs" class="min-h-11 rounded border px-2 text-sm" aria-label="Select all eligible failed jobs">All</button>
                       </th>
                       <th class="px-4 py-3 font-semibold">Job</th>
                       <th class="px-4 py-3 font-semibold">Worker</th>
@@ -480,16 +517,16 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                       <td class="px-4 py-3"><%= short_worker_name(member.worker) %></td>
                       <td class="px-4 py-3"><%= member.queue || "Unknown" %></td>
                       <td class="px-4 py-3">
-                        <span class={"rounded border px-2 py-1 text-xs font-semibold " <> status_badge_class(member.oban_state || member.batch_member_state)}>
-                          <%= member.oban_state || member.batch_member_state || "unknown" %>
+                        <span class={"rounded border px-2 py-1 text-xs font-semibold " <> status_badge_class(member.state)}>
+                          <%= member.state %>
                         </span>
                       </td>
                       <td class="px-4 py-3"><%= member.attempt || 0 %> / <%= member.max_attempts || "?" %></td>
                       <td class="px-4 py-3">
-                        <pre class="max-w-xs whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs"><%= display_copy(member.last_error_display) %></pre>
+                        <pre class="max-w-xs whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs"><%= member.error %></pre>
                       </td>
                       <td class="px-4 py-3">
-                        <a href={member.bridge_path} class="text-indigo-700 underline">
+                        <a href={member.bridge_href} class="text-indigo-700 underline">
                           Open Generic Job Inspection in Oban Web bridge
                         </a>
                       </td>
@@ -497,6 +534,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                   </tbody>
                 </table>
               </div>
+              <p :if={not @batch_detail.member_evidence.complete?} class="mt-3 text-sm text-zinc-600">
+                <%= @batch_detail.member_evidence.guidance %>
+              </p>
             <% end %>
           </section>
 
@@ -505,7 +545,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <%= if @batch_detail.callbacks == [] do %>
               <p class="mt-3 text-sm text-zinc-600">No stuck or dead callbacks are blocking this batch.</p>
             <% else %>
-              <div class="mt-4 overflow-hidden rounded-lg border">
+              <div id="batch-callbacks" class="mt-4 overflow-hidden rounded-lg border">
                 <table class="min-w-full divide-y">
                   <thead class="bg-slate-50 text-left text-sm">
                     <tr>
@@ -536,7 +576,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                         <div>Delivered: <%= timestamp_copy(callback.delivered_at) %></div>
                       </td>
                       <td class="px-4 py-3">
-                        <pre class="max-w-xs whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs"><%= display_copy(callback.last_error_display) %></pre>
+                        <pre class="max-w-xs whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs"><%= callback.error %></pre>
                       </td>
                       <td class="px-4 py-3">
                         <%= if callback.retry_eligible? do %>
@@ -560,6 +600,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                   </tbody>
                 </table>
               </div>
+              <p :if={not @batch_detail.callback_evidence.complete?} class="mt-3 text-sm text-zinc-600">
+                Additional callbacks exist; this view shows the first <%= @batch_detail.callback_evidence.rendered_count %> callbacks.
+              </p>
             <% end %>
           </section>
 
@@ -604,9 +647,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <% else %>
               <div class="mt-3 divide-y rounded border text-sm">
                 <div :for={event <- @batch_detail.audit_events} class="p-3">
-                  <div class="font-semibold"><%= ControlPlanePresenter.audit_event_label(event) %></div>
+                  <div class="font-semibold"><%= event.event_label %></div>
                   <div class="text-xs text-zinc-500">
-                    <%= ControlPlanePresenter.audit_resource_label(event) %> · <%= timestamp_copy(event.inserted_at) %>
+                    <%= event.resource_label %> · <%= timestamp_copy(event.inserted_at) %>
                   </div>
                 </div>
               </div>
@@ -615,9 +658,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         <% end %>
 
         <%= if @bulk_preview? do %>
-          <div class="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 p-4 backdrop-blur-sm">
+          <div class="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="batch-bulk-preview-title">
             <div class="relative w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
-              <h2 class="text-base font-semibold">Retry Failed Jobs</h2>
+              <h2 id="batch-bulk-preview-title" class="text-base font-semibold">Retry Failed Jobs</h2>
               <p class="mt-2 text-sm text-zinc-600">
                 Lifeline will preview each selected failed job before execution. Jobs that changed state before execution are skipped and reported.
               </p>
@@ -643,23 +686,14 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         <% end %>
 
         <%= if @callback_preview do %>
-          <div class="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 p-4 backdrop-blur-sm">
+          <div class="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="batch-callback-preview-title">
             <div class="relative w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
-              <h2 class="text-base font-semibold">Preview Callback Retry</h2>
-              <div class="mt-4 grid gap-4 text-sm md:grid-cols-2">
-                <div class="rounded bg-slate-50 p-4">
-                  <div class="font-semibold">Before</div>
-                  <pre class="mt-2 overflow-x-auto text-xs"><%= payload_copy(@callback_preview.before_snapshot) %></pre>
-                </div>
-                <div class="rounded bg-slate-50 p-4">
-                  <div class="font-semibold">After</div>
-                  <pre class="mt-2 overflow-x-auto text-xs"><%= payload_copy(@callback_preview.after_snapshot) %></pre>
-                </div>
-              </div>
+              <h2 id="batch-callback-preview-title" class="text-base font-semibold">Preview Callback Retry</h2>
               <div class="mt-4 rounded bg-slate-50 p-4 text-sm">
-                <div><strong>Action:</strong> <%= @callback_preview.action %></div>
-                <div><strong>Preview status:</strong> <%= @callback_preview.status %></div>
-                <div><strong>Preview token:</strong> <%= @callback_preview.preview_token %></div>
+                <div><strong>Action:</strong> <%= @callback_preview_presentation.action %></div>
+                <div><strong>Preview status:</strong> <%= @callback_preview_presentation.state %></div>
+                <div><strong>Scope:</strong> <%= @callback_preview_presentation.scope %></div>
+                <div><strong>Consequence:</strong> <%= @callback_preview_presentation.consequence %></div>
                 <div><strong>Audit consequence:</strong> <%= LiveAuth.audit_consequence_copy() %></div>
               </div>
               <form phx-change="reason" phx-submit="execute_callback_retry" class="mt-4 space-y-4">
@@ -682,9 +716,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       """
     end
 
-    def render(assigns) do
+    def page_content(assigns) do
       ~H"""
-      <div class="space-y-6 p-6">
+      <div id="batches-page" class="obpt-batches-page space-y-6 p-6">
         <div>
           <h1 class="text-2xl font-semibold">Batches</h1>
           <p class="mt-1 text-sm text-zinc-600">
@@ -784,9 +818,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                     <span :if={batch.chain?} class="mt-2 inline-flex rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700">Chain</span>
                   </td>
                   <td class="px-4 py-3">
-                    <span class={"rounded border px-2 py-1 text-xs font-semibold " <> status_badge_class(batch.status)}>
-                      <%= batch.status %>
-                    </span>
+                    <DataDisplay.status_pill domain={:batch} state={batch.status} />
                     <div class="mt-2 text-xs text-zinc-600"><%= batch.blocked_state.title %></div>
                   </td>
                   <td class="px-4 py-3">
@@ -794,9 +826,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                       <span><%= batch.progress.completed_count %>/<%= batch.progress.total_count %></span>
                       <span><%= batch.progress.percent %>%</span>
                     </div>
-                    <div class="mt-2 h-2 overflow-hidden rounded bg-slate-100">
-                      <div class="h-2 bg-indigo-600" style={"width: #{progress_width(batch.progress.percent)}"}></div>
-                    </div>
+                    <DataDisplay.progress_bar
+                      id={"batch-progress-#{batch.id}"}
+                      label={"Progress for #{batch.name}"}
+                      value={batch.progress.completed_count}
+                      max={max(batch.progress.total_count, 1)}
+                    />
                   </td>
                   <td class="px-4 py-3">
                     <div><%= batch.failed_count %> failed</div>
@@ -848,6 +883,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> assign(:selected_failed_jobs, MapSet.new())
       |> assign(:bulk_preview?, false)
       |> assign(:callback_preview, nil)
+      |> assign(:callback_preview_presentation, nil)
       |> assign(:callback_retry_permissions, %{})
       |> assign(:can_retry_batch_jobs?, false)
       |> assign(:read_only?, true)
@@ -860,7 +896,14 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp load_batches(socket, %Batches{} = filter) do
-      batches = Batches.list(repo(), filter)
+      batches =
+        Batches.list(repo(), filter)
+        |> Enum.map(fn batch ->
+          ControlPlanePresenter.present_batch_row(batch, %{
+            detail_href: Selectors.batch_detail_path(batch.id)
+          })
+        end)
+
       counts = Batches.count_by_status(repo(), filter)
 
       socket
@@ -882,7 +925,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp load_batch_detail(socket, batch_id) do
-      case Batches.get(repo(), batch_id) do
+      case Batches.get(repo(), batch_id,
+             member_limit: @batch_member_limit + 1,
+             callback_limit: @batch_callback_limit + 1
+           ) do
         nil ->
           socket
           |> assign(:batch_detail, nil)
@@ -905,12 +951,20 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                LiveAuth.authorized?(actor, :retry_callback, %{type: :callback, id: callback.id})}
             end)
 
+          presentation =
+            detail
+            |> bounded_batch_detail_source()
+            |> ControlPlanePresenter.present_batch_detail(%{
+              back_href: back_path_from_filter(socket)
+            })
+
           socket
-          |> assign(:batch_detail, detail)
+          |> assign(:batch_detail, presentation)
           |> assign(:batch_not_found?, false)
           |> assign(:selected_failed_jobs, MapSet.new())
           |> assign(:bulk_preview?, false)
           |> assign(:callback_preview, nil)
+          |> assign(:callback_preview_presentation, nil)
           |> assign(:callback_retry_permissions, callback_permissions)
           |> assign(:can_retry_batch_jobs?, can_retry_batch_jobs?)
           |> assign(:read_only?, read_only_detail?(can_retry_batch_jobs?, callback_permissions))
@@ -925,7 +979,24 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         |> assign(:selected_failed_jobs, MapSet.new())
         |> assign(:bulk_preview?, false)
         |> assign(:callback_preview, nil)
+        |> assign(:callback_preview_presentation, nil)
         |> assign(:read_only?, true)
+    end
+
+    defp bounded_batch_detail_source(detail) do
+      detail
+      |> Map.put(
+        :failed_members,
+        detail.failed_members
+        |> Enum.sort_by(&{not &1.retry_eligible?, &1.job_id})
+        |> Enum.take(@batch_member_limit + 1)
+      )
+      |> Map.put(:callbacks, Enum.take(detail.callbacks, @batch_callback_limit + 1))
+      |> Map.put(:results, Enum.take(Map.get(detail, :results, []), @batch_result_limit + 1))
+      |> Map.put(
+        :audit_events,
+        Enum.take(detail.audit_events, @batch_audit_limit + 1)
+      )
     end
 
     defp assign_index_read_only(socket) do
@@ -1088,12 +1159,6 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp severity_badge_class(:warning), do: "border-amber-200 bg-amber-50 text-amber-700"
     defp severity_badge_class(_severity), do: "border-slate-200 bg-slate-50 text-slate-700"
 
-    defp progress_width(percent) when is_number(percent) do
-      "#{percent |> max(0) |> min(100)}%"
-    end
-
-    defp progress_width(_percent), do: "0%"
-
     defp batch_name(%{name: name}) when is_binary(name) and name != "", do: name
     defp batch_name(%{short_id: short_id}), do: short_id
     defp batch_name(%{id: id}) when is_binary(id), do: String.slice(id, 0, 8)
@@ -1140,21 +1205,6 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp timestamp_copy(timestamp) when is_binary(timestamp), do: timestamp
     defp timestamp_copy(_timestamp), do: "Unknown"
-
-    defp display_copy({:raw_json, json}), do: json
-    defp display_copy({:string, text}), do: text
-    defp display_copy({:fallback, text}), do: text
-    defp display_copy(nil), do: ""
-    defp display_copy(value) when is_binary(value), do: value
-    defp display_copy(value), do: payload_copy(value)
-
-    defp payload_copy(payload) when is_binary(payload), do: payload
-
-    defp payload_copy(payload) do
-      Jason.encode!(payload || %{}, pretty: true)
-    rescue
-      _ -> inspect(payload)
-    end
 
     defp repo, do: Application.fetch_env!(:oban_powertools, :repo)
   end

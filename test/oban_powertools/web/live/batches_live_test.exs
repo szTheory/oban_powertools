@@ -159,7 +159,7 @@ defmodule ObanPowertools.Web.BatchesLiveTest do
       |> element("input[phx-click=\"toggle_failed_job\"][phx-value-id=\"#{job1.id}\"]")
       |> render_click()
 
-    assert html =~ "1 failed jobs selected"
+    assert html =~ "1 failed job selected"
 
     html =
       view

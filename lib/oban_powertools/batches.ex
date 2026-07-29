@@ -68,8 +68,8 @@ defmodule ObanPowertools.Batches do
         nil
 
       %Batch{} = batch ->
-        members = failed_members(repo, batch, now)
-        callbacks = callback_rows(repo, batch, now)
+        members = detail_members(repo, batch, now, Keyword.get(opts, :member_limit))
+        callbacks = callback_rows(repo, batch, now, Keyword.get(opts, :callback_limit))
         callback_summary = summarize_callbacks(callbacks)
         chain_context = chain_context(batch, members, callbacks)
 
@@ -317,6 +317,22 @@ defmodule ObanPowertools.Batches do
     |> Enum.map(fn {member, job} -> member_row(member, job) end)
   end
 
+  defp detail_members(repo, %Batch{} = batch, _now, limit) do
+    BatchJob
+    |> join(:left, [member], job in Oban.Job, on: job.id == member.job_id)
+    |> where([member], member.batch_id == ^batch.id)
+    |> order_by(
+      [member],
+      desc: fragment("? IN ('failed', 'discarded')", member.state),
+      asc: member.inserted_at,
+      asc: member.job_id
+    )
+    |> select([member, job], {member, job})
+    |> maybe_limit(limit)
+    |> repo.all()
+    |> Enum.map(fn {member, job} -> member_row(member, job) end)
+  end
+
   defp member_row(%BatchJob{} = member, %Oban.Job{} = job) do
     context = %{surface: :batches, job: job}
 
@@ -394,15 +410,23 @@ defmodule ObanPowertools.Batches do
     member_state in @failed_member_states and job_state in @retryable_job_states
   end
 
-  defp callback_rows(repo, %Batch{} = batch, now) do
-    repo.all(
-      from(callback in Callback,
-        where: callback.batch_id == ^batch.id,
-        order_by: [asc: callback.available_at, asc: callback.inserted_at, asc: callback.id]
-      )
+  defp callback_rows(repo, %Batch{} = batch, now, limit \\ nil) do
+    Callback
+    |> where([callback], callback.batch_id == ^batch.id)
+    |> order_by([callback],
+      asc: callback.available_at,
+      asc: callback.inserted_at,
+      asc: callback.id
     )
+    |> maybe_limit(limit)
+    |> repo.all()
     |> Enum.map(&callback_row(&1, now))
   end
+
+  defp maybe_limit(query, limit) when is_integer(limit) and limit > 0,
+    do: limit(query, ^limit)
+
+  defp maybe_limit(query, _limit), do: query
 
   defp callback_row(%Callback{} = callback, now) do
     context = %{surface: :batches, callback: callback}
