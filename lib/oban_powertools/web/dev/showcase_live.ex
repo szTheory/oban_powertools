@@ -16,11 +16,14 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
     alias ObanPowertools.Web.{
       AuditLive,
+      BatchesLive,
       CronLive,
       EngineOverviewLive,
       ForensicsLive,
       JobsLive,
-      LimitersLive
+      LifelineLive,
+      LimitersLive,
+      WorkflowsLive
     }
 
     alias ObanPowertools.Web.Components.{
@@ -57,8 +60,18 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
                          "../../../../test/support/page_story_catalog.ex",
                          __DIR__
                        )
-    @page_story_count 49
-    @page_story_pages [:overview, :cron, :limiters, :audit, :jobs, :forensics]
+    @page_story_count 99
+    @page_story_pages [
+      :overview,
+      :cron,
+      :limiters,
+      :audit,
+      :jobs,
+      :forensics,
+      :batches,
+      :workflows,
+      :lifeline
+    ]
     @page_story_activations [:none, :detail, :confirmation]
 
     @theme_choices [
@@ -967,6 +980,12 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
           <JobsLive.page_content {@page_assigns} />
         <% :forensics -> %>
           <ForensicsLive.page_content {@page_assigns} />
+        <% :batches -> %>
+          <BatchesLive.page_content {@page_assigns} />
+        <% :workflows -> %>
+          <WorkflowsLive.page_content {@page_assigns} />
+        <% :lifeline -> %>
+          <LifelineLive.page_content {@page_assigns} />
       <% end %>
       """
     end
@@ -1022,6 +1041,17 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
         story.fixtures,
         :scope_form,
         &to_form(&1, as: :scope, id: "page-story-forensics-scope")
+      )
+    end
+
+    defp materialize_page_assigns(%{page: :batches} = story), do: story.fixtures
+    defp materialize_page_assigns(%{page: :workflows} = story), do: story.fixtures
+
+    defp materialize_page_assigns(%{page: :lifeline} = story) do
+      Map.put(
+        story.fixtures,
+        :repair_form,
+        to_form(%{"reason" => story.fixtures.reason}, as: :lifeline_repair)
       )
     end
 

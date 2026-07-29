@@ -661,7 +661,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       refute render(view) =~ "PHASE78-GROUP-SECRET-SENTINEL"
     end
 
-    test "pages section registers exactly 49 production-composition stories with no active tree",
+    test "pages section registers exactly 99 production-composition stories with no active tree",
          %{conn: conn} do
       {:ok, view, html} = mount_showcase!(conn)
 
@@ -683,7 +683,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
       refute has_element?(
                view,
-               "#overview-page, #cron-page, #limiters-page, #audit-page, #jobs-page, #job-detail-page, #forensics-page"
+               "#overview-page, #cron-page, #limiters-page, #audit-page, #jobs-page, #job-detail-page, #forensics-page, #batches-page, #workflows-page, #lifeline-page"
              )
 
       refute has_element?(view, "[role='dialog'], dialog[open]")
@@ -795,7 +795,8 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
         assert Enum.count(
                  ~w[
                    #overview-page #cron-page #limiters-page #audit-page
-                   #jobs-page #job-detail-page #forensics-page
+                   #jobs-page #job-detail-page #forensics-page #batches-page
+                   #workflows-page #lifeline-page
                  ],
                  &has_element?(view, &1)
                ) == 1
@@ -804,6 +805,15 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
              story.id != "page-jobs-full-detail" do
           assert has_element?(view, "#{root_selector} table")
         end
+
+        if story.page == :batches and story.fixtures.batches != [],
+          do: assert(has_element?(view, "#{root_selector} table"))
+
+        if story.page == :workflows and story.fixtures.workflows != [],
+          do: assert(has_element?(view, "#{root_selector} table"))
+
+        if story.page == :lifeline and story.fixtures.incident_rows != [],
+          do: assert(has_element?(view, "#{root_selector} table"))
 
         if story.page == :forensics and story.fixtures.scope_state == :ready do
           assert has_element?(view, "#{root_selector} #forensics-events")
@@ -823,9 +833,12 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
           {:jobs, :detail} ->
             refute has_element?(view, "#job-quick-review, #jobs-bulk-confirmation-dialog")
 
-          {_page, :confirmation} ->
+          {:cron, :confirmation} ->
             assert has_element?(view, "#cron-confirmation-dialog[role='dialog']")
             refute has_element?(view, "#cron-entry-detail")
+
+          {_page, :confirmation} ->
+            assert active_page_overlay_count(view) <= 1
 
           {_page, :detail} ->
             refute has_element?(view, "#cron-confirmation-dialog")
@@ -1356,6 +1369,9 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
     defp page_root_selector(%{id: "page-jobs-full-detail"}), do: "#job-detail-page"
     defp page_root_selector(%{page: :jobs}), do: "#jobs-page"
     defp page_root_selector(%{page: :forensics}), do: "#forensics-page"
+    defp page_root_selector(%{page: :batches}), do: "#batches-page"
+    defp page_root_selector(%{page: :workflows}), do: "#workflows-page"
+    defp page_root_selector(%{page: :lifeline}), do: "#lifeline-page"
 
     defp assert_in_order(html, values) do
       indexes = Enum.map(values, &(:binary.match(html, &1) |> elem(0)))

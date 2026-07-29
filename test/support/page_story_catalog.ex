@@ -2099,7 +2099,345 @@ defmodule ObanPowertools.PageStoryCatalog do
     }
   end
 
-  def stories, do: @stories ++ phase80_stories()
+  @phase81_batches_ids ~w[
+    page-batches-empty-unfiltered
+    page-batches-empty-filtered
+    page-batches-one-progress
+    page-batches-many-boundary-page
+    page-batches-high-count-progress
+    page-batches-adversarial-redacted
+    page-batches-output-unavailable-chain
+    page-batches-output-expired-chain
+    page-batches-mixed-selection
+    page-batches-permission-denied
+    page-batches-saturated-failed-members
+    page-batches-stuck-callbacks
+    page-batches-callback-unavailable
+    page-batches-bulk-confirmation
+    page-batches-callback-confirmation
+    page-batches-drifted-recovery
+    page-batches-partial-disconnected
+    page-batches-clean-receipt-audit
+  ]
+
+  @phase81_workflows_ids ~w[
+    page-workflows-empty-chooser
+    page-workflows-one-running
+    page-workflows-many-deep-bounded
+    page-workflows-all-complete
+    page-workflows-blocked-dag
+    page-workflows-selected-blocked-step
+    page-workflows-dependency-reasons
+    page-workflows-callback-recovery-posture
+    page-workflows-result-unavailable
+    page-workflows-adversarial-redacted
+    page-workflows-refusal-lifeline-handoff
+    page-workflows-unavailable-restricted
+  ]
+
+  @phase81_lifeline_ids ~w[
+    page-lifeline-no-active-incidents
+    page-lifeline-active-one
+    page-lifeline-active-saturated
+    page-lifeline-resolved-history
+    page-lifeline-healthy-archive
+    page-lifeline-dead-executor
+    page-lifeline-stuck-workflow
+    page-lifeline-callback-variant
+    page-lifeline-adversarial-redacted
+    page-lifeline-permission-restricted
+    page-lifeline-unavailable
+    page-lifeline-partial-unknown-evidence
+    page-lifeline-host-follow-up-states
+    page-lifeline-preview-open
+    page-lifeline-invalid-short-reason
+    page-lifeline-execute-loading-auth-race
+    page-lifeline-drifted-expired-consumed
+    page-lifeline-partial-skipped-failed
+    page-lifeline-disconnected-interrupted
+    page-lifeline-clean-success-audit
+  ]
+
+  defp phase81_stories do
+    Enum.map(@phase81_batches_ids, &phase81_story(&1, :batches)) ++
+      Enum.map(@phase81_workflows_ids, &phase81_story(&1, :workflows)) ++
+      Enum.map(@phase81_lifeline_ids, &phase81_story(&1, :lifeline))
+  end
+
+  defp phase81_story(id, page) do
+    activation =
+      cond do
+        String.contains?(id, "confirmation") or String.contains?(id, "preview-open") or
+          String.contains?(id, "invalid-short-reason") or
+          String.contains?(id, "execute-loading") or String.contains?(id, "drifted") or
+          String.contains?(id, "partial-skipped") or
+          String.contains?(id, "disconnected-interrupted") or
+            String.contains?(id, "clean-success") ->
+          :confirmation
+
+        String.contains?(id, "empty") or String.contains?(id, "many") or
+            String.contains?(id, "healthy-archive") ->
+          :none
+
+        true ->
+          :detail
+      end
+
+    page_label =
+      page
+      |> Atom.to_string()
+      |> String.capitalize()
+
+    %{
+      id: id,
+      kind: :page,
+      page: page,
+      name: id |> String.replace("page-", "") |> String.replace("-", " "),
+      description: "Deterministic #{page_label} production-composition state.",
+      components: phase81_components(page, activation),
+      variant: phase81_variant(id),
+      state: phase81_state(id),
+      fixtures: phase81_fixtures(page, id, activation),
+      activation: activation,
+      acceptance: %{
+        required_text: [page_label],
+        forbidden_text: [
+          "PHASE81-PAGE-SECRET-SENTINEL",
+          "PHASE81-PAGE-TOKEN-SENTINEL",
+          "PHASE81-PAGE-HASH-SENTINEL",
+          "Something went wrong"
+        ],
+        ordered_text: [page_label],
+        roles: [%{role: "heading", name: page_label, level: 1, states: %{}}]
+      },
+      test_targets: %{
+        story: "obpt-page-story-#{id}",
+        snapshot: "showcase/#{id}",
+        a11y: ~s([data-obpt-page-story="#{id}"])
+      }
+    }
+  end
+
+  defp phase81_components(:batches, _activation),
+    do: [:app_shell, :data_table, :status_pill, :progress_bar]
+
+  defp phase81_components(:workflows, _activation),
+    do: [:app_shell, :data_table, :status_pill, :description_list]
+
+  defp phase81_components(:lifeline, :confirmation),
+    do: [:app_shell, :data_table, :status_pill, :confirm_action_dialog, :reason_field]
+
+  defp phase81_components(:lifeline, _activation),
+    do: [:app_shell, :data_table, :status_pill, :description_list]
+
+  defp phase81_variant(id) do
+    cond do
+      String.contains?(id, "empty") or String.contains?(id, "no-active") -> [:empty]
+      String.contains?(id, "adversarial") -> [:adversarial, :redacted]
+      String.contains?(id, "permission") or String.contains?(id, "restricted") -> [:restricted]
+      String.contains?(id, "confirmation") or String.contains?(id, "preview") -> [:overlay]
+      String.contains?(id, "many") or String.contains?(id, "saturated") -> [:bounded]
+      true -> [:default]
+    end
+  end
+
+  defp phase81_state(id) do
+    cond do
+      String.contains?(id, "permission") or String.contains?(id, "restricted") ->
+        [:permission_denied]
+
+      String.contains?(id, "unavailable") ->
+        [:unavailable]
+
+      String.contains?(id, "drifted") or String.contains?(id, "expired") ->
+        [:stale]
+
+      String.contains?(id, "partial") or String.contains?(id, "disconnected") ->
+        [:partial]
+
+      String.contains?(id, "clean") or String.contains?(id, "complete") ->
+        [:success]
+
+      String.contains?(id, "empty") or String.contains?(id, "no-active") ->
+        [:empty]
+
+      true ->
+        [:ready]
+    end
+  end
+
+  defp phase81_fixtures(:batches, id, _activation), do: phase81_batches_fixtures(id)
+  defp phase81_fixtures(:workflows, id, _activation), do: phase81_workflows_fixtures(id)
+  defp phase81_fixtures(:lifeline, id, activation), do: phase81_lifeline_fixtures(id, activation)
+
+  defp phase81_batches_fixtures(id) do
+    rows =
+      cond do
+        String.contains?(id, "empty") -> []
+        String.contains?(id, "many") or String.contains?(id, "saturated") -> batch_rows(20)
+        true -> batch_rows(1)
+      end
+
+    %{
+      batches: rows,
+      counts: %{
+        "all" => length(rows),
+        "executing" => Enum.count(rows, &(&1.status == :executing)),
+        "completed" => Enum.count(rows, &(&1.status == :completed)),
+        "failed" => Enum.count(rows, &(&1.status == :failed)),
+        "cancelled" => 0
+      },
+      metrics: %{
+        total: length(rows),
+        needs_attention: Enum.count(rows, &(&1.failed_count > 0)),
+        executing: Enum.count(rows, &(&1.status == :executing)),
+        completed: Enum.count(rows, &(&1.status == :completed))
+      },
+      valid_statuses: ~w[all executing completed failed cancelled],
+      filter: %{
+        status: if(String.contains?(id, "empty-filtered"), do: "failed", else: "all"),
+        query: if(String.contains?(id, "empty-filtered"), do: "not-found", else: nil),
+        queue: nil,
+        worker: nil,
+        chain_only: false,
+        page: if(String.contains?(id, "boundary"), do: 2, else: 1),
+        page_size: 20
+      },
+      read_only?: String.contains?(id, "permission"),
+      success_message:
+        if(String.contains?(id, "clean-receipt"),
+          do: "Retry request recorded in Audit.",
+          else: nil
+        ),
+      load_error?: false
+    }
+  end
+
+  defp batch_rows(count) do
+    for index <- 1..count do
+      total = if(index == 1, do: 10_000, else: 20)
+      completed = if(index == 1, do: 7_500, else: index)
+
+      %{
+        id: "batch-#{String.pad_leading(Integer.to_string(index), 3, "0")}",
+        short_id: "batch-#{index}",
+        name: if(index == 1, do: "לקוחות مرحبا notification batch", else: "Batch #{index}"),
+        status: if(rem(index, 3) == 0, do: :failed, else: :executing),
+        chain?: rem(index, 2) == 0,
+        blocked_state: %{title: if(rem(index, 3) == 0, do: "Needs review", else: "Running")},
+        progress: %{
+          completed_count: completed,
+          total_count: total,
+          percent: div(completed * 100, total)
+        },
+        failed_count: if(rem(index, 3) == 0, do: 2, else: 0),
+        retryable_failed_count: if(rem(index, 3) == 0, do: 1, else: 0),
+        callback_summary: %{pending: 0, failed: 0, claimed: 0, delivered: completed},
+        updated_at: @observed_datetime
+      }
+    end
+  end
+
+  defp phase81_workflows_fixtures(id) do
+    rows =
+      cond do
+        String.contains?(id, "empty") -> []
+        String.contains?(id, "many") -> workflow_rows(50)
+        true -> workflow_rows(1)
+      end
+
+    %{
+      workflows: rows,
+      workflow_scan_complete?: not String.contains?(id, "many"),
+      workflow_unavailable?: String.contains?(id, "unavailable"),
+      workflow: nil,
+      workflow_story: nil,
+      steps: [],
+      step_evidence_complete?: true,
+      results: %{},
+      result_evidence_complete?: true,
+      diagnostic_evidence_complete?: true,
+      step_stories: %{},
+      selected_step: nil,
+      selected_step_story: nil
+    }
+  end
+
+  defp workflow_rows(count) do
+    for index <- 1..count do
+      %{
+        id: "workflow-#{String.pad_leading(Integer.to_string(index), 3, "0")}",
+        name: if(index == 1, do: "לקוחות مرحبا reconciliation", else: "Workflow #{index}"),
+        state: if(rem(index, 4) == 0, do: :blocked, else: :running),
+        step_count: if(index == 1, do: 100, else: 4)
+      }
+    end
+  end
+
+  defp phase81_lifeline_fixtures(id, activation) do
+    incident_rows =
+      cond do
+        String.contains?(id, "no-active") or String.contains?(id, "healthy-archive") -> []
+        String.contains?(id, "saturated") -> lifeline_rows(50)
+        true -> lifeline_rows(1)
+      end
+
+    preview? = activation == :confirmation
+    selected_row = if(preview?, do: List.first(incident_rows) || List.first(lifeline_rows(1)))
+
+    %{
+      incident_rows: incident_rows,
+      lifeline_summary: %{
+        status: if(incident_rows == [], do: :healthy, else: :needs_review),
+        active_count: length(incident_rows),
+        pending_preview_count: if(preview?, do: 1, else: 0),
+        archived_repair_count: if(String.contains?(id, "archive"), do: 4, else: 1),
+        completeness: if(String.contains?(id, "partial"), do: :partial, else: :complete)
+      },
+      executor_rows: [%{name: "executor-alpha", status: :healthy}],
+      archive_summary: %{status: :resolved, guidance: "Latest bounded archive activity retained."},
+      repair_confirmation: nil,
+      current_view: if(String.contains?(id, "resolved"), do: "resolved", else: "active"),
+      read_only?: String.contains?(id, "permission"),
+      error_message:
+        if(String.contains?(id, "unavailable"), do: "Lifeline evidence did not load.", else: nil),
+      success_message:
+        if(String.contains?(id, "clean-success"), do: "Remediation recorded in Audit.", else: nil),
+      selected_row: selected_row,
+      preview: nil,
+      preview_state: :ready,
+      current_actor: nil,
+      reason: if(String.contains?(id, "invalid-short"), do: "short", else: ""),
+      audit_events: [],
+      target_detail: %{job_id: nil},
+      retention: nil,
+      visible_incident_rows: []
+    }
+  end
+
+  defp lifeline_rows(count) do
+    for index <- 1..count do
+      %{
+        id: "incident-#{String.pad_leading(Integer.to_string(index), 3, "0")}",
+        subject: if(index == 1, do: "לקוחות مرحبا executor incident", else: "Incident #{index}"),
+        status: :needs_review,
+        affected_scope: "#{index} bounded record(s)",
+        preview_available?: true,
+        preview_disabled_reason: nil,
+        target_summary: "Executor incident #{index}",
+        action: "job_rescue",
+        incident: %{
+          incident_class: "executor_dead",
+          incident_fingerprint: "executor-#{index}",
+          job_ids: [],
+          workflow_id: nil,
+          step_name: nil
+        }
+      }
+    end
+  end
+
+  def stories, do: @stories ++ phase80_stories() ++ phase81_stories()
 
   def story!(id) when is_binary(id) do
     stories()

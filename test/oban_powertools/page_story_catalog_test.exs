@@ -136,20 +136,21 @@ defmodule ObanPowertools.PageStoryCatalogTest do
     restricted_guidance: "page-forensics-restricted-guidance"
   ]
 
-  test "keeps exactly 49 deterministic page stories in binding UI-SPEC order" do
+  test "keeps the exact 49-story prefix in binding UI-SPEC order" do
     stories = stories!()
     ids = Enum.map(stories, & &1.id)
+    prefix = Enum.take(stories, 49)
 
     assert length(@ids) == 49
     assert stories == PageStoryCatalog.stories()
-    assert ids == @ids
+    assert Enum.take(ids, 49) == @ids
     assert ids == Enum.uniq(ids)
     assert Enum.take(ids, 19) == @phase79_ids
     assert Enum.slice(ids, 19, 18) == @jobs_ids
     assert Enum.slice(ids, 37, 12) == @forensics_ids
     assert Enum.all?(ids, &String.starts_with?(&1, "page-"))
 
-    for story <- stories do
+    for story <- prefix do
       expected_fields =
         if story.id in (@jobs_ids ++ @forensics_ids) do
           Enum.uniq([:acceptance | @story_fields])
@@ -170,7 +171,7 @@ defmodule ObanPowertools.PageStoryCatalogTest do
       assert story.activation in [:none, :detail, :confirmation]
     end
 
-    assert stories |> Enum.map(& &1.page) |> Enum.frequencies() == %{
+    assert prefix |> Enum.map(& &1.page) |> Enum.frequencies() == %{
              overview: 3,
              cron: 8,
              limiters: 4,
@@ -264,16 +265,17 @@ defmodule ObanPowertools.PageStoryCatalogTest do
 
   test "uses closed initial activation without duplicating selected detail or confirmation" do
     stories = stories!()
+    prefix = Enum.take(stories, 49)
 
-    assert stories
+    assert prefix
            |> Enum.filter(&(&1.activation == :confirmation))
            |> Enum.map(& &1.id) == @confirmation_ids
 
-    assert stories
+    assert prefix
            |> Enum.filter(&(&1.activation == :detail))
            |> Enum.map(& &1.id) == @detail_ids
 
-    assert Enum.count(stories, &(&1.activation == :none)) == 27
+    assert Enum.count(prefix, &(&1.activation == :none)) == 27
 
     for story <- stories do
       refute story.fixtures[:detail_open] == true and story.fixtures[:confirmation_open] == true
