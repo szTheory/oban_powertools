@@ -1250,12 +1250,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp load_target_detail(%{target_type: "workflow"}), do: %{job_id: nil}
 
     defp audit_events_for_row(row) do
-      Audit.list_all(repo: repo())
-      |> Enum.take(@lifeline_audit_limit + 1)
-      |> Enum.filter(fn event ->
-        event.resource == resource_copy(row) or
-          event.metadata["incident_fingerprint"] == row.incident.incident_fingerprint
-      end)
+      Audit.list_lifeline_evidence(
+        resource_copy(row),
+        row.incident.incident_fingerprint,
+        repo: repo(),
+        limit: @lifeline_audit_limit + 1
+      )
       |> Enum.take(@lifeline_audit_limit)
     end
 

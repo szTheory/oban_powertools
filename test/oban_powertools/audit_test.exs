@@ -418,6 +418,34 @@ defmodule ObanPowertools.AuditTest do
     {result, length(queries)}
   end
 
+  test "list_lifeline_evidence filters relevant history before limiting" do
+    relevant =
+      insert_audit!(
+        "lifeline.repair_executed",
+        %{type: :job, id: "selected"},
+        ~N[2026-07-19 10:00:00],
+        metadata: %{"incident_fingerprint" => "incident:selected"}
+      )
+
+    for index <- 1..51 do
+      insert_audit!(
+        "job.reviewed",
+        %{type: :job, id: "unrelated-#{index}"},
+        ~N[2026-07-19 11:00:00]
+      )
+    end
+
+    assert [event] =
+             Audit.list_lifeline_evidence(
+               "job:selected",
+               "incident:selected",
+               repo: TestRepo,
+               limit: 51
+             )
+
+    assert event.id == relevant.id
+  end
+
   defp capture_audit_query_metadata(fun) do
     handler_id = {__MODULE__, make_ref()}
     event = TestRepo.config() |> Keyword.fetch!(:telemetry_prefix) |> Kernel.++([:query])

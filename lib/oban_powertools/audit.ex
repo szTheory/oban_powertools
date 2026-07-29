@@ -108,6 +108,25 @@ defmodule ObanPowertools.Audit do
   end
 
   @doc """
+  Returns bounded Lifeline evidence matching either the selected resource or
+  incident fingerprint. Filtering happens before ordering and limiting.
+  """
+  def list_lifeline_evidence(resource, incident_fingerprint, opts \\ []) do
+    repo = RuntimeConfig.repo(opts)
+    result_limit = Keyword.get(opts, :limit, @forensic_event_limit)
+
+    repo.all(
+      from(event in __MODULE__,
+        where:
+          event.resource == ^resource or
+            fragment("?->>'incident_fingerprint' = ?", event.metadata, ^incident_fingerprint),
+        order_by: [desc: event.inserted_at, desc: event.id],
+        limit: ^result_limit
+      )
+    )
+  end
+
+  @doc """
   Returns one stable, bounded page of audit events for the existing exact filters.
 
   Pages contain at most #{@page_size} events ordered by `inserted_at DESC, id DESC`.
