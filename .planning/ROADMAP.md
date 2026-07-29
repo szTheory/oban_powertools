@@ -401,7 +401,7 @@
   2. "Why blocked?" and dry-run-repair patterns render via shared groups; a11y green (focus/announcements in dialogs).
   3. VRT green across themes/breakpoints over stress fixtures (saturated limiters, deep workflows, stuck callbacks).
 
-**Plans**: 8/15 plans executed
+**Plans**: 9/15 plans executed
 
 - [x] 81-01-PLAN.md
 - [x] 81-02-PLAN.md
@@ -412,7 +412,7 @@
 - [x] 81-07-PLAN.md
 - [ ] 81-08-PLAN.md
 - [ ] 81-09-PLAN.md
-- [ ] 81-10-PLAN.md
+- [x] 81-10-PLAN.md
 - [ ] 81-11-PLAN.md
 - [ ] 81-12-PLAN.md
 - [ ] 81-13-PLAN.md
@@ -474,7 +474,7 @@
 | 78. Component Groups (Meta-Components) | 8/8 | Complete    | 2026-07-19 |
 | 79. Page Migration Wave 1 | 12/12 | Complete   | 2026-07-20 |
 | 80. Page Migration Wave 2 | 17/17 | Complete    | 2026-07-29 |
-| 81. Page Migration Wave 3 | 8/15 | In Progress|  |
+| 81. Page Migration Wave 3 | 9/15 | In Progress|  |
 | 82. Cross-Cutting A11y/Motion/Responsive Sweep | 0/TBD | Not started | — |
 | 83. Showcase Completion & Documentation | 0/TBD | Not started | — |
 | 84. v2.0 Milestone Audit & Idempotency Proof | 0/TBD | Not started | — |

@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 81
 current_phase_name: Page Migration Wave 3 — Batches, Workflows, Lifeline
 status: executing
-stopped_at: Completed 81-15-PLAN.md
-last_updated: "2026-07-29T08:56:32.062Z"
+stopped_at: Completed 81-10-PLAN.md
+last_updated: "2026-07-29T09:02:38.390Z"
 last_activity: 2026-07-29
-last_activity_desc: Completed Phase 81 Plan 04 closed Lifeline presentation boundary
+last_activity_desc: Completed Phase 81 Plan 15 nine-family browser contracts
 progress:
   total_phases: 15
   completed_phases: 11
   total_plans: 93
-  completed_plans: 86
-  percent: 92
+  completed_plans: 87
+  percent: 73
 ---
 
 # Project State
@@ -22,7 +22,7 @@ progress:
 ## Current Position
 
 Phase: 81 — Page Migration Wave 3 — Batches, Workflows, Lifeline
-Plan: 8 of 15
+Plan: 9 of 15
 Status: Ready to execute
 Last activity: 2026-07-29 — Completed Phase 81 Plan 15 nine-family browser contracts
 
@@ -96,6 +96,7 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 15 nine-family browser con
 | Phase 81 P05 | 24min | 2 tasks | 1 files |
 | Phase 81 P06 | 7min | 1 tasks | 4 files |
 | Phase 81 P15 | 9min | 1 tasks | 5 files |
+| Phase 81 P10 | 5min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -124,8 +125,8 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 15 nine-family browser con
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T08:56:09.288Z
-**Stopped at:** Completed 81-15-PLAN.md
+**Last session:** 2026-07-29T09:02:38.385Z
+**Stopped at:** Completed 81-10-PLAN.md
 **Resume file:** None
 
 - **Last Action:** Completed Plan 79-08's connected accessibility, motion, responsive, confidentiality, and page-only visual evidence.
@@ -302,6 +303,9 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 15 nine-family browser con
 - [Phase 81]: Retain manifest schema 8 for the expanded graph — Wave 3 adds inventory without changing serialized fields, preserving compatibility while exact cardinalities enforce the graph.
 - [Phase 81]: Keep the nine-family browser allowlist closed and catalog-derived — PageStoryCatalog owns every story ID and artifact path, preventing arbitrary families or an independent browser registry.
 - [Phase 81]: Apply exact git-state rejection to ARIA and screenshot evidence — Missing, extra, untracked, renamed/copied, and out-of-scope artifacts must all fail to prevent false-green completion.
+- [Phase 81]: Keep Wave 3 layout selectors composition-only and scoped to existing Batches, Workflows, and Lifeline semantic hooks. — Shared components retain chrome and behavior ownership while page CSS controls placement only.
+- [Phase 81]: Use token-backed grid and flex reflow at 24rem, 48rem, and 64rem without hiding or duplicating page trees. — One semantic tree preserves accessible identity, focus, and sensitive content across viewports.
+- [Phase 81]: Collapse interactive transitions through both system and explicit reduced-motion contracts. — Both operating-system preference and root-scoped user choice must remove nonessential timing.
 
 ### Blockers
 
