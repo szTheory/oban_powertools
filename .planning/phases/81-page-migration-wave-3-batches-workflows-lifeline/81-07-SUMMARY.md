@@ -107,6 +107,13 @@ status: complete
 
 - Dependency resolution emitted pre-existing upstream advisory notices. They are recorded in `deferred-items.md`; no dependency changes were made in this plan.
 
+## TDD Gate Compliance
+
+- The fixture contract and implementation landed together in each atomic task
+  commit rather than separate RED and GREEN commits. Runtime evidence proves
+  the closed behavior, but commit history does not preserve an independently
+  executable RED state.
+
 ## Verification Evidence
 
 - `PHASE81_BROWSER_FIXTURES=1 mix test test/phase81_browser_fixtures_test.exs --seed 0` — 4 tests, 0 failures.
