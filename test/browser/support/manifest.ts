@@ -5,7 +5,17 @@ const manifestPath =
   process.env.SHOWCASE_MANIFEST_PATH ??
   path.join(process.cwd(), 'test/browser/.generated/showcase-manifest.json');
 const allowedThemes = ['system', 'light', 'dark', 'high-contrast'] as const;
-const allowedPages = ['overview', 'cron', 'limiters', 'audit', 'jobs', 'forensics'] as const;
+const allowedPages = [
+  'overview',
+  'cron',
+  'limiters',
+  'audit',
+  'jobs',
+  'forensics',
+  'batches',
+  'workflows',
+  'lifeline'
+] as const;
 const expectedViewports = [
   { name: '320', width: 320, height: 900 },
   { name: 'tablet', width: 768, height: 1000 },
@@ -292,7 +302,7 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
     validatePageStory(story, index, 'page_stories')
   );
 
-  assertEqual(pageStories.length, 49, 'page_stories.length');
+  assertEqual(pageStories.length, 99, 'page_stories.length');
   assertUniqueList(
     pageStories.map((story) => story.id),
     'page_stories ids'
@@ -320,7 +330,7 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
   ];
 
   assertPageTargetOrder(targets, pageStories, 64);
-  assertEqual(expectedTargets.length, 113, 'expected targets.length');
+  assertEqual(expectedTargets.length, 163, 'expected targets.length');
   assertEqual(targets.length, expectedTargets.length, 'targets.length');
 
   for (const [index, expectedTarget] of expectedTargets.entries()) {
@@ -738,9 +748,7 @@ function assertPageName(value: unknown, label: string): ShowcasePageName {
   const page = assertString(value, label);
 
   if (!allowedPages.includes(page as ShowcasePageName)) {
-    throw new Error(
-      `${label} must be "overview", "cron", "limiters", "audit", "jobs", or "forensics"`
-    );
+    throw new Error(`${label} must be one of ${JSON.stringify(allowedPages)}`);
   }
 
   return page as ShowcasePageName;

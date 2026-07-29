@@ -8,7 +8,7 @@ const manifestPath = path.join(
   "test/browser/.generated/showcase-manifest.json",
 );
 const screenshotRoot = path.join(root, "test/browser/__screenshots__");
-const expectedStoryCount = 49;
+const expectedStoryCount = 99;
 const expectedThemes = ["system", "light", "dark", "high-contrast"];
 const expectedPages = [
   "overview",
@@ -17,6 +17,9 @@ const expectedPages = [
   "audit",
   "jobs",
   "forensics",
+  "batches",
+  "workflows",
+  "lifeline",
 ];
 const viewportProjects = new Map([
   ["320", { project: "chromium-320", width: 320, height: 900 }],
@@ -84,7 +87,7 @@ function validatePageStory(story) {
   if (
     story.kind !== "page" ||
     !expectedPages.includes(story.page) ||
-    !/^page-(overview|cron|limiters|audit|jobs|forensics)-[a-z0-9-]+$/.test(
+    !/^page-(overview|cron|limiters|audit|jobs|forensics|batches|workflows|lifeline)-[a-z0-9-]+$/.test(
       story.id,
     ) ||
     !story.id.startsWith(`page-${story.page}-`) ||
@@ -147,12 +150,12 @@ function expectedPaths(manifest) {
 
   const unique = new Set(expected);
   if (
-    expectedCount !== 588 ||
+    expectedCount !== 1188 ||
     expected.length !== expectedCount ||
     unique.size !== expectedCount
   ) {
     fail(
-      `manifest-derived matrix must contain 49 * 4 * 3 = 588 unique paths, got ${expected.length} paths and ${unique.size} unique paths`,
+      `manifest-derived matrix must contain 99 * 4 * 3 = 1,188 unique paths, got ${expected.length} paths and ${unique.size} unique paths`,
     );
   }
 
@@ -279,8 +282,9 @@ function validateChangedScreenshotEntries(entries, expected) {
   if (renamedOrCopied.length > 0) {
     fail(
       `renamed/copied screenshots are not accepted: ${renamedOrCopied
-        .map(({ status, path: file, pairedPath }) =>
-          `${status} ${file}${pairedPath ? ` -> ${pairedPath}` : ""}`,
+        .map(
+          ({ status, path: file, pairedPath }) =>
+            `${status} ${file}${pairedPath ? ` -> ${pairedPath}` : ""}`,
         )
         .join(", ")}`,
     );
@@ -360,7 +364,10 @@ function runSelfTest() {
 const args = process.argv.slice(2);
 if (
   args.some(
-    (arg) => arg !== "--changed-scope" && arg !== "--contract" && arg !== "--self-test",
+    (arg) =>
+      arg !== "--changed-scope" &&
+      arg !== "--contract" &&
+      arg !== "--self-test",
   ) ||
   args.length > 1
 ) {

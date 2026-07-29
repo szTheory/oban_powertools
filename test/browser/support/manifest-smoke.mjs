@@ -5,7 +5,17 @@ const manifestPath =
   process.env.SHOWCASE_MANIFEST_PATH ??
   path.join(process.cwd(), 'test/browser/.generated/showcase-manifest.json');
 const expectedThemes = ['system', 'light', 'dark', 'high-contrast'];
-const expectedPages = ['overview', 'cron', 'limiters', 'audit', 'jobs', 'forensics'];
+const expectedPages = [
+  'overview',
+  'cron',
+  'limiters',
+  'audit',
+  'jobs',
+  'forensics',
+  'batches',
+  'workflows',
+  'lifeline'
+];
 const expectedViewports = [
   { name: '320', width: 320, height: 900 },
   { name: 'tablet', width: 768, height: 1000 },
@@ -101,9 +111,7 @@ function pageStory(value, label) {
     fail(`${label}.id must be a slug-like page-* identifier`);
   }
   if (!expectedPages.includes(actual.page)) {
-    fail(
-      `${label}.page must be "overview", "cron", "limiters", "audit", "jobs", or "forensics"`
-    );
+    fail(`${label}.page must be one of ${JSON.stringify(expectedPages)}`);
   }
   equal(id.startsWith(`page-${actual.page}-`), true, `${label}.id page prefix`);
   if (!['none', 'detail', 'confirmation'].includes(actual.activation)) {
@@ -407,7 +415,7 @@ for (const [index, story] of groupStories.entries()) {
 }
 
 const pageStories = array(manifest.page_stories, 'page_stories');
-equal(pageStories.length, 49, 'page_stories.length');
+equal(pageStories.length, 99, 'page_stories.length');
 
 const pageIds = new Set();
 
@@ -439,7 +447,7 @@ for (const [index, target] of targets.entries()) {
 }
 
 assertPageTargetOrder(targets, pageStories, 64);
-equal(expectedTargets.length, 113, 'expected targets.length');
+equal(expectedTargets.length, 163, 'expected targets.length');
 equal(targets.length, expectedTargets.length, 'targets.length');
 
 for (const [index, target] of targets.entries()) {

@@ -173,8 +173,8 @@ page_stories =
     }
   end)
 
-unless length(page_stories) == 49 do
-  raise "expected exactly 49 page stories, got #{length(page_stories)}"
+unless length(page_stories) == 99 do
+  raise "expected exactly 99 page stories, got #{length(page_stories)}"
 end
 
 targets =
@@ -182,8 +182,8 @@ targets =
     primitive_stories ++
     form_stories ++ shell_stories ++ data_stories ++ group_stories ++ page_stories
 
-unless length(targets) == 113 do
-  raise "expected exactly 113 showcase targets, got #{length(targets)}"
+unless length(targets) == 163 do
+  raise "expected exactly 163 showcase targets, got #{length(targets)}"
 end
 
 manifest = %{
