@@ -115,9 +115,11 @@ defmodule ObanPowertools.Web.JobsLiveTest do
             {"page", "99999999999999999999999999999999999999999999999999"},
             {"job", "88888888888888888888888888888888888888888888888888"}
           ] do
-        {{:ok, view, html}, queries} =
+        {:ok, view, _html} = live(conn, "/ops/jobs/jobs?state=available")
+
+        {html, queries} =
           capture_job_queries(fn ->
-            live(conn, "/ops/jobs/jobs?state=available&#{key}=#{value}")
+            render_patch(view, "/ops/jobs/jobs?state=available&#{key}=#{value}")
           end)
 
         assert_patch(view, "/ops/jobs/jobs?state=available")

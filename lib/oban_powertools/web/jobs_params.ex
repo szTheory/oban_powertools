@@ -22,6 +22,8 @@ defmodule ObanPowertools.Web.JobsParams do
   @url_keys ~w(state queue worker tags args meta page job)
   @draft_keys ~w(queue worker tags args meta)
   @page_size 20
+  @max_int64 9_223_372_036_854_775_807
+  @max_page div(@max_int64, @page_size) + 1
 
   @tag_help "Separate tags with commas. Jobs must contain every listed tag."
   @json_help "Enter a JSON object. Filter values are stored in the URL; do not enter secrets."
@@ -44,8 +46,8 @@ defmodule ObanPowertools.Web.JobsParams do
     {tags, invalid_tags?} = parse_tags(raw_params["tags"])
     {args, invalid_args?} = parse_json_object(raw_params["args"])
     {meta, invalid_meta?} = parse_json_object(raw_params["meta"])
-    {page, invalid_page?} = parse_positive_integer(raw_params["page"], 1)
-    {quick_review_id, invalid_review?} = parse_positive_integer(raw_params["job"], nil)
+    {page, invalid_page?} = parse_page(raw_params["page"])
+    {quick_review_id, invalid_review?} = parse_job_id(raw_params["job"])
 
     query = %Jobs{
       state: state,
@@ -203,19 +205,23 @@ defmodule ObanPowertools.Web.JobsParams do
 
   defp parse_json_object(_value), do: {nil, true}
 
-  defp parse_positive_integer(nil, default), do: {default, false}
+  defp parse_page(value), do: parse_bounded_positive_integer(value, 1, @max_page)
+  defp parse_job_id(value), do: parse_bounded_positive_integer(value, nil, @max_int64)
 
-  defp parse_positive_integer(value, _default) when is_integer(value) and value > 0,
-    do: {value, false}
+  defp parse_bounded_positive_integer(nil, default, _maximum), do: {default, false}
 
-  defp parse_positive_integer(value, default) when is_binary(value) do
+  defp parse_bounded_positive_integer(value, _default, maximum)
+       when is_integer(value) and value > 0 and value <= maximum,
+       do: {value, false}
+
+  defp parse_bounded_positive_integer(value, default, maximum) when is_binary(value) do
     case Integer.parse(value) do
-      {parsed, ""} when parsed > 0 -> {parsed, false}
+      {parsed, ""} when parsed > 0 and parsed <= maximum -> {parsed, false}
       _invalid -> {default, true}
     end
   end
 
-  defp parse_positive_integer(_value, default), do: {default, true}
+  defp parse_bounded_positive_integer(_value, default, _maximum), do: {default, true}
 
   defp encode_tags(nil), do: nil
   defp encode_tags([]), do: nil
