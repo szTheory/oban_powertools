@@ -6,15 +6,15 @@ current_phase: 81
 current_phase_name: Page Migration Wave 3 — Batches, Workflows, Lifeline
 status: executing
 stopped_at: Completed 81-07-PLAN.md
-last_updated: "2026-07-29T07:17:47.249Z"
+last_updated: "2026-07-29T07:27:03.480Z"
 last_activity: 2026-07-29
-last_activity_desc: Phase 80 complete, transitioned to Phase 81
+last_activity_desc: Completed Phase 81 Plan 07 connected fixture bridge
 progress:
   total_phases: 15
   completed_phases: 11
   total_plans: 93
-  completed_plans: 79
-  percent: 85
+  completed_plans: 80
+  percent: 73
 ---
 
 # Project State
@@ -22,8 +22,8 @@ progress:
 ## Current Position
 
 Phase: 81 — Page Migration Wave 3 — Batches, Workflows, Lifeline
-Plan: 1 of 15
-Status: In progress
+Plan: 2 of 15
+Status: Ready to execute
 Last activity: 2026-07-29 — Completed Phase 81 Plan 07 connected fixture bridge
 
 ## Performance Metrics
@@ -91,6 +91,7 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 07 connected fixture bridg
 | Phase 80 P16 | 40m | 2 tasks | 3 files |
 | Phase 80 P17 | 4m | 1 tasks | 4 files |
 | Phase 81 P07 | 35min | 2 tasks | 8 files |
+| Phase 81 P01 | 12min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -119,7 +120,7 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 07 connected fixture bridg
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T07:17:17.616Z
+**Last session:** 2026-07-29T07:26:41.182Z
 **Stopped at:** Completed 81-07-PLAN.md
 **Resume file:** None
 
@@ -286,6 +287,8 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 07 connected fixture bridg
 - [Phase 80]: Jobs quick review and full detail share one public parser accepting only positive IDs through PostgreSQL signed bigint maximum. — One exact database-bound identity rule prevents divergent authorization and repository safety boundaries.
 - [Phase 81]: Keep Wave 3 fixture authority in a distinct compile-gated endpoint so accepted Phase 79/80 contracts remain unchanged.
 - [Phase 81]: Return only deterministic public handles and finite state names; keep credentials, preview identities, snapshots, and domain authority server-side.
+- [Phase 81]: Wave 3 uses literal presenter seam names and exact finite source constants. — Later migrations cannot pass through generic raw fallbacks.
+- [Phase 81]: The locked catalog appends 18 Batches, 12 Workflows, and 20 Lifeline stories. — The existing 49-story prefix remains unchanged and browser inventory stays Elixir-owned.
 
 ### Blockers
 
