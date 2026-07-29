@@ -108,6 +108,37 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       assert html =~ "Showing 0 of 0"
     end
 
+    test "canonicalizes oversized page and job URL values before Repo bindings", %{conn: conn} do
+      conn = jobs_conn(conn, [:view_job_detail])
+
+      for {key, value} <- [
+            {"page", "99999999999999999999999999999999999999999999999999"},
+            {"job", "88888888888888888888888888888888888888888888888888"}
+          ] do
+        {{:ok, view, html}, queries} =
+          capture_job_queries(fn ->
+            live(conn, "/ops/jobs/jobs?state=available&#{key}=#{value}")
+          end)
+
+        assert_patch(view, "/ops/jobs/jobs?state=available")
+        assert length(queries) == 3
+        assert html =~ "Some filters were not applied"
+
+        assert html =~
+                 "The invalid filter values were removed. Review the applied filters and try again."
+
+        assert length(
+                 Regex.scan(
+                   ~r/The invalid filter values were removed\. Review the applied filters and try again\./,
+                   html
+                 )
+               ) == 1
+
+        refute html =~ value
+        refute has_element?(view, "#job-quick-review")
+      end
+    end
+
     test "renders the shared filter, semantic table, exact hierarchy, and empty truth", %{
       conn: conn
     } do

@@ -99,6 +99,54 @@ defmodule ObanPowertools.Web.JobsParamsTest do
     assert parsed.notices == [@invalid_url_notice]
   end
 
+  test "page and job URL integers are bounded by their Postgrex bindings" do
+    max_int64 = 9_223_372_036_854_775_807
+    max_page = div(max_int64, 20) + 1
+
+    for value <- [max_page, Integer.to_string(max_page)] do
+      parsed = JobsParams.parse_url(%{"state" => "available", "page" => value})
+
+      assert parsed.query.page == max_page
+
+      assert parsed.canonical_params == [
+               {"state", "available"},
+               {"page", Integer.to_string(max_page)}
+             ]
+
+      assert parsed.notices == []
+    end
+
+    for value <- [max_int64, Integer.to_string(max_int64)] do
+      parsed = JobsParams.parse_url(%{"state" => "available", "job" => value})
+
+      assert parsed.quick_review_id == max_int64
+
+      assert parsed.canonical_params == [
+               {"state", "available"},
+               {"job", Integer.to_string(max_int64)}
+             ]
+
+      assert parsed.notices == []
+    end
+
+    for params <- [
+          %{"page" => max_page + 1},
+          %{"page" => Integer.to_string(max_page + 1)},
+          %{"page" => "99999999999999999999999999999999999999999999999999"},
+          %{"job" => max_int64 + 1},
+          %{"job" => Integer.to_string(max_int64 + 1)},
+          %{"job" => "88888888888888888888888888888888888888888888888888"}
+        ] do
+      parsed = JobsParams.parse_url(Map.put(params, "state", "available"))
+
+      assert parsed.query.page == 1
+      assert parsed.quick_review_id == nil
+      assert parsed.canonical_params == [{"state", "available"}]
+      assert parsed.notices == [@invalid_url_notice]
+      assert parsed.replace?
+    end
+  end
+
   test "JSON arrays, scalars, and null never become applied query values" do
     for invalid_json <- ["[]", ~s("secret"), "12", "true", "null"] do
       parsed =
