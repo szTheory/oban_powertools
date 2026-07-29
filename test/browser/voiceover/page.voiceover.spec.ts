@@ -11,7 +11,7 @@ import {
 
 test.use({ voiceOverStartOptions: { capture: true } });
 
-const voiceOverStoryIds = [
+const priorVoiceOverStoryIds = [
   "page-overview-fixed-order-nonzero",
   "page-cron-pause-confirmation",
   "page-cron-expired-recovery",
@@ -21,22 +21,33 @@ const voiceOverStoryIds = [
   "page-forensics-incident-partial-remediation",
 ] as const;
 
+const wave3VoiceOverStoryIds = [
+  "page-batches-bulk-confirmation",
+  "page-workflows-selected-blocked-step",
+  "page-lifeline-partial-skipped-failed",
+] as const;
+
+const voiceOverStoryIds = [
+  ...priorVoiceOverStoryIds,
+  ...wave3VoiceOverStoryIds,
+] as const;
+
 type VoiceOverStoryId = (typeof voiceOverStoryIds)[number];
 type VoiceOverPageStory = ShowcasePageStory & { id: VoiceOverStoryId };
 
 function storyById(id: VoiceOverStoryId): VoiceOverPageStory {
-  const match = pageStories.find((candidate) => candidate.id === id);
+  const matches = pageStories.filter((candidate) => candidate.id === id);
 
-  if (!match) {
-    throw new Error(`missing exact VoiceOver page story ${id}`);
+  if (matches.length !== 1) {
+    throw new Error(
+      `expected exactly one VoiceOver page story ${id}, found ${matches.length}`,
+    );
   }
 
-  return match as VoiceOverPageStory;
+  return matches[0] as VoiceOverPageStory;
 }
 
-const voiceOverStories = [
-  ...voiceOverStoryIds.map(storyById),
-];
+const voiceOverStories = voiceOverStoryIds.map(storyById);
 
 const requiredTranscriptText: Readonly<
   Record<VoiceOverStoryId, readonly string[]>
@@ -50,6 +61,19 @@ const requiredTranscriptText: Readonly<
   "page-forensics-incident-partial-remediation": [
     "Investigation summary",
     "Event log",
+  ],
+  "page-batches-bulk-confirmation": [
+    "Batches",
+    "Open Batch",
+  ],
+  "page-workflows-selected-blocked-step": [
+    "Why blocked?",
+    "A retryable dependency must complete before this step can run.",
+  ],
+  "page-lifeline-partial-skipped-failed": [
+    "Confirm Lifeline repair",
+    "Operator result: Skipped",
+    "Operator result: Failed",
   ],
 };
 
