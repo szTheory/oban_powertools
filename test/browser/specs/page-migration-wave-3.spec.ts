@@ -232,7 +232,7 @@ async function expectConfidentialityChannelsSafe(page: Page): Promise<void> {
       `${forbidden} escaped into a browser or log channel`,
     ).not.toContain(forbidden);
   }
-  expect(await page.locator("main").innerText()).not.toMatch(
+  expect(await page.locator("#lifeline-page").innerText()).not.toMatch(
     /\b(?:atomic|exactly[- ]once)\b/i,
   );
 }
