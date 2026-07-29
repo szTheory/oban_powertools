@@ -44,7 +44,7 @@ requirements-completed:
   - NAV-02
   - DATA-03
 
-duration: 14min
+duration: 16min
 completed: 2026-07-29
 status: complete
 ---
@@ -55,9 +55,9 @@ status: complete
 
 ## Performance
 
-- **Duration:** 14 min
+- **Duration:** 16 min
 - **Started:** 2026-07-29T20:13:00Z
-- **Completed:** 2026-07-29T20:27:00Z
+- **Completed:** 2026-07-29T20:29:00Z
 - **Tasks:** 2
 - **Files modified:** 3
 
@@ -74,6 +74,7 @@ Each task was committed atomically:
 
 1. **Task 1: Implement exact geometry, color, reflow, and motion auditors** - `40dced1` (feat)
 2. **Task 2: Make axe findings and exceptions fail closed** - `86e59a4` (feat)
+3. **Threat-model hardening: Redact analyzed URL state and close thrown compensation paths** - `5c158af` (fix)
 
 ## Files Created/Modified
 
@@ -100,10 +101,19 @@ Each task was committed atomically:
 - **Verification:** All 33 Chromium-wide cases pass.
 - **Committed in:** `40dced1`
 
+**2. [Rule 1 - Security] Removed query and fragment data from axe artifacts**
+
+- **Found during:** Final threat-model spot check
+- **Issue:** Axe's analyzed URL could retain sensitive query or fragment values even though DOM and failure payloads were already redacted.
+- **Fix:** Persist only URL origin/path and fail closed when a compensating assertion throws.
+- **Files modified:** `test/browser/support/axe.ts`
+- **Verification:** All 33 Chromium-wide cases pass and formatted output remains clean.
+- **Committed in:** `5c158af`
+
 ---
 
-**Total deviations:** 1 auto-fixed (1 blocking)
-**Impact on plan:** The change only closes the intended RED-to-GREEN module seam; it does not alter contract coverage or production behavior.
+**Total deviations:** 2 auto-fixed (1 blocking, 1 security)
+**Impact on plan:** Both fixes close required execution and confidentiality boundaries without changing contract coverage or production behavior.
 
 ## Issues Encountered
 
