@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 81
 current_phase_name: Page Migration Wave 3 — Batches, Workflows, Lifeline
 status: executing
-stopped_at: Completed 81-06-PLAN.md
-last_updated: "2026-07-29T08:50:47.859Z"
+stopped_at: Completed 81-15-PLAN.md
+last_updated: "2026-07-29T08:56:32.062Z"
 last_activity: 2026-07-29
 last_activity_desc: Completed Phase 81 Plan 04 closed Lifeline presentation boundary
 progress:
   total_phases: 15
   completed_phases: 11
   total_plans: 93
-  completed_plans: 85
-  percent: 73
+  completed_plans: 86
+  percent: 92
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 81 — Page Migration Wave 3 — Batches, Workflows, Lifeline
-Plan: 7 of 15
+Plan: 8 of 15
 Status: Ready to execute
-Last activity: 2026-07-29 — Completed Phase 81 Plan 04 closed Lifeline presentation boundary
+Last activity: 2026-07-29 — Completed Phase 81 Plan 15 nine-family browser contracts
 
 ## Performance Metrics
 
@@ -95,6 +95,7 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 04 closed Lifeline present
 | Phase 81 P04 | 7min | 2 tasks | 2 files |
 | Phase 81 P05 | 24min | 2 tasks | 1 files |
 | Phase 81 P06 | 7min | 1 tasks | 4 files |
+| Phase 81 P15 | 9min | 1 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -123,8 +124,8 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 04 closed Lifeline present
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T08:50:47.854Z
-**Stopped at:** Completed 81-06-PLAN.md
+**Last session:** 2026-07-29T08:56:09.288Z
+**Stopped at:** Completed 81-15-PLAN.md
 **Resume file:** None
 
 - **Last Action:** Completed Plan 79-08's connected accessibility, motion, responsive, confidentiality, and page-only visual evidence.
@@ -298,6 +299,9 @@ Last activity: 2026-07-29 — Completed Phase 81 Plan 04 closed Lifeline present
 - [Phase 81]: Keep the existing preview and execute handlers as the sole mutation authority; shared confirmation receives only closed consequence copy and a reason form. — Preserves server-owned authorization and capability confidentiality.
 - [Phase 81]: Preserve legacy recovery and runbook wording as presentation evidence without rendering preview identity, raw snapshots, or arbitrary errors. — Maintains operator parity while closing disclosure channels.
 - [Phase 81]: Record the connected fixture class mismatch in its owning Plan 81-07 scope instead of coupling production Lifeline behavior to test-only metadata. — Keeps test fixtures from becoming production domain authority.
+- [Phase 81]: Retain manifest schema 8 for the expanded graph — Wave 3 adds inventory without changing serialized fields, preserving compatibility while exact cardinalities enforce the graph.
+- [Phase 81]: Keep the nine-family browser allowlist closed and catalog-derived — PageStoryCatalog owns every story ID and artifact path, preventing arbitrary families or an independent browser registry.
+- [Phase 81]: Apply exact git-state rejection to ARIA and screenshot evidence — Missing, extra, untracked, renamed/copied, and out-of-scope artifacts must all fail to prevent false-green completion.
 
 ### Blockers
 
