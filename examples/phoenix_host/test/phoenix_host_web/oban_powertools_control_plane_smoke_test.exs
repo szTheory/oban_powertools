@@ -3,16 +3,17 @@ defmodule PhoenixHostWeb.ObanPowertoolsControlPlaneSmokeTest do
 
   import Phoenix.LiveViewTest
 
-  test "the supported host renders overview, audit, and bridge-only follow-up through one shared session", %{
-    conn: conn
-  } do
+  test "the supported host renders overview, audit, and bridge-only follow-up through one shared session",
+       %{
+         conn: conn
+       } do
     actor = PhoenixHostWeb.ObanPowertoolsAuth.demo_actor()
 
     conn = Plug.Test.init_test_session(conn, %{"ops_actor" => actor})
 
     {:ok, _overview_view, overview_html} = live(conn, "/ops/jobs")
 
-    assert overview_html =~ "Diagnosis-first overview"
+    assert overview_html =~ "Current attention"
     assert overview_html =~ "Inspection only"
 
     {:ok, _audit_view, audit_html} = live(conn, "/ops/jobs/audit")

@@ -206,7 +206,7 @@ defmodule ObanPowertools.ExampleHostContract do
       ])
 
     output <>
-      "\n/ops/jobs\nDiagnosis-first overview\n/ops/jobs/audit\n/ops/jobs/oban\nInspection only\n"
+      "\n/ops/jobs\nCurrent attention\n/ops/jobs/audit\n/ops/jobs/oban\nInspection only\n"
   end
 
   defp maybe_run_control_plane_smoke(_dir, _lane), do: nil

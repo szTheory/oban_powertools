@@ -55,6 +55,7 @@ defmodule ObanPowertools.MixProject do
       {:oban, "~> 2.18"},
       {:ecto_sql, "~> 3.10"},
       {:postgrex, "~> 0.17"},
+      {:phoenix_live_view, "~> 1.1", optional: true},
       {:oban_web, "~> 2.10", optional: true},
       {:telemetry_metrics, "~> 1.0", only: [:test, :dev], optional: true},
       {:telemetry_poller, "~> 1.0", optional: true},

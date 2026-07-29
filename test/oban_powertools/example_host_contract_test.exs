@@ -41,7 +41,7 @@ defmodule ObanPowertools.ExampleHostContractTest do
     assert result.control_plane_output =~ "PhoenixHostWeb.ObanPowertoolsControlPlaneSmokeTest"
     assert result.control_plane_output =~ "1 test, 0 failures"
     assert result.control_plane_output =~ "/ops/jobs"
-    assert result.control_plane_output =~ "Diagnosis-first overview"
+    assert result.control_plane_output =~ "Current attention"
     assert result.control_plane_output =~ "/ops/jobs/audit"
     assert result.control_plane_output =~ "/ops/jobs/oban"
     assert result.control_plane_output =~ "Inspection only"

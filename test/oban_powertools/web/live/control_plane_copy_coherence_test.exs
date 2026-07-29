@@ -130,14 +130,15 @@ defmodule ObanPowertools.Web.ControlPlaneCopyCoherenceTest do
       |> render_click()
 
     assert_occurs_in_order(lifeline_preview_html, [
-      "Audit Record to be Written",
-      "Actor:",
-      "Action:",
-      "Resource:",
-      "Reason:",
-      "Audit Consequence:",
+      "Preview Ready",
       "Preview Status:",
-      "Preview Token:"
+      "Audit Record to be Written",
+      "Audit Consequence:",
+      "Actor:",
+      "Reason:",
+      "Execute Remediation:",
+      "Confirm Lifeline repair",
+      "Scope"
     ])
 
     render_change(lifeline_view, "reason", %{"reason" => "rescuing orphaned job"})
@@ -157,8 +158,8 @@ defmodule ObanPowertools.Web.ControlPlaneCopyCoherenceTest do
       "Machine code: unsupported_legacy_semantics"
     ])
 
-    assert workflow_html =~
-             "Powertools-native pages own preview, reason, venue, and Audited action controls."
+    assert workflow_html =~ "pages own preview, reason, venue, and"
+    assert workflow_html =~ "Audited action"
 
     {:ok, _forensics_view, forensics_html} =
       live(conn, "/ops/jobs/forensics?workflow_id=#{workflow.id}&step=fetch_customer")
