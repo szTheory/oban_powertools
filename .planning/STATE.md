@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 82
 current_phase_name: Cross-Cutting A11y, Motion & Responsive Hardening Sweep
 status: executing
-stopped_at: Completed 82-06-PLAN.md
-last_updated: "2026-07-29T20:47:01.099Z"
+stopped_at: Completed 82-13-PLAN.md
+last_updated: "2026-07-29T20:52:18.458Z"
 last_activity: 2026-07-29
-last_activity_desc: Completed Phase 82 Plan 06 primitive and form semantics
+last_activity_desc: Completed Phase 82 Plan 13 operator dialog semantics
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 110
-  completed_plans: 100
-  percent: 91
+  completed_plans: 101
+  percent: 92
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 82 — Cross-Cutting A11y, Motion & Responsive Hardening Sweep
-Plan: 7 of 17
+Plan: 8 of 17
 Status: Ready to execute
-Last activity: 2026-07-29 — Completed Phase 82 Plan 06 primitive and form semantics
+Last activity: 2026-07-29 — Completed Phase 82 Plan 13 operator dialog semantics
 
 ## Performance Metrics
 
@@ -107,6 +107,7 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 06 primitive and form sema
 | Phase 82 P17 | 5min | 2 tasks | 5 files |
 | Phase 82 P05 | 3min | 2 tasks | 3 files |
 | Phase 82 P06 | 4min | 1 tasks | 4 files |
+| Phase 82 P13 | 2min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -135,15 +136,16 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 06 primitive and form sema
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T20:46:37.151Z
-**Stopped at:** Completed 82-06-PLAN.md
+**Last session:** 2026-07-29T20:52:18.451Z
+**Stopped at:** Completed 82-13-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed Plan 82-06's shared primitive and field-first form semantic hardening.
+- **Last Action:** Completed Plan 82-13's shared dialog, detail, recovery, and announcement semantic hardening.
 - **Next Action:** Execute the next dependency-ready Phase 82 plan.
 
 ## Decisions
 
+- [Phase 82]: Place the action-specific confirmation submit before safe-state dismissal while retaining the existing LiveView/native focus system and caller-owned operational authority. — Makes the D-16 order executable without creating a second focus or mutation controller.
 - [Phase 82]: Keep normative 24×24-or-spacing geometry separate from the named 44px operator comfort policy. — Prevents a project comfort rule from replacing or weakening WCAG 2.5.8.
 - [Phase 82]: Use per-test dynamic imports for Wave 0 browser and Node contracts. — Keeps all RED cases discoverable while attributing failures only to the intentionally missing Phase 82 implementation seams.
 - [Phase 82]: Require structured mutation inputs and exact path, line, selector, threshold, and mechanism diagnostics. — Makes source, exception, inventory, and CI bypass policy fail closed.
