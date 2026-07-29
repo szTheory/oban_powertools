@@ -1,5 +1,5 @@
 - heading "Workflows" [level=1]
-- paragraph: Diagnose workflow dependencies and current state without treating visual order as causality. Powertools-native surfaces keep diagnosis, preview, reason, and audited action together.
+- paragraph: Review workflow progress, understand blocked steps, and follow the supported recovery path.
 - paragraph: "Permission: read-only. Diagnose workflow causality here, but use Powertools-native pages for preview, reason, and Audited action controls."
 - table "Current workflows 1 rows All retained workflows in this bounded view are shown.":
   - caption: Current workflows 1 rows All retained workflows in this bounded view are shown.
@@ -10,19 +10,20 @@
       - columnheader "Steps"
       - columnheader "Actions"
   - rowgroup:
-    - 'row "לקוחות مرحبا reconciliation <script>alert(''workflow'')</script> Workflow state: Running 4 Inspect workflow"':
+    - 'row "לקוחות مرحبا reconciliation <script>alert(''workflow'')</script> Workflow state: Running 4 Inspect workflow לקוחות مرحبا reconciliation <script>alert(''workflow'')</script>"':
       - cell "לקוחות مرحبا reconciliation <script>alert('workflow')</script>"
       - 'cell "Workflow state: Running"'
       - cell "4"
-      - cell "Inspect workflow":
-        - link "Inspect workflow":
+      - cell "Inspect workflow לקוחות مرحبا reconciliation <script>alert('workflow')</script>":
+        - link "Inspect workflow לקוחות مرحبا reconciliation <script>alert('workflow')</script>":
           - /url: /ops/jobs/workflows/workflow-001
+          - text: Inspect workflow
 - region "לקוחות مرحبا reconciliation <script>alert('workflow')</script>":
   - heading "לקוחות مرحبا reconciliation <script>alert('workflow')</script>" [level=2]
   - term: "Operator Status:"
   - definition: Runnable
   - term: "Diagnosis:"
-  - definition: ready
+  - definition: Ready for the next supported step
   - term: "Runnable now:"
   - definition: "2"
   - term: "Semantics:"
@@ -35,27 +36,31 @@
     - listitem:
       - heading "לקבל ingest" [level=3]
       - text: "Workflow step state: Completed"
-      - paragraph: "diagnosis: ready"
-      - link "Detail":
+      - paragraph: "Diagnosis: Ready for the next supported step"
+      - link "Review step לקבל ingest in לקוחות مرحبا reconciliation <script>alert('workflow')</script>":
         - /url: /ops/jobs/workflows/workflow-001?step=%D7%9C%D7%A7%D7%91%D7%9C+ingest
+        - text: Review step
     - listitem:
       - heading "normalize مرحبا" [level=3]
       - text: "Workflow step state: Completed"
-      - paragraph: "diagnosis: ready"
-      - link "Detail":
+      - paragraph: "Diagnosis: Ready for the next supported step"
+      - link "Review step normalize مرحبا in לקוחות مرحبا reconciliation <script>alert('workflow')</script>":
         - /url: /ops/jobs/workflows/workflow-001?step=normalize+%D9%85%D8%B1%D8%AD%D8%A8%D8%A7
+        - text: Review step
     - listitem:
       - heading "publish <script>" [level=3]
       - text: "Workflow step state: Available"
-      - paragraph: "diagnosis: ready"
-      - link "Detail":
+      - paragraph: "Diagnosis: Ready for the next supported step"
+      - link "Review step publish <script> in לקוחות مرحبا reconciliation <script>alert('workflow')</script>":
         - /url: /ops/jobs/workflows/workflow-001?step=publish+%3Cscript%3E
+        - text: Review step
     - listitem:
       - heading "notify • final" [level=3]
       - text: "Workflow step state: Available"
-      - paragraph: "diagnosis: ready"
-      - link "Detail":
+      - paragraph: "Diagnosis: Ready for the next supported step"
+      - link "Review step notify • final in לקוחות مرحبا reconciliation <script>alert('workflow')</script>":
         - /url: /ops/jobs/workflows/workflow-001?step=notify+%E2%80%A2+final
+        - text: Review step
 - region "notify • final":
   - heading "notify • final" [level=2]
   - term: "Worker:"
@@ -63,7 +68,7 @@
   - term: "Operator Status:"
   - definition: Runnable
   - term: "Diagnosis:"
-  - definition: ready
+  - definition: Ready for the next supported step
   - term: "Result available:"
   - definition: "no"
   - heading "Review the bounded action in Lifeline." [level=3]

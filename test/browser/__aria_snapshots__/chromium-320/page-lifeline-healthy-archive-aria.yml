@@ -1,6 +1,6 @@
 - main "Lifeline":
   - heading "Lifeline" [level=1]
-  - paragraph: Powertools-native surfaces keep diagnosis, preview, reason, and audited action together. Generic job internals still deep-link into the Oban Web bridge.
+  - paragraph: Review incidents, preview bounded repairs, and execute deliberate remediation with recorded evidence.
   - text: "Lifeline health: Healthy"
   - region "Lifeline summary":
     - article:

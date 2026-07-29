@@ -1,6 +1,6 @@
 - main "Lifeline":
   - heading "Lifeline" [level=1]
-  - paragraph: Powertools-native surfaces keep diagnosis, preview, reason, and audited action together. Generic job internals still deep-link into the Oban Web bridge.
+  - paragraph: Review incidents, preview bounded repairs, and execute deliberate remediation with recorded evidence.
   - text: "Lifeline health: Needs review"
   - alert: Reason must be at least 8 characters.
   - region "Lifeline summary":
@@ -28,13 +28,13 @@
         - columnheader "Affected scope"
         - columnheader "Actions"
     - rowgroup:
-      - 'row "Executor executor-alpha missed its heartbeat Lifeline incident status: Needs review 1 bounded record Preview remediation"':
-        - cell "Executor executor-alpha missed its heartbeat":
-          - button "Executor executor-alpha missed its heartbeat"
+      - 'row "Review incident Executor executor-alpha missed its heartbeat Lifeline incident status: Needs review 1 bounded record Preview remediation"':
+        - cell "Review incident Executor executor-alpha missed its heartbeat":
+          - button "Review incident Executor executor-alpha missed its heartbeat": Review incident
         - 'cell "Lifeline incident status: Needs review"'
         - cell "1 bounded record"
         - cell "Preview remediation":
-          - button "Preview remediation": Preview Native Remediation
+          - button "Preview remediation"
   - region "Executor executor-alpha":
     - heading "Executor executor-alpha" [level=2]
     - paragraph: Active incidents keep preview, reason, and audit evidence close to the affected resource.
@@ -85,7 +85,7 @@
       - paragraph: Executor executor-alpha
     - region "Consequence":
       - heading "Consequence" [level=3]
-      - paragraph: Lifeline revalidates and attempts each eligible target independently.
+      - paragraph: Powertools applies only the reviewed bounded change. The repair is not atomic or exactly once, and execution does not prove downstream recovery.
     - region "Reversibility":
       - heading "Reversibility" [level=3]
       - paragraph: Accepted changes may not be reversible; changed targets are reported.
@@ -96,8 +96,8 @@
     - text: Reason Required
     - textbox "Reason Required": short
     - paragraph: Explain why this action is needed. Do not enter secrets.
-    - button "Cancel remediation"
-    - button "Execute Remediation"
+    - button "Keep current state"
+    - button "Execute remediation"
   - region "Retained support evidence":
     - heading "Healthy Executors" [level=2]
     - list:

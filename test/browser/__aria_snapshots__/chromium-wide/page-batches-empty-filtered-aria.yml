@@ -1,21 +1,56 @@
-- heading "Batches" [level=1]
-- paragraph: Inspect batch and chain progress, failed members, blocked states, and Lifeline recovery paths. Native Powertools pages own audited mutations; generic job internals deep-link into the Oban Web bridge.
-- paragraph: Powertools-native surfaces keep diagnosis, preview, reason, and audited action together.
-- text: Total Batches 0 Needs Attention 0 Executing 0 Completed 0
-- navigation:
-  - button "all (0)"
-  - button "executing (0)"
-  - button "completed (0)"
-  - button "failed (0)"
-  - button "cancelled (0)"
-- text: Batch name or ID
-- textbox "All batches": not-found
-- text: Queue
-- textbox "All queues"
-- text: Worker
-- textbox "All workers"
-- checkbox "Chain only"
-- text: Chain only
-- heading "No batches match this view" [level=2]
-- paragraph: No batch rows match the selected status and filters. Try a different status, clear filters, or inspect Jobs for ungrouped work.
-- text: Previous Next
+- main:
+  - heading "Batches" [level=1]
+  - paragraph: Review batch and chain progress, understand blocked work, and follow Lifeline-routed recovery with recorded evidence.
+  - region "Batch summary":
+    - article:
+      - term: Total Batches
+      - definition: "0"
+    - article:
+      - term: Needs Attention
+      - definition: "0"
+    - article:
+      - term: Executing
+      - definition: "0"
+    - article:
+      - term: Completed
+      - definition: "0"
+  - navigation "Batch status":
+    - button "All (0)"
+    - button "Executing (0)"
+    - button "Completed (0)"
+    - button "Failed (0)"
+    - button "Cancelled (0)"
+  - text: Batch name or ID
+  - textbox "Batch name or ID":
+    - /placeholder: All batches
+    - text: not-found
+  - text: Queue
+  - textbox "Queue":
+    - /placeholder: All queues
+  - text: Worker
+  - textbox "Worker":
+    - /placeholder: All workers
+  - checkbox "Chain only"
+  - text: Chain only
+  - table "Current batches 0 batches Page 1; up to 20 batches per page.":
+    - caption: Current batches 0 batches Page 1; up to 20 batches per page.
+    - rowgroup:
+      - row "Batch Operator status Progress Failed Callbacks Updated Actions":
+        - columnheader "Batch"
+        - columnheader "Operator status"
+        - columnheader "Progress"
+        - columnheader "Failed"
+        - columnheader "Callbacks"
+        - columnheader "Updated"
+        - columnheader "Actions"
+    - rowgroup:
+      - row:
+        - cell:
+          - status:
+            - heading "No rows match the current filters" [level=2]
+            - paragraph: Clear filters or widen the time window.
+            - strong: No batches match this view
+            - text: Choose another status or clear the name filter to widen the review.
+  - navigation "Batch pages":
+    - button "Previous" [disabled]
+    - button "Next" [disabled]

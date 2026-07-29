@@ -1,5 +1,5 @@
 - heading "Workflows" [level=1]
-- paragraph: Diagnose workflow dependencies and current state without treating visual order as causality. Powertools-native surfaces keep diagnosis, preview, reason, and audited action together.
+- paragraph: Review workflow progress, understand blocked steps, and follow the supported recovery path.
 - paragraph: "Permission: read-only. Diagnose workflow causality here, but use Powertools-native pages for preview, reason, and Audited action controls."
 - table "Current workflows 1 rows All retained workflows in this bounded view are shown.":
   - caption: Current workflows 1 rows All retained workflows in this bounded view are shown.
@@ -10,19 +10,20 @@
       - columnheader "Steps"
       - columnheader "Actions"
   - rowgroup:
-    - 'row "Nightly reconciliation workflow Workflow state: Completed 4 Inspect workflow"':
+    - 'row "Nightly reconciliation workflow Workflow state: Completed 4 Inspect workflow Nightly reconciliation workflow"':
       - cell "Nightly reconciliation workflow"
       - 'cell "Workflow state: Completed"'
       - cell "4"
-      - cell "Inspect workflow":
-        - link "Inspect workflow":
+      - cell "Inspect workflow Nightly reconciliation workflow":
+        - link "Inspect workflow Nightly reconciliation workflow":
           - /url: /ops/jobs/workflows/workflow-001
+          - text: Inspect workflow
 - region "Nightly reconciliation workflow":
   - heading "Nightly reconciliation workflow" [level=2]
   - term: "Operator Status:"
   - definition: Runnable
   - term: "Diagnosis:"
-  - definition: completed
+  - definition: All retained steps are complete
   - term: "Runnable now:"
   - definition: "0"
   - term: "Semantics:"
@@ -35,27 +36,31 @@
     - listitem:
       - heading "ingest" [level=3]
       - text: "Workflow step state: Completed"
-      - paragraph: "diagnosis: ready"
-      - link "Detail":
+      - paragraph: "Diagnosis: Ready for the next supported step"
+      - link "Review step ingest in Nightly reconciliation workflow":
         - /url: /ops/jobs/workflows/workflow-001?step=ingest
+        - text: Review step
     - listitem:
       - heading "normalize" [level=3]
       - text: "Workflow step state: Completed"
-      - paragraph: "diagnosis: ready"
-      - link "Detail":
+      - paragraph: "Diagnosis: Ready for the next supported step"
+      - link "Review step normalize in Nightly reconciliation workflow":
         - /url: /ops/jobs/workflows/workflow-001?step=normalize
+        - text: Review step
     - listitem:
       - heading "publish" [level=3]
       - text: "Workflow step state: Completed"
-      - paragraph: "diagnosis: ready"
-      - link "Detail":
+      - paragraph: "Diagnosis: Ready for the next supported step"
+      - link "Review step publish in Nightly reconciliation workflow":
         - /url: /ops/jobs/workflows/workflow-001?step=publish
+        - text: Review step
     - listitem:
       - heading "notify" [level=3]
       - text: "Workflow step state: Completed"
-      - paragraph: "diagnosis: ready"
-      - link "Detail":
+      - paragraph: "Diagnosis: Ready for the next supported step"
+      - link "Review step notify in Nightly reconciliation workflow":
         - /url: /ops/jobs/workflows/workflow-001?step=notify
+        - text: Review step
 - region "notify":
   - heading "notify" [level=2]
   - term: "Worker:"
@@ -63,7 +68,7 @@
   - term: "Operator Status:"
   - definition: Runnable
   - term: "Diagnosis:"
-  - definition: ready
+  - definition: Ready for the next supported step
   - term: "Result available:"
   - definition: "no"
   - heading "Review the bounded action in Lifeline." [level=3]

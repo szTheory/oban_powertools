@@ -1,6 +1,6 @@
 - main "Lifeline":
   - heading "Lifeline" [level=1]
-  - paragraph: Powertools-native surfaces keep diagnosis, preview, reason, and audited action together. Generic job internals still deep-link into the Oban Web bridge.
+  - paragraph: Review incidents, preview bounded repairs, and execute deliberate remediation with recorded evidence.
   - text: "Lifeline health: Needs review"
   - status: "Permission: read-only. Powertools-native incident evidence stays visible, but preview, reason, and Audited action controls stay disabled until you receive broader permission."
   - region "Lifeline summary":
@@ -28,13 +28,13 @@
         - columnheader "Affected scope"
         - columnheader "Actions"
     - rowgroup:
-      - 'row "Executor executor-alpha missed its heartbeat Lifeline incident status: Needs review 1 bounded record Preview remediation You do not have permission to preview this remediation."':
-        - cell "Executor executor-alpha missed its heartbeat":
-          - button "Executor executor-alpha missed its heartbeat"
+      - 'row "Review incident Executor executor-alpha missed its heartbeat Lifeline incident status: Needs review 1 bounded record Preview remediation You do not have permission to preview this remediation."':
+        - cell "Review incident Executor executor-alpha missed its heartbeat":
+          - button "Review incident Executor executor-alpha missed its heartbeat": Review incident
         - 'cell "Lifeline incident status: Needs review"'
         - cell "1 bounded record"
         - cell "Preview remediation You do not have permission to preview this remediation.":
-          - button "Preview remediation" [disabled]: Preview Native Remediation
+          - button "Preview remediation" [disabled]
           - paragraph: You do not have permission to preview this remediation.
   - region "Retained support evidence":
     - heading "Healthy Executors" [level=2]

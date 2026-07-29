@@ -1,5 +1,5 @@
 - heading "Workflows" [level=1]
-- paragraph: Diagnose workflow dependencies and current state without treating visual order as causality. Powertools-native surfaces keep diagnosis, preview, reason, and audited action together.
+- paragraph: Review workflow progress, understand blocked steps, and follow the supported recovery path.
 - paragraph: "Permission: read-only. Diagnose workflow causality here, but use Powertools-native pages for preview, reason, and Audited action controls."
 - table "Current workflows 1 rows All retained workflows in this bounded view are shown.":
   - caption: Current workflows 1 rows All retained workflows in this bounded view are shown.
@@ -10,19 +10,20 @@
       - columnheader "Steps"
       - columnheader "Actions"
   - rowgroup:
-    - 'row "Nightly reconciliation workflow Workflow state: Running 4 Inspect workflow"':
+    - 'row "Nightly reconciliation workflow Workflow state: Running 4 Inspect workflow Nightly reconciliation workflow"':
       - cell "Nightly reconciliation workflow"
       - 'cell "Workflow state: Running"'
       - cell "4"
-      - cell "Inspect workflow":
-        - link "Inspect workflow":
+      - cell "Inspect workflow Nightly reconciliation workflow":
+        - link "Inspect workflow Nightly reconciliation workflow":
           - /url: /ops/jobs/workflows/workflow-001
+          - text: Inspect workflow
 - region "Nightly reconciliation workflow":
   - heading "Nightly reconciliation workflow" [level=2]
   - term: "Operator Status:"
   - definition: Waiting
   - term: "Diagnosis:"
-  - definition: waiting_on_dependencies
+  - definition: Waiting for required dependencies
   - term: "Runnable now:"
   - definition: "1"
   - term: "Semantics:"
@@ -37,29 +38,32 @@
     - listitem:
       - heading "ingest" [level=3]
       - text: "Workflow step state: Completed"
-      - paragraph: "diagnosis: ready"
-      - link "Detail":
+      - paragraph: "Diagnosis: Ready for the next supported step"
+      - link "Review step ingest in Nightly reconciliation workflow":
         - /url: /ops/jobs/workflows/workflow-001?step=ingest
+        - text: Review step
     - listitem:
       - heading "normalize" [level=3]
       - text: "Workflow step state: Completed"
-      - paragraph: "diagnosis: ready"
-      - link "Detail":
+      - paragraph: "Diagnosis: Ready for the next supported step"
+      - link "Review step normalize in Nightly reconciliation workflow":
         - /url: /ops/jobs/workflows/workflow-001?step=normalize
+        - text: Review step
     - listitem:
       - heading "publish" [level=3]
       - text: "Workflow step state: Pending"
-      - paragraph: "diagnosis: waiting_on_dependencies"
-      - paragraph: "blocked: waiting_on_retryable_dependency"
-      - paragraph: "why: A retryable dependency must complete before this step can run."
-      - link "Detail":
+      - paragraph: "Diagnosis: Waiting for required dependencies"
+      - paragraph: "Why: A retryable dependency must complete before this step can run."
+      - link "Review step publish in Nightly reconciliation workflow":
         - /url: /ops/jobs/workflows/workflow-001?step=publish
+        - text: Review step
     - listitem:
       - heading "notify" [level=3]
       - text: "Workflow step state: Available"
-      - paragraph: "diagnosis: ready"
-      - link "Detail":
+      - paragraph: "Diagnosis: Ready for the next supported step"
+      - link "Review step notify in Nightly reconciliation workflow":
         - /url: /ops/jobs/workflows/workflow-001?step=notify
+        - text: Review step
 - region "publish":
   - heading "publish" [level=2]
   - term: "Worker:"
@@ -67,7 +71,7 @@
   - term: "Operator Status:"
   - definition: Waiting
   - term: "Diagnosis:"
-  - definition: waiting_on_dependencies
+  - definition: Waiting for required dependencies
   - term: "Result available:"
   - definition: "no"
   - heading "Review the bounded action in Lifeline." [level=3]
@@ -93,7 +97,7 @@
   - region "Dependency Reasons":
     - heading "Dependency Reasons" [level=3]
     - list:
-      - listitem: "waiting_on_retryable_dependency: A retryable dependency must complete before this step can run."
+      - listitem: A retryable dependency must complete before this step can run. waiting_on_retryable_dependency
   - region "Why blocked?":
     - heading "Why blocked?" [level=2]
     - paragraph: The selected step has current blocking evidence.

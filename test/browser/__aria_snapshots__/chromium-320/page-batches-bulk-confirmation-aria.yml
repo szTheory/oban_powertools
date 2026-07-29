@@ -1,43 +1,125 @@
-- heading "Batches" [level=1]
-- paragraph: Inspect batch and chain progress, failed members, blocked states, and Lifeline recovery paths. Native Powertools pages own audited mutations; generic job internals deep-link into the Oban Web bridge.
-- paragraph: Powertools-native surfaces keep diagnosis, preview, reason, and audited action together.
-- text: Total Batches 1 Needs Attention 0 Executing 1 Completed 0
-- navigation:
-  - button "all (1)"
-  - button "executing (1)"
-  - button "completed (0)"
-  - button "failed (0)"
-  - button "cancelled (0)"
-- text: Batch name or ID
-- textbox "All batches"
-- text: Queue
-- textbox "All queues"
-- text: Worker
-- textbox "All workers"
-- checkbox "Chain only"
-- text: Chain only
-- table:
-  - rowgroup:
-    - row "Batch Status Progress Failed Callbacks Updated Actions":
-      - columnheader "Batch"
-      - columnheader "Status"
-      - columnheader "Progress"
-      - columnheader "Failed"
-      - columnheader "Callbacks"
-      - columnheader "Updated"
-      - columnheader "Actions"
-  - rowgroup:
-    - 'row "לקוחות مرحبا notification batch batch-001 Batch status: Executing Running 7500/10000 75% Progress for לקוחות مرحبا notification batch 7500 7500/10000 75% 0 failed 0 retryable pending 0 failed 0 claimed 0 delivered 7500 2026-07-19T14:05:00Z Open Batch"':
-      - cell "לקוחות مرحبا notification batch batch-001"
-      - 'cell "Batch status: Executing Running"'
-      - cell "7500/10000 75% Progress for לקוחות مرحبا notification batch 7500 7500/10000 75%":
-        - text: 7500/10000 75% Progress for לקוחות مرحبا notification batch
-        - progressbar "Progress for לקוחות مرحبا notification batch": "7500"
-        - text: 7500/10000 75%
-      - cell "0 failed 0 retryable"
-      - cell "pending 0 failed 0 claimed 0 delivered 7500"
-      - cell "2026-07-19T14:05:00Z"
-      - cell "Open Batch":
-        - link "Open Batch":
-          - /url: /ops/jobs/batches/batch-001
-- text: Previous Next
+- main:
+  - heading "Batch Notification replay batch" [level=1]
+  - paragraph: Review current progress, bounded failure evidence, callback posture, and safe Lifeline recovery paths.
+  - text: "Batch status: Exhausted"
+  - link "Back to Batches":
+    - /url: /ops/jobs/batches?status=all
+  - region "Batch summary":
+    - heading "Identity" [level=2]
+    - term: Batch ID
+    - definition: batch-confirmation-001
+    - term: Name
+    - definition: Notification replay batch
+    - term: Inserted count
+    - definition: "2"
+    - term: Total count
+    - definition: "2"
+    - term: Updated
+    - definition: 2026-07-19T14:05:00Z
+    - term: Completed
+    - definition: Unknown
+    - heading "Progress" [level=2]
+    - text: Batch progress
+    - progressbar "Batch progress": "0"
+    - text: 0/2 0%
+    - paragraph: Two failed members remain. Review current evidence before retrying.
+  - heading "Why this batch is blocked" [level=2]
+  - text: Failed members need review
+  - paragraph: Two failed members remain. Review current evidence before retrying.
+  - term: Evidence window
+  - definition: 2 current failed members
+  - heading "Failed Members" [level=2]
+  - paragraph: Retryable selections are page-local and validated from current batch evidence.
+  - strong: 1 failed job selected
+  - button "Preview failed job retries for 1 selected jobs": Preview failed job retries
+  - button "Select all eligible failed jobs": Select all eligible
+  - table "Failed batch members 1 failed batch members":
+    - caption: Failed batch members 1 failed batch members
+    - rowgroup:
+      - row "Selection Job Worker Queue Status Attempt Last error Actions":
+        - columnheader "Selection"
+        - columnheader "Job"
+        - columnheader "Worker"
+        - columnheader "Queue"
+        - columnheader "Status"
+        - columnheader "Attempt"
+        - columnheader "Last error"
+        - columnheader "Actions"
+    - rowgroup:
+      - 'row "Select failed job 81001 81001 NotificationWorker notifications Batch member state: Discarded 3 / 3 Last error for job 81001 Open Generic Job Inspection in Oban Web bridge"':
+        - cell "Select failed job 81001":
+          - checkbox "Select failed job 81001" [checked]
+        - cell "81001"
+        - cell "NotificationWorker"
+        - cell "notifications"
+        - 'cell "Batch member state: Discarded"'
+        - cell "3 / 3"
+        - cell "Last error for job 81001":
+          - figure "Last error for job 81001":
+            - text: Last error for job 81001
+            - code: Provider timeout; secret fields redacted.
+        - cell "Open Generic Job Inspection in Oban Web bridge":
+          - link "Open Generic Job Inspection in Oban Web bridge":
+            - /url: /oban/jobs/81001
+  - heading "Callback Outbox" [level=2]
+  - table "Batch callbacks 1 batch callbacks":
+    - caption: Batch callbacks 1 batch callbacks
+    - rowgroup:
+      - row "Event Status Attempts Lease Last error Actions":
+        - columnheader "Event"
+        - columnheader "Status"
+        - columnheader "Attempts"
+        - columnheader "Lease"
+        - columnheader "Last error"
+        - columnheader "Actions"
+    - rowgroup:
+      - 'row "batch.exhausted callback-redacted Callback outbox status: Failed 2 Available: 2026-07-19T14:05:00Z Claimed: Unknown Lease: Unknown Delivered: Unknown Last error for batch.exhausted Preview callback retry for batch.exhausted"':
+        - cell "batch.exhausted callback-redacted":
+          - strong: batch.exhausted
+          - text: callback-redacted
+        - 'cell "Callback outbox status: Failed"'
+        - cell "2"
+        - 'cell "Available: 2026-07-19T14:05:00Z Claimed: Unknown Lease: Unknown Delivered: Unknown"'
+        - cell "Last error for batch.exhausted":
+          - figure "Last error for batch.exhausted":
+            - text: Last error for batch.exhausted
+            - code: Delivery timeout; payload redacted.
+        - cell "Preview callback retry for batch.exhausted":
+          - button "Preview callback retry for batch.exhausted": Preview callback retry
+  - heading "Chain Context" [level=2]
+  - term: Chain ID
+  - definition: chain-notifications
+  - term: Step
+  - definition: deliver (2/3)
+  - term: Upstream job
+  - definition: "81000"
+  - term: Next step
+  - definition: record
+  - heading "Manual Intervention History" [level=2]
+  - status:
+    - heading "No rows match the current filters" [level=2]
+    - paragraph: Clear filters or widen the time window.
+  - dialog "Preview failed job retries":
+    - paragraph: Batch Notification replay batch
+    - heading "Preview failed job retries" [level=2]
+    - region "Scope":
+      - heading "Scope" [level=3]
+      - paragraph: 1 failed job selected
+      - paragraph: Current retry-eligible failed jobs in this batch
+    - region "Consequence":
+      - heading "Consequence" [level=3]
+      - paragraph: Lifeline previews and processes each selected failed job independently. Jobs that changed are skipped and reported; a retry request does not mean the job completed.
+    - region "Reversibility":
+      - heading "Reversibility" [level=3]
+      - paragraph: Accepted retries enqueue new work and may not be reversible.
+    - region "Support boundary":
+      - heading "Support boundary" [level=3]
+      - paragraph: Execution is per job and non-atomic; a preview is not proof that a retry completed.
+      - paragraph: One immutable operator event will be written. Powertools-native surfaces keep diagnosis, preview, reason, and audited action together.
+    - text: Reason Required
+    - textbox "Reason Required": Upstream outage is resolved; retry the reviewed work.
+    - paragraph: Explain why this action is needed. Do not enter secrets.
+    - text: Type 1 to confirm Required
+    - textbox "Type 1 to confirm Required"
+    - button "Keep current state"
+    - button "Retry 1 failed jobs"

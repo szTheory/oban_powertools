@@ -1,6 +1,6 @@
 - main "Lifeline":
   - heading "Lifeline" [level=1]
-  - paragraph: Powertools-native surfaces keep diagnosis, preview, reason, and audited action together. Generic job internals still deep-link into the Oban Web bridge.
+  - paragraph: Review incidents, preview bounded repairs, and execute deliberate remediation with recorded evidence.
   - text: "Lifeline health: Needs review"
   - region "Lifeline summary":
     - article:
@@ -27,9 +27,9 @@
         - columnheader "Affected scope"
         - columnheader "Actions"
     - rowgroup:
-      - 'row "Resolved executor incident Lifeline incident status: Resolved 1 bounded record Resolved"':
-        - cell "Resolved executor incident":
-          - button "Resolved executor incident"
+      - 'row "Review incident Resolved executor incident Lifeline incident status: Resolved 1 bounded record Resolved"':
+        - cell "Review incident Resolved executor incident":
+          - button "Review incident Resolved executor incident": Review incident
         - 'cell "Lifeline incident status: Resolved"'
         - cell "1 bounded record"
         - cell "Resolved"

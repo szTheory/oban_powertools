@@ -1,5 +1,5 @@
 - heading "Workflows" [level=1]
-- paragraph: Diagnose workflow dependencies and current state without treating visual order as causality. Powertools-native surfaces keep diagnosis, preview, reason, and audited action together.
+- paragraph: Review workflow progress, understand blocked steps, and follow the supported recovery path.
 - paragraph: "Permission: read-only. Diagnose workflow causality here, but use Powertools-native pages for preview, reason, and Audited action controls."
 - table "Current workflows 1 rows All retained workflows in this bounded view are shown.":
   - caption: Current workflows 1 rows All retained workflows in this bounded view are shown.
@@ -10,10 +10,11 @@
       - columnheader "Steps"
       - columnheader "Actions"
   - rowgroup:
-    - 'row "לקוחות مرحبا reconciliation Workflow state: Running 100 Inspect workflow"':
+    - 'row "לקוחות مرحبا reconciliation Workflow state: Running 100 Inspect workflow לקוחות مرحبا reconciliation"':
       - cell "לקוחות مرحبا reconciliation"
       - 'cell "Workflow state: Running"'
       - cell "100"
-      - cell "Inspect workflow":
-        - link "Inspect workflow":
+      - cell "Inspect workflow לקוחות مرحبا reconciliation":
+        - link "Inspect workflow לקוחות مرحبا reconciliation":
           - /url: /ops/jobs/workflows/workflow-001
+          - text: Inspect workflow
