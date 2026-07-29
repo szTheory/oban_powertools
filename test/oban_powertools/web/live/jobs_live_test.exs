@@ -1777,15 +1777,15 @@ defmodule ObanPowertools.Web.JobsLiveTest do
     } do
       conn = bulk_conn(conn)
 
-      for positions <- [[0, 2, 2], [0, 2]] do
-        for index <- 1..3 do
-          insert_job!(
-            worker: "MyApp.MalformedResultWorker#{index}",
-            queue: :default,
-            state: "retryable"
-          )
-        end
+      for index <- 1..3 do
+        insert_job!(
+          worker: "MyApp.MalformedResultWorker#{index}",
+          queue: :default,
+          state: "retryable"
+        )
+      end
 
+      for positions <- [[0, 2, 2], [0, 2]] do
         {:ok, view, _html} = live(conn, "/ops/jobs/jobs?state=retryable")
         view |> element("#jobs-page-selection") |> render_click()
         view |> element("button[phx-value-action=\"job_retry\"]") |> render_click()
@@ -1797,8 +1797,6 @@ defmodule ObanPowertools.Web.JobsLiveTest do
 
         on_exit(fn ->
           if Process.alive?(handle.coordinator) do
-            true = :erlang.resume_process(handle.coordinator)
-
             Task.Supervisor.terminate_child(
               ObanPowertools.Jobs.TaskSupervisor,
               handle.coordinator

@@ -1612,7 +1612,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       preview = socket.assigns.bulk_preview
       scope = preview.scope
 
-      if valid_bulk_receipt?(receipt, preview, socket.assigns.bulk_action_kind) do
+      if valid_bulk_receipt?(receipt, preview, socket.assigns.bulk_action_kind) and
+           execution_positions_valid?(execution_results, preview.results) do
         execution_by_position = Map.new(execution_results, &{&1.position, &1})
 
         combined_results =
@@ -1683,6 +1684,27 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         receipt.total == preview.receipt.ready and
         receipt.success + receipt.skipped + receipt.failed == receipt.total
     end
+
+    defp execution_positions_valid?(execution_results, preview_results)
+         when is_list(execution_results) and is_list(preview_results) do
+      ready_positions =
+        for %{outcome: :ready, position: position} <- preview_results do
+          position
+        end
+
+      execution_positions =
+        Enum.map(execution_results, fn
+          %{position: position} -> position
+          _invalid -> :invalid
+        end)
+
+      length(execution_positions) == length(ready_positions) and
+        Enum.all?(execution_positions, &(is_integer(&1) and &1 >= 0)) and
+        MapSet.size(MapSet.new(execution_positions)) == length(execution_positions) and
+        MapSet.new(execution_positions) == MapSet.new(ready_positions)
+    end
+
+    defp execution_positions_valid?(_execution_results, _preview_results), do: false
 
     defp assign_bulk_failure(socket, safe_reason) do
       if Map.get(socket.assigns, :bulk_preview) do

@@ -412,30 +412,38 @@ defmodule ObanPowertools.Jobs.BatchCoordinator do
        ) do
     timeout = target_timeout(opts)
 
-    {results, aggregate} =
+    terminal_results =
       Task.Supervisor.async_stream_nolink(
         supervisor,
         preview.ready,
         fn target ->
           execute_target(repo, actor, preview.action, target, reason, opts, supervisor, timeout)
         end,
-        ordered: false,
+        ordered: true,
         max_concurrency: @max_concurrency,
         timeout: timeout + 1_000,
         on_timeout: :kill_task
       )
-      |> Enum.reduce({[], empty_aggregate(length(preview.ready))}, fn
-        {:ok, result}, {results, aggregate} ->
-          aggregate = increment_aggregate(aggregate, result.outcome)
-          send(owner, {:jobs_batch_progress, run_ref, aggregate})
-          {[result | results], aggregate}
+      |> then(&Enum.zip(preview.ready, &1))
+      |> Enum.map(fn
+        {_target, {:ok, result}} ->
+          result
 
-        {:exit, _reason}, {results, aggregate} ->
-          result = safe_execution_result(length(results), :failed, :crashed)
+        {target, {:exit, _reason}} ->
+          safe_execution_result(target.position, :failed, :crashed)
+      end)
+      |> reconcile_execution_results(preview.ready)
+
+    {results, aggregate} =
+      Enum.reduce(
+        terminal_results,
+        {[], empty_aggregate(length(preview.ready))},
+        fn result, {results, aggregate} ->
           aggregate = increment_aggregate(aggregate, result.outcome)
           send(owner, {:jobs_batch_progress, run_ref, aggregate})
           {[result | results], aggregate}
-      end)
+        end
+      )
 
     results =
       results
@@ -466,25 +474,39 @@ defmodule ObanPowertools.Jobs.BatchCoordinator do
   defp execute_target(repo, actor, action, target, reason, opts, supervisor, timeout) do
     contract = Map.fetch!(@action_contract, action)
     resource = %{type: :job, id: target.target_id}
+    execute_fun = execute_function(opts)
 
-    with :ok <- authorize(opts, actor, :view_job_detail, resource),
-         :ok <- authorize(opts, actor, contract.permission, resource),
-         :ok <- authorize(opts, actor, :execute_repair, resource) do
-      execute_fun = execute_function(opts)
-
-      result =
-        run_target_call(supervisor, timeout, fn ->
+    result =
+      run_target_call(supervisor, timeout, fn ->
+        with :ok <- authorize(opts, actor, :view_job_detail, resource),
+             :ok <- authorize(opts, actor, contract.permission, resource),
+             :ok <- authorize(opts, actor, :execute_repair, resource) do
           execute_fun.(repo, actor, target.preview_token, reason, [])
-        end)
+        else
+          {:error, _reason} -> {:error, :unauthorized}
+        end
+      end)
 
-      execution_result(target.position, result)
-    else
-      {:error, _reason} -> safe_execution_result(target.position, :skipped, :unauthorized)
-    end
+    execution_result(target.position, result)
   rescue
     _error -> safe_execution_result(target.position, :failed, :crashed)
   catch
     _kind, _reason -> safe_execution_result(target.position, :failed, :crashed)
+  end
+
+  defp reconcile_execution_results(results, ready_targets) do
+    results_by_position =
+      Enum.group_by(results, fn
+        %{position: position} when is_integer(position) -> position
+        _invalid -> :invalid
+      end)
+
+    Enum.map(ready_targets, fn target ->
+      case Map.get(results_by_position, target.position, []) do
+        [result] -> result
+        _missing_or_duplicate -> safe_execution_result(target.position, :failed, :crashed)
+      end
+    end)
   end
 
   defp execution_result(position, {:ok, {:ok, _result}}),
