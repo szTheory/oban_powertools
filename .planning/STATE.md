@@ -4,17 +4,17 @@ milestone: v2.0
 milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 82
 current_phase_name: Cross-Cutting A11y, Motion & Responsive Hardening Sweep
-status: verifying
-stopped_at: Completed 81-09-PLAN.md
-last_updated: "2026-07-29T18:54:01.809Z"
+status: executing
+stopped_at: Completed 82-01-PLAN.md
+last_updated: "2026-07-29T20:06:32.931Z"
 last_activity: 2026-07-29
-last_activity_desc: Phase 81 complete, transitioned to Phase 82
+last_activity_desc: Completed Phase 82 Plan 01 RED quality contracts
 progress:
   total_phases: 15
   completed_phases: 12
-  total_plans: 93
-  completed_plans: 93
-  percent: 80
+  total_plans: 110
+  completed_plans: 94
+  percent: 85
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 82 — Cross-Cutting A11y, Motion & Responsive Hardening Sweep
-Plan: Not started
-Status: Execution complete; phase verification pending
-Last activity: 2026-07-29 — Phase 81 complete, transitioned to Phase 82
+Plan: 1 of 17
+Status: In progress
+Last activity: 2026-07-29 — Completed Phase 82 Plan 01 RED quality contracts
 
 ## Performance Metrics
 
@@ -100,6 +100,7 @@ Last activity: 2026-07-29 — Phase 81 complete, transitioned to Phase 82
 | Phase 81 P08 | 1h20min | 3 tasks | 6 files |
 | Phase 81 P09 | 40min | 2 tasks | 271 files |
 | Phase 81 P13 | 8min | 2 tasks | 2 files |
+| Phase 82 P01 | 18min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -128,15 +129,18 @@ Last activity: 2026-07-29 — Phase 81 complete, transitioned to Phase 82
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T11:23:19.820Z
-**Stopped at:** Completed 81-09-PLAN.md
+**Last session:** 2026-07-29T20:06:32.926Z
+**Stopped at:** Completed 82-01-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed Plan 79-08's connected accessibility, motion, responsive, confidentiality, and page-only visual evidence.
-- **Next Action:** Begin Phase 80 while the formally re-scoped repository-wide quality and non-page VRT debt remains tracked.
+- **Last Action:** Completed Plan 82-01's discoverable browser and Node RED quality contracts.
+- **Next Action:** Execute the next dependency-ready Phase 82 plan.
 
 ## Decisions
 
+- [Phase 82]: Keep normative 24×24-or-spacing geometry separate from the named 44px operator comfort policy. — Prevents a project comfort rule from replacing or weakening WCAG 2.5.8.
+- [Phase 82]: Use per-test dynamic imports for Wave 0 browser and Node contracts. — Keeps all RED cases discoverable while attributing failures only to the intentionally missing Phase 82 implementation seams.
+- [Phase 82]: Require structured mutation inputs and exact path, line, selector, threshold, and mechanism diagnostics. — Makes source, exception, inventory, and CI bypass policy fail closed.
 - [Phase 75]: Keep all form controls stateless and field-first while allowing explicit identity overrides; use native semantics; centrally filter visual escape hatches. — Preserves parent-owned behavior, accessible native controls, and the scoped token-owned visual contract.
 - [Phase 75]: Keep deterministic form evidence in a separate dev/test-only catalog rather than domain stress fixtures. — Preserves production packaging and the domain fixture boundary while providing stable form evidence.
 - [Phase 75]: D-25: Browser evidence uses native interaction and generated form metadata across themes and viewports. — Proves component semantics without overclaiming Phase 82 page-level manual accessibility.
