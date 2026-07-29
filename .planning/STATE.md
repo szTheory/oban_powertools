@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 82
 current_phase_name: Cross-Cutting A11y, Motion & Responsive Hardening Sweep
 status: executing
-stopped_at: Completed 82-07-PLAN.md
-last_updated: "2026-07-29T21:09:28.000Z"
+stopped_at: Completed 82-14-PLAN.md
+last_updated: "2026-07-29T21:18:36.176Z"
 last_activity: 2026-07-29
-last_activity_desc: Completed Phase 82 Plan 07 first page copy hardening
+last_activity_desc: Completed Phase 82 Plan 14 Jobs and Forensics copy hardening
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 110
-  completed_plans: 103
-  percent: 94
+  completed_plans: 104
+  percent: 95
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 82 — Cross-Cutting A11y, Motion & Responsive Hardening Sweep
-Plan: 10 of 17
+Plan: 11 of 17
 Status: Ready to execute
-Last activity: 2026-07-29 — Completed Phase 82 Plan 07 first page copy hardening
+Last activity: 2026-07-29 — Completed Phase 82 Plan 14 Jobs and Forensics copy hardening
 
 ## Performance Metrics
 
@@ -110,6 +110,7 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 07 first page copy hardeni
 | Phase 82 P13 | 2min | 1 tasks | 2 files |
 | Phase 82 P12 | 6min | 1 tasks | 4 files |
 | Phase 82 P07 | 8min | 1 tasks | 5 files |
+| Phase 82 P14 | 6min | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -138,15 +139,17 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 07 first page copy hardeni
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T21:09:28.000Z
-**Stopped at:** Completed 82-07-PLAN.md
+**Last session:** 2026-07-29T21:18:36.168Z
+**Stopped at:** Completed 82-14-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed Plan 82-07's first-wave page copy, recovery, and raw-error hardening.
+- **Last Action:** Completed Plan 82-14's Jobs and Forensics copy, recovery, and bounded-evidence hardening.
 - **Next Action:** Execute the next dependency-ready Phase 82 plan.
 
 ## Decisions
 
+- [Phase 82]: Keep completed Powertools action receipts and server-owned operational flow unchanged while narrowing Jobs batch announcements to requested, recorded, and changed truth. — Prevents downstream outcome overclaims without weakening established authority or mutation evidence.
+- [Phase 82]: Add the same legal recovery action to every Forensics unavailable result and use the canonical Event log term. — Preserves non-enumeration across missing, unretained, and unauthorized evidence while giving operators a truthful next step.
 - [Phase 82]: Keep page-specific recovery copy in its owning LiveView and tag LiveAuth-safe messages separately from untrusted backend failures. — Preserves parent/server authority and exact permission truth without rendering raw provider or domain errors.
 - [Phase 82]: Keep primary navigation fixed to the production-owned nine-surface model and reserve theme/effective-theme/motion attributes for the enclosing ThemeShell root. — Prevents caller escape hatches from adding routes or moving isolated theme ownership below `.obpt-root`.
 - [Phase 82]: Automatically render native expansion whenever truncation changes visible machine copy. — Keeps every complete value keyboard/touch accessible without relying on `title` or caller opt-in.
