@@ -5,6 +5,7 @@ alias ObanPowertools.ShellStoryCatalog
 alias ObanPowertools.DataDisplayStoryCatalog
 alias ObanPowertools.OperatorPatternStoryCatalog
 alias ObanPowertools.PageStoryCatalog
+alias ObanPowertools.Web.Copy
 
 themes = ["system", "light", "dark", "high-contrast"]
 
@@ -190,6 +191,7 @@ manifest = %{
   schema_version: 8,
   themes: themes,
   viewports: viewports,
+  copy_contract: Copy.contract(),
   scenarios: scenarios,
   primitive_stories: primitive_stories,
   form_stories: form_stories,

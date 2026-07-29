@@ -76,6 +76,113 @@ function exactFields(actual, expected, label) {
   }
 }
 
+function unique(values, label) {
+  equal(new Set(values).size, values.length, `${label} unique`);
+}
+
+function copyContract(value) {
+  const contract = record(value, 'copy_contract');
+  exactFields(
+    contract,
+    [
+      'canonical_terms',
+      'confirmation_order',
+      'exclusions',
+      'forbidden_phrases',
+      'receipt_verbs',
+      'source_roots',
+      'state_requirements'
+    ],
+    'copy_contract'
+  );
+
+  const canonicalTerms = record(contract.canonical_terms, 'copy_contract.canonical_terms');
+  equal(Object.keys(canonicalTerms).length > 0, true, 'copy_contract.canonical_terms non-empty');
+  const terms = [];
+  for (const [concept, value] of Object.entries(canonicalTerms)) {
+    equal(/^[a-z][a-z0-9_]*$/.test(concept), true, `copy_contract concept ${concept}`);
+    const entry = record(value, `copy_contract.canonical_terms.${concept}`);
+    exactFields(entry, ['term', 'forbidden'], `copy_contract.canonical_terms.${concept}`);
+    const term = string(entry.term, `copy_contract.canonical_terms.${concept}.term`);
+    const forbidden = array(entry.forbidden, `copy_contract.canonical_terms.${concept}.forbidden`);
+    equal(
+      forbidden.length > 0,
+      true,
+      `copy_contract.canonical_terms.${concept}.forbidden non-empty`
+    );
+    forbidden.forEach((item, index) =>
+      string(item, `copy_contract.canonical_terms.${concept}.forbidden[${index}]`)
+    );
+    equal(
+      forbidden.includes(term),
+      false,
+      `copy_contract.canonical_terms.${concept} canonical drift`
+    );
+    unique(forbidden, `copy_contract.canonical_terms.${concept}.forbidden`);
+    terms.push(term);
+  }
+  unique(terms, 'copy_contract canonical terms');
+
+  for (const field of ['confirmation_order', 'exclusions', 'receipt_verbs', 'source_roots']) {
+    const values = array(contract[field], `copy_contract.${field}`);
+    equal(values.length > 0, true, `copy_contract.${field} non-empty`);
+    values.forEach((item, index) => string(item, `copy_contract.${field}[${index}]`));
+    unique(values, `copy_contract.${field}`);
+  }
+  exactList(
+    contract.source_roots,
+    [...contract.source_roots].sort(),
+    'copy_contract.source_roots order'
+  );
+
+  const forbiddenPhrases = array(contract.forbidden_phrases, 'copy_contract.forbidden_phrases');
+  equal(forbiddenPhrases.length > 0, true, 'copy_contract.forbidden_phrases non-empty');
+  forbiddenPhrases.forEach((value, index) => {
+    const entry = record(value, `copy_contract.forbidden_phrases[${index}]`);
+    exactFields(
+      entry,
+      ['phrase', 'replacement', 'rule'],
+      `copy_contract.forbidden_phrases[${index}]`
+    );
+    string(entry.phrase, `copy_contract.forbidden_phrases[${index}].phrase`);
+    string(entry.replacement, `copy_contract.forbidden_phrases[${index}].replacement`);
+    string(entry.rule, `copy_contract.forbidden_phrases[${index}].rule`);
+  });
+  unique(
+    forbiddenPhrases.map((entry) => entry.phrase),
+    'copy_contract forbidden phrases'
+  );
+
+  const states = record(contract.state_requirements, 'copy_contract.state_requirements');
+  equal(Object.keys(states).length > 0, true, 'copy_contract.state_requirements non-empty');
+  for (const [state, value] of Object.entries(states)) {
+    equal(/^[a-z][a-z0-9_]*$/.test(state), true, `copy_contract state ${state}`);
+    const requirements = array(value, `copy_contract.state_requirements.${state}`);
+    equal(requirements.length > 0, true, `copy_contract.state_requirements.${state} non-empty`);
+    requirements.forEach((item, index) =>
+      string(item, `copy_contract.state_requirements.${state}[${index}]`)
+    );
+    unique(requirements, `copy_contract.state_requirements.${state}`);
+  }
+
+  if (/obpt-(?:page-)?story-|page-[a-z0-9]+-/.test(JSON.stringify(contract))) {
+    fail('copy_contract must not contain showcase target or story ids');
+  }
+}
+
+function assertCopyContractRejects(contract, mutate, label) {
+  const malformed = JSON.parse(JSON.stringify(contract));
+  mutate(malformed);
+
+  try {
+    copyContract(malformed);
+  } catch {
+    return;
+  }
+
+  fail(`copy_contract validator accepted malformed fixture: ${label}`);
+}
+
 function pageStory(value, label) {
   const actual = record(value, label);
 
@@ -138,9 +245,7 @@ function pageStory(value, label) {
   for (const field of ['required_text', 'forbidden_text', 'ordered_text']) {
     const values = array(acceptance[field], `${label}.acceptance.${field}`);
     equal(values.length > 0, true, `${label}.acceptance.${field} non-empty`);
-    values.forEach((item, index) =>
-      string(item, `${label}.acceptance.${field}[${index}]`)
-    );
+    values.forEach((item, index) => string(item, `${label}.acceptance.${field}[${index}]`));
   }
 
   const roles = array(acceptance.roles, `${label}.acceptance.roles`);
@@ -217,6 +322,7 @@ exactFields(
     'schema_version',
     'themes',
     'viewports',
+    'copy_contract',
     'scenarios',
     'primitive_stories',
     'form_stories',
@@ -230,6 +336,27 @@ exactFields(
 );
 equal(manifest.schema_version, 8, 'schema_version');
 exactList(array(manifest.themes, 'themes'), expectedThemes, 'themes');
+copyContract(manifest.copy_contract);
+assertCopyContractRejects(
+  manifest.copy_contract,
+  (contract) => delete contract.forbidden_phrases,
+  'missing policy field'
+);
+assertCopyContractRejects(
+  manifest.copy_contract,
+  (contract) => (contract.inventory = []),
+  'duplicated inventory field'
+);
+assertCopyContractRejects(
+  manifest.copy_contract,
+  (contract) => (Object.values(contract.canonical_terms)[0].forbidden = []),
+  'empty canonical prohibition'
+);
+assertCopyContractRejects(
+  manifest.copy_contract,
+  (contract) => contract.exclusions.push('obpt-page-story-page-overview-default'),
+  'showcase target id in policy'
+);
 
 const viewports = array(manifest.viewports, 'viewports');
 equal(viewports.length, expectedViewports.length, 'viewports.length');

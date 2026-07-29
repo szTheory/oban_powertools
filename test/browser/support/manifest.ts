@@ -54,6 +54,20 @@ export type ShowcaseViewport = {
   height: number;
 };
 
+export type ShowcaseCopyContract = {
+  canonical_terms: Record<string, { term: string; forbidden: string[] }>;
+  confirmation_order: string[];
+  exclusions: string[];
+  forbidden_phrases: Array<{
+    phrase: string;
+    replacement: string;
+    rule: string;
+  }>;
+  receipt_verbs: string[];
+  source_roots: string[];
+  state_requirements: Record<string, string[]>;
+};
+
 export type ShowcaseScenario = {
   id: string;
   domain: string;
@@ -116,6 +130,7 @@ export type ShowcaseManifest = {
   schema_version: 8;
   themes: ShowcaseTheme[];
   viewports: ShowcaseViewport[];
+  copy_contract: ShowcaseCopyContract;
   scenarios: ShowcaseScenario[];
   primitive_stories: ShowcasePrimitiveStory[];
   form_stories: ShowcaseFormStory[];
@@ -146,6 +161,7 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
       'schema_version',
       'themes',
       'viewports',
+      'copy_contract',
       'scenarios',
       'primitive_stories',
       'form_stories',
@@ -174,6 +190,7 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
   });
 
   assertEqual(viewports.length, expectedViewports.length, 'viewports.length');
+  const copyContract = validateCopyContract(manifest.copy_contract);
 
   const scenarios = assertArray(manifest.scenarios, 'scenarios').map((scenario, index) => {
     const actual = assertRecord(scenario, `scenarios[${index}]`);
@@ -421,6 +438,7 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
     schema_version: 8,
     themes,
     viewports,
+    copy_contract: copyContract,
     scenarios,
     primitive_stories: primitiveStories,
     form_stories: formStories,
@@ -429,6 +447,140 @@ function validateManifest(value: unknown, filePath: string): ShowcaseManifest {
     group_stories: groupStories,
     page_stories: pageStories,
     targets
+  };
+}
+
+function validateCopyContract(value: unknown): ShowcaseCopyContract {
+  const contract = assertRecord(value, 'copy_contract');
+  assertExactRecordFields(
+    contract,
+    [
+      'canonical_terms',
+      'confirmation_order',
+      'exclusions',
+      'forbidden_phrases',
+      'receipt_verbs',
+      'source_roots',
+      'state_requirements'
+    ],
+    'copy_contract'
+  );
+
+  const canonicalTermsRecord = assertRecord(
+    contract.canonical_terms,
+    'copy_contract.canonical_terms'
+  );
+  const canonicalTerms: ShowcaseCopyContract['canonical_terms'] = {};
+  const terms: string[] = [];
+
+  for (const [concept, value] of Object.entries(canonicalTermsRecord)) {
+    if (!/^[a-z][a-z0-9_]*$/.test(concept)) {
+      throw new Error(`copy_contract.canonical_terms.${concept} must use a finite identifier`);
+    }
+
+    const entry = assertRecord(value, `copy_contract.canonical_terms.${concept}`);
+    assertExactRecordFields(
+      entry,
+      ['term', 'forbidden'],
+      `copy_contract.canonical_terms.${concept}`
+    );
+    const term = assertString(entry.term, `copy_contract.canonical_terms.${concept}.term`);
+    const forbidden = assertStringArray(
+      entry.forbidden,
+      `copy_contract.canonical_terms.${concept}.forbidden`
+    );
+
+    if (forbidden.length === 0 || forbidden.includes(term)) {
+      throw new Error(
+        `copy_contract.canonical_terms.${concept}.forbidden must be non-empty and exclude its canonical term`
+      );
+    }
+
+    assertUniqueList(forbidden, `copy_contract.canonical_terms.${concept}.forbidden`);
+    terms.push(term);
+    canonicalTerms[concept] = { term, forbidden };
+  }
+
+  if (terms.length === 0) {
+    throw new Error('copy_contract.canonical_terms must not be empty');
+  }
+  assertUniqueList(terms, 'copy_contract canonical terms');
+
+  const confirmationOrder = assertStringArray(
+    contract.confirmation_order,
+    'copy_contract.confirmation_order'
+  );
+  const exclusions = assertStringArray(contract.exclusions, 'copy_contract.exclusions');
+  const receiptVerbs = assertStringArray(contract.receipt_verbs, 'copy_contract.receipt_verbs');
+  const sourceRoots = assertStringArray(contract.source_roots, 'copy_contract.source_roots');
+  for (const [label, values] of [
+    ['copy_contract.confirmation_order', confirmationOrder],
+    ['copy_contract.exclusions', exclusions],
+    ['copy_contract.receipt_verbs', receiptVerbs],
+    ['copy_contract.source_roots', sourceRoots]
+  ] as const) {
+    if (values.length === 0) throw new Error(`${label} must not be empty`);
+    assertUniqueList(values, label);
+  }
+  assertExactList(sourceRoots, [...sourceRoots].sort(), 'copy_contract.source_roots order');
+
+  const forbiddenPhrases = assertArray(
+    contract.forbidden_phrases,
+    'copy_contract.forbidden_phrases'
+  ).map((value, index) => {
+    const entry = assertRecord(value, `copy_contract.forbidden_phrases[${index}]`);
+    assertExactRecordFields(
+      entry,
+      ['phrase', 'replacement', 'rule'],
+      `copy_contract.forbidden_phrases[${index}]`
+    );
+    return {
+      phrase: assertString(entry.phrase, `copy_contract.forbidden_phrases[${index}].phrase`),
+      replacement: assertString(
+        entry.replacement,
+        `copy_contract.forbidden_phrases[${index}].replacement`
+      ),
+      rule: assertString(entry.rule, `copy_contract.forbidden_phrases[${index}].rule`)
+    };
+  });
+  if (forbiddenPhrases.length === 0) {
+    throw new Error('copy_contract.forbidden_phrases must not be empty');
+  }
+  assertUniqueList(
+    forbiddenPhrases.map(({ phrase }) => phrase),
+    'copy_contract forbidden phrases'
+  );
+
+  const stateRequirementsRecord = assertRecord(
+    contract.state_requirements,
+    'copy_contract.state_requirements'
+  );
+  const stateRequirements: Record<string, string[]> = {};
+  for (const [state, value] of Object.entries(stateRequirementsRecord)) {
+    const requirements = assertStringArray(value, `copy_contract.state_requirements.${state}`);
+    if (!/^[a-z][a-z0-9_]*$/.test(state) || requirements.length === 0) {
+      throw new Error(`copy_contract.state_requirements.${state} must be finite and non-empty`);
+    }
+    assertUniqueList(requirements, `copy_contract.state_requirements.${state}`);
+    stateRequirements[state] = requirements;
+  }
+  if (Object.keys(stateRequirements).length === 0) {
+    throw new Error('copy_contract.state_requirements must not be empty');
+  }
+
+  const serialized = JSON.stringify(contract);
+  if (/obpt-(?:page-)?story-|page-[a-z0-9]+-/.test(serialized)) {
+    throw new Error('copy_contract must not contain showcase target or story ids');
+  }
+
+  return {
+    canonical_terms: canonicalTerms,
+    confirmation_order: confirmationOrder,
+    exclusions,
+    forbidden_phrases: forbiddenPhrases,
+    receipt_verbs: receiptVerbs,
+    source_roots: sourceRoots,
+    state_requirements: stateRequirements
   };
 }
 
@@ -614,9 +766,7 @@ function validateAcceptance(value: unknown, label: string): ShowcaseAcceptance {
 function validateRoleContract(value: unknown, label: string): ShowcaseRoleContract {
   const actual = assertRecord(value, label);
   const expectedFields =
-    actual.level === undefined
-      ? ['role', 'name', 'states']
-      : ['role', 'name', 'level', 'states'];
+    actual.level === undefined ? ['role', 'name', 'states'] : ['role', 'name', 'level', 'states'];
 
   assertExactRecordFields(actual, expectedFields, label);
 
@@ -731,10 +881,7 @@ function assertActivation(value: unknown, label: string): 'none' | 'overlay' {
   return activation;
 }
 
-function assertPageActivation(
-  value: unknown,
-  label: string
-): 'none' | 'detail' | 'confirmation' {
+function assertPageActivation(value: unknown, label: string): 'none' | 'detail' | 'confirmation' {
   const activation = assertString(value, label);
 
   if (activation !== 'none' && activation !== 'detail' && activation !== 'confirmation') {
