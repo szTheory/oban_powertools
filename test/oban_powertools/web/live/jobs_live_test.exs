@@ -53,6 +53,31 @@ defmodule ObanPowertools.Web.JobsLiveDetailCustomArgsPolicy do
   def display(_kind, _value, _context), do: nil
 end
 
+defmodule ObanPowertools.Web.JobsLiveRecordingAuth do
+  @behaviour ObanPowertools.Auth
+
+  @impl true
+  def current_actor(value), do: ObanPowertools.TestAuth.current_actor(value)
+
+  @impl true
+  def authorize(actor, action, resource) do
+    if test_pid = Map.get(actor || %{}, :auth_test_pid) do
+      send(test_pid, {:authorization, action, resource})
+    end
+
+    permissions = Map.get(actor || %{}, :permissions, [])
+
+    case {action, resource, action in permissions or :all in permissions} do
+      {:view_job_detail, %{type: :job, id: nil}, true} -> :ok
+      {:view_job_detail, %{type: :job, id: nil}, false} -> {:error, :unauthorized}
+      _other -> ObanPowertools.TestAuth.authorize(actor, action, resource)
+    end
+  end
+
+  @impl true
+  def audit_principal(actor), do: ObanPowertools.TestAuth.audit_principal(actor)
+end
+
 defmodule ObanPowertools.Web.JobsLiveTest do
   use ObanPowertools.LiveCase, async: false
 
@@ -513,6 +538,102 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       end
 
       assert body_text(missing_html) == body_text(malformed_html)
+    end
+
+    test "detail IDs are normalized before authorization and bounded before Repo", %{conn: conn} do
+      original_auth = Application.get_env(:oban_powertools, :auth_module)
+
+      Application.put_env(
+        :oban_powertools,
+        :auth_module,
+        ObanPowertools.Web.JobsLiveRecordingAuth
+      )
+
+      on_exit(fn -> Application.put_env(:oban_powertools, :auth_module, original_auth) end)
+
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{
+            id: "ops-1",
+            permissions: [:view_job_detail],
+            auth_test_pid: self()
+          }
+        )
+
+      max_id = "9223372036854775807"
+      overflow_id = "9223372036854775808"
+      huge_id = "88888888888888888888888888888888888888888888888888"
+
+      {{{:ok, _view, max_html}, max_queries}, max_calls} =
+        capture_authorizations(fn ->
+          capture_job_queries(fn -> live(conn, "/ops/jobs/jobs/#{max_id}") end)
+        end)
+
+      assert length(max_queries) == 1
+
+      assert max_calls == [
+               {:view_job_detail, %{type: :job, id: max_id}},
+               {:view_job_detail, %{type: :job, id: max_id}}
+             ]
+
+      assert max_html =~ "Job unavailable"
+
+      {{{:ok, _view, missing_html}, missing_queries}, missing_calls} =
+        capture_authorizations(fn ->
+          capture_job_queries(fn -> live(conn, "/ops/jobs/jobs/999999999") end)
+        end)
+
+      assert length(missing_queries) == 1
+
+      assert missing_calls == [
+               {:view_job_detail, %{type: :job, id: "999999999"}},
+               {:view_job_detail, %{type: :job, id: "999999999"}}
+             ]
+
+      for invalid_id <- [overflow_id, huge_id, "not-an-id"] do
+        {{{:ok, view, html}, queries}, calls} =
+          capture_authorizations(fn ->
+            capture_job_queries(fn -> live(conn, "/ops/jobs/jobs/#{invalid_id}") end)
+          end)
+
+        assert Process.alive?(view.pid)
+        assert queries == []
+        assert calls == [{:view_job_detail, %{type: :job, id: nil}}]
+        assert body_text(html) == body_text(missing_html)
+        assert html =~ ~s(id="job-unavailable")
+        assert html =~ "Job unavailable"
+
+        refute html =~ invalid_id
+        refute html =~ "Postgrex"
+        refute html =~ "Ecto"
+        refute html =~ "Some filters were not applied"
+        refute html =~ "The invalid filter values were removed"
+      end
+    end
+
+    test "detail mount denial remains authoritative with normalized resources", %{conn: conn} do
+      original_auth = Application.get_env(:oban_powertools, :auth_module)
+
+      Application.put_env(
+        :oban_powertools,
+        :auth_module,
+        ObanPowertools.Web.JobsLiveRecordingAuth
+      )
+
+      on_exit(fn -> Application.put_env(:oban_powertools, :auth_module, original_auth) end)
+
+      conn =
+        Plug.Test.init_test_session(conn,
+          current_actor: %{id: "ops-2", permissions: [], auth_test_pid: self()}
+        )
+
+      {result, calls} =
+        capture_authorizations(fn ->
+          live(conn, "/ops/jobs/jobs/9223372036854775808")
+        end)
+
+      assert {:error, {:redirect, %{to: "/"}}} = result
+      assert calls == [{:view_job_detail, %{type: :job, id: nil}}]
     end
 
     test "detail renders bounded error summaries without raw failures or manufactured Forensics",
@@ -1551,6 +1672,20 @@ defmodule ObanPowertools.Web.JobsLiveTest do
       {:job_query, query} -> collect_job_queries([query | queries])
     after
       0 -> Enum.reverse(queries)
+    end
+  end
+
+  defp capture_authorizations(fun) do
+    result = fun.()
+    {result, collect_authorizations([])}
+  end
+
+  defp collect_authorizations(calls) do
+    receive do
+      {:authorization, action, resource} ->
+        collect_authorizations([{action, resource} | calls])
+    after
+      0 -> Enum.reverse(calls)
     end
   end
 

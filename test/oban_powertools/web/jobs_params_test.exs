@@ -147,6 +147,34 @@ defmodule ObanPowertools.Web.JobsParamsTest do
     end
   end
 
+  test "parse_job_id/1 accepts only canonical positive signed-int64 values" do
+    max_int64 = 9_223_372_036_854_775_807
+
+    for value <- [max_int64, Integer.to_string(max_int64)] do
+      assert JobsParams.parse_job_id(value) == {:ok, max_int64}
+    end
+
+    for value <- [
+          max_int64 + 1,
+          Integer.to_string(max_int64 + 1),
+          88_888_888_888_888_888_888_888_888_888_888_888_888_888_888_888,
+          "88888888888888888888888888888888888888888888888888",
+          0,
+          "0",
+          -1,
+          "-1",
+          " 1",
+          "1 ",
+          "1x",
+          "x1",
+          "1.0",
+          nil,
+          :job
+        ] do
+      assert JobsParams.parse_job_id(value) == :error
+    end
+  end
+
   test "JSON arrays, scalars, and null never become applied query values" do
     for invalid_json <- ["[]", ~s("secret"), "12", "true", "null"] do
       parsed =
