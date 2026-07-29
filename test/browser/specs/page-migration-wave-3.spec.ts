@@ -121,6 +121,17 @@ function lifelinePath(): string {
   )}`;
 }
 
+function lifelinePreviewButton(page: Page): Locator {
+  const executor = fixtureState.handles.incidentId.replace(
+    /^dead_executor:/,
+    "",
+  );
+  return page
+    .getByRole("row")
+    .filter({ hasText: executor })
+    .getByRole("button", { name: "Preview remediation" });
+}
+
 async function expectMinimumTargets(root: Locator): Promise<void> {
   const targets = await root
     .locator("a, button, input, select, textarea")
@@ -308,7 +319,7 @@ test.describe("Phase 81 connected production page contracts", () => {
   }) => {
     await openConnectedPage(page, lifelinePath());
     await closeResidualDialog(page);
-    await page.getByRole("button", { name: "Preview remediation" }).click();
+    await lifelinePreviewButton(page).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     await dialog.getByRole("textbox", { name: /reason/i }).fill("short");
@@ -334,7 +345,7 @@ test.describe("Phase 81 connected production page contracts", () => {
   }) => {
     await openConnectedPage(page, lifelinePath());
     await closeResidualDialog(page);
-    await page.getByRole("button", { name: "Preview remediation" }).click();
+    await lifelinePreviewButton(page).click();
     await controlPhase81Race(request, {
       command: "revoke",
       secret: fixtureSecret,
@@ -384,7 +395,7 @@ test.describe("Phase 81 connected production page contracts", () => {
   }) => {
     await openConnectedPage(page, lifelinePath());
     await closeResidualDialog(page);
-    const invoker = page.getByRole("button", { name: "Preview remediation" });
+    const invoker = lifelinePreviewButton(page);
     await invoker.focus();
     await invoker.press("Enter");
     const dialog = page.getByRole("dialog");
