@@ -323,7 +323,7 @@ defmodule ObanPowertools.Web.CopyContractTest do
       Enum.find(exclusions, fn exclusion ->
         case String.split(exclusion, ":", parts: 3) do
           [path, line, phrase] ->
-            Enum.any?(sources, fn
+            not Enum.any?(sources, fn
               {^path, source} ->
                 source
                 |> String.split("\n")
