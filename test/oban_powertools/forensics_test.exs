@@ -18,6 +18,7 @@ defmodule ObanPowertools.ForensicsTest do
   alias ObanPowertools.TestRepo
   alias ObanPowertools.Web.ControlPlanePresenter
   alias ObanPowertools.Workflow
+  alias ObanPowertools.Workflow.Step
   alias ObanPowertools.Workflow.Workflow, as: WorkflowRecord
   alias ObanPowertools.WorkflowFixtures
 
@@ -282,6 +283,96 @@ defmodule ObanPowertools.ForensicsTest do
       assert Enum.all?(queries, &(&1.source != "oban_powertools_lifeline_incidents"))
       assert Enum.all?(queries, &(&1.source != "oban_powertools_cron_entries"))
       assert Enum.all?(queries, &(&1.source != "oban_powertools_limit_resources"))
+    end
+
+    test "workflow-step evidence requires one authoritative resource workflow and step triple" do
+      {:ok, workflow_a} =
+        WorkflowFixtures.workflow_fixture(name: "forensics-authorized-workflow")
+        |> Workflow.insert(TestRepo)
+
+      {:ok, workflow_b} =
+        WorkflowFixtures.workflow_fixture(name: "forensics-foreign-workflow")
+        |> Workflow.insert(TestRepo)
+
+      step_a =
+        TestRepo.get_by!(Step,
+          workflow_id: workflow_a.id,
+          step_name: "sync_billing"
+        )
+
+      step_b =
+        TestRepo.get_by!(Step,
+          workflow_id: workflow_b.id,
+          step_name: "sync_billing"
+        )
+
+      {:ok, event_a} =
+        Audit.record(
+          "workflow.step_completed",
+          %{type: :workflow_step, id: step_a.id},
+          %{
+            "event_type" => "workflow.step_completed",
+            "reason" => "AUTHORIZED_WORKFLOW_A_NOTE"
+          },
+          repo: TestRepo,
+          actor_id: "workflow-a-operator"
+        )
+
+      {:ok, event_b} =
+        Audit.record(
+          "workflow.step_unblocked",
+          %{type: :workflow_step, id: step_b.id},
+          %{
+            "event_type" => "workflow.step_unblocked",
+            "reason" => "FOREIGN_WORKFLOW_B_SENTINEL_NOTE"
+          },
+          repo: TestRepo,
+          actor_id: "workflow-b-foreign-actor"
+        )
+
+      foreign_timestamp = ~N[2026-07-28 18:14:15]
+      event_b = TestRepo.update!(Ecto.Changeset.change(event_b, inserted_at: foreign_timestamp))
+
+      forged_scope = %Scope{
+        kind: :workflow,
+        resource_type: "workflow_step",
+        resource_id: step_b.id,
+        workflow_id: workflow_a.id,
+        step: step_a.step_name
+      }
+
+      {result, queries} =
+        capture_select_queries(fn ->
+          Forensics.bundle(forged_scope, repo: TestRepo)
+        end)
+
+      assert result == {:unavailable, "Evidence unavailable"}
+      refute Enum.any?(queries, &(&1.source == "oban_powertools_audit_events"))
+
+      assert [step_query] =
+               Enum.filter(queries, &(&1.source == "oban_powertools_workflow_steps"))
+
+      for column <- [~s("id"), ~s("workflow_id"), ~s("step_name")] do
+        assert step_query.query =~ column
+      end
+
+      serialized = inspect(result, printable_limit: :infinity, limit: :infinity)
+      refute serialized =~ event_b.action
+      refute serialized =~ event_b.actor_id
+      refute serialized =~ Atom.to_string(:runnable)
+      refute serialized =~ NaiveDateTime.to_iso8601(foreign_timestamp)
+      refute serialized =~ Integer.to_string(event_b.id)
+      refute serialized =~ "FOREIGN_WORKFLOW_B_SENTINEL_NOTE"
+
+      valid_scope = %{forged_scope | resource_id: step_a.id}
+
+      assert {:ok, valid_bundle} = Forensics.bundle(valid_scope, repo: TestRepo)
+
+      audit_events = Enum.filter(valid_bundle.chronology, &(&1.source_family == "audit"))
+
+      assert Enum.map(audit_events, & &1.event_type) == [event_a.event_type]
+      assert Enum.map(audit_events, & &1.resource_id) == [step_a.id]
+      refute inspect(valid_bundle, printable_limit: :infinity, limit: :infinity) =~ step_b.id
     end
   end
 

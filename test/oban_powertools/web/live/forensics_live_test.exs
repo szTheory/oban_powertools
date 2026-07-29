@@ -1,9 +1,11 @@
 defmodule ObanPowertools.Web.ForensicsLiveTest do
   use ObanPowertools.LiveCase, async: false
 
-  alias ObanPowertools.Cron
+  alias ObanPowertools.{Audit, Cron, Workflow}
   alias ObanPowertools.TestRepo
   alias ObanPowertools.Web.ForensicsLive
+  alias ObanPowertools.Workflow.Step
+  alias ObanPowertools.WorkflowFixtures
 
   @bare_path "/ops/jobs/forensics"
   @allowed_selector_keys MapSet.new([
@@ -220,6 +222,81 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
                "It may not exist, may no longer be retained, or you may not have access."
 
       refute authorized_html =~ "<a "
+    end
+
+    test "cross-workflow step selectors match ordinary unavailable output and destinations",
+         %{conn: conn} do
+      {:ok, workflow_a} =
+        WorkflowFixtures.workflow_fixture(name: "live-forensics-authorized-workflow")
+        |> Workflow.insert(TestRepo)
+
+      {:ok, workflow_b} =
+        WorkflowFixtures.workflow_fixture(name: "live-forensics-foreign-workflow")
+        |> Workflow.insert(TestRepo)
+
+      step_a =
+        TestRepo.get_by!(Step,
+          workflow_id: workflow_a.id,
+          step_name: "sync_billing"
+        )
+
+      step_b =
+        TestRepo.get_by!(Step,
+          workflow_id: workflow_b.id,
+          step_name: "sync_billing"
+        )
+
+      {:ok, foreign_event} =
+        Audit.record(
+          "workflow.step_unblocked",
+          %{type: :workflow_step, id: step_b.id},
+          %{
+            "event_type" => "workflow.step_unblocked",
+            "reason" => "FOREIGN_LIVEVIEW_SENTINEL_NOTE"
+          },
+          repo: TestRepo,
+          actor_id: "foreign-liveview-actor"
+        )
+
+      permissions = [:view_workflows, :view_audit, :view_lifeline]
+
+      forged_path =
+        "#{@bare_path}?resource_type=workflow_step&resource_id=#{step_b.id}" <>
+          "&workflow_id=#{workflow_a.id}&step=#{step_a.step_name}"
+
+      missing_path =
+        "#{@bare_path}?resource_type=workflow_step&resource_id=#{Ecto.UUID.generate()}" <>
+          "&workflow_id=#{workflow_a.id}&step=#{step_a.step_name}"
+
+      {:ok, forged_view, forged_html} =
+        live(forensics_conn(conn, permissions), forged_path)
+
+      {:ok, missing_view, missing_html} =
+        live(forensics_conn(conn, permissions), missing_path)
+
+      forged_state = render(element(forged_view, "#forensics-result-state"))
+      missing_state = render(element(missing_view, "#forensics-result-state"))
+
+      assert forged_state == missing_state
+      assert forged_state =~ "Evidence unavailable"
+
+      assert forged_state =~
+               "It may not exist, may no longer be retained, or you may not have access."
+
+      assert destination_hrefs(forged_state) == destination_hrefs(missing_state)
+      assert destination_hrefs(forged_state) == []
+
+      for secret <- [
+            foreign_event.action,
+            foreign_event.actor_id,
+            Integer.to_string(foreign_event.id),
+            step_b.id,
+            "FOREIGN_LIVEVIEW_SENTINEL_NOTE"
+          ] do
+        refute forged_html =~ secret
+      end
+
+      assert missing_html =~ "Evidence unavailable"
     end
 
     test "unauthorized page viewers are redirected", %{conn: conn} do
@@ -605,6 +682,11 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
       end)
 
     assert positions == Enum.sort(positions)
+  end
+
+  defp destination_hrefs(html) do
+    Regex.scan(~r/href="([^"]+)"/, html, capture: :all_but_first)
+    |> List.flatten()
   end
 
   defp truncate_minute(%DateTime{} = dt),
