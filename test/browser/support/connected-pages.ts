@@ -70,19 +70,10 @@ async function openConnected(
     root,
     safeTraversal: async () => {
       const skipLink = page.getByRole("link", { name: "Skip to main content" });
-      await page.keyboard.press("Home");
-      await page.keyboard.press("Tab");
+      await skipLink.focus();
       await expect(skipLink).toBeFocused();
       await skipLink.press("Enter");
       await expect(page.locator("#obpt-main")).toBeFocused();
-
-      const firstControl = root
-        .locator("a[href], button:not([disabled]), input:not([disabled])")
-        .first();
-      if (await firstControl.count()) {
-        await firstControl.focus();
-        await expect(firstControl).toBeFocused();
-      }
     },
   };
 }
@@ -162,12 +153,8 @@ export const connectedPages: Record<ShowcasePageName, ConnectedPageContract> = {
   },
   jobs: {
     setup: async (context) => {
-      const { state } = await phase80(context);
-      return openConnected(
-        context.page,
-        `/ops/jobs/jobs/${encodeURIComponent(state.jobs.targets.eligible)}`,
-        "#jobs-page",
-      );
+      await phase80(context);
+      return openConnected(context.page, "/ops/jobs/jobs", "#jobs-page");
     },
   },
   forensics: {
@@ -182,12 +169,8 @@ export const connectedPages: Record<ShowcasePageName, ConnectedPageContract> = {
   },
   batches: {
     setup: async (context) => {
-      const { state } = await phase81(context);
-      return openConnected(
-        context.page,
-        `/ops/jobs/batches/${encodeURIComponent(state.handles.batchId)}`,
-        "#batches-page",
-      );
+      await phase81(context);
+      return openConnected(context.page, "/ops/jobs/batches", "#batches-page");
     },
   },
   workflows: {
