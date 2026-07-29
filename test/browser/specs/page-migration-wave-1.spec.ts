@@ -21,7 +21,13 @@ type PageStory = {
 };
 
 type ManifestPageStory = Omit<PageStory, "page"> & {
-  page: PageStory["page"] | "jobs" | "forensics";
+  page:
+    | PageStory["page"]
+    | "jobs"
+    | "forensics"
+    | "batches"
+    | "workflows"
+    | "lifeline";
 };
 
 type Phase79FixtureState = {
@@ -87,10 +93,10 @@ const allPageStories = (manifestSupport as FutureManifestSupport).pageStories;
 if (
   schemaVersion !== 8 ||
   !Array.isArray(allPageStories) ||
-  allPageStories.length !== 49
+  allPageStories.length !== 99
 ) {
   throw new Error(
-    "Phase 79 compatibility requires schema-8 generated pageStories with exactly 49 page targets",
+    "Phase 79 compatibility requires the schema-8 nine-family graph with exactly 99 page targets",
   );
 }
 
