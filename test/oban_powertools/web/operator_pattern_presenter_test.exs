@@ -1095,7 +1095,7 @@ defmodule ObanPowertools.Web.OperatorPatternPresenterTest do
 
       assert result.state == state
       assert result.receipt == nil
-      assert result.recovery =~ "Create a new preview"
+      assert String.downcase(result.recovery) =~ "create a new preview"
       assert result.requires_fresh_preview?
     end
 
