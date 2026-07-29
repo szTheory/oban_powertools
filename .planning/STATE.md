@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 82
 current_phase_name: Cross-Cutting A11y, Motion & Responsive Hardening Sweep
 status: executing
-stopped_at: Completed 82-05-PLAN.md
-last_updated: "2026-07-29T20:39:43.056Z"
+stopped_at: Completed 82-06-PLAN.md
+last_updated: "2026-07-29T20:47:01.099Z"
 last_activity: 2026-07-29
-last_activity_desc: Completed Phase 82 Plan 05 shared accessibility CSS and deterministic package
+last_activity_desc: Completed Phase 82 Plan 06 primitive and form semantics
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 110
-  completed_plans: 99
-  percent: 90
+  completed_plans: 100
+  percent: 91
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 82 — Cross-Cutting A11y, Motion & Responsive Hardening Sweep
-Plan: 6 of 17
+Plan: 7 of 17
 Status: Ready to execute
-Last activity: 2026-07-29 — Completed Phase 82 Plan 05 shared accessibility CSS and deterministic package
+Last activity: 2026-07-29 — Completed Phase 82 Plan 06 primitive and form semantics
 
 ## Performance Metrics
 
@@ -106,6 +106,7 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 05 shared accessibility CS
 | Phase 82 P04 | 16min | 2 tasks | 3 files |
 | Phase 82 P17 | 5min | 2 tasks | 5 files |
 | Phase 82 P05 | 3min | 2 tasks | 3 files |
+| Phase 82 P06 | 4min | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -134,11 +135,11 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 05 shared accessibility CS
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T20:39:43.049Z
-**Stopped at:** Completed 82-05-PLAN.md
+**Last session:** 2026-07-29T20:46:37.151Z
+**Stopped at:** Completed 82-06-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed Plan 82-05's shared accessibility CSS and deterministic packaged asset.
+- **Last Action:** Completed Plan 82-06's shared primitive and field-first form semantic hardening.
 - **Next Action:** Execute the next dependency-ready Phase 82 plan.
 
 ## Decisions
@@ -331,6 +332,8 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 05 shared accessibility CS
 - [Phase 82]: Use stronger Tier-2 semantic borders for meaningful boundaries while decorative separators retain the ordinary border token.
 - [Phase 82]: Remove shell overflow clipping so ordinary content must reflow and only bounded labelled machine regions scroll.
 - [Phase 82]: Keep production motion traversal exclusively in verify-phase82-quality.mjs; ExUnit owns exact token, selector, and asset contracts.
+- [Phase 82]: Keep generic button and link accessible-name overrides compatible while icon buttons retain exclusive ownership of their required accessible label. — Preserves the existing public component API without allowing icon-only names to drift from their required label assign.
+- [Phase 82]: Preserve parent-owned events and descriptions while filtering component-owned native form state, identity, and value attributes. — Keeps LiveView authority with the parent and prevents caller rest attributes from contradicting rendered field semantics.
 
 ### Blockers
 
