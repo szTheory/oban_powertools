@@ -152,13 +152,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     def handle_event("preview_callback_retry", %{"id" => id}, socket) do
       with {:ok, callback} <- find_retryable_callback(socket, id),
            true <- callback_retry_allowed?(socket, callback.id),
-           :ok <-
-             LiveAuth.authorize_action(
-               socket,
-               :preview_repair,
-               %{type: :callback, id: id},
-               message: "Permission changed. Refresh the batch and try again."
-             ),
+           :ok <- authorize_callback_preview(socket, id),
            {:ok, preview} <-
              Lifeline.preview_repair(repo(), socket.assigns.current_actor, %{
                incident_id: nil,
@@ -185,13 +179,26 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           {:noreply, assign(socket, :error_message, LiveAuth.permission_message(:retry_callback))}
 
         {:error, :not_found} ->
-          {:noreply, assign(socket, :error_message, "callback_not_retryable")}
+          {:noreply,
+           assign(
+             socket,
+             :error_message,
+             "This callback is not retry-eligible. Review current callback evidence before creating a new preview."
+           )}
 
         {:error, :unauthorized} ->
           {:noreply, assign(socket, :error_message, LiveAuth.mutation_error(:unauthorized))}
 
-        {:error, message} when is_binary(message) ->
+        {:authorization_error, message} ->
           {:noreply, assign(socket, :error_message, message)}
+
+        {:error, message} when is_binary(message) ->
+          {:noreply,
+           assign(
+             socket,
+             :error_message,
+             "The callback preview was not recorded. Review current callback evidence, then create a new preview."
+           )}
 
         {:error, reason} ->
           {:noreply, assign(socket, :error_message, LiveAuth.mutation_error(reason))}
@@ -257,7 +264,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 end
               end)
 
-            message = "Batch retry complete: #{successes} retried, #{failures} skipped or failed."
+            message = batch_retry_receipt(successes, failures)
 
             socket =
               socket
@@ -300,7 +307,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                    preview.preview_token,
                    reason
                  ) do
-            message = "Callback retry complete."
+            message =
+              "Callback retry requested and recorded. Review the Audit log for the recorded action."
 
             socket =
               socket
@@ -1126,6 +1134,26 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       case MapSet.size(selected) do
         1 -> "1 failed job selected"
         count -> "#{count} failed jobs selected"
+      end
+    end
+
+    defp batch_retry_receipt(successes, 0) do
+      "Batch retry complete: #{successes} retry requests recorded. Review the Audit log for recorded actions."
+    end
+
+    defp batch_retry_receipt(successes, failures) do
+      "Batch retry partial: #{successes} retry requests recorded and #{failures} skipped or failed. Review current batch evidence before creating a new preview."
+    end
+
+    defp authorize_callback_preview(socket, id) do
+      case LiveAuth.authorize_action(
+             socket,
+             :preview_repair,
+             %{type: :callback, id: id},
+             message: "Permission changed. Refresh the batch and try again."
+           ) do
+        :ok -> :ok
+        {:error, message} when is_binary(message) -> {:authorization_error, message}
       end
     end
 

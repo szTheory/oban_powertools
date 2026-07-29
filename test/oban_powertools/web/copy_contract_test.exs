@@ -324,6 +324,9 @@ defmodule ObanPowertools.Web.CopyContractTest do
     assert batches =~
              "This callback is not retry-eligible. Review current callback evidence before creating a new preview."
 
+    assert batches =~
+             "The callback preview was not recorded. Review current callback evidence, then create a new preview."
+
     refute batches =~ "Batch retry complete: \#{successes} retried"
     refute batches =~ "assign(socket, :error_message, \"callback_not_retryable\")"
 
@@ -346,6 +349,8 @@ defmodule ObanPowertools.Web.CopyContractTest do
 
     assert lifeline =~
              "The repair was not recorded. Review current evidence, then create a new preview."
+
+    assert lifeline =~ "{:error, {:safe_authorization, message}}"
 
     refute lifeline =~
              "defp error_message(reason) when is_binary(reason), do: String.slice(reason"

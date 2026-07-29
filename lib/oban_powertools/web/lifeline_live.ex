@@ -81,11 +81,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       row = find_row!(socket.assigns.visible_incident_rows, row_id)
 
       with :ok <- ensure_previewable(row),
-           :ok <-
-             LiveAuth.authorize_action(socket, :preview_repair, row.resource,
-               message: LiveAuth.permission_message(:preview_repair)
-             ),
-           {:ok, _principal} <- LiveAuth.principal_for_action(socket),
+           :ok <- authorize_action(socket, :preview_repair, row.resource),
+           {:ok, _principal} <- principal_for_action(socket),
            {:ok, preview} <-
              Lifeline.preview_repair(
                repo(),
@@ -122,6 +119,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
         {:error, :unauthorized} ->
           {:noreply, assign(socket, :error_message, LiveAuth.permission_message(:preview_repair))}
+
+        {:error, {:safe_authorization, message}} ->
+          {:noreply, assign(socket, :error_message, message)}
 
         {:error, reason} ->
           {:noreply, assign(socket, :error_message, error_message(reason))}
@@ -160,11 +160,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       preview = socket.assigns.preview
       row = socket.assigns.selected_row
 
-      with :ok <-
-             LiveAuth.authorize_action(socket, :execute_repair, row.resource,
-               message: LiveAuth.permission_message(:execute_repair)
-             ),
-           {:ok, _principal} <- LiveAuth.principal_for_action(socket),
+      with :ok <- authorize_action(socket, :execute_repair, row.resource),
+           {:ok, _principal} <- principal_for_action(socket),
            {:ok, _result} <-
              Lifeline.execute_repair(
                repo(),
@@ -210,7 +207,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           {:noreply, assign(socket, :error_message, LiveAuth.mutation_error(:reason_required))}
 
         {:error, :reason_too_short} ->
-          {:noreply, assign(socket, :error_message, "Reason must be at least 8 characters.")}
+          {:noreply, assign(socket, :error_message, "Enter at least 8 characters.")}
 
         {:error, :preview_expired} ->
           expired_preview =
@@ -234,6 +231,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
         {:error, :unauthorized} ->
           {:noreply, assign(socket, :error_message, LiveAuth.permission_message(:execute_repair))}
+
+        {:error, {:safe_authorization, message}} ->
+          {:noreply, assign(socket, :error_message, message)}
 
         {:error, reason} ->
           {:noreply, assign(socket, :error_message, error_message(reason))}
@@ -1690,10 +1690,24 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp error_message(:unauthorized), do: LiveAuth.mutation_error(:unauthorized)
 
-    defp error_message(reason) when is_binary(reason), do: String.slice(reason, 0, 1_000)
-
     defp error_message(_reason),
-      do: "Repair could not be completed. Review current evidence and create a fresh preview."
+      do: "The repair was not recorded. Review current evidence, then create a new preview."
+
+    defp authorize_action(socket, permission, resource) do
+      case LiveAuth.authorize_action(socket, permission, resource,
+             message: LiveAuth.permission_message(permission)
+           ) do
+        :ok -> :ok
+        {:error, message} when is_binary(message) -> {:error, {:safe_authorization, message}}
+      end
+    end
+
+    defp principal_for_action(socket) do
+      case LiveAuth.principal_for_action(socket) do
+        {:ok, principal} -> {:ok, principal}
+        {:error, message} when is_binary(message) -> {:error, {:safe_authorization, message}}
+      end
+    end
 
     defp read_only_page?(actor, rows) do
       checks =

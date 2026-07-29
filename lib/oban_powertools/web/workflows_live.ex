@@ -200,10 +200,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <p><strong>Legal next move:</strong> {workflow_refusal.next_move}</p>
             <p><strong>Venue:</strong> {workflow_refusal.venue}</p>
             <p>
-              Machine code:
               <DataDisplay.machine_value
                 id="workflow-refusal-code"
-                value={workflow_refusal.code}
+                value={"Machine code: #{workflow_refusal.code}"}
                 kind={:literal}
               />
             </p>
@@ -255,10 +254,9 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <p><strong>Legal next move:</strong> {selected_step_refusal.next_move}</p>
             <p><strong>Venue:</strong> {selected_step_refusal.venue}</p>
             <p>
-              Machine code:
               <DataDisplay.machine_value
                 id="selected-step-refusal-code"
-                value={selected_step_refusal.code}
+                value={"Machine code: #{selected_step_refusal.code}"}
                 kind={:literal}
               />
             </p>
