@@ -1,0 +1,284 @@
+import { expect, test, type Locator, type Page } from "@playwright/test";
+import {
+  authenticatePhase81Actor,
+  controlPhase81Race,
+  resetPhase81BrowserFixture,
+  type Phase81FixtureState,
+} from "../support/phase81-fixtures";
+
+test.describe.configure({ mode: "serial" });
+test.setTimeout(90_000);
+
+let fixtureSecret = "";
+let fixtureState: Phase81FixtureState;
+
+test.beforeEach(async ({ page, request }, testInfo) => {
+  fixtureSecret = process.env.PHASE81_BROWSER_FIXTURE_SECRET?.trim() ?? "";
+  if (fixtureSecret.length === 0) {
+    throw new Error(
+      "Plan 81-07 must provide PHASE81_BROWSER_FIXTURE_SECRET; ambient seeds are not a Wave 3 fallback",
+    );
+  }
+
+  fixtureState = await resetPhase81BrowserFixture(request, {
+    secret: fixtureSecret,
+    project: testInfo.project.name,
+  });
+  await authenticatePhase81Actor(page, { actor: "ops", secret: fixtureSecret });
+});
+
+async function openConnectedPage(page: Page, path: string): Promise<void> {
+  await page.goto(path);
+  await expect(page.locator("[data-phx-main].phx-connected")).toHaveCount(1);
+  expect(new URL(page.url()).pathname).not.toContain("_showcase");
+}
+
+async function expectOneTree(page: Page): Promise<void> {
+  await expect(
+    page.locator("[data-obpt-mobile-copy], [data-obpt-desktop-copy]"),
+  ).toHaveCount(0);
+  expect(await page.getByRole("dialog").count()).toBeLessThanOrEqual(1);
+}
+
+async function expectNoOverflow(root: Locator): Promise<void> {
+  const overflow = await root.evaluate((element) => ({
+    root: Math.ceil(element.scrollWidth - element.clientWidth),
+    body: Math.ceil(document.body.scrollWidth - document.body.clientWidth),
+  }));
+  expect(overflow.root).toBeLessThanOrEqual(1);
+  expect(overflow.body).toBeLessThanOrEqual(1);
+}
+
+function batchPath(): string {
+  return `/ops/jobs/batches/${encodeURIComponent(fixtureState.handles.batchId)}`;
+}
+
+function workflowPath(): string {
+  return `/ops/jobs/workflows/${encodeURIComponent(
+    fixtureState.handles.workflowId,
+  )}?step=${encodeURIComponent(fixtureState.handles.workflowStep)}`;
+}
+
+function lifelinePath(): string {
+  return `/ops/jobs/lifeline?view=active&incident_fingerprint=${encodeURIComponent(
+    fixtureState.handles.incidentId,
+  )}`;
+}
+
+test.describe("Phase 81 connected production page contracts", () => {
+  test("Batches preserves detail history, mixed selection, retry preview, callback scope, and 50/25 render bounds", async ({
+    page,
+  }) => {
+    await openConnectedPage(page, batchPath());
+    await expect(page.locator("#batches-page, #batch-detail-page")).toHaveCount(
+      1,
+    );
+    await expect(page.locator("#batch-members tbody tr")).toHaveCount(50);
+    await expect(page.locator("#batch-callbacks tbody tr")).toHaveCount(25);
+    await expect(
+      page.getByText(/more members exist|partial evidence/i),
+    ).toBeVisible();
+    await page.getByRole("checkbox").first().check();
+    await expect(
+      page.getByText(/1 failed (member|job) selected/i),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: /preview failed job retries/i })
+      .click();
+    await expect(page.getByRole("dialog")).toContainText(/reason|required/i);
+    await expectOneTree(page);
+  });
+
+  test("Batches keeps unavailable and authorization-race outcomes uniform without mutation authority in URL state", async ({
+    page,
+    request,
+  }) => {
+    await openConnectedPage(page, batchPath());
+    await controlPhase81Race(request, {
+      command: "revoke",
+      secret: fixtureSecret,
+    });
+    await page.getByRole("button", { name: /retry/i }).first().click();
+    await expect(
+      page.getByText(/batch unavailable|permission changed/i),
+    ).toBeVisible();
+    expect(new URL(page.url()).searchParams.has("action")).toBe(false);
+    expect(new URL(page.url()).searchParams.has("preview_token")).toBe(false);
+  });
+
+  test("Workflows preserves step deep links, bounded DAG evidence, PubSub refresh, and read-only Lifeline handoff", async ({
+    page,
+  }) => {
+    await openConnectedPage(page, workflowPath());
+    await expect(page.locator("#workflows-page")).toBeVisible();
+    await expect(page.locator("#workflow-steps li")).toHaveCount(100);
+    await expect(
+      page.getByRole("region", { name: /why blocked/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /review recovery in lifeline/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /execute|retry|cancel/i }),
+    ).toHaveCount(0);
+    await page.reload();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("step"))
+      .toBe(fixtureState.handles.workflowStep);
+  });
+
+  test("Workflows presents missing and restricted resources through one non-enumerating unavailable branch", async ({
+    page,
+  }) => {
+    await openConnectedPage(
+      page,
+      "/ops/jobs/workflows/not-retained?step=forged",
+    );
+    await expect(
+      page.getByRole("heading", { name: "Workflow unavailable" }),
+    ).toBeVisible();
+    expect(await page.locator("body").innerText()).not.toContain(
+      "not-retained",
+    );
+  });
+
+  test("Lifeline preserves preview, reason validation, reauthorization, duplicate suppression, execute, result, and Audit evidence", async ({
+    page,
+  }) => {
+    await openConnectedPage(page, lifelinePath());
+    await page.getByRole("button", { name: "Preview remediation" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("textbox", { name: /reason/i }).fill("short");
+    await dialog.getByRole("button", { name: /execute remediation/i }).click();
+    await expect(dialog).toContainText(/at least 8 characters/i);
+    await dialog
+      .getByRole("textbox", { name: /reason/i })
+      .fill("Provider recovered; execute the bounded repair.");
+    await dialog
+      .getByRole("button", { name: /execute remediation/i })
+      .dblclick();
+    await expect(page.getByRole("status")).toContainText(
+      /recorded|partial|failed/i,
+    );
+    await expect(
+      page.getByRole("link", { name: /open in audit/i }),
+    ).toBeVisible();
+  });
+
+  test("Lifeline blocks revoked authorization after preview and requires a fresh preview", async ({
+    page,
+    request,
+  }) => {
+    await openConnectedPage(page, lifelinePath());
+    await page.getByRole("button", { name: "Preview remediation" }).click();
+    await controlPhase81Race(request, {
+      command: "revoke",
+      secret: fixtureSecret,
+    });
+    await page
+      .getByRole("textbox", { name: /reason/i })
+      .fill("Permission changed after the preview.");
+    await page.getByRole("button", { name: /execute remediation/i }).click();
+    await expect(
+      page.getByText(/permission changed|fresh preview/i),
+    ).toBeVisible();
+  });
+
+  test("Lifeline distinguishes drifted, duplicate, disconnected, interrupted, partial, skipped, and failed outcomes", async ({
+    page,
+    request,
+  }) => {
+    await openConnectedPage(page, lifelinePath());
+    for (const command of [
+      "drift",
+      "duplicate",
+      "disconnect",
+      "interrupt",
+    ] as const) {
+      const result = await controlPhase81Race(request, {
+        command,
+        secret: fixtureSecret,
+      });
+      expect(result.command).toBe(command);
+    }
+    await expect(
+      page.locator("[data-obpt-result-state='drifted']"),
+    ).toBeVisible();
+    await expect(
+      page.locator("[data-obpt-result-state='partial']"),
+    ).toBeVisible();
+    await expect(
+      page.locator("[data-obpt-result-state='skipped']"),
+    ).toBeVisible();
+    await expect(
+      page.locator("[data-obpt-result-state='failed']"),
+    ).toBeVisible();
+    await expect(page.getByText(/disconnected/i)).toBeVisible();
+    await expect(page.getByText(/interrupted/i)).toBeVisible();
+  });
+
+  test("Wave 3 dialogs contain focus, close on Escape, restore the invoker, and announce sparse durable state", async ({
+    page,
+  }) => {
+    await openConnectedPage(page, lifelinePath());
+    const invoker = page.getByRole("button", { name: "Preview remediation" });
+    await invoker.focus();
+    await invoker.press("Enter");
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(invoker).toBeFocused();
+    await expect(page.locator("[aria-live='assertive']")).toHaveCount(0);
+    await expect(page.locator("[aria-live='polite']")).toHaveCount(1);
+  });
+
+  test("Wave 3 keeps one semantic tree, 44px targets, 320px reflow, 200 percent zoom, and reduced motion", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width: 320, height: 900 });
+    await openConnectedPage(page, batchPath());
+    const root = page.locator("#batches-page, #batch-detail-page");
+    await expectNoOverflow(root);
+    await expectOneTree(page);
+    const targetSizes = await root
+      .locator("a, button, input, select")
+      .evaluateAll((elements) =>
+        elements.map((element) => {
+          const rect = element.getBoundingClientRect();
+          return Math.max(rect.width, rect.height);
+        }),
+      );
+    expect(targetSizes.length).toBeGreaterThan(0);
+    expect(targetSizes.every((size) => size >= 44)).toBe(true);
+    await page.evaluate(() => {
+      document.documentElement.style.zoom = "2";
+    });
+    await expectNoOverflow(root);
+  });
+
+  test("Wave 3 excludes preview identity, snapshots, raw reasons, metadata, provider errors, and fixture credentials from browser channels", async ({
+    page,
+  }) => {
+    await openConnectedPage(page, lifelinePath());
+    const channels = [
+      await page.locator("html").innerText(),
+      await page.locator("html").evaluate((element) => element.outerHTML),
+      page.url(),
+    ].join("\n");
+
+    for (const forbidden of [
+      "preview_token",
+      "plan_hash",
+      "before_snapshot",
+      "after_snapshot",
+      "raw_metadata",
+      "provider_error",
+      fixtureSecret,
+    ]) {
+      expect(channels).not.toContain(forbidden);
+    }
+  });
+});
