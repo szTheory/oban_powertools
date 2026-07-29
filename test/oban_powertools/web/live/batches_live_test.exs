@@ -97,6 +97,25 @@ defmodule ObanPowertools.Web.BatchesLiveTest do
              html =~ "Preview Callback Retry"
   end
 
+  test "detail excludes successful members from the failed-member window", %{conn: conn} do
+    batch = insert_batch!(name: "successful-only", status: "completed", total_count: 1)
+
+    job =
+      insert_job!(%{"batch_id" => batch.id},
+        worker: "MyApp.SuccessWorker",
+        queue: :default,
+        state: "completed"
+      )
+
+    insert_batch_job!(batch, job, state: "completed")
+
+    conn = actor_conn(conn, [:view_batch_detail])
+    {:ok, _view, html} = live(conn, "/ops/jobs/batches/#{batch.id}")
+
+    assert html =~ "No failed members"
+    refute html =~ "Select failed job"
+  end
+
   @tag :phase62_batch_bulk_retry
   test "failed-member retry controls are read-only without retry_batch_jobs permission", %{
     conn: conn

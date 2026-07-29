@@ -320,13 +320,13 @@ defmodule ObanPowertools.Batches do
   defp detail_members(repo, %Batch{} = batch, _now, limit) do
     BatchJob
     |> join(:left, [member], job in Oban.Job, on: job.id == member.job_id)
-    |> where([member], member.batch_id == ^batch.id)
-    |> order_by(
-      [member],
-      desc: fragment("? IN ('failed', 'discarded')", member.state),
-      asc: member.inserted_at,
-      asc: member.job_id
+    |> where(
+      [member, job],
+      member.batch_id == ^batch.id and
+        (member.state in ["failed", "discarded"] or
+           fragment("?::text IN ('failed', 'discarded')", job.state))
     )
+    |> order_by([member], asc: member.inserted_at, asc: member.job_id)
     |> select([member, job], {member, job})
     |> maybe_limit(limit)
     |> repo.all()
