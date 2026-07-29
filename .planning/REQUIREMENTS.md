@@ -61,7 +61,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 ### Pages & Flows (PAGE)
 
 - [x] **PAGE-01**: Engine Overview migrated to shell + components, zero behavior regression.
-- [ ] **PAGE-02**: Jobs (list + detail, filter bar, big table) migrated; URL filter/search/bulk/deep-link behavior preserved.
+- [x] **PAGE-02**: Jobs (list + detail, filter bar, big table) migrated; URL filter/search/bulk/deep-link behavior preserved.
 - [ ] **PAGE-03**: Batches (list + detail, chain steps) migrated; Lifeline-routed recovery unchanged.
 - [ ] **PAGE-04**: Workflows (list + detail, DAG/blocked state) migrated.
 - [x] **PAGE-05**: Cron migrated; pause/resume/run preview-confirm flow unchanged.
@@ -76,7 +76,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 - [x] **A11Y-01**: Automated a11y checks (axe-core, WCAG 2.2 AA tags, open-state variants) run in CI against the showcase and pages; 0 critical/serious is merge-blocking.
 - [x] **A11Y-02**: All interactive elements are keyboard-reachable/operable with visible focus; color is never the sole information carrier; dialogs trap and restore focus and close on Esc.
 - [x] **A11Y-03**: Contrast meets AA in light/dark; high-contrast mode meets enhanced ratios; target sizes are comfortable (2.5.8) and focus is not obscured (2.4.11).
-- [x] **A11Y-04**: Reduced-motion preference disables non-essential animation without hiding content; a manual checklist covers what automation can't (focus order, SR-announcement quality, APG patterns).
+- [x] **A11Y-04**: Reduced-motion preference disables non-essential animation without hiding content; exact ARIA snapshots, real screen-reader transcripts, focus/recovery E2E, and APG behavior contracts cover focus order, announcements, and interaction patterns.
 
 ### Motion (MOTION)
 
@@ -146,7 +146,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 | GROUP-01..02 | Phase 78 | Pending |
 | FORM-04 | Phase 78 | Complete |
 | PAGE-01, PAGE-05, PAGE-06, PAGE-08 | Phase 79 | Pending |
-| PAGE-02 | Phase 80 | Pending |
+| PAGE-02 | Phase 80 | Complete |
 | PAGE-09 | Phase 80 | Complete |
 | FORM-03 | Phase 80 | Complete |
 | PAGE-03, PAGE-04, PAGE-07 | Phase 81 | Pending |
