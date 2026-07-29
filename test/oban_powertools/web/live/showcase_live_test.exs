@@ -880,7 +880,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       end
     end
 
-    test "showcase source delegates page markup to all six production page_content seams" do
+    test "showcase source delegates page markup to all nine production page_content seams" do
       source = File.read!("lib/oban_powertools/web/dev/showcase_live.ex")
 
       for call <- [
@@ -889,7 +889,10 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
             "LimitersLive.page_content",
             "AuditLive.page_content",
             "JobsLive.page_content",
-            "ForensicsLive.page_content"
+            "ForensicsLive.page_content",
+            "BatchesLive.page_content",
+            "WorkflowsLive.page_content",
+            "LifelineLive.page_content"
           ] do
         assert source =~ call
       end

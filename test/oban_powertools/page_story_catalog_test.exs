@@ -357,6 +357,103 @@ defmodule ObanPowertools.PageStoryCatalogTest do
     end
   end
 
+  @tag phase81_slice: "contracts"
+  test "appends the exact ordered 50-story Wave 3 inventory after the unchanged prefix" do
+    batches = ~w[
+      page-batches-empty-unfiltered
+      page-batches-empty-filtered
+      page-batches-one-progress
+      page-batches-many-boundary-page
+      page-batches-high-count-progress
+      page-batches-adversarial-redacted
+      page-batches-output-unavailable-chain
+      page-batches-output-expired-chain
+      page-batches-mixed-selection
+      page-batches-permission-denied
+      page-batches-saturated-failed-members
+      page-batches-stuck-callbacks
+      page-batches-callback-unavailable
+      page-batches-bulk-confirmation
+      page-batches-callback-confirmation
+      page-batches-drifted-recovery
+      page-batches-partial-disconnected
+      page-batches-clean-receipt-audit
+    ]
+
+    workflows = ~w[
+      page-workflows-empty-chooser
+      page-workflows-one-running
+      page-workflows-many-deep-bounded
+      page-workflows-all-complete
+      page-workflows-blocked-dag
+      page-workflows-selected-blocked-step
+      page-workflows-dependency-reasons
+      page-workflows-callback-recovery-posture
+      page-workflows-result-unavailable
+      page-workflows-adversarial-redacted
+      page-workflows-refusal-lifeline-handoff
+      page-workflows-unavailable-restricted
+    ]
+
+    lifeline = ~w[
+      page-lifeline-no-active-incidents
+      page-lifeline-active-one
+      page-lifeline-active-saturated
+      page-lifeline-resolved-history
+      page-lifeline-healthy-archive
+      page-lifeline-dead-executor
+      page-lifeline-stuck-workflow
+      page-lifeline-callback-variant
+      page-lifeline-adversarial-redacted
+      page-lifeline-permission-restricted
+      page-lifeline-unavailable
+      page-lifeline-partial-unknown-evidence
+      page-lifeline-host-follow-up-states
+      page-lifeline-preview-open
+      page-lifeline-invalid-short-reason
+      page-lifeline-execute-loading-auth-race
+      page-lifeline-drifted-expired-consumed
+      page-lifeline-partial-skipped-failed
+      page-lifeline-disconnected-interrupted
+      page-lifeline-clean-success-audit
+    ]
+
+    stories = stories!()
+    ids = Enum.map(stories, & &1.id)
+    wave3 = batches ++ workflows ++ lifeline
+
+    assert Enum.take(ids, 49) == @ids
+    assert Enum.drop(ids, 49) == wave3
+    assert length(stories) == 99
+
+    assert Enum.frequencies_by(stories, & &1.page) ==
+             %{
+               overview: 3,
+               cron: 8,
+               limiters: 4,
+               audit: 4,
+               jobs: 18,
+               forensics: 12,
+               batches: 18,
+               workflows: 12,
+               lifeline: 20
+             }
+
+    for story <- Enum.drop(stories, 49) do
+      assert story.activation in [:none, :detail, :confirmation]
+      refute contains_struct?(story.fixtures)
+
+      serialized = inspect(story, printable_limit: :infinity, limit: :infinity)
+
+      for forbidden <- ~w[
+            preview_token plan_hash before_snapshot after_snapshot raw_metadata raw_exception
+            provider_error authorization credential password bearer
+          ] do
+        refute String.contains?(String.downcase(serialized), forbidden)
+      end
+    end
+  end
+
   defp stories! do
     assert Code.ensure_loaded?(PageStoryCatalog),
            "Phase 79 requires #{PageStoryCatalog} from the future page-story catalog wave"

@@ -174,7 +174,7 @@ defmodule ObanPowertools.ShowcaseCatalogTest do
   end
 
   describe "PAGE-02 schema-8 target cardinality" do
-    test "the showcase catalogs expose exactly 113 deterministic targets" do
+    test "the showcase catalogs expose exactly 163 deterministic targets" do
       catalogs = [
         ShowcaseCatalog,
         ObanPowertools.PrimitiveStoryCatalog,
@@ -191,8 +191,8 @@ defmodule ObanPowertools.ShowcaseCatalogTest do
           catalog -> catalog.stories()
         end)
 
-      assert length(targets) == 113
-      assert length(ObanPowertools.PageStoryCatalog.stories()) == 49
+      assert length(targets) == 163
+      assert length(ObanPowertools.PageStoryCatalog.stories()) == 99
     end
   end
 
