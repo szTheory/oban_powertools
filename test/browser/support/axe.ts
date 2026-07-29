@@ -326,7 +326,7 @@ function parseIsoDate(
 }
 
 function redactAxeResults(results: AxeResults): object {
-  const redact = (result: Result) => ({
+  const redactDetailed = (result: Result) => ({
     id: result.id,
     impact: result.impact,
     tags: result.tags,
@@ -336,6 +336,14 @@ function redactAxeResults(results: AxeResults): object {
       impact: node.impact,
       target: node.target,
     })),
+  });
+  const redactSummary = (result: Result) => ({
+    id: result.id,
+    impact: result.impact,
+    tags: result.tags,
+    help: result.help,
+    helpUrl: result.helpUrl,
+    nodeCount: result.nodes.length,
   });
   return {
     testEngine: {
@@ -348,10 +356,10 @@ function redactAxeResults(results: AxeResults): object {
     },
     timestamp: results.timestamp,
     url: redactedUrl(results.url),
-    violations: results.violations.map(redact),
-    passes: results.passes.map(redact),
-    incomplete: results.incomplete.map(redact),
-    inapplicable: results.inapplicable.map(redact),
+    violations: results.violations.map(redactDetailed),
+    passes: results.passes.map(redactSummary),
+    incomplete: results.incomplete.map(redactDetailed),
+    inapplicable: results.inapplicable.map(redactSummary),
   };
 }
 

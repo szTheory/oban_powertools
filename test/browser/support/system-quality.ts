@@ -850,7 +850,17 @@ export async function collectInteractiveTargetGeometry(
         .slice(0, maxNodes)
         .filter((element) => {
           const style = getComputedStyle(element);
-          return style.display !== "none" && style.visibility !== "hidden";
+          const closedDetails = element.closest<HTMLDetailsElement>(
+            "details:not([open])",
+          );
+          const visibleClosedSummary =
+            closedDetails?.querySelector(":scope > summary") === element;
+          return (
+            style.display !== "none" &&
+            style.visibility !== "hidden" &&
+            (!closedDetails || visibleClosedSummary) &&
+            element.getClientRects().length > 0
+          );
         })
         .map((element, index) => {
           const rect = element.getBoundingClientRect();

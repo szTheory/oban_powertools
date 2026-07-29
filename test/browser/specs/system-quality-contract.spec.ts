@@ -122,6 +122,28 @@ test.describe("Phase 82 system quality contract", () => {
   test.describe("normative target geometry and separate comfort policy", () => {
     const base = { target: "fixture:targets", viewport: "wide" };
 
+    test("geometry collection excludes controls hidden by a closed ancestor", async ({
+      page,
+    }) => {
+      const { collectInteractiveTargetGeometry } = await quality();
+      await page.setContent(`
+        <main id="fixture">
+          <button id="visible">Visible</button>
+          <details>
+            <summary>Filters</summary>
+            <button id="closed-child">Closed child</button>
+          </details>
+        </main>
+      `);
+
+      const targets = await collectInteractiveTargetGeometry(page, "#fixture");
+
+      expect(targets.map((target) => target.selector)).toEqual([
+        "#visible",
+        "summary:nth-target(2)",
+      ]);
+    });
+
     test("24 by 24 passes directly", async () => {
       const { evaluateTargetGeometry } = await quality();
       const result = evaluateTargetGeometry({
