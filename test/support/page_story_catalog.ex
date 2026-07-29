@@ -2152,9 +2152,9 @@ defmodule ObanPowertools.PageStoryCatalog do
     page-lifeline-preview-open
     page-lifeline-invalid-short-reason
     page-lifeline-execute-loading-auth-race
-    page-lifeline-drifted-expired-consumed
-    page-lifeline-partial-skipped-failed
-    page-lifeline-disconnected-interrupted
+    page-lifeline-drifted-preview
+    page-lifeline-expired-preview
+    page-lifeline-consumed-preview
     page-lifeline-clean-success-audit
   ]
 
@@ -2207,8 +2207,7 @@ defmodule ObanPowertools.PageStoryCatalog do
          (String.contains?(id, "preview-open") or
             String.contains?(id, "invalid-short-reason") or
             String.contains?(id, "execute-loading") or String.contains?(id, "drifted") or
-            String.contains?(id, "partial-skipped") or
-            String.contains?(id, "disconnected-interrupted")) do
+            String.contains?(id, "expired") or String.contains?(id, "consumed")) do
       :confirmation
     else
       :none
@@ -2248,7 +2247,8 @@ defmodule ObanPowertools.PageStoryCatalog do
       String.contains?(id, "unavailable") ->
         [:unavailable]
 
-      String.contains?(id, "drifted") or String.contains?(id, "expired") ->
+      String.contains?(id, "drifted") or String.contains?(id, "expired") or
+          String.contains?(id, "consumed") ->
         [:stale]
 
       String.contains?(id, "partial") or String.contains?(id, "disconnected") ->
@@ -2582,9 +2582,6 @@ defmodule ObanPowertools.PageStoryCatalog do
           String.contains?(id, "auth-race") ->
             "Operator access changed before execution. Create a fresh preview."
 
-          String.contains?(id, "disconnected") ->
-            "Connection ended before completion was known."
-
           true ->
             nil
         end,
@@ -2608,7 +2605,7 @@ defmodule ObanPowertools.PageStoryCatalog do
       reason: if(String.contains?(id, "invalid-short"), do: "short", else: ""),
       audit_events: [],
       audit_event_fixtures: [],
-      repair_results: lifeline_repair_results(id),
+      repair_results: [],
       target_detail: %{job_id: nil},
       retention: nil,
       visible_incident_rows: []
@@ -2700,14 +2697,19 @@ defmodule ObanPowertools.PageStoryCatalog do
     cond do
       String.contains?(id, "execute-loading") -> :submitting
       String.contains?(id, "drifted") -> :drifted
-      String.contains?(id, "partial-skipped") -> :partial
-      String.contains?(id, "disconnected") -> :failed
+      String.contains?(id, "expired") -> :expired
+      String.contains?(id, "consumed") -> :consumed
       true -> :preview
     end
   end
 
   defp lifeline_preview_status(id) do
-    if String.contains?(id, "drifted"), do: "drifted", else: "ready"
+    cond do
+      String.contains?(id, "drifted") -> "drifted"
+      String.contains?(id, "expired") -> "expired"
+      String.contains?(id, "consumed") -> "consumed"
+      true -> "ready"
+    end
   end
 
   defp lifeline_repair_confirmation(state) do
@@ -2720,72 +2722,6 @@ defmodule ObanPowertools.PageStoryCatalog do
       reversibility: "Accepted changes may not be reversible; changed targets are reported.",
       support_boundary: "Execution is per target and non-atomic.",
       progress: if(state == :submitting, do: %{value: 1, max: 3}, else: nil)
-    }
-  end
-
-  defp lifeline_repair_results(id) do
-    cond do
-      String.contains?(id, "partial-skipped") ->
-        [
-          lifeline_result(
-            "target-success",
-            "Executor executor-alpha",
-            :success,
-            "Repair recorded.",
-            nil,
-            "/ops/jobs/audit"
-          ),
-          lifeline_result(
-            "target-skipped",
-            "Job 81002",
-            :skipped,
-            "Target was no longer eligible.",
-            "Create a fresh preview.",
-            nil
-          ),
-          lifeline_result(
-            "target-failed",
-            "Job 81003",
-            :failed,
-            "Repair did not complete.",
-            "Review current evidence.",
-            nil
-          )
-        ]
-
-      String.contains?(id, "disconnected") ->
-        [
-          lifeline_result(
-            "target-disconnected",
-            "Disconnected target",
-            :failed,
-            "The connection ended before completion was known.",
-            "Reconnect and inspect Audit before retrying.",
-            nil
-          ),
-          lifeline_result(
-            "target-interrupted",
-            "Interrupted target",
-            :failed,
-            "The operation was interrupted.",
-            "Create a fresh preview after reviewing current state.",
-            nil
-          )
-        ]
-
-      true ->
-        []
-    end
-  end
-
-  defp lifeline_result(id, object_label, outcome, message, recovery, audit_href) do
-    %{
-      id: id,
-      object_label: object_label,
-      outcome: outcome,
-      message: message,
-      recovery: recovery,
-      audit_href: audit_href
     }
   end
 

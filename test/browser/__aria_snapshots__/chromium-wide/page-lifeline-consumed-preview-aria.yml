@@ -1,0 +1,106 @@
+- main "Lifeline":
+  - heading "Lifeline" [level=1]
+  - paragraph: Powertools-native surfaces keep diagnosis, preview, reason, and audited action together. Generic job internals still deep-link into the Oban Web bridge.
+  - text: "Lifeline health: Needs review"
+  - region "Lifeline summary":
+    - article:
+      - paragraph: Needs Review
+      - strong: "1"
+    - article:
+      - paragraph: Healthy Executors
+      - strong: "1"
+    - article:
+      - paragraph: Pending Repair Previews
+      - strong: "1"
+    - article:
+      - paragraph: Archived Repairs
+      - strong: "1"
+  - navigation "Incident views":
+    - button "Needs Review"
+    - button "Resolved"
+  - table "Needs Review 1 incidents":
+    - caption: Needs Review 1 incidents
+    - rowgroup:
+      - row "Incident Status Affected scope Actions":
+        - columnheader "Incident"
+        - columnheader "Status"
+        - columnheader "Affected scope"
+        - columnheader "Actions"
+    - rowgroup:
+      - 'row "Executor executor-alpha missed its heartbeat Lifeline incident status: Needs review 1 bounded record Preview remediation"':
+        - cell "Executor executor-alpha missed its heartbeat":
+          - button "Executor executor-alpha missed its heartbeat"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "1 bounded record"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+  - region "Executor executor-alpha":
+    - heading "Executor executor-alpha" [level=2]
+    - paragraph: Active incidents keep preview, reason, and audit evidence close to the affected resource.
+    - paragraph:
+      - strong: Open the forensic bundle.
+      - text: Inspection only.
+    - paragraph:
+      - strong: "Detection basis:"
+      - text: Incident evidence
+    - paragraph:
+      - strong: "Affected records:"
+      - text: No raw records available.
+    - link "Open forensic timeline":
+      - /url: /ops/jobs/forensics?incident_fingerprint=fixture-page-lifeline-consumed-preview&view=active
+    - region "Runbook continuity":
+      - heading "Runbook continuity" [level=3]
+      - paragraph:
+        - strong: "Diagnosis:"
+        - text: No remediation attempts recorded yet
+      - paragraph:
+        - strong: "Legal next path:"
+        - text: Review current evidence
+      - paragraph:
+        - strong: "Venue:"
+        - text: Powertools-native Lifeline
+      - paragraph:
+        - strong: "Attempt state:"
+        - text: No attempt recorded
+      - paragraph:
+        - strong: "host-owned follow-up status:"
+        - text: Host-owned follow-up unavailable
+      - paragraph: No host escalation hook configured
+      - paragraph:
+        - strong: "Evidence link:"
+        - text: Open forensic evidence
+      - paragraph:
+        - strong: "Audit follow-up:"
+        - text: No audit follow-up available
+      - paragraph: Powertools-native
+      - paragraph: Oban Web bridge
+      - paragraph: host-owned follow-up
+    - paragraph: No remediation attempts recorded yet. This diagnosis has not entered a supported native remediation flow. Review legal next paths, then start a native preview to capture attempt context.
+  - dialog "Confirm Lifeline repair":
+    - paragraph: Executor executor-alpha
+    - heading "Confirm Lifeline repair" [level=2]
+    - region "Scope":
+      - heading "Scope" [level=3]
+      - paragraph: Executor executor-alpha
+    - region "Consequence":
+      - heading "Consequence" [level=3]
+      - paragraph: Lifeline revalidates and attempts each eligible target independently.
+    - region "Reversibility":
+      - heading "Reversibility" [level=3]
+      - paragraph: Accepted changes may not be reversible; changed targets are reported.
+    - region "Support boundary":
+      - heading "Support boundary" [level=3]
+      - paragraph: Execution is per target and non-atomic.
+    - region "This preview was already used. Create a new preview to run the action again.":
+      - heading "This preview was already used. Create a new preview to run the action again." [level=3]
+      - button "Cancel remediation"
+  - region "Retained support evidence":
+    - heading "Healthy Executors" [level=2]
+    - list:
+      - listitem:
+        - strong: executor-alpha
+        - text: "Lifeline health: Healthy"
+    - heading "Archive Activity" [level=2]
+    - text: "Lifeline incident status: Resolved"
+    - paragraph: Latest bounded archive activity retained.
+    - paragraph: Archive and prune visibility is read-only here. Retention policy editing stays out of scope for this phase.

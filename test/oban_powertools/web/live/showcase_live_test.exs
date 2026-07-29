@@ -908,19 +908,23 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
           "page-lifeline-execute-loading-auth-race" ->
             assert has_element?(view, "#lifeline-repair-dialog[aria-busy='true']")
 
-          "page-lifeline-drifted-expired-consumed" ->
+          "page-lifeline-drifted-preview" ->
             assert has_element?(
                      view,
                      "#lifeline-repair-dialog[data-obpt-confirm-state='drifted']"
                    )
 
-          "page-lifeline-partial-skipped-failed" ->
-            assert has_element?(view, "#lifeline-repair-dialog [data-obpt-result='skipped']")
-            assert has_element?(view, "#lifeline-repair-dialog [data-obpt-result='failed']")
+          "page-lifeline-expired-preview" ->
+            assert has_element?(
+                     view,
+                     "#lifeline-repair-dialog[data-obpt-confirm-state='expired']"
+                   )
 
-          "page-lifeline-disconnected-interrupted" ->
-            assert has_element?(view, "#lifeline-repair-dialog", "Disconnected target")
-            assert has_element?(view, "#lifeline-repair-dialog", "Interrupted target")
+          "page-lifeline-consumed-preview" ->
+            assert has_element?(
+                     view,
+                     "#lifeline-repair-dialog[data-obpt-confirm-state='consumed']"
+                   )
 
           "page-lifeline-clean-success-audit" ->
             refute has_element?(view, "#lifeline-repair-dialog")

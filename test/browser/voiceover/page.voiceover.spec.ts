@@ -24,7 +24,7 @@ const priorVoiceOverStoryIds = [
 const wave3VoiceOverStoryIds = [
   "page-batches-bulk-confirmation",
   "page-workflows-selected-blocked-step",
-  "page-lifeline-partial-skipped-failed",
+  "page-lifeline-drifted-preview",
 ] as const;
 
 const voiceOverStoryIds = [
@@ -70,10 +70,10 @@ const requiredTranscriptText: Readonly<
     "Why blocked?",
     "A retryable dependency must complete before this step can run.",
   ],
-  "page-lifeline-partial-skipped-failed": [
+  "page-lifeline-drifted-preview": [
     "Confirm Lifeline repair",
-    "Operator result: Skipped",
-    "Operator result: Failed",
+    "This preview is out of date because the job changed.",
+    "Create a new preview before retrying.",
   ],
 };
 

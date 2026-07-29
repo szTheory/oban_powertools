@@ -60,7 +60,7 @@ status: complete
 
 ## Accomplishments
 
-- Registered exactly `page-batches-bulk-confirmation`, `page-workflows-selected-blocked-step`, and `page-lifeline-partial-skipped-failed`, with fail-closed missing-or-duplicate manifest resolution.
+- Registered exactly `page-batches-bulk-confirmation`, `page-workflows-selected-blocked-step`, and `page-lifeline-drifted-preview`, with fail-closed missing-or-duplicate manifest resolution.
 - Preserved conditional Guidepup transcript capture and added truthful story-specific announcement requirements without fabricating runtime transcripts.
 - Added a dependency-free structural CI parser that proves the exact `npm run verify:pages` step belongs to `jobs.page_quality`, cannot ignore failure, and is directly required by the canonical seven-job `ci-gate.needs` list.
 - Added seven mutation fixtures proving the validator rejects duplicate, filtered, moved, optional, detached, duplicated-dependency, and wrong-cardinality contracts.

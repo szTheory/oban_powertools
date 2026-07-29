@@ -414,9 +414,9 @@ defmodule ObanPowertools.PageStoryCatalogTest do
       page-lifeline-preview-open
       page-lifeline-invalid-short-reason
       page-lifeline-execute-loading-auth-race
-      page-lifeline-drifted-expired-consumed
-      page-lifeline-partial-skipped-failed
-      page-lifeline-disconnected-interrupted
+      page-lifeline-drifted-preview
+      page-lifeline-expired-preview
+      page-lifeline-consumed-preview
       page-lifeline-clean-success-audit
     ]
 
@@ -513,18 +513,16 @@ defmodule ObanPowertools.PageStoryCatalogTest do
     assert lifeline_stories["page-lifeline-execute-loading-auth-race"].repair_confirmation.state ==
              :submitting
 
-    assert lifeline_stories["page-lifeline-drifted-expired-consumed"].preview_fixture.status ==
-             "drifted"
-
-    assert Enum.map(
-             lifeline_stories["page-lifeline-partial-skipped-failed"].repair_results,
-             & &1.outcome
-           ) == [:success, :skipped, :failed]
-
-    assert Enum.map(
-             lifeline_stories["page-lifeline-disconnected-interrupted"].repair_results,
-             & &1.outcome
-           ) == [:failed, :failed]
+    for {id, status, state} <- [
+          {"page-lifeline-drifted-preview", "drifted", :drifted},
+          {"page-lifeline-expired-preview", "expired", :expired},
+          {"page-lifeline-consumed-preview", "consumed", :consumed}
+        ] do
+      assert lifeline_stories[id].preview_fixture.status == status
+      assert lifeline_stories[id].preview_state == state
+      assert lifeline_stories[id].repair_confirmation.state == state
+      assert lifeline_stories[id].repair_results == []
+    end
 
     assert lifeline_stories["page-lifeline-clean-success-audit"].success_message ==
              "Remediation recorded in Audit."
