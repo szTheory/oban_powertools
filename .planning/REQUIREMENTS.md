@@ -146,7 +146,8 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 | GROUP-01..02 | Phase 78 | Pending |
 | FORM-04 | Phase 78 | Complete |
 | PAGE-01, PAGE-05, PAGE-06, PAGE-08 | Phase 79 | Pending |
-| PAGE-02, PAGE-09 | Phase 80 | Pending |
+| PAGE-02 | Phase 80 | Pending |
+| PAGE-09 | Phase 80 | Pending |
 | FORM-03 | Phase 80 | Pending |
 | PAGE-03, PAGE-04, PAGE-07 | Phase 81 | Pending |
 | PAGE-10 | Phases 79–81 | Complete |
