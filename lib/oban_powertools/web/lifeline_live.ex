@@ -989,8 +989,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
       active_incident_window =
         repo
-        |> Lifeline.list_incidents(status: "active")
-        |> Enum.take(@incident_limit + 1)
+        |> Lifeline.list_incidents(status: "active", limit: @incident_limit + 1)
         |> then(&expand_rows(repo, &1))
 
       workflow_handoff_row = workflow_handoff_row(repo, selection)
@@ -1000,8 +999,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
       resolved_incident_window =
         repo
-        |> Lifeline.list_incidents(status: "resolved")
-        |> Enum.take(@incident_limit + 1)
+        |> Lifeline.list_incidents(status: "resolved", limit: @incident_limit + 1)
         |> then(&expand_rows(repo, &1))
 
       incident_has_more? =

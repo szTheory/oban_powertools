@@ -976,5 +976,44 @@ defmodule ObanPowertools.LifelineTest do
     :telemetry.detach(handler_id_execute)
   end
 
+  test "list_incidents bounds by presentation priority before limiting" do
+    now = DateTime.utc_now()
+
+    for index <- 1..51 do
+      %Incident{}
+      |> Incident.changeset(%{
+        incident_class: "callback_retry",
+        status: "active",
+        incident_fingerprint: "callback:#{index}",
+        health_state: "warning",
+        affected_counts: %{},
+        evidence: %{},
+        first_detected_at: DateTime.add(now, -index, :second),
+        last_detected_at: DateTime.add(now, -index, :second),
+        metadata: %{}
+      })
+      |> repo().insert!()
+    end
+
+    urgent =
+      %Incident{}
+      |> Incident.changeset(%{
+        incident_class: "dead_executor",
+        status: "active",
+        incident_fingerprint: "dead_executor:priority",
+        health_state: "missing",
+        affected_counts: %{},
+        evidence: %{},
+        first_detected_at: DateTime.add(now, -3600, :second),
+        last_detected_at: DateTime.add(now, -3600, :second),
+        metadata: %{}
+      })
+      |> repo().insert!()
+
+    assert [first | rest] = Lifeline.list_incidents(repo(), status: "active", limit: 51)
+    assert first.id == urgent.id
+    assert length(rest) == 50
+  end
+
   defp repo, do: ObanPowertools.TestRepo
 end

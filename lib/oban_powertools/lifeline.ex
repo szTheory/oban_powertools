@@ -89,15 +89,33 @@ defmodule ObanPowertools.Lifeline do
 
   def list_incidents(repo, opts \\ []) do
     status = Keyword.get(opts, :status)
+    result_limit = Keyword.get(opts, :limit)
 
     query =
       from(incident in Incident,
-        order_by: [asc: incident.incident_class, asc: incident.inserted_at]
+        order_by: [
+          asc:
+            fragment(
+              "CASE WHEN ? = 'dead_executor' AND ? = 'missing' THEN 0 WHEN ? = 'workflow_stuck' THEN 1 ELSE 2 END",
+              incident.incident_class,
+              incident.health_state,
+              incident.incident_class
+            ),
+          desc: incident.last_detected_at,
+          desc: incident.id
+        ]
       )
 
     query =
       if status do
         from(incident in query, where: incident.status == ^status)
+      else
+        query
+      end
+
+    query =
+      if is_integer(result_limit) and result_limit > 0 do
+        from(incident in query, limit: ^result_limit)
       else
         query
       end
