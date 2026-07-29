@@ -332,6 +332,77 @@ defmodule ObanPowertools.Jobs.BatchCoordinatorTest do
     assert Process.alive?(Process.whereis(ObanPowertools.Jobs.TaskSupervisor))
   end
 
+  test "stalled authorization retains its frozen position after later targets finish" do
+    test_pid = self()
+    ids = [94_101, 94_102, 94_103]
+    scope = explicit_scope!(ids)
+
+    authorize = fn _actor, permission, resource ->
+      if permission == :execute_repair and resource.id == 94_102 do
+        send(test_pid, :middle_authorization_blocked)
+
+        receive do
+          :never_release -> :ok
+        end
+      else
+        :ok
+      end
+    end
+
+    assert {:ok, handle} =
+             BatchCoordinator.start_preview(
+               self(),
+               repo(),
+               actor(),
+               :retry,
+               scope,
+               authorize: authorize,
+               preview: ready_preview()
+             )
+
+    on_exit(fn -> terminate_handle(handle) end)
+    assert_receive {:jobs_batch_complete, _, %{receipt: %{stage: :preview}}}
+
+    execute = fn _repo, _actor, token, _reason, _opts ->
+      id = token_id(token)
+      send(test_pid, {:target_finished, id})
+      {:ok, %{target: :safe}}
+    end
+
+    assert {:ok, run_ref} =
+             BatchCoordinator.start_execution(
+               self(),
+               repo(),
+               actor(),
+               handle,
+               "Retry after operator review",
+               authorize: authorize,
+               execute: execute,
+               test_target_timeout_ms: 10
+             )
+
+    assert_receive :middle_authorization_blocked
+    assert_receive {:target_finished, 94_101}
+    assert_receive {:target_finished, 94_103}
+
+    {_progress, complete} = collect_until_complete(run_ref, [])
+
+    assert Enum.map(complete.results, & &1.position) == [0, 1, 2]
+    assert Enum.map(complete.results, & &1.outcome) == [:success, :failed, :success]
+    assert Enum.map(complete.results, & &1.position) |> Enum.uniq() == [0, 1, 2]
+    assert complete.receipt.success == 2
+    assert complete.receipt.skipped == 0
+    assert complete.receipt.failed == 1
+    assert complete.receipt.all_success? == false
+    assert Process.alive?(Process.whereis(ObanPowertools.Jobs.TaskSupervisor))
+
+    message_dump = inspect(complete)
+    refute message_dump =~ "94101"
+    refute message_dump =~ "94102"
+    refute message_dump =~ "94103"
+    refute message_dump =~ "never_release"
+  end
+
   test "accepted execution continues after its observing owner exits" do
     test_pid = self()
     scope = explicit_scope!([95_001])
@@ -414,7 +485,8 @@ defmodule ObanPowertools.Jobs.BatchCoordinatorTest do
     on_exit(fn -> terminate_handle(handle) end)
 
     assert_receive {:jobs_batch_complete, run_ref,
-                    %{receipt: %{stage: :preview, ready: 2, excluded: 0}}}
+                    %{receipt: %{stage: :preview, ready: 2, excluded: 0}}},
+                   1_000
 
     assert {:ok, ^run_ref} =
              BatchCoordinator.start_execution(
