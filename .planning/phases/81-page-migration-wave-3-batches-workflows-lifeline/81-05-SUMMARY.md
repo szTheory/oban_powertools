@@ -34,7 +34,7 @@ key-decisions:
   - "Preserve legacy recovery and runbook wording as presentation evidence without rendering preview identity, raw snapshots, or arbitrary errors."
   - "Record the connected fixture class mismatch in its owning Plan 81-07 scope instead of coupling production Lifeline behavior to test-only metadata."
 requirements-completed: [PAGE-07, GROUP-01, GROUP-02, PAGE-10, A11Y-02, A11Y-03, A11Y-04, MOTION-01, MOTION-02]
-duration: 24min
+duration: 34min
 completed: 2026-07-29
 status: complete
 ---
@@ -45,7 +45,7 @@ status: complete
 
 ## Performance
 
-- **Duration:** 24 min
+- **Duration:** 34 min
 - **Started:** 2026-07-29T08:08:00Z
 - **Completed:** 2026-07-29T08:32:02Z
 - **Tasks:** 2
@@ -62,6 +62,7 @@ status: complete
 ## Task Commits
 
 1. **Tasks 81-05-01 and 81-05-02: Migrate Lifeline authority and composition** — `2feba66`
+2. **Connected correction: Align the deterministic fixture and close browser flow** — `c5f805c`
 
 The RED source/composition contract was introduced earlier by Plan 81-01 (`f2779cb`). This plan supplies its GREEN implementation.
 
@@ -70,10 +71,14 @@ The RED source/composition contract was introduced earlier by Plan 81-01 (`f2779
 - `mix test test/oban_powertools/web/live/lifeline_live_test.exs --seed 0` — **16 tests, 0 failures**
 - Phase 81 quick gate — **89 tests, 0 failures**
 - Connected Playwright discovery — **16 tests discovered in 2 files**
+- Phase 81 fixture contract — **4 tests, 0 failures**
+- Focused connected Lifeline production route — **1 test, 0 failures**
 - `mix compile --warnings-as-errors` — **passed**
 - `git diff --check` — **passed**
 
-The focused connected Lifeline production-route case reached the isolated host but timed out before preview because the Plan 81-07 fixture's unknown `executor_missing` incident class was resolved away by the production projector. The page snapshot proved the migrated root and 25-row executor bound; the fixture mismatch is recorded in `deferred-items.md` for repair in its owning scope.
+The connected flow proves preview, in-dialog short-reason validation, immediate
+reauthorization, duplicate-submit suppression, execute, durable status
+announcement, and the Audit destination against the isolated production route.
 
 ## Decisions Made
 
@@ -93,12 +98,22 @@ The focused connected Lifeline production-route case reached the isolated host b
 - **Files modified:** `lib/oban_powertools/web/lifeline_live.ex`
 - **Commit:** `2feba66`
 
-**2. [Rule 3 - Verification] Isolated pre-existing connected fixture mismatch**
+**2. [Rule 3 - Verification] Corrected the connected fixture's production-domain mismatch**
 
 - **Found during:** connected Lifeline runtime verification
-- **Issue:** Plan 81-07 seeds an incident class not owned by the production Lifeline projector, so fixture incidents are resolved before page composition.
-- **Fix:** Recorded the exact mismatch and evidence in `deferred-items.md`; production behavior was not coupled to test-only fixture metadata.
-- **Impact:** Focused and combined ExUnit gates are green. Connected Lifeline runtime remains pending the owning fixture correction.
+- **Issue:** Plan 81-07 seeded an incident class not owned by the production Lifeline projector, so fixture incidents were resolved before page composition.
+- **Fix:** Seeded the production-owned `dead_executor` class, a deterministic missing executor and bounded executing target, and returned the canonical incident fingerprint. The correction remains test-only.
+- **Files modified:** `examples/phoenix_host/test/support/phase81_browser_fixtures.ex`
+- **Commit:** `c5f805c`
+- **Impact:** The fixture contract and focused connected Lifeline production-route case are green.
+
+**3. [Rule 1 - Browser parity] Kept validation and receipt evidence inside the shared flow**
+
+- **Found during:** connected Lifeline runtime verification
+- **Issue:** The shared confirmation did not initially expose short-reason guidance inside the dialog, and clean success lacked the browser-visible durable receipt wording/Audit link.
+- **Fix:** Added bounded in-dialog validation copy plus a truthful recorded outcome announcement and authorized Audit destination.
+- **Files modified:** `lib/oban_powertools/web/lifeline_live.ex`
+- **Commit:** `c5f805c`
 
 ## Security and Threat Review
 
@@ -115,13 +130,13 @@ None. Empty and unavailable branches are deliberate finite presentation states.
 ## Next Phase Readiness
 
 - Plan 81-06 can delegate Lifeline stories to the public production seam.
-- Before Plan 81-08 claims connected Wave 3 behavior, correct the Plan 81-07 fixture incident class and rerun the focused Lifeline production-route case.
+- Plan 81-08 can extend connected Wave 3 behavior from a green Lifeline preview/execute/Audit path.
 
 ## Self-Check: PASSED
 
 - `81-05-SUMMARY.md` exists.
-- Production commit `2feba66` exists.
-- Focused Lifeline and three-page quick gates are green.
+- Production commits `2feba66` and `c5f805c` exist.
+- Focused Lifeline, fixture, connected production-route, and three-page quick gates are green.
 - No unrelated dirty worktree content was staged or committed.
 
 ---
