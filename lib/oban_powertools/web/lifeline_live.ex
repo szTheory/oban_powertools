@@ -238,6 +238,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           )
         end)
         |> assign_new(:repair_confirmation, fn -> present_repair_confirmation(assigns) end)
+        |> assign_new(:repair_results, fn -> [] end)
+        |> assign_new(:preview_summary?, fn -> true end)
         |> assign_new(:repair_form, fn ->
           Phoenix.Component.to_form(%{"reason" => assigns[:reason] || ""}, as: :lifeline_repair)
         end)
@@ -408,7 +410,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           </section>
         </section>
 
-        <section :if={@preview} class="obpt-lifeline-page__preview-summary">
+        <section
+          :if={not is_nil(@preview) and @preview_summary?}
+          class="obpt-lifeline-page__preview-summary"
+        >
           <h2>Preview Ready</h2>
           <p><strong>Preview Status:</strong> {preview_status_copy(@preview)}</p>
           <p><strong>Audit Record to be Written</strong></p>
@@ -455,7 +460,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           logical_fallback_id={"lifeline-incident-#{@selected_row.id}"}
           submit_event="execute"
           dismiss_event="dismiss_repair"
-          results={[]}
+          results={@repair_results}
         >
           <:support_details>
             <p :if={@error_message} role="alert">{@error_message}</p>

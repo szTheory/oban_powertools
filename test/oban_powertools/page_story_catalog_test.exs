@@ -485,6 +485,52 @@ defmodule ObanPowertools.PageStoryCatalogTest do
     assert refusal.selected_step_story.executable_actions == [
              %{id: "retry_step", label: "Retry blocked step", target_type: "workflow_step"}
            ]
+
+    lifeline_stories =
+      lifeline
+      |> Map.new(fn id -> {id, workflow_stories[id].fixtures} end)
+
+    assert lifeline_stories["page-lifeline-no-active-incidents"].incident_rows == []
+    assert length(lifeline_stories["page-lifeline-active-saturated"].incident_rows) == 50
+
+    assert lifeline_stories["page-lifeline-dead-executor"].executor_rows == [
+             %{name: "executor-alpha", status: :missing}
+           ]
+
+    assert get_in(
+             lifeline_stories["page-lifeline-stuck-workflow"],
+             [:incident_rows, Access.at(0), :incident, :incident_class]
+           ) == "workflow_action"
+
+    assert get_in(
+             lifeline_stories["page-lifeline-callback-variant"],
+             [:incident_rows, Access.at(0), :incident, :incident_class]
+           ) == "callback_stuck"
+
+    assert lifeline_stories["page-lifeline-preview-open"].preview_fixture.status == "ready"
+    assert lifeline_stories["page-lifeline-invalid-short-reason"].reason == "short"
+
+    assert lifeline_stories["page-lifeline-execute-loading-auth-race"].repair_confirmation.state ==
+             :submitting
+
+    assert lifeline_stories["page-lifeline-drifted-expired-consumed"].preview_fixture.status ==
+             "drifted"
+
+    assert Enum.map(
+             lifeline_stories["page-lifeline-partial-skipped-failed"].repair_results,
+             & &1.outcome
+           ) == [:success, :skipped, :failed]
+
+    assert Enum.map(
+             lifeline_stories["page-lifeline-disconnected-interrupted"].repair_results,
+             & &1.outcome
+           ) == [:failed, :failed]
+
+    assert lifeline_stories["page-lifeline-clean-success-audit"].success_message ==
+             "Remediation recorded in Audit."
+
+    assert lifeline_stories["page-lifeline-host-follow-up-states"].success_message ==
+             "Host-owned follow-up is awaiting verification."
   end
 
   defp stories! do

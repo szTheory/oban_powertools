@@ -1,0 +1,389 @@
+- main "Lifeline":
+  - heading "Lifeline" [level=1]
+  - paragraph: Powertools-native surfaces keep diagnosis, preview, reason, and audited action together. Generic job internals still deep-link into the Oban Web bridge.
+  - text: "Lifeline health: Needs review"
+  - region "Lifeline summary":
+    - article:
+      - paragraph: Needs Review
+      - strong: "50"
+    - article:
+      - paragraph: Healthy Executors
+      - strong: "1"
+    - article:
+      - paragraph: Pending Repair Previews
+      - strong: "0"
+    - article:
+      - paragraph: Archived Repairs
+      - strong: "1"
+  - navigation "Incident views":
+    - button "Needs Review"
+    - button "Resolved"
+  - table "Needs Review 50 incidents Showing the newest 50 incidents; more evidence exists.":
+    - caption: Needs Review 50 incidents Showing the newest 50 incidents; more evidence exists.
+    - rowgroup:
+      - row "Incident Status Affected scope Actions":
+        - columnheader "Incident"
+        - columnheader "Status"
+        - columnheader "Affected scope"
+        - columnheader "Actions"
+    - rowgroup:
+      - 'row "לקוחות مرحبا executor incident Lifeline incident status: Needs review 1 bounded record(s) Preview remediation"':
+        - cell "לקוחות مرحبا executor incident":
+          - button "לקוחות مرحبا executor incident"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "1 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 2 Lifeline incident status: Needs review 2 bounded record(s) Preview remediation"':
+        - cell "Incident 2":
+          - button "Incident 2"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "2 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 3 Lifeline incident status: Needs review 3 bounded record(s) Preview remediation"':
+        - cell "Incident 3":
+          - button "Incident 3"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "3 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 4 Lifeline incident status: Needs review 4 bounded record(s) Preview remediation"':
+        - cell "Incident 4":
+          - button "Incident 4"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "4 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 5 Lifeline incident status: Needs review 5 bounded record(s) Preview remediation"':
+        - cell "Incident 5":
+          - button "Incident 5"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "5 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 6 Lifeline incident status: Needs review 6 bounded record(s) Preview remediation"':
+        - cell "Incident 6":
+          - button "Incident 6"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "6 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 7 Lifeline incident status: Needs review 7 bounded record(s) Preview remediation"':
+        - cell "Incident 7":
+          - button "Incident 7"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "7 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 8 Lifeline incident status: Needs review 8 bounded record(s) Preview remediation"':
+        - cell "Incident 8":
+          - button "Incident 8"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "8 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 9 Lifeline incident status: Needs review 9 bounded record(s) Preview remediation"':
+        - cell "Incident 9":
+          - button "Incident 9"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "9 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 10 Lifeline incident status: Needs review 10 bounded record(s) Preview remediation"':
+        - cell "Incident 10":
+          - button "Incident 10"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "10 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 11 Lifeline incident status: Needs review 11 bounded record(s) Preview remediation"':
+        - cell "Incident 11":
+          - button "Incident 11"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "11 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 12 Lifeline incident status: Needs review 12 bounded record(s) Preview remediation"':
+        - cell "Incident 12":
+          - button "Incident 12"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "12 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 13 Lifeline incident status: Needs review 13 bounded record(s) Preview remediation"':
+        - cell "Incident 13":
+          - button "Incident 13"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "13 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 14 Lifeline incident status: Needs review 14 bounded record(s) Preview remediation"':
+        - cell "Incident 14":
+          - button "Incident 14"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "14 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 15 Lifeline incident status: Needs review 15 bounded record(s) Preview remediation"':
+        - cell "Incident 15":
+          - button "Incident 15"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "15 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 16 Lifeline incident status: Needs review 16 bounded record(s) Preview remediation"':
+        - cell "Incident 16":
+          - button "Incident 16"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "16 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 17 Lifeline incident status: Needs review 17 bounded record(s) Preview remediation"':
+        - cell "Incident 17":
+          - button "Incident 17"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "17 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 18 Lifeline incident status: Needs review 18 bounded record(s) Preview remediation"':
+        - cell "Incident 18":
+          - button "Incident 18"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "18 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 19 Lifeline incident status: Needs review 19 bounded record(s) Preview remediation"':
+        - cell "Incident 19":
+          - button "Incident 19"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "19 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 20 Lifeline incident status: Needs review 20 bounded record(s) Preview remediation"':
+        - cell "Incident 20":
+          - button "Incident 20"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "20 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 21 Lifeline incident status: Needs review 21 bounded record(s) Preview remediation"':
+        - cell "Incident 21":
+          - button "Incident 21"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "21 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 22 Lifeline incident status: Needs review 22 bounded record(s) Preview remediation"':
+        - cell "Incident 22":
+          - button "Incident 22"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "22 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 23 Lifeline incident status: Needs review 23 bounded record(s) Preview remediation"':
+        - cell "Incident 23":
+          - button "Incident 23"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "23 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 24 Lifeline incident status: Needs review 24 bounded record(s) Preview remediation"':
+        - cell "Incident 24":
+          - button "Incident 24"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "24 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 25 Lifeline incident status: Needs review 25 bounded record(s) Preview remediation"':
+        - cell "Incident 25":
+          - button "Incident 25"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "25 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 26 Lifeline incident status: Needs review 26 bounded record(s) Preview remediation"':
+        - cell "Incident 26":
+          - button "Incident 26"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "26 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 27 Lifeline incident status: Needs review 27 bounded record(s) Preview remediation"':
+        - cell "Incident 27":
+          - button "Incident 27"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "27 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 28 Lifeline incident status: Needs review 28 bounded record(s) Preview remediation"':
+        - cell "Incident 28":
+          - button "Incident 28"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "28 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 29 Lifeline incident status: Needs review 29 bounded record(s) Preview remediation"':
+        - cell "Incident 29":
+          - button "Incident 29"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "29 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 30 Lifeline incident status: Needs review 30 bounded record(s) Preview remediation"':
+        - cell "Incident 30":
+          - button "Incident 30"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "30 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 31 Lifeline incident status: Needs review 31 bounded record(s) Preview remediation"':
+        - cell "Incident 31":
+          - button "Incident 31"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "31 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 32 Lifeline incident status: Needs review 32 bounded record(s) Preview remediation"':
+        - cell "Incident 32":
+          - button "Incident 32"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "32 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 33 Lifeline incident status: Needs review 33 bounded record(s) Preview remediation"':
+        - cell "Incident 33":
+          - button "Incident 33"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "33 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 34 Lifeline incident status: Needs review 34 bounded record(s) Preview remediation"':
+        - cell "Incident 34":
+          - button "Incident 34"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "34 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 35 Lifeline incident status: Needs review 35 bounded record(s) Preview remediation"':
+        - cell "Incident 35":
+          - button "Incident 35"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "35 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 36 Lifeline incident status: Needs review 36 bounded record(s) Preview remediation"':
+        - cell "Incident 36":
+          - button "Incident 36"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "36 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 37 Lifeline incident status: Needs review 37 bounded record(s) Preview remediation"':
+        - cell "Incident 37":
+          - button "Incident 37"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "37 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 38 Lifeline incident status: Needs review 38 bounded record(s) Preview remediation"':
+        - cell "Incident 38":
+          - button "Incident 38"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "38 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 39 Lifeline incident status: Needs review 39 bounded record(s) Preview remediation"':
+        - cell "Incident 39":
+          - button "Incident 39"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "39 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 40 Lifeline incident status: Needs review 40 bounded record(s) Preview remediation"':
+        - cell "Incident 40":
+          - button "Incident 40"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "40 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 41 Lifeline incident status: Needs review 41 bounded record(s) Preview remediation"':
+        - cell "Incident 41":
+          - button "Incident 41"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "41 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 42 Lifeline incident status: Needs review 42 bounded record(s) Preview remediation"':
+        - cell "Incident 42":
+          - button "Incident 42"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "42 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 43 Lifeline incident status: Needs review 43 bounded record(s) Preview remediation"':
+        - cell "Incident 43":
+          - button "Incident 43"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "43 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 44 Lifeline incident status: Needs review 44 bounded record(s) Preview remediation"':
+        - cell "Incident 44":
+          - button "Incident 44"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "44 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 45 Lifeline incident status: Needs review 45 bounded record(s) Preview remediation"':
+        - cell "Incident 45":
+          - button "Incident 45"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "45 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 46 Lifeline incident status: Needs review 46 bounded record(s) Preview remediation"':
+        - cell "Incident 46":
+          - button "Incident 46"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "46 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 47 Lifeline incident status: Needs review 47 bounded record(s) Preview remediation"':
+        - cell "Incident 47":
+          - button "Incident 47"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "47 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 48 Lifeline incident status: Needs review 48 bounded record(s) Preview remediation"':
+        - cell "Incident 48":
+          - button "Incident 48"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "48 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 49 Lifeline incident status: Needs review 49 bounded record(s) Preview remediation"':
+        - cell "Incident 49":
+          - button "Incident 49"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "49 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+      - 'row "Incident 50 Lifeline incident status: Needs review 50 bounded record(s) Preview remediation"':
+        - cell "Incident 50":
+          - button "Incident 50"
+        - 'cell "Lifeline incident status: Needs review"'
+        - cell "50 bounded record(s)"
+        - cell "Preview remediation":
+          - button "Preview remediation": Preview Native Remediation
+  - region "Retained support evidence":
+    - heading "Healthy Executors" [level=2]
+    - list:
+      - listitem:
+        - strong: executor-alpha
+        - text: "Lifeline health: Healthy"
+    - heading "Archive Activity" [level=2]
+    - text: "Lifeline incident status: Resolved"
+    - paragraph: Latest bounded archive activity retained.
+    - paragraph: Archive and prune visibility is read-only here. Retention policy editing stays out of scope for this phase.

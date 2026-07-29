@@ -1,0 +1,44 @@
+- main "Lifeline":
+  - heading "Lifeline" [level=1]
+  - paragraph: Powertools-native surfaces keep diagnosis, preview, reason, and audited action together. Generic job internals still deep-link into the Oban Web bridge.
+  - text: "Lifeline health: Healthy"
+  - region "Lifeline summary":
+    - article:
+      - paragraph: Needs Review
+      - strong: "0"
+    - article:
+      - paragraph: Healthy Executors
+      - strong: "1"
+    - article:
+      - paragraph: Pending Repair Previews
+      - strong: "0"
+    - article:
+      - paragraph: Archived Repairs
+      - strong: "4"
+  - navigation "Incident views":
+    - button "Needs Review"
+    - button "Resolved"
+  - table "Needs Review 0 incidents":
+    - caption: Needs Review 0 incidents
+    - rowgroup:
+      - row "Incident Status Affected scope Actions":
+        - columnheader "Incident"
+        - columnheader "Status"
+        - columnheader "Affected scope"
+        - columnheader "Actions"
+    - rowgroup:
+      - row:
+        - cell:
+          - status:
+            - heading "No rows match the current filters" [level=2]
+            - paragraph: Clear filters or widen the time window.
+  - region "Retained support evidence":
+    - heading "Healthy Executors" [level=2]
+    - list:
+      - listitem:
+        - strong: executor-alpha
+        - text: "Lifeline health: Healthy"
+    - heading "Archive Activity" [level=2]
+    - text: "Lifeline incident status: Resolved"
+    - paragraph: Four bounded repair records are retained; no incident is active.
+    - paragraph: Archive and prune visibility is read-only here. Retention policy editing stays out of scope for this phase.

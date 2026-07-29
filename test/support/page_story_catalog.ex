@@ -2203,12 +2203,12 @@ defmodule ObanPowertools.PageStoryCatalog do
   end
 
   defp phase81_activation(:lifeline, id) do
-    if String.contains?(id, "preview-open") or
-         String.contains?(id, "invalid-short-reason") or
-         String.contains?(id, "execute-loading") or String.contains?(id, "drifted") or
-         String.contains?(id, "partial-skipped") or
-         String.contains?(id, "disconnected-interrupted") or
-         String.contains?(id, "clean-success") do
+    if not String.contains?(id, "clean-success") and
+         (String.contains?(id, "preview-open") or
+            String.contains?(id, "invalid-short-reason") or
+            String.contains?(id, "execute-loading") or String.contains?(id, "drifted") or
+            String.contains?(id, "partial-skipped") or
+            String.contains?(id, "disconnected-interrupted")) do
       :confirmation
     else
       :none
@@ -2538,40 +2538,271 @@ defmodule ObanPowertools.PageStoryCatalog do
       cond do
         String.contains?(id, "no-active") or String.contains?(id, "healthy-archive") -> []
         String.contains?(id, "saturated") -> lifeline_rows(50)
-        true -> lifeline_rows(1)
+        true -> [lifeline_row(id)]
       end
 
-    preview? = activation == :confirmation
+    preview? = activation == :confirmation and not String.contains?(id, "clean-success")
     selected_row = if(preview?, do: List.first(incident_rows) || List.first(lifeline_rows(1)))
+    confirmation_state = lifeline_confirmation_state(id)
 
     %{
       incident_rows: incident_rows,
       lifeline_summary: %{
-        status: if(incident_rows == [], do: :healthy, else: :needs_review),
+        status:
+          cond do
+            String.contains?(id, "unavailable") -> :missing
+            incident_rows == [] -> :healthy
+            true -> :needs_review
+          end,
         active_count: length(incident_rows),
         pending_preview_count: if(preview?, do: 1, else: 0),
         archived_repair_count: if(String.contains?(id, "archive"), do: 4, else: 1),
-        completeness: if(String.contains?(id, "partial"), do: :partial, else: :complete)
+        completeness:
+          if(
+            String.contains?(id, "partial") or String.contains?(id, "saturated") or
+              String.contains?(id, "unknown"),
+            do: :partial,
+            else: :complete
+          )
       },
-      executor_rows: [%{name: "executor-alpha", status: :healthy}],
-      archive_summary: %{status: :resolved, guidance: "Latest bounded archive activity retained."},
-      repair_confirmation: nil,
+      executor_rows: lifeline_executor_rows(id),
+      archive_summary: lifeline_archive_summary(id),
+      repair_confirmation:
+        if(preview?, do: lifeline_repair_confirmation(confirmation_state), else: nil),
       current_view: if(String.contains?(id, "resolved"), do: "resolved", else: "active"),
       read_only?: String.contains?(id, "permission"),
       error_message:
-        if(String.contains?(id, "unavailable"), do: "Lifeline evidence did not load.", else: nil),
+        cond do
+          String.contains?(id, "unavailable") ->
+            "Lifeline evidence did not load."
+
+          String.contains?(id, "invalid-short") ->
+            "Reason must be at least 8 characters."
+
+          String.contains?(id, "auth-race") ->
+            "Operator access changed before execution. Create a fresh preview."
+
+          String.contains?(id, "disconnected") ->
+            "Connection ended before completion was known."
+
+          true ->
+            nil
+        end,
       success_message:
-        if(String.contains?(id, "clean-success"), do: "Remediation recorded in Audit.", else: nil),
+        cond do
+          String.contains?(id, "clean-success") ->
+            "Remediation recorded in Audit."
+
+          String.contains?(id, "host-follow-up") ->
+            "Host-owned follow-up is awaiting verification."
+
+          true ->
+            nil
+        end,
       selected_row: selected_row,
       preview: nil,
-      preview_state: :ready,
-      current_actor: nil,
+      preview_fixture: if(preview?, do: %{status: lifeline_preview_status(id)}, else: nil),
+      preview_summary?: false,
+      preview_state: confirmation_state,
+      current_actor: %{id: "operator-81", type: :user, label: "Phase 81 operator"},
       reason: if(String.contains?(id, "invalid-short"), do: "short", else: ""),
       audit_events: [],
+      audit_event_fixtures: [],
+      repair_results: lifeline_repair_results(id),
       target_detail: %{job_id: nil},
       retention: nil,
       visible_incident_rows: []
     }
+  end
+
+  defp lifeline_row(id) do
+    cond do
+      String.contains?(id, "stuck-workflow") ->
+        lifeline_row_fixture(
+          id,
+          "Workflow publish step has not progressed",
+          "workflow_action",
+          "workflow_request_cancel",
+          "Workflow workflow-001 • step publish"
+        )
+
+      String.contains?(id, "callback-variant") ->
+        lifeline_row_fixture(
+          id,
+          "Batch completion callback is stalled",
+          "callback_stuck",
+          "callback_retry",
+          "Callback batch-001/on_complete"
+        )
+
+      String.contains?(id, "adversarial") ->
+        lifeline_row_fixture(
+          id,
+          "לקוחות مرحبا <script>alert('incident')</script> • redacted",
+          "executor_dead",
+          "job_rescue",
+          "Executor incident • sensitive fields redacted"
+        )
+
+      String.contains?(id, "resolved") ->
+        lifeline_row_fixture(
+          id,
+          "Resolved executor incident",
+          "executor_dead",
+          "job_rescue",
+          "Executor incident resolved",
+          :resolved
+        )
+
+      true ->
+        lifeline_row_fixture(
+          id,
+          "Executor executor-alpha missed its heartbeat",
+          "executor_dead",
+          "job_rescue",
+          "Executor executor-alpha"
+        )
+    end
+  end
+
+  defp lifeline_row_fixture(
+         id,
+         subject,
+         incident_class,
+         action,
+         target_summary,
+         status \\ :needs_review
+       ) do
+    restricted? = String.contains?(id, "permission")
+
+    %{
+      id: "incident-#{id}",
+      subject: subject,
+      status: status,
+      affected_scope:
+        if(incident_class == "workflow_action", do: "1 workflow step", else: "1 bounded record"),
+      preview_available?: not restricted?,
+      preview_disabled_reason:
+        if(restricted?, do: "You do not have permission to preview this remediation.", else: nil),
+      target_summary: target_summary,
+      action: action,
+      incident: %{
+        incident_class: incident_class,
+        incident_fingerprint: "fixture-#{id}",
+        job_ids: if(incident_class == "executor_dead", do: [81_001], else: []),
+        workflow_id: if(incident_class == "workflow_action", do: "workflow-001", else: nil),
+        step_name: if(incident_class == "workflow_action", do: "publish", else: nil)
+      }
+    }
+  end
+
+  defp lifeline_confirmation_state(id) do
+    cond do
+      String.contains?(id, "execute-loading") -> :submitting
+      String.contains?(id, "drifted") -> :drifted
+      String.contains?(id, "partial-skipped") -> :partial
+      String.contains?(id, "disconnected") -> :failed
+      true -> :preview
+    end
+  end
+
+  defp lifeline_preview_status(id) do
+    if String.contains?(id, "drifted"), do: "drifted", else: "ready"
+  end
+
+  defp lifeline_repair_confirmation(state) do
+    %{
+      state: state,
+      title: "Confirm Lifeline repair",
+      object_label: "Executor executor-alpha",
+      affected_records: ["Executor executor-alpha"],
+      consequence: "Lifeline revalidates and attempts each eligible target independently.",
+      reversibility: "Accepted changes may not be reversible; changed targets are reported.",
+      support_boundary: "Execution is per target and non-atomic.",
+      progress: if(state == :submitting, do: %{value: 1, max: 3}, else: nil)
+    }
+  end
+
+  defp lifeline_repair_results(id) do
+    cond do
+      String.contains?(id, "partial-skipped") ->
+        [
+          lifeline_result(
+            "target-success",
+            "Executor executor-alpha",
+            :success,
+            "Repair recorded.",
+            nil,
+            "/ops/jobs/audit"
+          ),
+          lifeline_result(
+            "target-skipped",
+            "Job 81002",
+            :skipped,
+            "Target was no longer eligible.",
+            "Create a fresh preview.",
+            nil
+          ),
+          lifeline_result(
+            "target-failed",
+            "Job 81003",
+            :failed,
+            "Repair did not complete.",
+            "Review current evidence.",
+            nil
+          )
+        ]
+
+      String.contains?(id, "disconnected") ->
+        [
+          lifeline_result(
+            "target-disconnected",
+            "Disconnected target",
+            :failed,
+            "The connection ended before completion was known.",
+            "Reconnect and inspect Audit before retrying.",
+            nil
+          ),
+          lifeline_result(
+            "target-interrupted",
+            "Interrupted target",
+            :failed,
+            "The operation was interrupted.",
+            "Create a fresh preview after reviewing current state.",
+            nil
+          )
+        ]
+
+      true ->
+        []
+    end
+  end
+
+  defp lifeline_result(id, object_label, outcome, message, recovery, audit_href) do
+    %{
+      id: id,
+      object_label: object_label,
+      outcome: outcome,
+      message: message,
+      recovery: recovery,
+      audit_href: audit_href
+    }
+  end
+
+  defp lifeline_executor_rows(id) do
+    status = if(String.contains?(id, "dead-executor"), do: :missing, else: :healthy)
+    [%{name: "executor-alpha", status: status}]
+  end
+
+  defp lifeline_archive_summary(id) do
+    if String.contains?(id, "healthy-archive") do
+      %{
+        status: :resolved,
+        guidance: "Four bounded repair records are retained; no incident is active."
+      }
+    else
+      %{status: :resolved, guidance: "Latest bounded archive activity retained."}
+    end
   end
 
   defp lifeline_rows(count) do

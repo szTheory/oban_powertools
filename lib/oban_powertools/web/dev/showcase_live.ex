@@ -14,6 +14,8 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
 
     use Phoenix.LiveView
 
+    alias ObanPowertools.Lifeline.RepairPreview
+
     alias ObanPowertools.Web.{
       AuditLive,
       BatchesLive,
@@ -1048,11 +1050,26 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
     defp materialize_page_assigns(%{page: :workflows} = story), do: story.fixtures
 
     defp materialize_page_assigns(%{page: :lifeline} = story) do
-      Map.put(
-        story.fixtures,
+      story.fixtures
+      |> Map.put(
         :repair_form,
         to_form(%{"reason" => story.fixtures.reason}, as: :lifeline_repair)
       )
+      |> Map.put(:preview, materialize_lifeline_preview(story.fixtures.preview_fixture))
+      |> Map.drop([:preview_fixture, :audit_event_fixtures])
+    end
+
+    defp materialize_lifeline_preview(nil), do: nil
+
+    defp materialize_lifeline_preview(%{status: status}) do
+      %RepairPreview{
+        status: status,
+        metadata: %{},
+        affected_counts: %{},
+        before_snapshot: %{},
+        after_snapshot: %{},
+        evidence: %{}
+      }
     end
 
     defp materialize_optional_page_form(assigns, key, as, id) do

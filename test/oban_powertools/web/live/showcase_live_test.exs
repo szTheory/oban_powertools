@@ -894,6 +894,39 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
                    )
                    |> length() == 50
 
+          "page-lifeline-preview-open" ->
+            assert has_element?(view, "#lifeline-repair-dialog[role='dialog']")
+            assert has_element?(view, "#lifeline-repair-dialog", "Confirm Lifeline repair")
+
+          "page-lifeline-invalid-short-reason" ->
+            assert has_element?(
+                     view,
+                     "#lifeline-repair-dialog [role='alert']",
+                     "Reason must be at least 8 characters."
+                   )
+
+          "page-lifeline-execute-loading-auth-race" ->
+            assert has_element?(view, "#lifeline-repair-dialog[aria-busy='true']")
+
+          "page-lifeline-drifted-expired-consumed" ->
+            assert has_element?(
+                     view,
+                     "#lifeline-repair-dialog[data-obpt-confirm-state='drifted']"
+                   )
+
+          "page-lifeline-partial-skipped-failed" ->
+            assert has_element?(view, "#lifeline-repair-dialog [data-obpt-result='skipped']")
+            assert has_element?(view, "#lifeline-repair-dialog [data-obpt-result='failed']")
+
+          "page-lifeline-disconnected-interrupted" ->
+            assert has_element?(view, "#lifeline-repair-dialog", "Disconnected target")
+            assert has_element?(view, "#lifeline-repair-dialog", "Interrupted target")
+
+          "page-lifeline-clean-success-audit" ->
+            refute has_element?(view, "#lifeline-repair-dialog")
+            assert has_element?(view, "#lifeline-page", "Remediation recorded in Audit.")
+            assert has_element?(view, "#lifeline-page a", "Open in Audit")
+
           _other ->
             :ok
         end
