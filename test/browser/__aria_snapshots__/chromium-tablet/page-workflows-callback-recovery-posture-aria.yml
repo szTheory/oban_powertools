@@ -1,0 +1,115 @@
+- heading "Workflows" [level=1]
+- paragraph: Diagnose workflow dependencies and current state without treating visual order as causality. Powertools-native surfaces keep diagnosis, preview, reason, and audited action together.
+- paragraph: "Permission: read-only. Diagnose workflow causality here, but use Powertools-native pages for preview, reason, and Audited action controls."
+- table "Current workflows 1 rows All retained workflows in this bounded view are shown.":
+  - caption: Current workflows 1 rows All retained workflows in this bounded view are shown.
+  - rowgroup:
+    - row "Workflow Operator status Steps Actions":
+      - columnheader "Workflow"
+      - columnheader "Operator status"
+      - columnheader "Steps"
+      - columnheader "Actions"
+  - rowgroup:
+    - 'row "Nightly reconciliation workflow Workflow state: Running 4 Inspect workflow"':
+      - cell "Nightly reconciliation workflow"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-001
+- region "Nightly reconciliation workflow":
+  - heading "Nightly reconciliation workflow" [level=2]
+  - term: "Operator Status:"
+  - definition: Runnable
+  - term: "Diagnosis:"
+  - definition: ready
+  - term: "Runnable now:"
+  - definition: "2"
+  - term: "Semantics:"
+  - definition: v2 (current_contract)
+  - term: "Callback posture:"
+  - definition: delivered 1, failed 1, pending 1
+  - term: "Latest recovery session:"
+  - definition: repair-session-redacted
+  - paragraph: "Semantics: v2 (current_contract)"
+  - heading "Workflow steps" [level=2]
+  - list "Workflow steps":
+    - listitem:
+      - heading "ingest" [level=3]
+      - text: "Workflow step state: Completed"
+      - paragraph: "diagnosis: ready"
+      - link "Detail":
+        - /url: /ops/jobs/workflows/workflow-001?step=ingest
+    - listitem:
+      - heading "normalize" [level=3]
+      - text: "Workflow step state: Completed"
+      - paragraph: "diagnosis: ready"
+      - link "Detail":
+        - /url: /ops/jobs/workflows/workflow-001?step=normalize
+    - listitem:
+      - heading "publish" [level=3]
+      - text: "Workflow step state: Available"
+      - paragraph: "diagnosis: ready"
+      - link "Detail":
+        - /url: /ops/jobs/workflows/workflow-001?step=publish
+    - listitem:
+      - heading "notify" [level=3]
+      - text: "Workflow step state: Available"
+      - paragraph: "diagnosis: ready"
+      - link "Detail":
+        - /url: /ops/jobs/workflows/workflow-001?step=notify
+- region "notify":
+  - heading "notify" [level=2]
+  - term: "Worker:"
+  - definition: ObanPowertools.Workers.Step4
+  - term: "Operator Status:"
+  - definition: Runnable
+  - term: "Diagnosis:"
+  - definition: ready
+  - term: "Result available:"
+  - definition: "no"
+  - heading "Review the bounded action in Lifeline." [level=3]
+  - paragraph: Diagnose workflow causality here. Powertools-native pages own preview, reason, venue, and Audited action controls.
+  - 'link "Review recovery in Lifeline: Review recovery in Lifeline"':
+    - /url: /ops/jobs/lifeline?workflow_id=workflow-001&step=notify
+    - text: Review recovery in Lifeline
+  - heading "Open runbook entry" [level=3]
+  - paragraph: Blocked workflow steps stay advisory here until the operator chooses a legal next venue.
+  - paragraph:
+    - strong: "Legal next move:"
+    - text: Review workflow diagnosis before retrying a bounded action.
+  - paragraph:
+    - strong: "Venue:"
+    - text: Powertools-native
+  - text: Powertools-native Oban Web bridge host-owned follow-up
+  - link "evidence link":
+    - /url: /ops/jobs/forensics?resource_type=workflow_step&resource_id=workflow-step-4&workflow_id=workflow-001&step=notify
+  - heading "Open the forensic bundle." [level=3]
+  - paragraph: Supporting limiter and cron context stays labeled as supporting evidence.
+  - link "Open forensic timeline":
+    - /url: /ops/jobs/forensics?resource_type=workflow_step&resource_id=workflow-step-4&workflow_id=workflow-001&step=notify
+  - region "Dependency Reasons":
+    - heading "Dependency Reasons" [level=3]
+    - paragraph: Runnable or already resolved.
+  - region "Why blocked?":
+    - heading "Why blocked?" [level=2]
+    - paragraph: No current blocker is recorded for the selected step.
+    - paragraph: Runnable — complete current evidence contains no blocking conditions.
+    - region "Impact":
+      - heading "Impact" [level=3]
+      - paragraph: Current state and dependency evidence are shown independently. Visual order does not establish cause.
+    - region "Evidence freshness":
+      - heading "Evidence freshness" [level=3]
+      - paragraph: Current blocker evidence is complete.
+      - paragraph:
+        - text: Observed
+        - time: 1970-01-01T00:00:00Z
+      - paragraph:
+        - text: "Evidence completeness:"
+        - strong: Complete
+  - region "Dependencies":
+    - heading "Dependencies" [level=3]
+    - list:
+      - listitem:
+        - strong: publish
+        - text: ": pending (cancel)"

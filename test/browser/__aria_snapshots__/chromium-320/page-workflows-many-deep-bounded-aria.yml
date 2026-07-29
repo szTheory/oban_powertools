@@ -1,0 +1,362 @@
+- heading "Workflows" [level=1]
+- paragraph: Diagnose workflow dependencies and current state without treating visual order as causality. Powertools-native surfaces keep diagnosis, preview, reason, and audited action together.
+- paragraph: "Permission: read-only. Diagnose workflow causality here, but use Powertools-native pages for preview, reason, and Audited action controls."
+- table "Current workflows 50 rows More workflows exist; this view shows the first 50.":
+  - caption: Current workflows 50 rows More workflows exist; this view shows the first 50.
+  - rowgroup:
+    - row "Workflow Operator status Steps Actions":
+      - columnheader "Workflow"
+      - columnheader "Operator status"
+      - columnheader "Steps"
+      - columnheader "Actions"
+  - rowgroup:
+    - 'row "לקוחות مرحبا reconciliation Workflow state: Running 100 Inspect workflow"':
+      - cell "לקוחות مرحبا reconciliation"
+      - 'cell "Workflow state: Running"'
+      - cell "100"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-001
+    - 'row "Workflow 2 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 2"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-002
+    - 'row "Workflow 3 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 3"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-003
+    - 'row "Workflow 4 Workflow state: Blocked 4 Inspect workflow"':
+      - cell "Workflow 4"
+      - 'cell "Workflow state: Blocked"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-004
+    - 'row "Workflow 5 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 5"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-005
+    - 'row "Workflow 6 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 6"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-006
+    - 'row "Workflow 7 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 7"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-007
+    - 'row "Workflow 8 Workflow state: Blocked 4 Inspect workflow"':
+      - cell "Workflow 8"
+      - 'cell "Workflow state: Blocked"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-008
+    - 'row "Workflow 9 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 9"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-009
+    - 'row "Workflow 10 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 10"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-010
+    - 'row "Workflow 11 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 11"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-011
+    - 'row "Workflow 12 Workflow state: Blocked 4 Inspect workflow"':
+      - cell "Workflow 12"
+      - 'cell "Workflow state: Blocked"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-012
+    - 'row "Workflow 13 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 13"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-013
+    - 'row "Workflow 14 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 14"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-014
+    - 'row "Workflow 15 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 15"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-015
+    - 'row "Workflow 16 Workflow state: Blocked 4 Inspect workflow"':
+      - cell "Workflow 16"
+      - 'cell "Workflow state: Blocked"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-016
+    - 'row "Workflow 17 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 17"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-017
+    - 'row "Workflow 18 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 18"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-018
+    - 'row "Workflow 19 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 19"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-019
+    - 'row "Workflow 20 Workflow state: Blocked 4 Inspect workflow"':
+      - cell "Workflow 20"
+      - 'cell "Workflow state: Blocked"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-020
+    - 'row "Workflow 21 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 21"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-021
+    - 'row "Workflow 22 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 22"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-022
+    - 'row "Workflow 23 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 23"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-023
+    - 'row "Workflow 24 Workflow state: Blocked 4 Inspect workflow"':
+      - cell "Workflow 24"
+      - 'cell "Workflow state: Blocked"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-024
+    - 'row "Workflow 25 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 25"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-025
+    - 'row "Workflow 26 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 26"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-026
+    - 'row "Workflow 27 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 27"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-027
+    - 'row "Workflow 28 Workflow state: Blocked 4 Inspect workflow"':
+      - cell "Workflow 28"
+      - 'cell "Workflow state: Blocked"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-028
+    - 'row "Workflow 29 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 29"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-029
+    - 'row "Workflow 30 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 30"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-030
+    - 'row "Workflow 31 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 31"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-031
+    - 'row "Workflow 32 Workflow state: Blocked 4 Inspect workflow"':
+      - cell "Workflow 32"
+      - 'cell "Workflow state: Blocked"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-032
+    - 'row "Workflow 33 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 33"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-033
+    - 'row "Workflow 34 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 34"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-034
+    - 'row "Workflow 35 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 35"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-035
+    - 'row "Workflow 36 Workflow state: Blocked 4 Inspect workflow"':
+      - cell "Workflow 36"
+      - 'cell "Workflow state: Blocked"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-036
+    - 'row "Workflow 37 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 37"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-037
+    - 'row "Workflow 38 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 38"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-038
+    - 'row "Workflow 39 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 39"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-039
+    - 'row "Workflow 40 Workflow state: Blocked 4 Inspect workflow"':
+      - cell "Workflow 40"
+      - 'cell "Workflow state: Blocked"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-040
+    - 'row "Workflow 41 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 41"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-041
+    - 'row "Workflow 42 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 42"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-042
+    - 'row "Workflow 43 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 43"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-043
+    - 'row "Workflow 44 Workflow state: Blocked 4 Inspect workflow"':
+      - cell "Workflow 44"
+      - 'cell "Workflow state: Blocked"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-044
+    - 'row "Workflow 45 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 45"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-045
+    - 'row "Workflow 46 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 46"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-046
+    - 'row "Workflow 47 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 47"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-047
+    - 'row "Workflow 48 Workflow state: Blocked 4 Inspect workflow"':
+      - cell "Workflow 48"
+      - 'cell "Workflow state: Blocked"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-048
+    - 'row "Workflow 49 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 49"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-049
+    - 'row "Workflow 50 Workflow state: Running 4 Inspect workflow"':
+      - cell "Workflow 50"
+      - 'cell "Workflow state: Running"'
+      - cell "4"
+      - cell "Inspect workflow":
+        - link "Inspect workflow":
+          - /url: /ops/jobs/workflows/workflow-050
