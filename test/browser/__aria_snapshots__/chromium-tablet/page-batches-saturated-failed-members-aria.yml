@@ -1,0 +1,291 @@
+- heading "Batches" [level=1]
+- paragraph: Inspect batch and chain progress, failed members, blocked states, and Lifeline recovery paths. Native Powertools pages own audited mutations; generic job internals deep-link into the Oban Web bridge.
+- paragraph: Powertools-native surfaces keep diagnosis, preview, reason, and audited action together.
+- text: Total Batches 20 Needs Attention 6 Executing 14 Completed 0
+- navigation:
+  - button "all (20)"
+  - button "executing (14)"
+  - button "completed (0)"
+  - button "failed (6)"
+  - button "cancelled (0)"
+- text: Batch name or ID
+- textbox "All batches"
+- text: Queue
+- textbox "All queues"
+- text: Worker
+- textbox "All workers"
+- checkbox "Chain only"
+- text: Chain only
+- table:
+  - rowgroup:
+    - row "Batch Status Progress Failed Callbacks Updated Actions":
+      - columnheader "Batch"
+      - columnheader "Status"
+      - columnheader "Progress"
+      - columnheader "Failed"
+      - columnheader "Callbacks"
+      - columnheader "Updated"
+      - columnheader "Actions"
+  - rowgroup:
+    - 'row "לקוחות مرحبا notification batch batch-001 Batch status: Executing Running 7500/10000 75% Progress for לקוחות مرحبا notification batch 7500 7500/10000 75% 0 failed 0 retryable pending 0 failed 0 claimed 0 delivered 7500 2026-07-19T14:05:00Z Open Batch"':
+      - cell "לקוחות مرحبا notification batch batch-001"
+      - 'cell "Batch status: Executing Running"'
+      - cell "7500/10000 75% Progress for לקוחות مرحبا notification batch 7500 7500/10000 75%":
+        - text: 7500/10000 75% Progress for לקוחות مرحبا notification batch
+        - progressbar "Progress for לקוחות مرحبا notification batch": "7500"
+        - text: 7500/10000 75%
+      - cell "0 failed 0 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 7500"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-001
+    - 'row "Batch 2 batch-002 Chain Batch status: Executing Running 2/20 10% Progress for Batch 2 2 2/20 10% 0 failed 0 retryable pending 0 failed 0 claimed 0 delivered 2 2026-07-19T14:05:00Z Open Batch"':
+      - cell "Batch 2 batch-002 Chain"
+      - 'cell "Batch status: Executing Running"'
+      - cell "2/20 10% Progress for Batch 2 2 2/20 10%":
+        - text: 2/20 10% Progress for Batch 2
+        - progressbar "Progress for Batch 2": "2"
+        - text: 2/20 10%
+      - cell "0 failed 0 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 2"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-002
+    - 'row "Batch 3 batch-003 Batch status: Failed Needs review 3/20 15% Progress for Batch 3 3 3/20 15% 2 failed 1 retryable pending 0 failed 0 claimed 0 delivered 3 2026-07-19T14:05:00Z Open Batch"':
+      - cell "Batch 3 batch-003"
+      - 'cell "Batch status: Failed Needs review"'
+      - cell "3/20 15% Progress for Batch 3 3 3/20 15%":
+        - text: 3/20 15% Progress for Batch 3
+        - progressbar "Progress for Batch 3": "3"
+        - text: 3/20 15%
+      - cell "2 failed 1 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 3"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-003
+    - 'row "Batch 4 batch-004 Chain Batch status: Executing Running 4/20 20% Progress for Batch 4 4 4/20 20% 0 failed 0 retryable pending 0 failed 0 claimed 0 delivered 4 2026-07-19T14:05:00Z Open Batch"':
+      - cell "Batch 4 batch-004 Chain"
+      - 'cell "Batch status: Executing Running"'
+      - cell "4/20 20% Progress for Batch 4 4 4/20 20%":
+        - text: 4/20 20% Progress for Batch 4
+        - progressbar "Progress for Batch 4": "4"
+        - text: 4/20 20%
+      - cell "0 failed 0 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 4"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-004
+    - 'row "Batch 5 batch-005 Batch status: Executing Running 5/20 25% Progress for Batch 5 5 5/20 25% 0 failed 0 retryable pending 0 failed 0 claimed 0 delivered 5 2026-07-19T14:05:00Z Open Batch"':
+      - cell "Batch 5 batch-005"
+      - 'cell "Batch status: Executing Running"'
+      - cell "5/20 25% Progress for Batch 5 5 5/20 25%":
+        - text: 5/20 25% Progress for Batch 5
+        - progressbar "Progress for Batch 5": "5"
+        - text: 5/20 25%
+      - cell "0 failed 0 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 5"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-005
+    - 'row "Batch 6 batch-006 Chain Batch status: Failed Needs review 6/20 30% Progress for Batch 6 6 6/20 30% 2 failed 1 retryable pending 0 failed 0 claimed 0 delivered 6 2026-07-19T14:05:00Z Open Batch"':
+      - cell "Batch 6 batch-006 Chain"
+      - 'cell "Batch status: Failed Needs review"'
+      - cell "6/20 30% Progress for Batch 6 6 6/20 30%":
+        - text: 6/20 30% Progress for Batch 6
+        - progressbar "Progress for Batch 6": "6"
+        - text: 6/20 30%
+      - cell "2 failed 1 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 6"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-006
+    - 'row "Batch 7 batch-007 Batch status: Executing Running 7/20 35% Progress for Batch 7 7 7/20 35% 0 failed 0 retryable pending 0 failed 0 claimed 0 delivered 7 2026-07-19T14:05:00Z Open Batch"':
+      - cell "Batch 7 batch-007"
+      - 'cell "Batch status: Executing Running"'
+      - cell "7/20 35% Progress for Batch 7 7 7/20 35%":
+        - text: 7/20 35% Progress for Batch 7
+        - progressbar "Progress for Batch 7": "7"
+        - text: 7/20 35%
+      - cell "0 failed 0 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 7"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-007
+    - 'row "Batch 8 batch-008 Chain Batch status: Executing Running 8/20 40% Progress for Batch 8 8 8/20 40% 0 failed 0 retryable pending 0 failed 0 claimed 0 delivered 8 2026-07-19T14:05:00Z Open Batch"':
+      - cell "Batch 8 batch-008 Chain"
+      - 'cell "Batch status: Executing Running"'
+      - cell "8/20 40% Progress for Batch 8 8 8/20 40%":
+        - text: 8/20 40% Progress for Batch 8
+        - progressbar "Progress for Batch 8": "8"
+        - text: 8/20 40%
+      - cell "0 failed 0 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 8"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-008
+    - 'row "Batch 9 batch-009 Batch status: Failed Needs review 9/20 45% Progress for Batch 9 9 9/20 45% 2 failed 1 retryable pending 0 failed 0 claimed 0 delivered 9 2026-07-19T14:05:00Z Open Batch"':
+      - cell "Batch 9 batch-009"
+      - 'cell "Batch status: Failed Needs review"'
+      - cell "9/20 45% Progress for Batch 9 9 9/20 45%":
+        - text: 9/20 45% Progress for Batch 9
+        - progressbar "Progress for Batch 9": "9"
+        - text: 9/20 45%
+      - cell "2 failed 1 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 9"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-009
+    - 'row "Batch 10 batch-010 Chain Batch status: Executing Running 10/20 50% Progress for Batch 10 10 10/20 50% 0 failed 0 retryable pending 0 failed 0 claimed 0 delivered 10 2026-07-19T14:05:00Z Open Batch"':
+      - cell "Batch 10 batch-010 Chain"
+      - 'cell "Batch status: Executing Running"'
+      - cell "10/20 50% Progress for Batch 10 10 10/20 50%":
+        - text: 10/20 50% Progress for Batch 10
+        - progressbar "Progress for Batch 10": "10"
+        - text: 10/20 50%
+      - cell "0 failed 0 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 10"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-010
+    - 'row "Batch 11 batch-011 Batch status: Executing Running 11/20 55% Progress for Batch 11 11 11/20 55% 0 failed 0 retryable pending 0 failed 0 claimed 0 delivered 11 2026-07-19T14:05:00Z Open Batch"':
+      - cell "Batch 11 batch-011"
+      - 'cell "Batch status: Executing Running"'
+      - cell "11/20 55% Progress for Batch 11 11 11/20 55%":
+        - text: 11/20 55% Progress for Batch 11
+        - progressbar "Progress for Batch 11": "11"
+        - text: 11/20 55%
+      - cell "0 failed 0 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 11"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-011
+    - 'row "Batch 12 batch-012 Chain Batch status: Failed Needs review 12/20 60% Progress for Batch 12 12 12/20 60% 2 failed 1 retryable pending 0 failed 0 claimed 0 delivered 12 2026-07-19T14:05:00Z Open Batch"':
+      - cell "Batch 12 batch-012 Chain"
+      - 'cell "Batch status: Failed Needs review"'
+      - cell "12/20 60% Progress for Batch 12 12 12/20 60%":
+        - text: 12/20 60% Progress for Batch 12
+        - progressbar "Progress for Batch 12": "12"
+        - text: 12/20 60%
+      - cell "2 failed 1 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 12"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-012
+    - 'row "Batch 13 batch-013 Batch status: Executing Running 13/20 65% Progress for Batch 13 13 13/20 65% 0 failed 0 retryable pending 0 failed 0 claimed 0 delivered 13 2026-07-19T14:05:00Z Open Batch"':
+      - cell "Batch 13 batch-013"
+      - 'cell "Batch status: Executing Running"'
+      - cell "13/20 65% Progress for Batch 13 13 13/20 65%":
+        - text: 13/20 65% Progress for Batch 13
+        - progressbar "Progress for Batch 13": "13"
+        - text: 13/20 65%
+      - cell "0 failed 0 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 13"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-013
+    - 'row "Batch 14 batch-014 Chain Batch status: Executing Running 14/20 70% Progress for Batch 14 14 14/20 70% 0 failed 0 retryable pending 0 failed 0 claimed 0 delivered 14 2026-07-19T14:05:00Z Open Batch"':
+      - cell "Batch 14 batch-014 Chain"
+      - 'cell "Batch status: Executing Running"'
+      - cell "14/20 70% Progress for Batch 14 14 14/20 70%":
+        - text: 14/20 70% Progress for Batch 14
+        - progressbar "Progress for Batch 14": "14"
+        - text: 14/20 70%
+      - cell "0 failed 0 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 14"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-014
+    - 'row "Batch 15 batch-015 Batch status: Failed Needs review 15/20 75% Progress for Batch 15 15 15/20 75% 2 failed 1 retryable pending 0 failed 0 claimed 0 delivered 15 2026-07-19T14:05:00Z Open Batch"':
+      - cell "Batch 15 batch-015"
+      - 'cell "Batch status: Failed Needs review"'
+      - cell "15/20 75% Progress for Batch 15 15 15/20 75%":
+        - text: 15/20 75% Progress for Batch 15
+        - progressbar "Progress for Batch 15": "15"
+        - text: 15/20 75%
+      - cell "2 failed 1 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 15"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-015
+    - 'row "Batch 16 batch-016 Chain Batch status: Executing Running 16/20 80% Progress for Batch 16 16 16/20 80% 0 failed 0 retryable pending 0 failed 0 claimed 0 delivered 16 2026-07-19T14:05:00Z Open Batch"':
+      - cell "Batch 16 batch-016 Chain"
+      - 'cell "Batch status: Executing Running"'
+      - cell "16/20 80% Progress for Batch 16 16 16/20 80%":
+        - text: 16/20 80% Progress for Batch 16
+        - progressbar "Progress for Batch 16": "16"
+        - text: 16/20 80%
+      - cell "0 failed 0 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 16"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-016
+    - 'row "Batch 17 batch-017 Batch status: Executing Running 17/20 85% Progress for Batch 17 17 17/20 85% 0 failed 0 retryable pending 0 failed 0 claimed 0 delivered 17 2026-07-19T14:05:00Z Open Batch"':
+      - cell "Batch 17 batch-017"
+      - 'cell "Batch status: Executing Running"'
+      - cell "17/20 85% Progress for Batch 17 17 17/20 85%":
+        - text: 17/20 85% Progress for Batch 17
+        - progressbar "Progress for Batch 17": "17"
+        - text: 17/20 85%
+      - cell "0 failed 0 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 17"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-017
+    - 'row "Batch 18 batch-018 Chain Batch status: Failed Needs review 18/20 90% Progress for Batch 18 18 18/20 90% 2 failed 1 retryable pending 0 failed 0 claimed 0 delivered 18 2026-07-19T14:05:00Z Open Batch"':
+      - cell "Batch 18 batch-018 Chain"
+      - 'cell "Batch status: Failed Needs review"'
+      - cell "18/20 90% Progress for Batch 18 18 18/20 90%":
+        - text: 18/20 90% Progress for Batch 18
+        - progressbar "Progress for Batch 18": "18"
+        - text: 18/20 90%
+      - cell "2 failed 1 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 18"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-018
+    - 'row "Batch 19 batch-019 Batch status: Executing Running 19/20 95% Progress for Batch 19 19 19/20 95% 0 failed 0 retryable pending 0 failed 0 claimed 0 delivered 19 2026-07-19T14:05:00Z Open Batch"':
+      - cell "Batch 19 batch-019"
+      - 'cell "Batch status: Executing Running"'
+      - cell "19/20 95% Progress for Batch 19 19 19/20 95%":
+        - text: 19/20 95% Progress for Batch 19
+        - progressbar "Progress for Batch 19": "19"
+        - text: 19/20 95%
+      - cell "0 failed 0 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 19"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-019
+    - 'row "Batch 20 batch-020 Chain Batch status: Executing Running 20/20 100% Progress for Batch 20 20 20/20 100% 0 failed 0 retryable pending 0 failed 0 claimed 0 delivered 20 2026-07-19T14:05:00Z Open Batch"':
+      - cell "Batch 20 batch-020 Chain"
+      - 'cell "Batch status: Executing Running"'
+      - cell "20/20 100% Progress for Batch 20 20 20/20 100%":
+        - text: 20/20 100% Progress for Batch 20
+        - progressbar "Progress for Batch 20": "20"
+        - text: 20/20 100%
+      - cell "0 failed 0 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 20"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-020
+- text: Previous
+- button "Next"

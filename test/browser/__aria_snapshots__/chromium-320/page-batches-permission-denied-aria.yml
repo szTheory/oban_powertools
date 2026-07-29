@@ -1,0 +1,44 @@
+- heading "Batches" [level=1]
+- paragraph: Inspect batch and chain progress, failed members, blocked states, and Lifeline recovery paths. Native Powertools pages own audited mutations; generic job internals deep-link into the Oban Web bridge.
+- paragraph: Powertools-native surfaces keep diagnosis, preview, reason, and audited action together.
+- paragraph: "Permission: read-only. Powertools-native batch evidence stays visible, but failed-job and callback retry controls stay disabled until you receive broader permission."
+- text: Total Batches 1 Needs Attention 0 Executing 1 Completed 0
+- navigation:
+  - button "all (1)"
+  - button "executing (1)"
+  - button "completed (0)"
+  - button "failed (0)"
+  - button "cancelled (0)"
+- text: Batch name or ID
+- textbox "All batches"
+- text: Queue
+- textbox "All queues"
+- text: Worker
+- textbox "All workers"
+- checkbox "Chain only"
+- text: Chain only
+- table:
+  - rowgroup:
+    - row "Batch Status Progress Failed Callbacks Updated Actions":
+      - columnheader "Batch"
+      - columnheader "Status"
+      - columnheader "Progress"
+      - columnheader "Failed"
+      - columnheader "Callbacks"
+      - columnheader "Updated"
+      - columnheader "Actions"
+  - rowgroup:
+    - 'row "לקוחות مرحبا notification batch batch-001 Batch status: Executing Running 7500/10000 75% Progress for לקוחות مرحبا notification batch 7500 7500/10000 75% 0 failed 0 retryable pending 0 failed 0 claimed 0 delivered 7500 2026-07-19T14:05:00Z Open Batch"':
+      - cell "לקוחות مرحبا notification batch batch-001"
+      - 'cell "Batch status: Executing Running"'
+      - cell "7500/10000 75% Progress for לקוחות مرحبا notification batch 7500 7500/10000 75%":
+        - text: 7500/10000 75% Progress for לקוחות مرحبا notification batch
+        - progressbar "Progress for לקוחות مرحبا notification batch": "7500"
+        - text: 7500/10000 75%
+      - cell "0 failed 0 retryable"
+      - cell "pending 0 failed 0 claimed 0 delivered 7500"
+      - cell "2026-07-19T14:05:00Z"
+      - cell "Open Batch":
+        - link "Open Batch":
+          - /url: /ops/jobs/batches/batch-001
+- text: Previous Next

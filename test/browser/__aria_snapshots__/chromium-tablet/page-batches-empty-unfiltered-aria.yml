@@ -1,0 +1,21 @@
+- heading "Batches" [level=1]
+- paragraph: Inspect batch and chain progress, failed members, blocked states, and Lifeline recovery paths. Native Powertools pages own audited mutations; generic job internals deep-link into the Oban Web bridge.
+- paragraph: Powertools-native surfaces keep diagnosis, preview, reason, and audited action together.
+- text: Total Batches 0 Needs Attention 0 Executing 0 Completed 0
+- navigation:
+  - button "all (0)"
+  - button "executing (0)"
+  - button "completed (0)"
+  - button "failed (0)"
+  - button "cancelled (0)"
+- text: Batch name or ID
+- textbox "All batches"
+- text: Queue
+- textbox "All queues"
+- text: Worker
+- textbox "All workers"
+- checkbox "Chain only"
+- text: Chain only
+- heading "No batches match this view" [level=2]
+- paragraph: No batch rows match the selected status and filters. Try a different status, clear filters, or inspect Jobs for ungrouped work.
+- text: Previous Next
