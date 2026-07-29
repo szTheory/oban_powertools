@@ -232,3 +232,220 @@ failure is solely the documented Guidepup/macOS startup prerequisite. Jobs and
 Forensics transcripts remain open and are not replaced by axe or invented
 output. Nyquist remains true because the required observable gate and its exact
 environment limitation are both recorded.
+
+## Corrected Plan 80-16 Attempt — 2026-07-29
+
+The corrected attribution retry stopped at the isolated calibration extractor,
+before the full-suite, failed-test rerun, artifact, VoiceOver-discovery, or page
+quality gates. This is a fail-closed result, not Phase 80 completion.
+
+### Gates completed before the blocker
+
+| Gate | Current result |
+|---|---|
+| Focused Jobs/Forensics command | PASS — 112 tests, 0 failures |
+| Coordinator repeat 1 | PASS — 9 tests, 0 failures |
+| Coordinator repeat 2 | PASS — 9 tests, 0 failures |
+| Coordinator repeat 3 | PASS — 9 tests, 0 failures |
+| `mix format --check-formatted` | PASS |
+| `mix compile --warnings-as-errors --force` | PASS — 103 files compiled |
+| Isolated calibration command | ExUnit exit 2 — 26 tests, 5 failures |
+| Exact outer-heading extraction | **BLOCKED** — one heading has two eligible repository test locations |
+
+CR-01, WR-01, WR-02, and V-TEST-01 remain closed by the fresh focused lane and
+the three additional coordinator runs. PAGE-02, PAGE-09, FORM-03, DATA-01
+through DATA-04, PAGE-10, and A11Y-01 through A11Y-04 remain represented by
+their existing implementation and historical evidence, but no requirement is
+promoted by this failed closeout attempt.
+
+### Finite attribution blocker
+
+The exact extractor contract recognizes this outer failure heading:
+
+```text
+  4) test control-plane lane proves overview, audit, and bridge-only follow-up through the canonical fixture (ObanPowertools.ExampleHostContractTest)
+```
+
+Before the next outer heading, the calibration log contains two lines matching
+`^[[:space:]]*test/[^[:space:]:]+_test\.exs:[1-9][0-9]*[[:space:]]*$`:
+
+```text
+     test/oban_powertools/example_host_contract_test.exs:36
+          test/phoenix_host_web/oban_powertools_control_plane_smoke_test.exs:6
+```
+
+The plan requires failure on zero or multiple matching locations. Therefore no
+schema-valid `calibration.identities.tsv` can be created, and the authoritative
+calibration/full/failed-rerun byte-equality protocol cannot legally continue.
+The nested generated-host location cannot be silently ignored without changing
+the plan's executable extractor contract.
+
+### Provenance and scope
+
+- Calibration log SHA-256:
+  `38fd148adf60d1a18fa1b39618d93d46a0cd4c327bcb72aa39d087ae758300be`.
+- Focused log SHA-256:
+  `4b91672673a1d0cad2de13877e00d944d73b0bc2e4055a6d6b6e9b6423cedd89`.
+- Coordinator log SHA-256 values:
+  `7b825749a7f8ab558383bad503a7bf3401a230fa2162824849d4dcf17629f712`,
+  `f2592b22c246bfdcf272c1c1be3cd837ea84057704430b3d1e1a40af3230549b`,
+  and
+  `5c480dcbc832069223459ed53180ad4a8620da7343dd3a9f2ba39583aa89bd8c`.
+- The five owner/support hashes remained byte-identical:
+  `92b3782b7444ae23df25fe4d7d91ae714b062b1c`,
+  `6aa83b5905aaba06784fb37cafd18cd4d696486e`,
+  `aa45f35937681c44511c83595f1893d65caf232c`,
+  `cb7879daf34537c5db0c3307ae38135f08dd52f8`, and
+  `98aea1fe7c12af679f0416bb185d116bdda5f9f7`.
+- No production, test, CI, example-host, installer, dependency, manifest,
+  generated asset, ARIA YAML, PNG baseline, schema, migration, or prior
+  Plan/Summary file was changed by this attempt.
+- Manifest, artifact validators, 147/588 inventory, seven-case VoiceOver
+  discovery, and compare-only `npm run verify:pages` were not entered after the
+  attribution prerequisite failed. No snapshot-update command or fabricated
+  transcript was used.
+
+### ASVS dispositions
+
+| Threat | Current disposition |
+|---|---|
+| T-80-16-NESTED | open/blocking — exact extractor observes multiple eligible locations |
+| T-80-16-COUNT | mitigated — count-only fallback was refused |
+| T-80-16-SCOPE | mitigated — owner/support hashes stayed unchanged |
+| T-80-16-BOOKKEEP | mitigated — ledgers remain snapshotted and no Summary exists |
+| T-80-16-A11Y | open for this retry — downstream fresh gates were not entered |
+| T-80-16-VRT | open for this retry — compare-only page gate was not entered |
+
+The exact ROADMAP and REQUIREMENTS snapshots are unchanged. The next plan
+revision must make the extractor's nested-output eligibility rule executable
+without weakening module/title/path/line provenance, then rerun every Plan
+80-16 gate from a fresh snapshot.
+
+## Corrected Plan 80-16 Closure — 2026-07-29
+
+Plans 80-01 through 80-16 now cover the 15 previously executed plans, the
+historically failed Plan 80-16 comparator attempt above, and this corrected
+Plan 80-16 closure. The historical attempt remains evidence of a fail-closed
+stop; it did not complete the plan. This section records the fresh corrected
+run from a new ROADMAP/REQUIREMENTS snapshot.
+
+### Exact extractor calibration
+
+The one extractor used for fixtures, isolated calibration, the full suite, and
+the failed-test rerun recognizes only failure locations matching the literal
+regex:
+
+```text
+^     test/[^[:space:]:]+_test\.exs:[1-9][0-9]*$
+```
+
+The prefix is exactly five ASCII spaces, with no arbitrary-whitespace prefix
+and no trailing whitespace. It buffers all tuples until every outer heading is
+valid. Ten-space generated-host locations are nested diagnostic output and are
+mechanically ineligible.
+
+| Fixture | Exact result |
+|---|---|
+| One five-space outer location plus one ten-space nested location | PASS — exit 0 and exact one-row tuple byte comparison |
+| Ten-space nested location only | PASS — extractor exit 1 and existing zero-byte rejection TSV |
+| Two five-space outer locations | PASS — extractor exit 1 and existing zero-byte rejection TSV |
+
+The positive tuple was exactly:
+
+```text
+ObanPowertools.ExampleHostContractTest	control-plane lane proves overview, audit, and bridge-only follow-up through the canonical fixture	test/oban_powertools/example_host_contract_test.exs	36
+```
+
+### Product and repeatability gates
+
+| Command / contract | Current result |
+|---|---|
+| Focused five-file Jobs/Forensics suite with `--seed 0` | PASS — 112 tests, 0 failures |
+| Coordinator rerun 1 with `--seed 0` | PASS — 9 tests, 0 failures |
+| Coordinator rerun 2 with `--seed 0` | PASS — 9 tests, 0 failures |
+| Coordinator rerun 3 with `--seed 0` | PASS — 9 tests, 0 failures |
+| `mix format --check-formatted` | PASS |
+| `mix compile --warnings-as-errors --force` | PASS — 103 files compiled |
+
+CR-01, WR-01, WR-02, and V-TEST-01 are closed. The focused lane preserves
+relational workflow-step authority, bounded Jobs URL values, exact frozen batch
+positions, and fail-closed reconciliation.
+
+### Authoritative residual attribution
+
+| Run | Command status | Terminal summary | Identity rows |
+|---|---:|---|---:|
+| Isolated calibration | 2 | `26 tests, 5 failures` | 5 |
+| Full suite | 2 | `933 tests, 5 failures` | 5 |
+| Immediate failed-test rerun | 2 | `5 tests, 5 failures` | 5 |
+
+Each run produced an existing four-field TSV. Each stored failure count equals
+the independently reparsed terminal summary, each positive failure total is
+paired with command exit 2, every source line is positive, and every
+module/path pair is allowlisted. The sorted TSVs are byte-identical:
+
+```text
+ObanPowertools.DocsContractTest	visual regression and a11y guardrails stay locked in docs and CI	test/oban_powertools/docs_contract_test.exs	195
+ObanPowertools.ExampleHostContractTest	control-plane lane proves overview, audit, and bridge-only follow-up through the canonical fixture	test/oban_powertools/example_host_contract_test.exs	36
+ObanPowertools.ExampleHostContractTest	native-only lane compiles and resets cleanly	test/oban_powertools/example_host_contract_test.exs	12
+ObanPowertools.ExampleHostContractTest	upgrade lane proves ops-demo pauses nightly_sync with pause_cron_entry after the documented host updates	test/oban_powertools/example_host_contract_test.exs	51
+ObanPowertools.FreshHostContractTest	fresh host lane installs, compiles, migrates, and boots	test/oban_powertools/fresh_host_contract_test.exs	11
+```
+
+The five residual owner/support hashes were unchanged before and after all
+three commands:
+
+```text
+92b3782b7444ae23df25fe4d7d91ae714b062b1c
+6aa83b5905aaba06784fb37cafd18cd4d696486e
+aa45f35937681c44511c83595f1893d65caf232c
+cb7879daf34537c5db0c3307ae38135f08dd52f8
+98aea1fe7c12af679f0416bb185d116bdda5f9f7
+```
+
+Evidence-log SHA-256 values were:
+
+```text
+focused       517cd635986ddbb1aa8031f24034eb875cb8285015cb94b6067608cecdaf8f09
+coordinator-1 1137e0b06694aae564b6157d93bc2ff49681442108ff6e2b1c0308bcdb976a9b
+coordinator-2 936778604d04cd8a112ffd95a0e8183a3f49d550efe5ddfb0663b105be7a530a
+coordinator-3 a96455e3e48e34773c6c3489eecae6ff090298c2edd4cfed80f9e452f34ebccb
+calibration   5f885f71955c20460eefa4534d32999396b59799ffeba6c9331c1d9894e6e358
+full          e8dec9f5f4db0ed56e830932821d4540ab20a0421390d91d665a8022442b5ad3
+failed-rerun  04cc234b31feaf67ac0d70e214d3c54fbfc8a2d1a95299bb7a5788c9a0be27e7
+```
+
+### Artifact, accessibility, and page-quality gates
+
+| Gate | Current result |
+|---|---|
+| `npm run showcase:manifest` | PASS — schema 8, 49 page stories, 113 targets |
+| Exact page baseline validator | PASS — 588 tracked paths |
+| Exact page ARIA validator | PASS — 147 snapshots |
+| Git-tracked inventory | PASS — exactly 147 ARIA YAML and 588 page PNG files |
+| VoiceOver `--list` discovery | PASS — exactly seven cases in one file, including one Jobs and one Forensics case |
+| `npm run verify:pages` | PASS — 1,392 compare-only tests |
+
+No snapshot-update command ran. The documented real VoiceOver transcripts remain
+open in an unsupported local Guidepup/macOS environment; discovery is current,
+and axe/ARIA output is not substituted for transcripts. This is the existing
+supported-environment disposition, not a fabricated accessibility claim.
+
+### Requirement and ASVS disposition
+
+- PAGE-02 and FORM-03 retain canonical oversized-input recovery and exact
+  frozen batch terminal truth.
+- PAGE-09 and PAGE-10 retain relationally authorized workflow-step evidence in
+  the shared production composition.
+- DATA-01 through DATA-04 retain bounded reads, closed presenters, structural
+  redaction, stable identity, and explicit result truth.
+- A11Y-01 through A11Y-04 retain exact manifest, ARIA, axe, connected,
+  compare-only visual, and supported-environment VoiceOver evidence.
+- T-80-16-INVENTORY, STALE, COUNT, MISSING, NESTED, SCOPE, BOOKKEEP, A11Y,
+  VRT, and DISCLOSE are mitigated by the corrected fixtures, exact identity
+  reproduction, owner hashes, ledger snapshots, artifact counts, compare-only
+  run, and finite report contents.
+
+Before Summary creation, ROADMAP and REQUIREMENTS remained byte-identical to
+their fresh snapshots, ROADMAP still reported 15/16 with Plan 80-16 unchecked,
+the Summary was absent, and STATE contained no terminal Plan 80-16 marker.
