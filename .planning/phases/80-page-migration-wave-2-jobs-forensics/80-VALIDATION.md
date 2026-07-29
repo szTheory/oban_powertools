@@ -1,7 +1,7 @@
 ---
 phase: 80
 slug: page-migration-wave-2-jobs-forensics
-status: executing
+status: complete
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-07-27
@@ -11,8 +11,10 @@ updated: 2026-07-28
 # Phase 80 — Validation Evidence Ledger
 
 This ledger reconciles every implementation task and high threat from Plans 80-01
-through 80-12 against fresh closure evidence. Plan 80-13 VoiceOver and final
-compare-only evidence remains explicitly open until Task 80-13-02 completes.
+through 80-13 against fresh closure evidence. All automatable product, connected,
+accessibility, artifact, and compare-only gates are green. The two production
+VoiceOver transcript rows remain explicitly open because this Mac lacks the
+one-time Guidepup OS setup required to start VoiceOver.
 
 ## Closure Snapshot
 
@@ -25,8 +27,9 @@ compare-only evidence remains explicitly open until Task 80-13-02 completes.
 | Full `mix test --seed 0` | 927 tests, 5 failures | inherited residual |
 | Page manifest | schema 8, 49 page stories, 113 targets, 4 themes, 3 viewports | green |
 | Tracked page artifacts | 147 ARIA YAML, 588 PNG | green |
-| Fresh `npm run verify:pages` | pending Task 80-13-02 | open |
-| Seven production-composed VoiceOver transcripts | pending Task 80-13-02 | open |
+| Fresh `npm run verify:pages` | 1,392 tests, 0 failures in 25.8 minutes | green |
+| Exact VoiceOver discovery | 7 exact production-composed stories | green |
+| Seven production-composed VoiceOver transcripts | 7 stopped before navigation at Guidepup OS startup | supported-environment gap; transcripts open |
 
 The five full-suite failures reproduce the same out-of-scope dirty-worktree
 contract debt recorded by Plan 80-12: one CI documentation contract observes
@@ -52,8 +55,9 @@ product lane above; no Phase 80 failure is hidden by that focused command.
 | 80-10 | 80-10-01 opt-in isolated host seam; 80-10-02 launcher and fail-closed clients | route-off branch: 2 real tests, 0 failures; production router unchanged; fixture routes exist only for `Mix.env() == :test` plus explicit env opt-in | green |
 | 80-11 | 80-11-01 connected Jobs/Forensics and aggregate ordering | retained evidence: Wave 2 24/24 and combined Wave 1+2 69/69; exact package order remains Wave 1, Wave 2, axe, VRT | green |
 | 80-12 | 80-12-01 deterministic token-owned styles; 80-12-02 freeze 57 Wave 1 ARIA; 80-12-03 generate/review Phase 80 evidence | asset/theme suite: 23 tests, 0 failures; source/static CSS and JS byte-equal; 147/147 ARIA and 588/588 PNG validators; retained compare-only 1,323/1,323 | green |
+| 80-13 | 80-13-01 closure ledger; 80-13-02 exact seven-story VoiceOver harness and locked browser closure | exact list 7/7; manifest hash stable; 147/588 validators green; final aggregate 1,392/1,392; Guidepup OS startup limitation recorded without invented transcripts | green with supported-environment gap |
 
-All 23 tasks in Plans 80-01 through 80-12 are represented above. Their plan
+All 25 tasks in Plans 80-01 through 80-13 are represented above. Their plan
 summaries, atomic task commits, declared file scopes, and fresh owning commands
 agree; there is no missing task, accepted RED state, skipped test, or summary-only
 completion claim.
@@ -67,7 +71,7 @@ completion claim.
 | FORM-03 | Submit-only canonical filters/scopes, exact field errors, and shared Lifeline confirmation/focus contracts | green |
 | DATA-* | SQL-bounded reads, exact/has-more truth, structural redaction, fixed presentation maps, no raw error/payload/token fallback | green |
 | PAGE-10 | One pure production page seam per page, shared components, no copied story markup, deterministic page manifest | green |
-| A11Y-* | One semantic tree, exact table/timeline bounds, focus/reflow/target/axe/ARIA/VRT evidence | automated green; real VoiceOver open |
+| A11Y-* | One semantic tree, exact table/timeline bounds, focus/reflow/target/axe/ARIA/VRT evidence; exact seven-story VoiceOver contract | automated green; real transcripts explicitly open on unsupported Guidepup setup |
 
 ## Source and Boundary Audit
 
@@ -97,6 +101,8 @@ completion claim.
   lockfile, dependency, or production public route. `package.json` adds only the
   ordered host/Docker page scripts. The example-host fixture route is compile-
   and env-gated to test and its route-off branch executes two real tests.
+  Plan 80-13 implementation adds only the production-composed VoiceOver spec,
+  this ledger, and a 15-second Playwright assertion/readiness window.
 
 ## Incident Predicate Evidence
 
@@ -117,6 +123,41 @@ must run this query against representative cardinality/distribution and add a
 host-owned expression index if their measured plan warrants it. No library
 migration is implied.
 
+## Final Browser and VoiceOver Evidence
+
+- Repeated manifest generation produced the same SHA-256,
+  `1d9ec00506ff3d4a67b872893302a30963540575a2900b1eb7524dc638f7956c`,
+  with schema 8, 49 page stories, 113 targets, 4 themes, and 3 viewports.
+- `npx playwright test --config=voiceover.config.ts --list` discovered exactly
+  these seven fail-closed production story IDs:
+  `page-overview-fixed-order-nonzero`, `page-cron-pause-confirmation`,
+  `page-cron-expired-recovery`, `page-limiters-blocked-evidence-layers`,
+  `page-audit-selected-missing-fields`, `page-jobs-full-detail`, and
+  `page-forensics-incident-partial-remediation`.
+- Exact validators reported 588 tracked page PNG paths and 147 tracked page
+  ARIA YAML paths. No baseline update command ran and no baseline file changed.
+- The first fresh aggregate passed 1,388/1,392; all four misses stopped at the
+  same five-second LiveView readiness wait before acceptance, axe, or snapshot
+  assertions. Exact isolated reruns passed 10/10 and 8/8.
+- A second fresh aggregate passed 1,389/1,392 and reproduced three readiness-only
+  timeouts. Plan 80-13 raised the shared Playwright assertion/readiness window
+  from five to fifteen seconds without altering product behavior or evidence.
+  The affected post-fix coverage passed 10/10 and 1/1, and the final exact
+  `npm run verify:pages` passed 1,392/1,392 in 25.8 minutes.
+- The exact VoiceOver wrapper first exposed a missing pinned WebKit executable.
+  After installing Playwright WebKit v2311 in the local cache, the exact rerun
+  reached all seven registered tests but stopped before page navigation with
+  `VoiceOver cannot be started`; the common cause was
+  `Failed to mount Guidepup preferences`. The diagnostic requires one-time
+  `npx @guidepup/setup setup` OS configuration and
+  `npx @guidepup/setup install` project assets. The Showcase wrapper completed
+  its health gate, and there was no database, route, manifest, story lookup,
+  selector, transcript, or product-page failure.
+- Launcher dependency resolution also reports advisories in the existing locked
+  Bandit, hpax, Mint, Oban Web, Phoenix, Plug, Postgrex, and Req graph. Plan
+  80-13 changed no dependency or lockfile; this remains separately owned
+  dependency-upgrade debt rather than a page-quality result.
+
 ## High-Threat Reconciliation
 
 | Threat IDs | Closure evidence | Status |
@@ -133,21 +174,61 @@ migration is implied.
 | T-80-10-AUTH/DATA/LEAK/INJECT/ZERO/DOS/REGRESS | test-only secret gate, run isolation/cleanup, name-only secret, closed routes/schemas, real route-off tests, bounded launcher, dual-generation evidence | mitigated |
 | T-80-11-FALSE/AUTH/LEAK/A11Y/MANIFEST/PORT | real production URLs/effects, auth races/frozen scope, cross-channel sentinels, keyboard/reflow/target assertions, exact Wave 1 prefix, one serial launcher | mitigated |
 | T-80-12-OMIT/SCOPE/LEAK/THEME/HOST/A11Y | tracked exact sets, prefix/inventory hashes, closed stories, four-theme review, root-scoped byte-equal assets, axe/ARIA/VRT closure | mitigated |
+| T-80-13-FALSEGREEN/SCOPE/LEAK/A11Y/VRT/GAP | fresh explicit counts, isolated timeout diagnosis and hardening, exact Phase 80 attribution, confidentiality reconciliation, exact seven-story discovery, unchanged 147/588 tracked sets, final 1,392/1,392 compare, and complete source audit | mitigated; real transcripts remain honestly open for supported environment |
 
-No high threat from Plans 80-01 through 80-12 remains open. The only outstanding
+No high threat from Plans 80-01 through 80-13 remains open. The only outstanding
 accessibility observation is the platform-bound VoiceOver transcript gate below.
+
+## Multi-Source Coverage Audit
+
+| Source | ID | Feature / requirement | Plans | Status |
+|---|---|---|---|---|
+| GOAL | — | Jobs + Forensics rebuilt on FilterBar/DataTable/DetailSurface/Timeline with preserved URL/filter/search/bulk/deep links and adversarial VRT/a11y | 02-13 | covered |
+| REQ | PAGE-02 | Jobs list/detail/filter/bulk/deep-link migration | 01-04, 08-13 | covered |
+| REQ | PAGE-09 | Forensics bundle/timeline migration | 05-13 | covered |
+| REQ | FORM-03 | Submit-mode URL-serialized Jobs/Forensics controls | 01, 02, 07, 10, 11, 13 | covered |
+| REQ | DATA-* | Shared DataTable/Timeline/DescriptionList/args/status/explicit-state contracts | 01-09, 12, 13 | covered |
+| REQ | PAGE-10 | Pure production composition, shared consistency, catalog/browser proof | 01-13 | covered |
+| REQ | A11Y-* | Semantic controls, focus/dialog behavior, targets, reflow, tracked ARIA, axe, exact screen-reader contract | 01-13 | covered; transcripts environment-open |
+| RESEARCH | — | Canonical applied/draft URL state and selector allowlists | 01, 02, 05, 07, 10, 11 | covered |
+| RESEARCH | — | One grouped Jobs count, exact active count, bounded stable IDs | 01, 02, 04 | covered |
+| RESEARCH | — | Frozen max-100/default, max-1000, max-four, timeout-safe supervised work | 04, 10, 11, 13 | covered |
+| RESEARCH | — | Typed four-family Forensics scope and 50-event bounded Audit window | 05-07, 10, 11 | covered |
+| RESEARCH | — | Structural redaction before assigns/logs/telemetry/DOM | 02-13 | covered |
+| RESEARCH | — | Exact 49-story/schema-8/147-ARIA/588-PNG production-composition matrix | 08, 09, 12, 13 | covered |
+| RESEARCH | — | Isolated authenticated connected fixtures and Docker-first proof | 10, 11, 13 | covered |
+| RESEARCH | — | Jobs/Forensics VoiceOver transcript contract on supported environment | 13 | executable; transcripts environment-open |
+| RESEARCH | — | No dependency, migration, new route shape, durable ledger, or second story system | 01-13 | covered |
+| CONTEXT | D-01..D-08 | Product authority, journey, human vocabulary, page roles, evidence separation, native routes, exact nouns, explicit states | 01-13 | covered |
+| CONTEXT | D-09..D-19 | Jobs browse/review/detail/action/history/focus/unavailable model | 02, 03, 08-13 | covered |
+| CONTEXT | D-20..D-35 | Jobs state/filter/copy/table/order/count/query/reflow/index contract | 01, 02, 08-13 | covered |
+| CONTEXT | D-36..D-52 | Frozen selection, preview, config, supervision, progress, result, disconnect, recovery | 04, 08-13 | covered |
+| CONTEXT | D-53..D-62 | Forensics full-page hierarchy and typed chooser/scope grammar | 05-13 | covered |
+| CONTEXT | D-63..D-72 | Event log, evidence dimensions/bounds/query ownership/redaction/copy/destinations | 05-13 | covered |
+| CONTEXT | D-73..D-80 | LiveView/Ecto/OTP/DX/auth/telemetry/receipt/bound architecture | 01-13 | covered |
+| CONTEXT | D-81..D-88 | Design pillars, control-room visuals, themes/motion, semantics/live regions, fixtures, complete verification | 02, 04, 07-13 | covered |
+
+No goal, requirement, research constraint, or D-01 through D-88 decision is
+missing. Deferred drawers, quick-review mutations, saved filters, qualifier DSL,
+new filter dimensions, sorting/cursors, durable bulk resume, retry/export,
+Forensics live/search/pagination/chart/source/encryption expansions, and arbitrary
+job-to-Forensics links remain absent by design.
 
 ## Manual and Environment-Bound Evidence
 
 | Behavior | Requirement | Evidence state | Required closure |
 |---|---|---|---|
-| VoiceOver transcript — Jobs production composition | A11Y-* | OPEN | Run the seven-story production-composed harness and require `Back to Jobs` in every Jobs transcript. An environmental classification is allowed only after showcase health succeeds and the residual is specifically macOS/VoiceOver/Guidepup capability. |
-| VoiceOver transcript — Forensics production composition | A11Y-* | OPEN | Run the same harness and require both `Investigation summary` and `Event log` in every Forensics transcript under the same narrow classification rule. |
+| VoiceOver transcript — Jobs production composition | A11Y-* | OPEN — SUPPORTED-ENVIRONMENT GAP | Exact story and `Back to Jobs` assertion are executable. Rerun after one-time Guidepup OS setup/project install; current run stopped at VoiceOver startup before navigation. |
+| VoiceOver transcript — Forensics production composition | A11Y-* | OPEN — SUPPORTED-ENVIRONMENT GAP | Exact story and `Investigation summary`/`Event log` assertions are executable. Rerun after one-time Guidepup OS setup/project install; current run stopped at VoiceOver startup before navigation. |
 | Incident JSONB predicate at representative host scale | PAGE-09 | SUPPORTED-RUNNER FOLLOW-UP | Local bounded SQL and Seq Scan are recorded above; evaluate on representative host data and add a host-owned expression index only if measurement warrants it. |
 
 ## Approval
 
-**Pending Task 80-13-02.** Plans 80-01 through 80-12 are approved by fresh
-automated and source evidence. Final Phase 80 approval requires a fresh
-compare-only page run plus either observed seven-story VoiceOver transcripts or
-an explicitly supported environmental gap after successful showcase health.
+**Approved with supported-environment transcript gap.** Plans 80-01 through
+80-13 are approved by fresh automated, connected, source, manifest, ARIA, axe,
+and compare-only visual evidence. The exact seven-story VoiceOver contract is
+present and fail-closed, the Showcase health gate succeeds, and the remaining
+failure is solely the documented Guidepup/macOS startup prerequisite. Jobs and
+Forensics transcripts remain open and are not replaced by axe or invented
+output. Nyquist remains true because the required observable gate and its exact
+environment limitation are both recorded.
