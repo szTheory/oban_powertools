@@ -23,7 +23,7 @@
   const DETAIL_BODY_SELECTOR = "[data-obpt-detail-body]";
   const DETAIL_CLOSE_SELECTOR = "[data-obpt-detail-close]";
   const FOCUS_OWNER_SELECTOR = "[data-obpt-focus-fallback]";
-  const CONTROLLED_TRIGGER_SELECTOR = "[aria-controls]";
+  const CONTROLLED_TRIGGER_SELECTOR = "[aria-controls], [data-obpt-controls]";
 
   const colorPreference = window.matchMedia("(prefers-color-scheme: dark)");
   const contrastPreference = window.matchMedia("(prefers-contrast: more)");
@@ -317,7 +317,9 @@
 
   function rememberControlledInvoker(control) {
     const root = rootForElement(control);
-    const controlledId = control ? control.getAttribute("aria-controls") : null;
+    const controlledId = control
+      ? control.getAttribute("aria-controls") || control.getAttribute("data-obpt-controls")
+      : null;
 
     if (
       !root ||
@@ -669,6 +671,7 @@
       attributes: true,
       attributeFilter: [
         "aria-controls",
+        "data-obpt-controls",
         "data-obpt-page-selection",
         "data-obpt-detail-requested",
         "data-obpt-detail-variant",

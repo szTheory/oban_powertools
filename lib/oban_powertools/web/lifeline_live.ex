@@ -340,6 +340,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                 if @preview && @selected_row && @selected_row.id == row.id,
                   do: "lifeline-repair-dialog"
               }
+              data-obpt-controls="lifeline-repair-dialog"
               phx-click="preview"
               phx-value-row-id={row.id}
               disabled={not row.preview_available?}

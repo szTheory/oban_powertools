@@ -819,6 +819,7 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     source = File.read!("lib/oban_powertools/web/lifeline_live.ex")
 
     assert source =~ "def page_content(assigns)"
+    assert source =~ ~s(data-obpt-controls="lifeline-repair-dialog")
 
     for {constant, limit} <- [
           incident_limit: 50,

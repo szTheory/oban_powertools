@@ -198,6 +198,7 @@ defmodule ObanPowertools.Web.AssetsTest do
     assert js =~ "[data-obpt-detail-body]"
     assert js =~ "[data-obpt-detail-close]"
     assert js =~ "[data-obpt-focus-fallback]"
+    assert js =~ "[data-obpt-controls]"
     assert js =~ "(min-width: 64rem)"
     assert js =~ "DETAIL_WIDE_QUERY"
     assert js =~ "effectiveDetailMode"
