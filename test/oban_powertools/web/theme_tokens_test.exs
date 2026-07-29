@@ -918,25 +918,93 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     end
   end
 
-  test "representative semantic color pairs satisfy contrast floors" do
+  test "exact semantic color pairs satisfy their theme-specific contrast floors" do
     css = read_contract_file!(@tokens_path)
 
     light = merged_variables(css, ".obpt-root[data-obpt-effective-theme=\"light\"]")
     dark = merged_variables(css, ".obpt-root[data-obpt-effective-theme=\"dark\"]")
     high = merged_variables(css, ".obpt-root[data-obpt-effective-theme=\"high-contrast\"]")
 
-    for {name, vars} <- [{"light", light}, {"dark", dark}, {"high-contrast", high}] do
-      assert contrast(vars, "--obpt-color-text", "--obpt-color-surface") >= 7.0,
-             "#{name} body text contrast is below 7.0"
+    text_pairs = [
+      {"body text", "--obpt-color-text", "--obpt-color-surface", 4.5},
+      {"muted text", "--obpt-color-muted", "--obpt-color-surface", 4.5},
+      {"accent text", "--obpt-color-accent-fg", "--obpt-color-accent-bg", 4.5},
+      {"info text", "--obpt-color-info-fg", "--obpt-color-info-bg", 4.5},
+      {"success text", "--obpt-color-success-fg", "--obpt-color-success-bg", 4.5},
+      {"warning text", "--obpt-color-warning-fg", "--obpt-color-warning-bg", 4.5},
+      {"danger text", "--obpt-color-danger-fg", "--obpt-color-danger-bg", 4.5}
+    ]
 
-      assert contrast(vars, "--obpt-color-muted", "--obpt-color-surface") >= 4.5,
-             "#{name} muted text contrast is below 4.5"
+    boundary_pairs = [
+      {"strong boundary", "--obpt-color-border-strong", "--obpt-color-surface"},
+      {"accent boundary", "--obpt-color-accent-border", "--obpt-color-accent-bg"},
+      {"info boundary", "--obpt-color-info-border", "--obpt-color-info-bg"},
+      {"success boundary", "--obpt-color-success-border", "--obpt-color-success-bg"},
+      {"warning boundary", "--obpt-color-warning-border", "--obpt-color-warning-bg"},
+      {"danger boundary", "--obpt-color-danger-border", "--obpt-color-danger-bg"}
+    ]
 
-      assert contrast(vars, "--obpt-color-border-strong", "--obpt-color-surface") >= 3.0,
-             "#{name} strong border contrast is below 3.0"
+    for {name, vars, body_floor} <- [
+          {"light", light, 4.5},
+          {"dark", dark, 4.5},
+          {"high-contrast", high, 7.0}
+        ] do
+      for {pair, foreground, background, floor} <- text_pairs do
+        effective_floor = if pair == "body text", do: body_floor, else: floor
 
-      assert contrast(vars, "--obpt-color-focus", "--obpt-color-surface") >= 3.0,
-             "#{name} focus contrast is below 3.0"
+        assert contrast(vars, foreground, background) >= effective_floor,
+               "#{name} #{pair} contrast is below #{effective_floor}"
+      end
+
+      for {pair, foreground, background} <- boundary_pairs do
+        assert contrast(vars, foreground, background) >= 3.0,
+               "#{name} #{pair} contrast is below 3.0"
+      end
+
+      for adjacent <- ["--obpt-color-surface", "--obpt-color-elevated"] do
+        assert contrast(vars, "--obpt-color-focus", adjacent) >= 3.0,
+               "#{name} focus contrast against #{adjacent} is below 3.0"
+      end
+    end
+  end
+
+  test "shared focus target and reflow rules stay root scoped and preserve one tree" do
+    css = read_contract_file!(@tokens_path)
+
+    for selector <- [
+          ".obpt-root .obpt-input:focus-visible",
+          ".obpt-root .obpt-button:focus-visible",
+          ".obpt-root .obpt-icon-button:focus-visible",
+          ".obpt-root .obpt-link:focus-visible",
+          ".obpt-root .obpt-data-table__header button:focus-visible",
+          ".obpt-root .obpt-code-block__region:focus-visible"
+        ] do
+      body = css |> blocks_for(selector) |> List.first() |> elem(1)
+      values = Map.new(declarations(body))
+
+      assert Map.fetch!(values, "outline") =~
+               ~r/(?:2px|calc\(var\(--obpt-space-1\) \/ 2\)) solid var\(--obpt-color-focus\)/
+
+      assert Map.fetch!(values, "outline-offset") in [
+               "2px",
+               "calc(var(--obpt-space-1) / 2)"
+             ]
+    end
+
+    button_body = css |> blocks_for(".obpt-root .obpt-primitive-button") |> List.first() |> elem(1)
+
+    assert {"min-block-size", "calc(var(--obpt-space-7) - var(--obpt-space-1))"} in
+             declarations(button_body)
+
+    shell_body = css |> blocks_for(".obpt-root .obpt-app-shell") |> List.first() |> elem(1)
+    refute {"overflow-x", "hidden"} in declarations(shell_body)
+
+    for {selector, body} <- blocks_for(css, "overflow-wrap") do
+      assert Enum.all?(selector_parts(selector), &String.starts_with?(&1, ".obpt-root")),
+             "wrapping selector escaped .obpt-root: #{selector}"
+
+      refute {"display", "none"} in declarations(body),
+             "reflow must not create a hidden duplicate tree: #{selector}"
     end
   end
 
