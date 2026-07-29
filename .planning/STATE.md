@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 82
 current_phase_name: Cross-Cutting A11y, Motion & Responsive Hardening Sweep
 status: executing
-stopped_at: Completed 82-01-PLAN.md
-last_updated: "2026-07-29T20:06:32.931Z"
+stopped_at: Completed 82-02-PLAN.md
+last_updated: "2026-07-29T20:12:23.295Z"
 last_activity: 2026-07-29
-last_activity_desc: Completed Phase 82 Plan 01 RED quality contracts
+last_activity_desc: Completed Phase 82 Plan 02 RED copy contracts
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 110
-  completed_plans: 94
-  percent: 85
+  completed_plans: 95
+  percent: 86
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 82 — Cross-Cutting A11y, Motion & Responsive Hardening Sweep
-Plan: 1 of 17
-Status: In progress
-Last activity: 2026-07-29 — Completed Phase 82 Plan 01 RED quality contracts
+Plan: 2 of 17
+Status: Ready to execute
+Last activity: 2026-07-29 — Completed Phase 82 Plan 02 RED copy contracts
 
 ## Performance Metrics
 
@@ -101,6 +101,7 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 01 RED quality contracts
 | Phase 81 P09 | 40min | 2 tasks | 271 files |
 | Phase 81 P13 | 8min | 2 tasks | 2 files |
 | Phase 82 P01 | 18min | 2 tasks | 2 files |
+| Phase 82 P02 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -129,11 +130,11 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 01 RED quality contracts
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T20:06:32.926Z
-**Stopped at:** Completed 82-01-PLAN.md
+**Last session:** 2026-07-29T20:12:23.289Z
+**Stopped at:** Completed 82-02-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed Plan 82-01's discoverable browser and Node RED quality contracts.
+- **Last Action:** Completed Plan 82-02's finite Copy policy and confirmation-order RED contracts.
 - **Next Action:** Execute the next dependency-ready Phase 82 plan.
 
 ## Decisions
@@ -317,6 +318,9 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 01 RED quality contracts
 - [Phase 81]: Run whole-nine-family artifact validators in Plan 81-14 after Plans 81-11 and 81-12 create their families. — The global exact-set validators cannot pass before the two later artifact families exist.
 - [Phase 81]: Use the bulk-confirmation, selected-blocked-step, and partial-skipped-failed stories as the three exact Wave 3 VoiceOver representatives. — They expose consequence, dependency-blocker, and mixed preview/result truth in committed accessibility artifacts.
 - [Phase 81]: Treat the existing uncommitted CI workflow as user-owned while validating its exact page_quality and ci-gate structure without restaging it. — Preserves shared dirty-worktree ownership while still adding executable policy enforcement.
+- [Phase 82]: Keep unique page consequence and support-boundary sentences outside the finite Copy registry. — Preserves page-specific support truth and avoids centralizing runtime prose.
+- [Phase 82]: Require action-specific submit before safe-state dismiss as an executable D-16 confirmation contract. — Turns confirmation order into a named semantic assertion rather than subjective review.
+- [Phase 82]: Bound copy diagnostics to path, line, rule, phrase, and replacement without raw operator or provider data. — Provides precise failures without opening a confidentiality channel.
 
 ### Blockers
 
