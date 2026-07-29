@@ -2,29 +2,29 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Identity Milestone Audit & Idempotency Proof
-current_phase: 79
-status: completed
-stopped_at: Phase 80 context gathered
-last_updated: "2026-07-27T21:59:34.265Z"
-last_activity: 2026-07-20
-last_activity_desc: Phase 79 marked complete
+current_phase: 80
+current_phase_name: page-migration-wave-2-jobs-forensics
+status: verifying
+stopped_at: Completed 80-16-PLAN.md
+last_updated: "2026-07-29T04:16:35.729Z"
+last_activity: 2026-07-29
+last_activity_desc: Phase 80 execution started
 progress:
   total_phases: 15
-  completed_phases: 10
-  total_plans: 61
-  completed_plans: 61
-  percent: 67
-current_phase_name: page-migration-wave-1-overview-cron-limiters-audit
+  completed_phases: 11
+  total_plans: 77
+  completed_plans: 77
+  percent: 73
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 79 — COMPLETE
-Plan: 12 of 12
-Status: Phase 79 complete
-Last activity: 2026-07-20 — Phase 79 marked complete
+Phase: 80 (page-migration-wave-2-jobs-forensics) — EXECUTING
+Plan: 16 of 16
+Status: Phase complete — ready for verification
+Last activity: 2026-07-29 — Phase 80 execution started
 
 ## Performance Metrics
 
@@ -73,6 +73,22 @@ Last activity: 2026-07-20 — Phase 79 marked complete
 | Phase 79 P11 | 13m | 1 tasks | 4 files |
 | Phase 79 P12 | 13m | 1 tasks | 5 files |
 | Phase 79 P08 | 2h 57m | 3 tasks | 246 files |
+| Phase 80 P01 | 24min | 2 tasks | 6 files |
+| Phase 80 P02 | 17min | 2 tasks | 4 files |
+| Phase 80 P03 | 1h20m | 3 tasks | 5 files |
+| Phase 80 P04 | 34m | 3 tasks | 8 files |
+| Phase 80 P05 | 11m | 2 tasks | 6 files |
+| Phase 80 P06 | 24m | 1 tasks | 7 files |
+| Phase 80 P07 | 30m | 2 tasks | 4 files |
+| Phase 80 P08 | 22m | 1 tasks | 5 files |
+| Phase 80 P09 | 12m | 1 tasks | 6 files |
+| Phase 80 P10 | 28m | 2 tasks | 8 files |
+| Phase 80 P11 | 35m | 1 tasks | 3 files |
+| Phase 80 P12 | 180 | 3 tasks | 521 files |
+| Phase 80 P13 | 94 | 2 tasks | 3 files |
+| Phase 80 P14 | 5m | 1 tasks | 3 files |
+| Phase 80 P15 | 9m | 2 tasks | 6 files |
+| Phase 80 P16 | 40m | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -101,12 +117,12 @@ Last activity: 2026-07-20 — Phase 79 marked complete
 
 ## Session Continuity
 
-**Last session:** 2026-07-27T21:59:34.258Z
-**Stopped at:** Phase 80 context gathered
-**Resume file:** .planning/phases/80-page-migration-wave-2-jobs-forensics/80-CONTEXT.md
+**Last session:** 2026-07-29T04:16:31.626Z
+**Stopped at:** Completed 80-16-PLAN.md
+**Resume file:** None
 
 - **Last Action:** Completed Plan 79-08's connected accessibility, motion, responsive, confidentiality, and page-only visual evidence.
-- **Next Action:** Record the five pending human validation observations, or begin Phase 80 while the repository-wide quality and non-page VRT debt remains tracked.
+- **Next Action:** Begin Phase 80 while the formally re-scoped repository-wide quality and non-page VRT debt remains tracked.
 
 ## Decisions
 
@@ -177,7 +193,7 @@ Last activity: 2026-07-20 — Phase 79 marked complete
 - [Phase 79]: Keep Plan 79-01 strictly RED-only so failures name missing Phase 79 behavior rather than partial production scaffolding.
 - [Phase 79]: Normalize invalid Audit pages to 1, clamp excessive pages to the last real page, and keep empty scopes at page 1 with zero total pages.
 - [Phase 79]: Preserve existing authorization, durable Cron effects, telemetry, audit evidence, selector destinations, and support ownership while migrating presentation.
-- [Phase 79]: Keep the exact 19 page-story IDs literal only in the Elixir catalog contract; TypeScript derives page targets from schema-7 pageStories. — Preserves one story-ID source and prevents browser registry drift.
+- [Phase 79]: Keep the exact 19 page-story IDs literal only in the Elixir catalog contract; TypeScript derives page targets and acceptance contracts from schema-8 pageStories. — Preserves one story-ID source and prevents browser registry drift.
 - [Phase 79]: Require the Plan 79-10 Task 79-10-03 authenticated reset, actor, and recovery helper plus PHASE79_BROWSER_FIXTURE_SECRET before connected evidence runs. — Prevents ambient example-host seeds or static story assigns from masquerading as connected database behavior.
 - [Phase 79]: Verify page baselines as exactly 19 stories times four themes times three projects with page-only tracked, untracked, renamed, and copied scope. — Keeps the known unrelated scenario residual separate from Phase 79 page evidence.
 - [Phase 79]: Count and retrieve Audit rows from the same exact filtered query, then clamp page input before calculating a fixed-size offset. — Keeps count and rows in one exact scope while making every nonempty page reachable under a fixed SQL bound.
@@ -203,12 +219,69 @@ Last activity: 2026-07-20 — Phase 79 marked complete
 - [Phase 79]: Open the real Cron preview before applying recovery perturbations; use a future scheduled active job for deterministic skipped and partial evidence.
 - [Phase 79]: Keep raw page-story form maps in the package-excluded catalog and materialize Phoenix forms only at the Showcase rendering boundary. — Preserves normalized deterministic fixtures while satisfying production component inputs.
 - [Phase 79]: Store only one validated active page-story ID and mount only its matching production page_content tree. — Prevents duplicate page trees, overlays, IDs, and client-persisted fixture payloads.
-- [Phase 79]: Append page stories after the unchanged 64-target schema-6 prefix. — Existing scenario and component discovery remains byte-for-byte stable while schema 7 adds page evidence.
+- [Phase 79]: Append page stories after the unchanged 64-target schema-6 prefix. — Existing scenario and component discovery remains stable while schema 8 adds page acceptance evidence.
 - [Phase 79]: Close any active group overlay before page activation, then enforce one active page story and at most one dialog or modal. — The shared structure, axe, and VRT loops can traverse all generated targets without overlapping top-layer state.
-- [Phase 79]: Keep validation draft and Nyquist false until required human observations are recorded. — Automated axe, focus, reflow, motion, copy, and visual evidence cannot substitute for the five explicit human review rows.
+- [Phase 79]: Replace the five human observation rows with executable schema-8 copy/role/order contracts, 57 exact ARIA snapshots, connected focus/media E2E, 228 canonical page screenshots, and advisory real-VoiceOver transcripts. — Required verification has zero human execution while intentional snapshot changes remain ordinary code review.
 - [Phase 79]: Accept Phase 79 screenshots only after true-theme restoration, exact 228-file equality, page-only scope, and a fresh compare-only pass. — This prevents update-mode generation, theme reset, or unrelated baseline families from masquerading as visual evidence.
 - [Phase 79]: Record 423 measured non-page VRT mismatches instead of the planning-time estimate of 108. — The complete stable aggregate and focused non-VRT reconciliation provide the authoritative current repository measurement.
+- [Phase 80]: Canonical Jobs URLs always include state, omit the default first page, and keep quick-review identity outside the Jobs query struct. — Preserves one bounded canonical navigation contract.
+- [Phase 80]: Invalid direct URL values collapse to one safe finite notice, while invalid drafts retain exact original strings and expose no applied state. — Keeps validation truthful without applying unsafe URL values.
+- [Phase 80]: Filter identity is the deterministic encoded state/filter allowlist with page and quick review excluded. — Prevents pagination and review state from changing filter identity.
+- [Phase 80]: Jobs index assigns contain finite presenter rows and quick-review maps; raw args, meta, errors, output payloads, and provider values never enter shared composition. — Keeps shared UI redaction-safe and provider-neutral.
+- [Phase 80]: Filter change retains and validates draft strings only; one valid submit patches canonical applied URL truth before the three bounded list, count, and grouped-count reads. — Separates draft validation from applied server-owned query state.
+- [Phase 80]: The disconnected Jobs index performs no query because the host router does not expose URL query params until the connected phase. — Avoids reads before canonical URL truth is available.
+- [Phase 80]: Quick-review authorization uses the same unavailable outcome for missing and unauthorized jobs, and stale review identity is removed with a replace patch. — Prevents existence disclosure and preserves canonical history.
+- [Phase 80]: The full detail contract exposes exactly support, actions, identity, timing, errors, data, redaction, and authorized destinations; raw Jobs, exceptions, payloads, and arbitrary evidence never enter shared composition. — Keeps canonical detail closed and redaction-safe.
+- [Phase 80]: Only seven allowlisted Jobs list parameters survive into Back to Jobs; opaque return_to, review job, and unknown parameters are discarded. — Prevents attacker-controlled return context propagation.
+- [Phase 80]: Preview tokens remain in LiveView socket private state, while shared confirmation receives only finite presenter action, form, result, and recovery truth. — Separates execution capability from rendered presentation.
+- [Phase 80]: Any non-success result clears the private execution capability and disables server-side replay until the operator explicitly creates a fresh preview. — Blocks stale or forged action replay.
+- [Phase 80]: The application validates jobs_bulk_target_limit before starting children; 100 is the default and only integers from 1 through 1000 are accepted. — Bulk recovery remains bounded at startup and hosts receive actionable configuration failures.
+- [Phase 80]: A server-owned Scope contains only frozen ordered unique IDs, deterministic filter identity, exact count, mode, and observation time; filters are never rerun during preview or execution. — Accepted authority stays tied to one bounded observed target set.
+- [Phase 80]: Each target receives independent authorization plus real Lifeline preview and execution, while tokens, hashes, reasons, IDs, and internal failures remain outside aggregate messages and telemetry. — Per-target security is preserved without turning shared progress into a disclosure channel.
+- [Phase 80]: Only exact all-success closes the dialog; any excluded, skipped, failed, drifted, or interrupted target remains selected and requires a fresh authoritative preview. — Partial or stale outcomes remain recoverable and cannot replay prior capability.
+- [Phase 80]: Scope.parse accepts only workflow, incident, cron_entry, or limiter shapes over the six public keys and replaces every conflict with empty canonical params. — Selector ambiguity fails closed before evidence reads.
+- [Phase 80]: Audit.forensic_window revalidates the supplied Scope struct and requires an explicit repository before issuing a source query. — Forged typed values cannot bypass the closed grammar or perform ambient reads.
+- [Phase 80]: Workflow and workflow-step windows use authoritative resource predicates, exact counts, and SQL limit 50. — Indexed relational identity supports exact bounded coverage claims.
+- [Phase 80]: Incident windows retain total_count nil and use SQL limit 51 because the incident fingerprint metadata predicate has no host-owned index. — The UI reports has-more truth without overclaiming completeness or forcing a host migration.
+- [Phase 80]: Forensics.bundle parses or revalidates Scope before repository resolution and returns only typed ok, unavailable, or safe error tuples. — Invalid or forged scope values cannot trigger ambient repository access or hidden family precedence.
+- [Phase 80]: Workflow and incident evidence use Audit.forensic_window; Cron and limiter output retains only the newest eight source facts and reports unknown totals honestly. — Every evidence family stays source-bounded without inventing completeness.
+- [Phase 80]: Audit chronology carries finite status and stable padded event identity while operator reasons and runbook continuity remain structurally absent. — Same-timestamp evidence remains distinct and deterministic without exposing sensitive context.
+- [Phase 80]: The Forensics presenter emits destinations only when a supported canonical local URL is present in caller-owned authorized_hrefs. — Noun guidance remains both closed and authorization-bound.
+- [Phase 80]: Bare Forensics is a genuine four-type chooser; mixed, orphaned, or unsupported URL parameters replace to bare Forensics before any source read. — Direct URLs fail closed without enumerating evidence or applying ambiguous identity.
+- [Phase 80]: Draft changes reveal and validate type-specific fields without patching or querying; only a valid Inspect evidence submit writes canonical selector parameters. — Draft form state stays separate from server-owned applied scope.
+- [Phase 80]: Missing and unauthorized valid Forensics scopes share byte-equivalent Evidence unavailable output and expose no destination differences. — Uniform output prevents existence and permission disclosure.
+- [Phase 80]: Ready Forensics evidence renders from only the exact page assign contract and uses one bounded shared Timeline with absolute machine-readable timestamps. — Pure composition stays redaction-safe, semantic, and deterministically bounded.
+- [Phase 80]: FilterBar accepts an optional validated submit_label while preserving Apply filters as its default. — Page-specific operator language is supported without changing existing callers.
+- [Phase 80]: Phase 80 stories live in one appended helper block so the original 19-story prefix remains byte/order-stable and the Phase 80 commit remains valid without pre-existing Phase 79 acceptance hunks. — The new catalog slice stays independently testable while preserving ownership of earlier dirty work.
+- [Phase 80]: ShowcaseLive materializes only filter and scope forms, confirmation forms, and selected-job MapSets at the component boundary; catalog fixtures remain finite plain data. — Support fixtures stay deterministic, serializable, and outside runtime authority.
+- [Phase 80]: Oversized and all-success Jobs stories render non-dialog rejection or receipt truth, while unresolved preview, progress, partial, drifted, disconnected, and interrupted states retain one confirmation. — Each fixture reflects the production state machine and never manufactures an overlay.
+- [Phase 80]: The mixed-results story uses one partial state with separate success, skipped, and failed rows. — Aggregate and per-target outcomes remain independently truthful.
+- [Phase 80]: Keep manifest schema 8 and derive all 49 page stories from the Elixir catalog without a literal Jobs or Forensics browser registry. — One generated source of truth prevents discovery and evidence drift.
+- [Phase 80]: Treat the generated showcase manifest as ignored verification output rather than a committed Plan 80-09 artifact. — The manifest is reproducible at a recorded hash and is outside the plan ownership frontmatter.
+- [Phase 80]: Require both filesystem equality and Git-tracked equality for the future 588-PNG baseline set, including rename, copy, untracked, and non-page rejection. — Visual evidence cannot pass through incomplete or unrelated artifact scope.
+- [Phase 80]: Keep Phase 80 as a sibling fixture seam so Phase 79 routes, schemas, and callers remain unchanged. — The new connected evidence can coexist without weakening the earlier fixture contract.
+- [Phase 80]: Use one project and run tagged database population with a DB or message barrier; the fixture controls deterministic state but never executes operator actions. — Browser proof observes real production action authority without turning fixtures into a mutation shortcut.
+- [Phase 80]: Expose only IDs, counts, states, and audit completion, rejecting unknown or sensitive response fields in the browser client. — The fixture bridge remains a closed public evidence channel.
+- [Phase 80]: Reuse the existing validated Phase 79 disposable database and build lifecycle while enabling both fixture generations and independently generated secrets. — Both browser generations share one isolated server and exact cleanup contract.
+- [Phase 80]: Keep Wave 1 compatibility independent of manifest position by filtering the four established families and comparing the exact ordered 19 IDs. — Manifest expansion cannot silently change or reorder prior connected coverage.
+- [Phase 80]: Scope broad Jobs queries with the fixture public project and run key so concurrent Playwright projects cannot observe one another rows. — Three-project connected execution remains deterministic without changing production authority.
+- [Phase 80]: Prove renewed denial adds no audited effect and disconnect adds exactly one effect relative to a measured public evidence baseline. — Authorization and lifecycle proof does not assume a globally empty Audit table.
+- [Phase 80]: Filter the existing Wave 1 Audit interaction to its own fixture resource so Wave 1 and Wave 2 remain valid when executed together. — Concurrent fixture generations no longer displace each other from bounded Audit pages.
+- [Phase 80]: Preserve the Jobs table conventional scan model inside one labelled horizontal scroll region at tablet widths. — This keeps header-to-cell relationships and dense rows while preventing page-level overflow.
+- [Phase 80]: Mirror aria-checked mixed state into the native checkbox indeterminate property. — The native state is required for correct browser rendering and axe semantics.
+- [Phase 80]: Fix production and shared-component defects at owning boundaries when locked evidence exposes them. — Axe rules and visual baselines may not be suppressed or updated to mask product defects.
+- [Phase 80]: Regenerate only page-jobs-explicit-selection after the tri-state fix. — Hash inventories proved all other 144 ARIA and 576 PNG artifacts stayed byte-identical.
+- [Phase 80]: VoiceOver coverage resolves seven exact production-composed stories and fails closed on missing or ambiguous manifest tuples. — Exact identifiers prevent silent assistive-technology coverage loss.
+- [Phase 80]: Jobs and Forensics transcript obligations stay open until real Guidepup VoiceOver startup succeeds. — Axe, ARIA snapshots, or invented narration cannot substitute for a real screen-reader transcript.
+- [Phase 80]: Use a 15-second Playwright assertion window for full-suite LiveView readiness. — Repeated five-second aggregate timeouts passed isolated reruns and the bounded increase produced a clean 1392-case aggregate.
+- [Phase 80]: Closure changes no page baseline, dependency, lockfile, schema, migration, or production route. — Phase 80 closure is validation and production-composed assistive-technology coverage only.
+- [Phase 80]: Require workflow-step Forensics authority to resolve id, workflow_id, and step_name together, then rebuild Audit scope from the validated Step row. — Prevents workflow authorization from being combined with foreign step chronology.
+- [Phase 80]: Jobs pages are bounded by the largest page whose 20-row offset fits signed 64-bit Postgrex encoding; quick-review IDs are bounded directly by signed 64-bit maximum. — Prevents arbitrary-size URL integers from reaching Postgrex while preserving the fixed 20-row pagination contract.
+- [Phase 80]: Execution authorization and Lifeline execution share one per-target timeout, while ordered stream terminals remain paired with their originating frozen targets. — Preserves exact target identity across timeout and outer-exit paths without deriving position from completion order.
+- [Phase 80]: LiveView accepts execution results only when their count and exact unique integer position set equal the ready preview positions. — Malformed post-effect results fail closed with interruption and Audit recovery before any result-map lookup.
+- [Phase 80]: Only exactly five-space repository test locations are eligible for outer ExUnit attribution; ten-space generated-host diagnostics are ignored. — This mechanically excludes nested output while preserving exact module, title, path, and line provenance.
+- [Phase 80]: Current inherited failures are accepted only when isolated calibration, full suite, and failed-test rerun reproduce byte-identical four-field tuples with matching status and printed totals. — Exact independent reproduction distinguishes current out-of-scope debt from a Phase 80 regression without weakening to counts.
 
 ### Blockers
 
-- Phase 79 validation approval awaits five human observation rows; all automated Phase 79 gates pass.
+- Phase 79 validation is approved by machine evidence; the advisory VoiceOver nightly may harden into a required lane after its quarantine period.

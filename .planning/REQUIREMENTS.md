@@ -36,7 +36,7 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 
 - [x] **FORM-01**: Form primitives (Input, Textarea, Select, Checkbox, Radio, Switch, Combobox/filter, FieldGroup, Label, Hint, Error) are built on `Phoenix.Component`/`to_form`, tokens-only.
 - [x] **FORM-02**: Every field has a programmatic label, error association (`aria-describedby`), visible focus, and validation that does not rely on color alone; disabled vs read-only are visually distinct.
-- [ ] **FORM-03**: Filter/search controls (jobs/forensics) are rebuilt on form primitives with URL-serialized filter state preserved.
+- [x] **FORM-03**: Filter/search controls (jobs/forensics) are rebuilt on form primitives with URL-serialized filter state preserved.
 - [x] **FORM-04**: Destructive-action forms (reason + confirm) use the shared danger pattern with required-reason validation and consequence/scope copy.
 
 ### Navigation & App Shell (NAV)
@@ -61,14 +61,14 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 ### Pages & Flows (PAGE)
 
 - [x] **PAGE-01**: Engine Overview migrated to shell + components, zero behavior regression.
-- [ ] **PAGE-02**: Jobs (list + detail, filter bar, big table) migrated; URL filter/search/bulk/deep-link behavior preserved.
+- [x] **PAGE-02**: Jobs (list + detail, filter bar, big table) migrated; URL filter/search/bulk/deep-link behavior preserved.
 - [ ] **PAGE-03**: Batches (list + detail, chain steps) migrated; Lifeline-routed recovery unchanged.
 - [ ] **PAGE-04**: Workflows (list + detail, DAG/blocked state) migrated.
 - [x] **PAGE-05**: Cron migrated; pause/resume/run preview-confirm flow unchanged.
 - [x] **PAGE-06**: Limiters migrated.
 - [ ] **PAGE-07**: Lifeline (incident triage, repair preview/reason/execute/audit) migrated with mutation flow unchanged.
 - [x] **PAGE-08**: Audit migrated; filters/retention controls unchanged.
-- [ ] **PAGE-09**: Forensics (bundle inspection, timeline) migrated.
+- [x] **PAGE-09**: Forensics (bundle inspection, timeline) migrated.
 - [x] **PAGE-10**: Cross-page consistency — identical concepts look and behave identically across all surfaces.
 
 ### Accessibility (A11Y)
@@ -146,9 +146,9 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 | GROUP-01..02 | Phase 78 | Pending |
 | FORM-04 | Phase 78 | Complete |
 | PAGE-01, PAGE-05, PAGE-06, PAGE-08 | Phase 79 | Pending |
-| PAGE-02 | Phase 80 | Pending |
-| PAGE-09 | Phase 80 | Pending |
-| FORM-03 | Phase 80 | Pending |
+| PAGE-02 | Phase 80 | Complete |
+| PAGE-09 | Phase 80 | Complete |
+| FORM-03 | Phase 80 | Complete |
 | PAGE-03, PAGE-04, PAGE-07 | Phase 81 | Pending |
 | PAGE-10 | Phases 79–81 | Complete |
 | A11Y-02, A11Y-03, A11Y-04 | Phase 82 | Pending |
