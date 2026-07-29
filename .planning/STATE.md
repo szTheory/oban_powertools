@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 82
 current_phase_name: Cross-Cutting A11y, Motion & Responsive Hardening Sweep
 status: executing
-stopped_at: Completed 82-08-PLAN.md
-last_updated: "2026-07-29T22:09:56.597Z"
+stopped_at: Completed 82-09-PLAN.md
+last_updated: "2026-07-29T22:42:11.812Z"
 last_activity: 2026-07-29
-last_activity_desc: Completed Phase 82 Plan 08 exhaustive mechanical and page policy coverage
+last_activity_desc: Completed Phase 82 Plan 09 connected production quality coverage
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 110
-  completed_plans: 107
-  percent: 97
+  completed_plans: 108
+  percent: 98
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 82 — Cross-Cutting A11y, Motion & Responsive Hardening Sweep
-Plan: 14 of 17
+Plan: 15 of 17
 Status: Ready to execute
-Last activity: 2026-07-29 — Completed Phase 82 Plan 08 exhaustive mechanical and page policy coverage
+Last activity: 2026-07-29 — Completed Phase 82 Plan 09 connected production quality coverage
 
 ## Performance Metrics
 
@@ -114,6 +114,7 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 08 exhaustive mechanical a
 | Phase 82 P15 | 7min | 1 tasks | 4 files |
 | Phase 82 P16 | 12min | 2 tasks | 94 files |
 | Phase 82 P08 | 40min | 2 tasks | 6 files |
+| Phase 82 P09 | 30min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -142,11 +143,11 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 08 exhaustive mechanical a
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T22:09:56.590Z
-**Stopped at:** Completed 82-08-PLAN.md
+**Last session:** 2026-07-29T22:42:11.796Z
+**Stopped at:** Completed 82-09-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed Plan 82-08's manifest-derived mechanical quality integration and generated page copy/order enforcement.
+- **Last Action:** Completed Plan 82-09's exact connected route matrix, four-theme production quality lane, and Wave 1-3 strict auditor reuse.
 - **Next Action:** Execute the next dependency-ready Phase 82 plan.
 
 ## Decisions
@@ -353,6 +354,8 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 08 exhaustive mechanical a
 - [Phase 82]: Accept only the 93 explained ARIA paths after exact-set, cross-viewport parity, confidentiality, and semantic review. — Preserves the 99-story and 297-path contract without unexplained drift or story expansion.
 - [Phase 82]: Runtime showcase slices derive target IDs only from generated manifest order.
 - [Phase 82]: Explicit-root reduced motion is independent of OS media preference.
+- [Phase 82]: Connected route contracts contain only fixture setup and safe traversal while authority-sensitive mutations remain in their owning migration suites.
+- [Phase 82]: Keep the connected production lane at exactly nine manifest-equal route cases per project and run theme/media matrices inside each case.
 
 ### Blockers
 
