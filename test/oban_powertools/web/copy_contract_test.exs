@@ -277,6 +277,47 @@ defmodule ObanPowertools.Web.CopyContractTest do
              "Recorded operator actions will appear here when evidence is available. Review another operator page, then return after an action is recorded."
   end
 
+  test "D-14/D-15/D-17 Jobs and Forensics state only bounded operator truth" do
+    presenter = source!("control_plane_presenter.ex")
+    jobs = source!("jobs_live.ex")
+    forensics = source!("forensics_live.ex")
+
+    assert presenter =~
+             ~s(do: "Cancellation requested for job \#{job_id}. Audit evidence recorded.")
+
+    assert presenter =~
+             ~s(do: "Discard requested for job \#{job_id}. Audit evidence recorded.")
+
+    refute presenter =~
+             ~s(do: "Job \#{job_id} cancelled. Audit evidence recorded.")
+
+    refute presenter =~
+             ~s(do: "Job \#{job_id} discarded. Audit evidence recorded.")
+
+    assert jobs =~
+             ~s("\#{action} requests were recorded with mixed results. Review skipped and failed jobs before trying again.")
+
+    assert jobs =~
+             ~s("\#{action} results recorded: \#{receipt.success} job changes recorded, \#{receipt.skipped + preview.receipt.excluded} skipped, and \#{receipt.failed} failed.")
+
+    assert jobs =~
+             "Review the Audit log for recorded actions before creating a fresh preview."
+
+    refute jobs =~ "Review the Audit log for completed actions"
+    refute jobs =~ "jobs started."
+    refute jobs =~ "finished with mixed results"
+    refute jobs =~ "succeeded,"
+
+    assert forensics =~ "<strong>Event log unavailable.</strong>"
+
+    assert forensics =~
+             "Choose another evidence scope to continue."
+
+    refute forensics =~ "<strong>Event history unavailable.</strong>"
+    refute forensics =~ "{:unavailable, safe_reason}"
+    refute forensics =~ "{:error, safe_reason}"
+  end
+
   defp audit_source(contract, path, source) do
     findings =
       source
