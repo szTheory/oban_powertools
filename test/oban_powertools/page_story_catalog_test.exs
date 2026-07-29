@@ -454,6 +454,37 @@ defmodule ObanPowertools.PageStoryCatalogTest do
         refute String.contains?(String.downcase(serialized), forbidden)
       end
     end
+
+    workflow_stories = Map.new(stories, &{&1.id, &1})
+    blocked = workflow_stories["page-workflows-selected-blocked-step"].fixtures
+    recovery = workflow_stories["page-workflows-callback-recovery-posture"].fixtures
+    refusal = workflow_stories["page-workflows-refusal-lifeline-handoff"].fixtures
+
+    assert blocked.workflow.name == "Nightly reconciliation workflow"
+    assert Enum.map(blocked.steps, & &1.step_name) == ~w[ingest normalize publish notify]
+    assert blocked.selected_step.step_name == "publish"
+    assert blocked.selected_step.blocker_codes == ["waiting_on_retryable_dependency"]
+
+    assert blocked.selected_step_story.blocker_summaries == [
+             "A retryable dependency must complete before this step can run."
+           ]
+
+    assert recovery.workflow_story.callback_posture == %{
+             total: 3,
+             pending: 1,
+             claimed: 0,
+             failed: 1,
+             delivered: 1,
+             latest_status: "failed",
+             latest_error: nil
+           }
+
+    assert recovery.workflow_story.latest_recovery_session.id == "repair-session-redacted"
+    assert refusal.workflow_story.rejection_summary.code == "dependency_not_ready"
+
+    assert refusal.selected_step_story.executable_actions == [
+             %{id: "retry_step", label: "Retry blocked step", target_type: "workflow_step"}
+           ]
   end
 
   defp stories! do

@@ -755,8 +755,44 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
       assert has_element?(view, "#forensics-events")
       assert active_page_overlay_count(view) == 0
 
+      render_hook(view, "activate-page-story", %{
+        "id" => "page-workflows-selected-blocked-step"
+      })
+
+      assert_active_page_story(
+        view,
+        "page-workflows-selected-blocked-step",
+        "#workflows-page"
+      )
+
+      assert has_element?(view, "#workflow-steps")
+      assert has_element?(view, "#selected-step-title", "publish")
+      assert has_element?(view, "#selected-step-blockers", "Why blocked?")
+      assert has_element?(view, "#selected-step-blockers", "retryable dependency")
+      assert active_page_overlay_count(view) == 0
+
+      render_hook(view, "activate-page-story", %{
+        "id" => "page-workflows-refusal-lifeline-handoff"
+      })
+
+      assert has_element?(view, "[aria-label='Workflow refusal']", "Needs Review")
+
+      assert has_element?(
+               view,
+               "a[aria-label^='Review recovery in Lifeline:']",
+               "Retry blocked step"
+             )
+
+      assert active_page_overlay_count(view) == 0
+
       render_hook(view, "activate-page-story", %{"id" => "missing-page-story"})
-      assert_active_page_story(view, "page-forensics-workflow-complete", "#forensics-page")
+
+      assert_active_page_story(
+        view,
+        "page-workflows-refusal-lifeline-handoff",
+        "#workflows-page"
+      )
+
       assert active_page_overlay_count(view) == 0
     end
 

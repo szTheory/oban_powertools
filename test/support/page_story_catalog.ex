@@ -2345,7 +2345,8 @@ defmodule ObanPowertools.PageStoryCatalog do
         true -> workflow_rows(1)
       end
 
-    %{
+    base = %{
+      oban_dashboard_path: "/oban",
       workflows: rows,
       workflow_scan_complete?: not String.contains?(id, "many"),
       workflow_unavailable?: String.contains?(id, "unavailable"),
@@ -2359,6 +2360,165 @@ defmodule ObanPowertools.PageStoryCatalog do
       step_stories: %{},
       selected_step: nil,
       selected_step_story: nil
+    }
+
+    if phase81_workflow_detail_story?(id) do
+      Map.merge(base, phase81_workflow_detail_fixtures(id))
+    else
+      base
+    end
+  end
+
+  defp phase81_workflow_detail_story?(id) do
+    not Enum.any?(
+      ["empty-chooser", "one-running", "many-deep-bounded", "unavailable-restricted"],
+      &String.contains?(id, &1)
+    )
+  end
+
+  defp phase81_workflow_detail_fixtures(id) do
+    blocked? =
+      Enum.any?(
+        ["blocked", "dependency-reasons", "refusal-lifeline-handoff"],
+        &String.contains?(id, &1)
+      )
+
+    complete? = String.contains?(id, "all-complete")
+    adversarial? = String.contains?(id, "adversarial-redacted")
+    refusal? = String.contains?(id, "refusal-lifeline-handoff")
+    callback_recovery? = String.contains?(id, "callback-recovery-posture")
+
+    workflow = %{
+      id: "workflow-001",
+      name:
+        if(adversarial?,
+          do: "לקוחות مرحبا reconciliation <script>alert('workflow')</script>",
+          else: "Nightly reconciliation workflow"
+        ),
+      state: if(complete?, do: :completed, else: :running),
+      step_count: 4,
+      runnable_step_count: if(complete?, do: 0, else: if(blocked?, do: 1, else: 2))
+    }
+
+    steps = phase81_workflow_steps(blocked?, complete?, adversarial?)
+    selected_step = if(blocked?, do: Enum.at(steps, 2), else: List.last(steps))
+    step_stories = Map.new(steps, &{&1.id, phase81_workflow_step_story(&1, refusal?)})
+    rejection_summary = if(refusal?, do: phase81_workflow_rejection(), else: nil)
+
+    workflow_story = %{
+      diagnosis:
+        cond do
+          complete? -> :completed
+          blocked? -> :waiting_on_dependencies
+          true -> :ready
+        end,
+      executable_actions: if(refusal?, do: [phase81_workflow_action()], else: []),
+      semantics: %{label: "v2", mode: "current_contract"},
+      latest_rejection: nil,
+      rejection_summary: rejection_summary,
+      callback_posture: %{
+        total: if(callback_recovery?, do: 3, else: 1),
+        pending: if(callback_recovery?, do: 1, else: 0),
+        claimed: 0,
+        failed: if(callback_recovery?, do: 1, else: 0),
+        delivered: 1,
+        latest_status: if(callback_recovery?, do: "failed", else: "delivered"),
+        latest_error: nil
+      },
+      latest_recovery_session:
+        if(callback_recovery?, do: %{id: "repair-session-redacted"}, else: nil)
+    }
+
+    %{
+      workflows: [workflow],
+      workflow: workflow,
+      workflow_story: workflow_story,
+      steps: steps,
+      step_evidence_complete?: not String.contains?(id, "dependency-reasons"),
+      results: %{},
+      result_evidence_complete?: not String.contains?(id, "result-unavailable"),
+      diagnostic_evidence_complete?: not String.contains?(id, "dependency-reasons"),
+      step_stories: step_stories,
+      selected_step: selected_step,
+      selected_step_story: Map.fetch!(step_stories, selected_step.id)
+    }
+  end
+
+  defp phase81_workflow_steps(blocked?, complete?, adversarial?) do
+    names =
+      if adversarial? do
+        ["לקבל ingest", "normalize مرحبا", "publish <script>", "notify • final"]
+      else
+        ["ingest", "normalize", "publish", "notify"]
+      end
+
+    names
+    |> Enum.with_index(1)
+    |> Enum.map(fn {name, position} ->
+      selected_blocker? = blocked? and position == 3
+
+      %{
+        id: "workflow-step-#{position}",
+        step_name: name,
+        worker: "ObanPowertools.Workers.Step#{position}",
+        state:
+          cond do
+            complete? -> :completed
+            selected_blocker? -> :pending
+            position < 3 -> :completed
+            true -> :available
+          end,
+        blocker_codes: if(selected_blocker?, do: ["waiting_on_retryable_dependency"], else: []),
+        dependency_snapshot: %{
+          "dependencies" =>
+            if(position == 1,
+              do: [],
+              else: [
+                %{
+                  "step_name" => Enum.at(names, position - 2),
+                  "state" => if(position <= 3, do: "completed", else: "pending"),
+                  "policy" => "cancel"
+                }
+              ]
+            )
+        },
+        last_transition_at: @observed_datetime,
+        job_id: if(position == 3, do: 8_103, else: nil)
+      }
+    end)
+  end
+
+  defp phase81_workflow_step_story(step, refusal?) do
+    blocked? = step.blocker_codes != []
+    rejection_summary = if(blocked? and refusal?, do: phase81_workflow_rejection(), else: nil)
+
+    %{
+      diagnosis: if(blocked?, do: :waiting_on_dependencies, else: :ready),
+      blocker_codes: step.blocker_codes,
+      blocker_summaries:
+        if(blocked?,
+          do: ["A retryable dependency must complete before this step can run."],
+          else: []
+        ),
+      executable_actions: if(blocked? and refusal?, do: [phase81_workflow_action()], else: []),
+      latest_rejection: nil,
+      rejection_summary: rejection_summary
+    }
+  end
+
+  defp phase81_workflow_rejection do
+    %{
+      code: "dependency_not_ready",
+      message: "Current dependency evidence does not permit a retry.",
+      legal_next_steps: ["retry"]
+    }
+  end
+
+  defp phase81_workflow_action do
+    %{
+      id: "retry_step",
+      label: "Retry blocked step",
+      target_type: "workflow_step"
     }
   end
 
