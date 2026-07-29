@@ -94,6 +94,7 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 - ✓ v2.0 form component layer — accessible `Phoenix.Component`/`to_form` primitives with labels, hints, errors, native choices, switch state text, disabled/read-only contracts, deterministic form showcase stories, browser behavior/VRT/a11y evidence, clean code review, and verified security register (`FORM-01`, `FORM-02`, form-set `COMP-*`, component-scoped `A11Y-02`) — v2.0 Phase 75
 - ✓ v2.0 navigation app shell — responsive Powertools shell with closed nine-surface native nav, active-route breadcrumbs, skip-to-content, actor/context display, root-scoped theme controls, shell showcase stories, browser behavior proof, VRT/a11y evidence, and clean code review (`NAV-01..04`, shell-scoped `A11Y-02`, `COPY-*`) — v2.0 Phase 76
 - ✓ v2.0 data-display and operator patterns — unified status taxonomy plus semantic responsive tables, data states, progress/metric/timeline surfaces, confidentiality-safe args/code/redaction rendering, deterministic showcase stories, package-boundary-safe optional catalog loading, and focused VRT/a11y evidence (`DATA-01..04`, data-display-scoped `A11Y-02`) — v2.0 Phase 77
+- ✓ v2.0 Jobs and Forensics page migration — production pages rebuilt on shared filter, table, detail, confirmation, and timeline patterns with canonical URL state, bounded/redaction-safe evidence, signed-int64-safe Jobs deep links, deterministic page fixtures, and exact browser/VRT/a11y validation (`PAGE-02`, `PAGE-09`, `FORM-03`, `DATA-01..04`, `PAGE-10`, `A11Y-01..04`) — v2.0 Phase 80
 
 ### Active
 
@@ -163,7 +164,7 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 `1.0.0` shipped and published to hex.pm (v1.11 Stability & 1.0 Release Prep). The library is functionally complete for its intended *feature* scope: typed worker contracts, durable idempotency, limiter/cron control planes, durable workflow DAGs + signaling, batches/chains with callback outbox, a native `/ops/jobs` operator shell (browse/detail/retry/cancel/discard single+bulk through the Lifeline preview→reason→execute→audit pipeline, plus the typed `ObanPowertools.Operator` API), `mix oban_powertools.doctor` / `.limiter.explain` / `.simulate`, opt-in telemetry, worker lifecycle hooks, output recording, and at-rest redaction.
 
-**v2.0 Powertools Identity (active).** A coherence/quality milestone, not new operator capability. Phases 70–77 are complete: brand book, isolated token/theme foundation, stress fixtures/showcase skeleton, visual-regression/a11y harness, token-driven primitive and form component layers, the responsive app shell, and shared data-display/operator patterns. The remaining phases build operator meta-component groups, migrate the nine operator pages, and finish the global accessibility/motion/copy/docs sweep.
+**v2.0 Powertools Identity (active).** A coherence/quality milestone, not new operator capability. Phases 70–80 are complete: brand book, isolated token/theme foundation, stress fixtures/showcase skeleton, visual-regression/a11y harness, token-driven primitive and form component layers, the responsive app shell, shared data-display/operator patterns and meta-component groups, plus the Overview/Cron/Limiters/Audit/Jobs/Forensics page migrations. Phase 81 next migrates Batches, Workflows, and Lifeline; the remaining phases finish the global accessibility/motion/copy/docs sweep and milestone audit.
 
 (Earlier: `v1.9` shipped batches & composition; `v1.7` worker lifecycle & safety; `v1.4` operator forensics and SRE runbooks; `v1.3` unified the native control plane and explainability story.)
 
@@ -249,4 +250,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-07-13 — Phase 77 completed; data-display/operator patterns validated (DATA-01..04, data-display-scoped A11Y-02)*
+*Last updated: 2026-07-29 — Phase 80 completed; Jobs/Forensics migration and signed-int64-safe Jobs deep links validated*
