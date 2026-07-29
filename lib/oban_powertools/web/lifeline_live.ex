@@ -334,6 +334,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <Primitives.button
               :if={@current_view == "active"}
               aria-label="Preview remediation"
+              aria-controls="lifeline-repair-dialog"
               phx-click="preview"
               phx-value-row-id={row.id}
               disabled={not row.preview_available?}

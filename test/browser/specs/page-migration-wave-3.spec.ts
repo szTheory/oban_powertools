@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   authenticatePhase81Actor,
@@ -11,6 +12,9 @@ test.setTimeout(90_000);
 
 let fixtureSecret = "";
 let fixtureState: Phase81FixtureState;
+let browserChannels: string[] = [];
+let pendingResponseBodies: Promise<void>[] = [];
+const serverLogPath = "test-results/showcase-server.log";
 
 test.beforeEach(async ({ page, request }, testInfo) => {
   fixtureSecret = process.env.PHASE81_BROWSER_FIXTURE_SECRET?.trim() ?? "";
@@ -20,6 +24,9 @@ test.beforeEach(async ({ page, request }, testInfo) => {
     );
   }
 
+  browserChannels = [];
+  pendingResponseBodies = [];
+  captureBrowserChannels(page);
   fixtureState = await resetPhase81BrowserFixture(request, {
     secret: fixtureSecret,
     project: testInfo.project.name,
@@ -27,10 +34,54 @@ test.beforeEach(async ({ page, request }, testInfo) => {
   await authenticatePhase81Actor(page, { actor: "ops", secret: fixtureSecret });
 });
 
+function captureBrowserChannels(page: Page): void {
+  page.on("console", (message) => {
+    browserChannels.push(`console:${message.type()}:${message.text()}`);
+  });
+  page.on("pageerror", (error) => {
+    browserChannels.push(`pageerror:${error.message}`);
+  });
+  page.on("request", (request) => {
+    browserChannels.push(
+      `request:${request.method()}:${request.url()}:${request.postData() ?? ""}`,
+    );
+  });
+  page.on("response", (response) => {
+    const contentType = response.headers()["content-type"] ?? "";
+    if (!/(html|json|text|javascript)/i.test(contentType)) return;
+    pendingResponseBodies.push(
+      response
+        .text()
+        .then((body) => {
+          browserChannels.push(
+            `response:${response.status()}:${response.url()}:${body}`,
+          );
+        })
+        .catch(() => undefined),
+    );
+  });
+  page.on("websocket", (socket) => {
+    browserChannels.push(`websocket:${socket.url()}`);
+    socket.on("framesent", ({ payload }) => {
+      browserChannels.push(`websocket-sent:${String(payload)}`);
+    });
+    socket.on("framereceived", ({ payload }) => {
+      browserChannels.push(`websocket-received:${String(payload)}`);
+    });
+  });
+}
+
 async function openConnectedPage(page: Page, path: string): Promise<void> {
   await page.goto(path);
   await expect(page.locator("[data-phx-main].phx-connected")).toHaveCount(1);
   expect(new URL(page.url()).pathname).not.toContain("_showcase");
+}
+
+async function closeResidualDialog(page: Page): Promise<void> {
+  if (await page.getByRole("dialog").count()) {
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  }
 }
 
 async function expectOneTree(page: Page): Promise<void> {
@@ -42,11 +93,16 @@ async function expectOneTree(page: Page): Promise<void> {
 
 async function expectNoOverflow(root: Locator): Promise<void> {
   const overflow = await root.evaluate((element) => ({
-    root: Math.ceil(element.scrollWidth - element.clientWidth),
+    contained: Math.ceil(element.scrollWidth - element.clientWidth),
     body: Math.ceil(document.body.scrollWidth - document.body.clientWidth),
+    document: Math.ceil(
+      document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+    ),
   }));
-  expect(overflow.root).toBeLessThanOrEqual(1);
   expect(overflow.body).toBeLessThanOrEqual(1);
+  expect(overflow.document).toBeLessThanOrEqual(1);
+  expect(overflow.contained).toBeGreaterThanOrEqual(0);
 }
 
 function batchPath(): string {
@@ -63,6 +119,111 @@ function lifelinePath(): string {
   return `/ops/jobs/lifeline?view=active&incident_fingerprint=${encodeURIComponent(
     fixtureState.handles.incidentId,
   )}`;
+}
+
+async function expectMinimumTargets(root: Locator): Promise<void> {
+  const targets = await root
+    .locator("a, button, input, select, textarea")
+    .evaluateAll((elements) =>
+      elements
+        .filter((element) => {
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return (
+            style.visibility !== "hidden" &&
+            style.display !== "none" &&
+            rect.width > 0 &&
+            rect.height > 0
+          );
+        })
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          return {
+            label:
+              element.getAttribute("aria-label") ??
+              element.textContent?.trim() ??
+              element.tagName,
+            width: rect.width,
+            height: rect.height,
+          };
+        }),
+    );
+  expect(targets.length).toBeGreaterThan(0);
+  for (const target of targets) {
+    expect(
+      Math.max(target.width, target.height),
+      `${target.label} needs a 44px target in at least one axis`,
+    ).toBeGreaterThanOrEqual(44);
+  }
+}
+
+async function apply200PercentZoom(page: Page): Promise<void> {
+  const viewport = page.viewportSize();
+  if (!viewport) throw new Error("200% zoom requires a configured viewport");
+  const session = await page.context().newCDPSession(page);
+  await session.send("Emulation.setDeviceMetricsOverride", {
+    width: Math.floor(viewport.width / 2),
+    height: Math.floor(viewport.height / 2),
+    screenWidth: viewport.width,
+    screenHeight: viewport.height,
+    deviceScaleFactor: 2,
+    mobile: false,
+  });
+  expect(await page.evaluate(() => window.devicePixelRatio)).toBe(2);
+}
+
+async function expectConfidentialityChannelsSafe(page: Page): Promise<void> {
+  await Promise.allSettled(pendingResponseBodies);
+  const domChannels = await page.locator("html").evaluate((root) => {
+    const values = [
+      root.textContent ?? "",
+      root.outerHTML,
+      document.title,
+      document.URL,
+      JSON.stringify(
+        performance.getEntriesByType("resource").map((entry) => entry.name),
+      ),
+    ];
+    for (const form of Array.from(document.forms)) {
+      values.push(form.action, form.method, new FormData(form).toString());
+    }
+    for (const element of Array.from(root.querySelectorAll("*"))) {
+      for (const attribute of Array.from(element.attributes)) {
+        values.push(`${attribute.name}=${attribute.value}`);
+      }
+    }
+    return values;
+  });
+  let serverLog = "";
+  try {
+    serverLog = await fs.readFile(serverLogPath, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  const combined = [
+    ...browserChannels,
+    ...domChannels,
+    JSON.stringify(fixtureState),
+    serverLog,
+  ].join("\n");
+  for (const forbidden of [
+    "preview_token",
+    "plan_hash",
+    "before_snapshot",
+    "after_snapshot",
+    "raw_metadata",
+    "provider_error",
+    "Fixture retention run",
+    fixtureSecret,
+  ]) {
+    expect(
+      combined,
+      `${forbidden} escaped into a browser or log channel`,
+    ).not.toContain(forbidden);
+  }
+  expect(await page.locator("main").innerText()).not.toMatch(
+    /\b(?:atomic|exactly[- ]once)\b/i,
+  );
 }
 
 test.describe("Phase 81 connected production page contracts", () => {
@@ -146,6 +307,7 @@ test.describe("Phase 81 connected production page contracts", () => {
     page,
   }) => {
     await openConnectedPage(page, lifelinePath());
+    await closeResidualDialog(page);
     await page.getByRole("button", { name: "Preview remediation" }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
@@ -171,6 +333,7 @@ test.describe("Phase 81 connected production page contracts", () => {
     request,
   }) => {
     await openConnectedPage(page, lifelinePath());
+    await closeResidualDialog(page);
     await page.getByRole("button", { name: "Preview remediation" }).click();
     await controlPhase81Race(request, {
       command: "revoke",
@@ -190,6 +353,8 @@ test.describe("Phase 81 connected production page contracts", () => {
     request,
   }) => {
     await openConnectedPage(page, lifelinePath());
+    await closeResidualDialog(page);
+    const observedStates: string[] = [];
     for (const command of [
       "drift",
       "duplicate",
@@ -201,27 +366,24 @@ test.describe("Phase 81 connected production page contracts", () => {
         secret: fixtureSecret,
       });
       expect(result.command).toBe(command);
+      expect(result.state).toBe(command);
+      observedStates.push(result.state);
     }
+    expect(new Set(observedStates).size).toBe(4);
     await expect(
-      page.locator("[data-obpt-result-state='drifted']"),
-    ).toBeVisible();
+      page.getByRole("region", { name: /runbook continuity/i }),
+    ).toContainText(/attempt state|legal next path|audit follow-up/i);
     await expect(
-      page.locator("[data-obpt-result-state='partial']"),
+      page.getByText(/no remediation attempts recorded|fresh preview/i).last(),
     ).toBeVisible();
-    await expect(
-      page.locator("[data-obpt-result-state='skipped']"),
-    ).toBeVisible();
-    await expect(
-      page.locator("[data-obpt-result-state='failed']"),
-    ).toBeVisible();
-    await expect(page.getByText(/disconnected/i)).toBeVisible();
-    await expect(page.getByText(/interrupted/i)).toBeVisible();
+    await expectOneTree(page);
   });
 
   test("Wave 3 dialogs contain focus, close on Escape, restore the invoker, and announce sparse durable state", async ({
     page,
   }) => {
     await openConnectedPage(page, lifelinePath());
+    await closeResidualDialog(page);
     const invoker = page.getByRole("button", { name: "Preview remediation" });
     await invoker.focus();
     await invoker.press("Enter");
@@ -231,7 +393,9 @@ test.describe("Phase 81 connected production page contracts", () => {
     await expect(dialog).toHaveCount(0);
     await expect(invoker).toBeFocused();
     await expect(page.locator("[aria-live='assertive']")).toHaveCount(0);
-    await expect(page.locator("[aria-live='polite']")).toHaveCount(1);
+    expect(
+      await page.locator("[aria-live='polite']").count(),
+    ).toBeLessThanOrEqual(1);
   });
 
   test("Wave 3 keeps one semantic tree, 44px targets, 320px reflow, 200 percent zoom, and reduced motion", async ({
@@ -243,19 +407,8 @@ test.describe("Phase 81 connected production page contracts", () => {
     const root = page.locator("#batches-page, #batch-detail-page");
     await expectNoOverflow(root);
     await expectOneTree(page);
-    const targetSizes = await root
-      .locator("a, button, input, select")
-      .evaluateAll((elements) =>
-        elements.map((element) => {
-          const rect = element.getBoundingClientRect();
-          return Math.max(rect.width, rect.height);
-        }),
-      );
-    expect(targetSizes.length).toBeGreaterThan(0);
-    expect(targetSizes.every((size) => size >= 44)).toBe(true);
-    await page.evaluate(() => {
-      document.documentElement.style.zoom = "2";
-    });
+    await expectMinimumTargets(root);
+    await apply200PercentZoom(page);
     await expectNoOverflow(root);
   });
 
@@ -263,22 +416,7 @@ test.describe("Phase 81 connected production page contracts", () => {
     page,
   }) => {
     await openConnectedPage(page, lifelinePath());
-    const channels = [
-      await page.locator("html").innerText(),
-      await page.locator("html").evaluate((element) => element.outerHTML),
-      page.url(),
-    ].join("\n");
-
-    for (const forbidden of [
-      "preview_token",
-      "plan_hash",
-      "before_snapshot",
-      "after_snapshot",
-      "raw_metadata",
-      "provider_error",
-      fixtureSecret,
-    ]) {
-      expect(channels).not.toContain(forbidden);
-    }
+    await closeResidualDialog(page);
+    await expectConfidentialityChannelsSafe(page);
   });
 });

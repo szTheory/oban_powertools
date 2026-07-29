@@ -4104,6 +4104,10 @@
   scroll-margin-block: var(--obpt-space-5);
 }
 
+.obpt-root :is(.obpt-batches-page, .obpt-workflows-page, .obpt-lifeline-page) :where(a, button, input, select, textarea, summary) {
+  min-block-size: calc(var(--obpt-space-6) + var(--obpt-space-3));
+}
+
 .obpt-root .obpt-workflows-page__diagnosis,
 .obpt-root .obpt-workflows-page__selected-step,
 .obpt-root .obpt-workflows-page__handoff,
