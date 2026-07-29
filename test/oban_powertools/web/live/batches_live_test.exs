@@ -34,13 +34,13 @@ defmodule ObanPowertools.Web.BatchesLiveTest do
     assert html =~ "Batches"
 
     assert html =~
-             "Inspect batch and chain progress, failed members, blocked states, and Lifeline recovery paths."
+             "Review batch and chain progress, understand blocked work, and follow Lifeline-routed recovery with recorded evidence."
 
     assert html =~ "Total Batches"
     assert html =~ "Needs Attention"
     assert html =~ "Executing"
     assert html =~ "Completed"
-    assert html =~ "No batches match this view"
+    assert html =~ "No batches available"
     assert html =~ "insert_failed"
     assert html =~ "callback_failed"
     assert html =~ "Permission: read-only"
@@ -93,8 +93,8 @@ defmodule ObanPowertools.Web.BatchesLiveTest do
     assert html =~ "Chain Context"
     assert html =~ "Open Generic Job Inspection in Oban Web bridge"
 
-    assert html =~ "No stuck or dead callbacks are blocking this batch" or
-             html =~ "Preview Callback Retry"
+    assert html =~ "No blocked callbacks recorded" or
+             html =~ "Preview callback retry"
   end
 
   test "detail excludes successful members from the failed-member window", %{conn: conn} do
@@ -112,7 +112,7 @@ defmodule ObanPowertools.Web.BatchesLiveTest do
     conn = actor_conn(conn, [:view_batch_detail])
     {:ok, _view, html} = live(conn, "/ops/jobs/batches/#{batch.id}")
 
-    assert html =~ "No failed members"
+    assert html =~ "No failed members recorded"
     refute html =~ "Select failed job"
   end
 
@@ -135,7 +135,7 @@ defmodule ObanPowertools.Web.BatchesLiveTest do
 
     {:ok, _view, html} = live(conn, "/ops/jobs/batches/#{batch.id}")
 
-    assert html =~ "Retry Failed Jobs"
+    assert html =~ "Failed Members"
     assert html =~ ":retry_batch_jobs" or html =~ "retry_batch_jobs"
     assert html =~ "Permission: read-only"
   end
@@ -185,12 +185,15 @@ defmodule ObanPowertools.Web.BatchesLiveTest do
       |> element("button[phx-click=\"preview_bulk_retry\"]")
       |> render_click()
 
-    assert html =~ "Retry Failed Jobs"
-    assert html =~ "Reason (required)"
+    assert html =~ "Preview failed job retries"
+    assert html =~ "Reason"
 
     view
     |> form("form[phx-submit=\"execute_bulk_retry\"]", %{
-      "reason" => "upstream outage resolved, safe to replay failed rows"
+      "batch_retry" => %{
+        "reason" => "upstream outage resolved, safe to replay failed rows",
+        "confirmation_count" => "1"
+      }
     })
     |> render_submit()
 
@@ -207,8 +210,8 @@ defmodule ObanPowertools.Web.BatchesLiveTest do
     {:ok, _view, html} = live(conn, "/ops/jobs/batches/#{batch.id}")
 
     assert html =~ callback.event
-    assert html =~ "Preview Callback Retry"
-    assert html =~ ":retry_callback" or html =~ "retry_callback"
+    assert html =~ "Preview callback retry"
+    assert html =~ "do not have permission" or html =~ "permission"
     assert html =~ "Permission: read-only"
   end
 
@@ -234,9 +237,9 @@ defmodule ObanPowertools.Web.BatchesLiveTest do
       |> element("button[phx-click=\"preview_callback_retry\"][phx-value-id=\"#{callback.id}\"]")
       |> render_click()
 
-    assert html =~ "Preview Callback Retry"
-    assert html =~ "callback_retry"
-    assert html =~ "Reason (required)"
+    assert html =~ "Preview callback retry"
+    assert html =~ "Lifeline retries this callback after reauthorization"
+    assert html =~ "Reason"
 
     callback
     |> Callback.changeset(%{last_error: "state drifted"})
@@ -245,7 +248,9 @@ defmodule ObanPowertools.Web.BatchesLiveTest do
     html =
       view
       |> form("form[phx-submit=\"execute_callback_retry\"]", %{
-        "reason" => "upstream outage resolved, safe to retry callback"
+        "batch_retry" => %{
+          "reason" => "upstream outage resolved, safe to retry callback"
+        }
       })
       |> render_submit()
 
@@ -273,6 +278,12 @@ defmodule ObanPowertools.Web.BatchesLiveTest do
 
     refute source =~ "defp payload_copy"
     refute source =~ "inspect(payload)"
+    refute source =~ "<table"
+    refute source =~ ~s(role="dialog")
+    refute source =~ "status_badge_class"
+    refute source =~ "bg-white"
+    assert source =~ "DataDisplay.data_table"
+    assert source =~ "OperatorPatterns.confirm_action_dialog"
   end
 
   defp actor_conn(conn, permissions) do

@@ -71,7 +71,7 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     {:ok, view, html} = live(conn, "/ops/jobs/lifeline")
 
     assert html =~ "Needs Review"
-    assert html =~ "Preview Native Remediation"
+    assert html =~ "Preview remediation"
     assert html =~ "Archive Activity"
     assert html =~ "Archive and prune visibility is read-only here."
     assert html =~ "No remediation attempts recorded yet"
@@ -319,6 +319,20 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
 
     assert html =~ "preview_drifted"
     assert has_element?(view, "button[phx-click='execute'][disabled]")
+
+    assert has_element?(
+             view,
+             "#lifeline-create-new-preview[phx-click='create_new_preview']",
+             "Create new preview"
+           )
+
+    refreshed =
+      view
+      |> element("#lifeline-create-new-preview")
+      |> render_click()
+
+    assert refreshed =~ "Preview Ready"
+    refute refreshed =~ "preview_drifted"
   end
 
   test "opens directly into a workflow-directed handoff and uses the canonical ready preview status",
@@ -834,6 +848,8 @@ defmodule ObanPowertools.Web.LifelineLiveTest do
     refute source =~ "_bounded_archive_window"
 
     refute source =~ "Preview Token"
+    assert source =~ ~s(phx-click="create_new_preview")
+    assert source =~ "state in [:drifted, :expired, :consumed]"
     refute source =~ "defp state_copy(snapshot) when is_map(snapshot), do: inspect(snapshot)"
     refute source =~ "defp error_message(reason), do: inspect(reason)"
   end

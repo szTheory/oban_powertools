@@ -407,7 +407,7 @@ test.describe("Phase 81 connected production page contracts", () => {
     ).toHaveCount(0);
     await expect(
       page.getByRole("dialog").getByRole("button", {
-        name: /cancel remediation/i,
+        name: /keep current state/i,
       }),
     ).toBeVisible();
     await expectDialogFocusContained(page);
@@ -455,7 +455,7 @@ test.describe("Phase 81 connected production page contracts", () => {
     ).toHaveCount(0);
     await expect(
       page.getByRole("dialog").getByRole("button", {
-        name: /cancel remediation/i,
+        name: /keep current state/i,
       }),
     ).toBeVisible();
     await expectDialogFocusContained(page);
@@ -506,7 +506,7 @@ test.describe("Phase 81 connected production page contracts", () => {
     ).toHaveCount(0);
     await expect(
       page.getByRole("dialog").getByRole("button", {
-        name: /cancel remediation/i,
+        name: /keep current state/i,
       }),
     ).toBeVisible();
     await expectDialogFocusContained(page);

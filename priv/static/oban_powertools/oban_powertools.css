@@ -4296,3 +4296,74 @@
 .obpt-root[data-obpt-motion="reduce"] :is(.obpt-batches-page, .obpt-workflows-page, .obpt-lifeline-page) :is(.obpt-link, .obpt-button) {
   transition-duration: var(--obpt-motion-duration-instant);
 }
+
+.obpt-root :is(.obpt-batches-page__header, .obpt-batches-page__header-actions, .obpt-batches-page__section-header, .obpt-batches-page__statuses, .obpt-batches-page__pagination) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--obpt-space-3);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.obpt-root :is(.obpt-batches-page__header, .obpt-batches-page__section-header) {
+  justify-content: space-between;
+  align-items: start;
+}
+
+.obpt-root .obpt-batches-page__header > div:first-child,
+.obpt-root .obpt-batches-page__filters,
+.obpt-root .obpt-batches-page .obpt-data-table__cell-value {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--obpt-space-3);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.obpt-root .obpt-batches-page__header :where(h1, p),
+.obpt-root .obpt-batches-page__section-header :where(h2, p) {
+  margin: 0;
+}
+
+.obpt-root :is(.obpt-batches-page__metrics, .obpt-batches-page__summary) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--obpt-space-4);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.obpt-root .obpt-batches-page__notice {
+  margin: 0;
+  color: var(--obpt-color-text);
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 48rem) {
+  .obpt-root :is(.obpt-batches-page__metrics, .obpt-batches-page__summary, .obpt-batches-page__filters) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 64rem) {
+  .obpt-root :is(.obpt-batches-page__metrics, .obpt-batches-page__filters) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 24rem) {
+  .obpt-root :is(.obpt-batches-page__metrics, .obpt-batches-page__summary, .obpt-batches-page__filters) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .obpt-root :is(.obpt-batches-page__header, .obpt-batches-page__header-actions, .obpt-batches-page__section-header, .obpt-batches-page__statuses, .obpt-batches-page__pagination) {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .obpt-root :is(.obpt-batches-page__header-actions, .obpt-batches-page__statuses, .obpt-batches-page__pagination) > * {
+    width: 100%;
+    max-width: 100%;
+  }
+}

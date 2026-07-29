@@ -842,7 +842,7 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
           assert has_element?(view, "#{root_selector} table")
         end
 
-        if story.page == :batches and story.fixtures.batches != [],
+        if story.page == :batches and Map.get(story.fixtures, :batches, []) != [],
           do: assert(has_element?(view, "#{root_selector} table"))
 
         if story.page == :workflows and story.fixtures.workflows != [],

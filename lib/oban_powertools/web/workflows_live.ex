@@ -100,8 +100,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         <header class="obpt-page__header">
           <h1>Workflows</h1>
           <p>
-            Diagnose workflow dependencies and current state without treating visual order as causality.
-            {ControlPlanePresenter.native_banner()}
+            Review workflow progress, understand blocked steps, and follow the supported recovery path.
           </p>
         </header>
 
@@ -132,6 +131,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <.link
               id={"workflow-#{workflow.id}-detail-link"}
               navigate={Selectors.workflow_detail_path(workflow.id)}
+              aria-label={"Inspect workflow #{workflow.name}"}
             >
               Inspect workflow
             </.link>
@@ -159,7 +159,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <:item label="Operator Status:">
               {workflow_status_label(@workflow, @workflow_story)}
             </:item>
-            <:item label="Diagnosis:">{@workflow_story.diagnosis}</:item>
+            <:item label="Diagnosis:">{workflow_diagnosis_label(@workflow_story.diagnosis)}</:item>
             <:item label="Runnable now:">{@workflow.runnable_step_count}</:item>
             <:item label="Semantics:">
               {@workflow_story.semantics.label} ({@workflow_story.semantics.mode})
@@ -193,7 +193,14 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <p><strong>Reason:</strong> {workflow_refusal.reason}</p>
             <p><strong>Legal next move:</strong> {workflow_refusal.next_move}</p>
             <p><strong>Venue:</strong> {workflow_refusal.venue}</p>
-            <p>Machine code: {workflow_refusal.code}</p>
+            <p>
+              Machine code:
+              <DataDisplay.machine_value
+                id="workflow-refusal-code"
+                value={workflow_refusal.code}
+                kind={:literal}
+              />
+            </p>
           </section>
 
           <h2 id="workflow-steps-title">Workflow steps</h2>
@@ -211,17 +218,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               <% story = Map.fetch!(@step_stories, step.id) %>
               <h3>{step.step_name}</h3>
               <DataDisplay.status_pill domain={:workflow_step} state={step.state} />
-              <p>diagnosis: {story.diagnosis || "none"}</p>
-              <p :if={step.blocker_codes != []}>
-                blocked: {Enum.join(step.blocker_codes, ", ")}
-              </p>
+              <p>Diagnosis: {workflow_diagnosis_label(story.diagnosis)}</p>
               <p :if={story.blocker_summaries != []}>
-                why: {Enum.join(story.blocker_summaries, "; ")}
+                Why: {Enum.join(story.blocker_summaries, "; ")}
               </p>
               <.link
                 patch={Selectors.workflow_detail_path(@workflow.id, step: step.step_name)}
+                aria-label={"Review step #{step.step_name} in #{@workflow.name}"}
               >
-                Detail
+                Review step
               </.link>
             </li>
           </ol>
@@ -233,7 +238,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           <DataDisplay.description_list id="selected-step-summary" state={:ready}>
             <:item label="Worker:">{@selected_step.worker}</:item>
             <:item label="Operator Status:">{step_status_label(@selected_step_story)}</:item>
-            <:item label="Diagnosis:">{@selected_step_story.diagnosis || "none"}</:item>
+            <:item label="Diagnosis:">{workflow_diagnosis_label(@selected_step_story.diagnosis)}</:item>
             <:item label="Result available:">{if(result_display.available?, do: "yes", else: "no")}</:item>
           </DataDisplay.description_list>
 
@@ -243,7 +248,14 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <p><strong>Reason:</strong> {selected_step_refusal.reason}</p>
             <p><strong>Legal next move:</strong> {selected_step_refusal.next_move}</p>
             <p><strong>Venue:</strong> {selected_step_refusal.venue}</p>
-            <p>Machine code: {selected_step_refusal.code}</p>
+            <p>
+              Machine code:
+              <DataDisplay.machine_value
+                id="selected-step-refusal-code"
+                value={selected_step_refusal.code}
+                kind={:literal}
+              />
+            </p>
           </section>
 
           <%= if handoff = lifeline_handoff(@workflow, @selected_step, @workflow_story, @selected_step_story) do %>
@@ -296,7 +308,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             <p :if={@selected_step.blocker_codes == []}>Runnable or already resolved.</p>
             <ul :if={@selected_step.blocker_codes != []}>
               <li :for={{code, summary} <- Enum.zip(@selected_step_story.blocker_codes, @selected_step_story.blocker_summaries)}>
-                {code}: {summary}
+                <span>{summary}</span>
+                <DataDisplay.machine_value
+                  id={"selected-step-blocker-#{code}"}
+                  value={code}
+                  kind={:literal}
+                />
               </li>
             </ul>
           </section>
@@ -552,6 +569,20 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       |> ControlPlane.workflow_status()
       |> Map.fetch!(:operator_status)
       |> ControlPlanePresenter.status_label()
+    end
+
+    defp workflow_diagnosis_label(:waiting_on_dependencies),
+      do: "Waiting for required dependencies"
+
+    defp workflow_diagnosis_label(:ready), do: "Ready for the next supported step"
+    defp workflow_diagnosis_label(:completed), do: "All retained steps are complete"
+    defp workflow_diagnosis_label(nil), do: "No current diagnosis recorded"
+
+    defp workflow_diagnosis_label(value) do
+      value
+      |> to_string()
+      |> String.replace("_", " ")
+      |> String.capitalize()
     end
 
     defp step_status_label(story) do

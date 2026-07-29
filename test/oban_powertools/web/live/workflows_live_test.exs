@@ -188,7 +188,8 @@ defmodule ObanPowertools.Web.WorkflowsLiveTest do
     assert html_position(html, "Reason:") < html_position(html, "Legal next move:")
     assert html_position(html, "Legal next move:") < html_position(html, "Venue:")
     assert html_position(html, "Venue:") < html_position(html, "Machine code:")
-    assert html =~ "Machine code: unsupported_legacy_semantics"
+    assert html =~ "Machine code:"
+    assert html =~ "unsupported_legacy_semantics"
     assert html =~ "Semantics: legacy_v1 (compatibility_path)"
   end
 

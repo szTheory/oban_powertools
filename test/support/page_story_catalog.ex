@@ -2184,7 +2184,7 @@ defmodule ObanPowertools.PageStoryCatalog do
       fixtures: phase81_fixtures(page, id, activation),
       activation: activation,
       acceptance: %{
-        required_text: [page_label],
+        required_text: phase81_required_text(page, id),
         forbidden_text: [
           "PHASE81-PAGE-SECRET-SENTINEL",
           "PHASE81-PAGE-TOKEN-SENTINEL",
@@ -2192,7 +2192,7 @@ defmodule ObanPowertools.PageStoryCatalog do
           "Something went wrong"
         ],
         ordered_text: [page_label],
-        roles: [%{role: "heading", name: page_label, level: 1, states: %{}}]
+        roles: phase81_roles(page, id)
       },
       test_targets: %{
         story: "obpt-page-story-#{id}",
@@ -2214,7 +2214,24 @@ defmodule ObanPowertools.PageStoryCatalog do
     end
   end
 
+  defp phase81_activation(:batches, id)
+       when id in [
+              "page-batches-bulk-confirmation",
+              "page-batches-callback-confirmation"
+            ],
+       do: :confirmation
+
   defp phase81_activation(page, _id) when page in [:batches, :workflows], do: :none
+
+  defp phase81_components(:batches, :confirmation),
+    do: [
+      :app_shell,
+      :data_table,
+      :status_pill,
+      :progress_bar,
+      :confirm_action_dialog,
+      :reason_field
+    ]
 
   defp phase81_components(:batches, _activation),
     do: [:app_shell, :data_table, :status_pill, :progress_bar]
@@ -2265,6 +2282,9 @@ defmodule ObanPowertools.PageStoryCatalog do
     end
   end
 
+  defp phase81_fixtures(:batches, id, :confirmation),
+    do: phase81_batch_confirmation_fixtures(id)
+
   defp phase81_fixtures(:batches, id, _activation), do: phase81_batches_fixtures(id)
   defp phase81_fixtures(:workflows, id, _activation), do: phase81_workflows_fixtures(id)
   defp phase81_fixtures(:lifeline, id, activation), do: phase81_lifeline_fixtures(id, activation)
@@ -2311,6 +2331,142 @@ defmodule ObanPowertools.PageStoryCatalog do
       load_error?: false
     }
   end
+
+  defp phase81_batch_confirmation_fixtures(id) do
+    callback? = id == "page-batches-callback-confirmation"
+    member = phase81_batch_member()
+    callback = phase81_batch_callback()
+
+    %{
+      batch_page_id: "batches-page",
+      batch_not_found?: false,
+      batch_detail: %{
+        id: "batch-confirmation-001",
+        short_id: "batch-confirmation",
+        name: "Notification replay batch",
+        status: :exhausted,
+        progress: %{
+          inserted_count: 2,
+          completed_count: 0,
+          total_count: 2,
+          percent: 0
+        },
+        blocked_state: %{
+          name: :failed_members,
+          title: "Failed members need review",
+          copy: "Two failed members remain. Review current evidence before retrying.",
+          severity: :warning,
+          evidence: [%{label: "Evidence window", value: "2 current failed members"}]
+        },
+        failed_members: [member],
+        callbacks: [callback],
+        results: [],
+        audit_events: [],
+        member_evidence: %{complete?: true, guidance: nil, rendered_count: 1},
+        callback_evidence: %{complete?: true, guidance: nil, rendered_count: 1},
+        result_evidence: %{complete?: true, guidance: nil, rendered_count: 0},
+        audit_evidence: %{complete?: true, guidance: nil, rendered_count: 0},
+        callback_summary: %{pending: 0, failed: 1, claimed: 0, delivered: 0},
+        chain_context: %{
+          chain?: true,
+          chain_id: "chain-notifications",
+          chain_step_name: "deliver",
+          chain_step_index: 2,
+          chain_step_count: 3,
+          upstream_job_id: 81_000,
+          next_step: "record"
+        },
+        inserted_at: @observed_datetime,
+        updated_at: @observed_datetime,
+        completed_at: nil
+      },
+      selected_failed_jobs: if(callback?, do: [], else: [member.job_id]),
+      bulk_preview?: not callback?,
+      callback_preview: if(callback?, do: %{status: "ready"}, else: nil),
+      callback_preview_presentation:
+        if(callback?,
+          do: %{
+            state: :ready,
+            title: "Preview callback retry",
+            object_label: "Callback batch.exhausted",
+            scope: "1 currently eligible callback",
+            consequence: "Lifeline revalidates the callback before attempting delivery.",
+            reversibility: "An accepted delivery cannot be recalled.",
+            support_boundary: "A retry request does not prove callback delivery.",
+            action: "Callback retry"
+          },
+          else: nil
+        ),
+      callback_retry_permissions: %{callback.id => true},
+      can_retry_batch_jobs?: true,
+      read_only?: false,
+      reason: "Upstream outage is resolved; retry the reviewed work.",
+      error_message: nil,
+      success_message: nil,
+      back_path: "/ops/jobs/batches?status=all",
+      output_unavailable_copy: "Upstream output is unavailable."
+    }
+  end
+
+  defp phase81_batch_member do
+    %{
+      job_id: 81_001,
+      worker: "Example.NotificationWorker",
+      queue: "notifications",
+      state: :discarded,
+      attempt: 3,
+      max_attempts: 3,
+      error: "Provider timeout; secret fields redacted.",
+      retry_eligible?: true,
+      bridge_href: "/oban/jobs/81001"
+    }
+  end
+
+  defp phase81_batch_callback do
+    %{
+      id: "callback-81-001",
+      event: "batch.exhausted",
+      dedupe_key: "callback-redacted",
+      status: :failed,
+      attempts: 2,
+      available_at: @observed_datetime,
+      claimed_at: nil,
+      lease_expires_at: nil,
+      delivered_at: nil,
+      error: "Delivery timeout; payload redacted.",
+      retry_eligible?: true
+    }
+  end
+
+  defp phase81_required_text(:batches, "page-batches-bulk-confirmation"),
+    do: ["Batches", "Preview failed job retries", "Keep current state"]
+
+  defp phase81_required_text(:batches, "page-batches-callback-confirmation"),
+    do: ["Batches", "Preview callback retry", "Keep current state"]
+
+  defp phase81_required_text(page, _id), do: [page |> Atom.to_string() |> String.capitalize()]
+
+  defp phase81_roles(:batches, "page-batches-bulk-confirmation"),
+    do: [
+      %{role: "heading", name: "Batch Notification replay batch", level: 1, states: %{}},
+      %{role: "dialog", name: "Preview failed job retries", states: %{}}
+    ]
+
+  defp phase81_roles(:batches, "page-batches-callback-confirmation"),
+    do: [
+      %{role: "heading", name: "Batch Notification replay batch", level: 1, states: %{}},
+      %{role: "dialog", name: "Preview callback retry", states: %{}}
+    ]
+
+  defp phase81_roles(page, _id),
+    do: [
+      %{
+        role: "heading",
+        name: page |> Atom.to_string() |> String.capitalize(),
+        level: 1,
+        states: %{}
+      }
+    ]
 
   defp batch_rows(count) do
     for index <- 1..count do

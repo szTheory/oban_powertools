@@ -5,7 +5,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     use Phoenix.LiveView
 
     alias ObanPowertools.{Batches, DisplayPolicy, Lifeline}
-    alias ObanPowertools.Web.Components.DataDisplay
+    alias ObanPowertools.Web.Components.{DataDisplay, Forms, OperatorPatterns, Primitives}
     alias ObanPowertools.Web.{ControlPlanePresenter, LiveAuth, Selectors}
 
     @valid_statuses ~w(all inserting executing exhausted insert_failed callback_failed completed)
@@ -202,6 +202,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       {:noreply, assign(socket, :reason, reason)}
     end
 
+    def handle_event("reason", %{"batch_retry" => %{"reason" => reason}}, socket) do
+      {:noreply, assign(socket, :reason, reason)}
+    end
+
     def handle_event("close_preview", _params, socket) do
       {:noreply,
        assign(socket,
@@ -334,543 +338,475 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     def render(assigns), do: page_content(assigns)
 
     def detail_page_content(assigns) do
+      assigns =
+        assigns
+        |> assign_new(:batch_page_id, fn -> "batch-detail-page" end)
+        |> assign_new(:batch_retry_form, fn ->
+          to_form(%{"reason" => assigns[:reason] || ""}, as: :batch_retry)
+        end)
+
       ~H"""
-      <div id="batch-detail-page" class="obpt-batches-page obpt-batches-page--detail space-y-6 p-6">
+      <main id={@batch_page_id} class="obpt-batches-page obpt-batches-page--detail">
         <%= if @batch_not_found? do %>
-          <div class="rounded-lg border bg-white p-6">
-            <h1 class="text-2xl font-semibold">Batch not found</h1>
-            <p class="mt-2 text-sm text-zinc-600">
-              Batch not found. It may have been pruned or the ID is invalid.
-            </p>
-            <.link navigate={Selectors.batches_path([{"status", "all"}])} class="mt-3 inline-flex text-indigo-700 underline">
+          <header class="obpt-page__header">
+            <h1>Batch unavailable</h1>
+            <p>It may not exist, may no longer be retained, or you may not have access. Return to Batches and choose another batch.</p>
+            <Primitives.link navigate={Selectors.batches_path([{"status", "all"}])}>
               Back to Batches
-            </.link>
-          </div>
+            </Primitives.link>
+          </header>
         <% else %>
-          <div class="flex flex-wrap items-start justify-between gap-4">
+          <header class="obpt-page__header obpt-batches-page__header">
             <div>
-              <h1 class="text-2xl font-semibold">Batch <%= batch_name(@batch_detail) %></h1>
-              <p class="mt-1 text-sm text-zinc-600">
-                Native Powertools pages own audited mutations; generic job internals deep-link into the Oban Web bridge.
-              </p>
+              <h1>Batch {batch_name(@batch_detail)}</h1>
+              <p>Review current progress, bounded failure evidence, callback posture, and safe Lifeline recovery paths.</p>
             </div>
-            <div class="flex items-center gap-3">
+            <div class="obpt-batches-page__header-actions">
               <DataDisplay.status_pill domain={:batch} state={@batch_detail.status} />
-              <.link navigate={@back_path} class="text-sm font-semibold text-indigo-700 underline">
+              <Primitives.link navigate={@back_path}>
                 Back to Batches
-              </.link>
+              </Primitives.link>
             </div>
-          </div>
+          </header>
 
-          <p :if={@read_only?} class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            <%= LiveAuth.page_read_only_banner(:batch_detail) %>
+          <p :if={@read_only?} class="obpt-batches-page__notice" role="status">
+            {LiveAuth.page_read_only_banner(:batch_detail)}
           </p>
 
-          <p :if={@success_message} class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            <%= @success_message %>
+          <p :if={@success_message} class="obpt-batches-page__notice" role="status">
+            {@success_message}
           </p>
 
-          <div :if={@error_message && is_nil(@callback_preview) && !@bulk_preview?} class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-            <%= @error_message %>
-          </div>
+          <DataDisplay.state_message
+            :if={@error_message && is_nil(@callback_preview) && !@bulk_preview?}
+            id="batch-detail-error"
+            state={:error}
+            resource="batch action"
+          >
+            {@error_message}
+          </DataDisplay.state_message>
 
-          <section class="grid gap-6 xl:grid-cols-2">
-            <div class="rounded-lg border bg-white p-4">
-              <h2 class="text-base font-semibold">Identity</h2>
-              <dl class="mt-3 grid gap-3 text-sm md:grid-cols-2">
-                <div>
-                  <dt class="text-xs font-semibold text-zinc-500">Batch ID</dt>
-                  <dd class="break-all"><%= @batch_detail.id %></dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-semibold text-zinc-500">Name</dt>
-                  <dd><%= @batch_detail.name || "Unnamed batch" %></dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-semibold text-zinc-500">Inserted Count</dt>
-                  <dd><%= @batch_detail.progress.inserted_count %></dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-semibold text-zinc-500">Total Count</dt>
-                  <dd><%= @batch_detail.progress.total_count %></dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-semibold text-zinc-500">Updated</dt>
-                  <dd><%= timestamp_copy(@batch_detail.updated_at) %></dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-semibold text-zinc-500">Completed</dt>
-                  <dd><%= timestamp_copy(@batch_detail.completed_at) %></dd>
-                </div>
-              </dl>
-            </div>
+          <section class="obpt-batches-page__summary" aria-label="Batch summary">
+            <Primitives.surface variant={:elevated}>
+              <h2>Identity</h2>
+              <DataDisplay.description_list id="batch-identity">
+                <:item label="Batch ID" value_kind={:id}>
+                  <DataDisplay.machine_value id="batch-id" value={@batch_detail.id} />
+                </:item>
+                <:item label="Name">{@batch_detail.name || "Unnamed batch"}</:item>
+                <:item label="Inserted count">{@batch_detail.progress.inserted_count}</:item>
+                <:item label="Total count">{@batch_detail.progress.total_count}</:item>
+                <:item label="Updated">{timestamp_copy(@batch_detail.updated_at)}</:item>
+                <:item label="Completed">{timestamp_copy(@batch_detail.completed_at)}</:item>
+              </DataDisplay.description_list>
+            </Primitives.surface>
 
-            <div class="rounded-lg border bg-white p-4">
-              <h2 class="text-base font-semibold">Progress</h2>
-              <div class="mt-3 space-y-3 text-sm">
-                <div class="flex justify-between">
-                  <span>
-                    <%= @batch_detail.progress.completed_count %> / <%= @batch_detail.progress.total_count %>
-                  </span>
-                  <span><%= @batch_detail.progress.percent %>%</span>
-                </div>
-                <DataDisplay.progress_bar
-                  id="batch-detail-progress"
-                  label="Batch progress"
-                  value={@batch_detail.progress.completed_count}
-                  max={max(@batch_detail.progress.total_count, 1)}
-                />
-                <p class="text-zinc-600"><%= @batch_detail.blocked_state.copy %></p>
-              </div>
-            </div>
+            <Primitives.surface variant={:elevated}>
+              <h2>Progress</h2>
+              <DataDisplay.progress_bar
+                id="batch-detail-progress"
+                label="Batch progress"
+                value={@batch_detail.progress.completed_count}
+                max={max(@batch_detail.progress.total_count, 1)}
+              />
+              <p>{@batch_detail.blocked_state.copy}</p>
+            </Primitives.surface>
           </section>
 
-          <section class="rounded-lg border bg-white p-4">
-            <h2 class="text-base font-semibold">Why this batch is blocked</h2>
-            <div class="mt-3 rounded border bg-slate-50 p-3 text-sm">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class={"rounded border px-2 py-1 text-xs font-semibold " <> severity_badge_class(@batch_detail.blocked_state.severity)}>
-                  <%= @batch_detail.blocked_state.title %>
-                </span>
-                <span><%= @batch_detail.blocked_state.copy %></span>
-              </div>
-              <dl class="mt-3 grid gap-2 text-xs">
-                <div :for={item <- @batch_detail.blocked_state.evidence}>
-                  <dt class="font-semibold"><%= item.label %></dt>
-                  <dd><%= item.value %></dd>
-                </div>
-              </dl>
-            </div>
-          </section>
+          <Primitives.surface variant={:attention}>
+            <h2>Why this batch is blocked</h2>
+            <Primitives.badge
+              label={@batch_detail.blocked_state.title}
+              tone={batch_blocked_tone(@batch_detail.blocked_state.severity)}
+            />
+            <p>{@batch_detail.blocked_state.copy}</p>
+            <DataDisplay.description_list id="batch-blocker-evidence">
+              <:item :for={item <- @batch_detail.blocked_state.evidence} label={item.label}>
+                {item.value}
+              </:item>
+            </DataDisplay.description_list>
+          </Primitives.surface>
 
-          <section class="rounded-lg border bg-white p-4">
-            <div class="flex flex-wrap items-center justify-between gap-3">
+          <Primitives.surface variant={:plain}>
+            <div class="obpt-batches-page__section-header">
               <div>
-                <h2 class="text-base font-semibold">Failed Members</h2>
-                <p class="mt-1 text-sm text-zinc-600">
+                <h2>Failed Members</h2>
+                <p>
                   Retryable selections are page-local and validated from current batch evidence.
                 </p>
               </div>
-              <div class="flex items-center gap-3">
-                <span
-                  :if={MapSet.size(@selected_failed_jobs) == 0}
-                  class="text-sm font-semibold text-zinc-500"
-                >
-                  Retry Failed Jobs
-                </span>
-              </div>
             </div>
 
-            <p :if={not @can_retry_batch_jobs?} class="mt-3 text-sm text-amber-700">
+            <p :if={not @can_retry_batch_jobs?}>
               Permission: read-only (:retry_batch_jobs). <%= LiveAuth.permission_message(:retry_batch_jobs) %>
             </p>
 
-            <div :if={MapSet.size(@selected_failed_jobs) > 0} class="mt-4 flex items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3">
-              <span class="text-sm font-semibold text-indigo-800">
-                <%= if MapSet.size(@selected_failed_jobs) == 1 do %>
-                  1 failed job selected
-                <% else %>
-                  <%= MapSet.size(@selected_failed_jobs) %> failed jobs selected
-                <% end %>
-              </span>
-              <button
+            <Primitives.surface :if={MapSet.size(@selected_failed_jobs) > 0} variant={:inset}>
+              <strong>{selected_jobs_copy(@selected_failed_jobs)}</strong>
+              <Primitives.button
                 type="button"
                 phx-click="preview_bulk_retry"
                 aria-label={"Preview failed job retries for #{MapSet.size(@selected_failed_jobs)} selected jobs"}
                 disabled={not @can_retry_batch_jobs?}
-                class={primary_button_class(@can_retry_batch_jobs?)}
+                variant={:danger}
               >
-                Retry Failed Jobs
-              </button>
-            </div>
+                Preview failed job retries
+              </Primitives.button>
+            </Primitives.surface>
 
-            <%= if @batch_detail.failed_members == [] do %>
-              <p class="mt-4 text-sm text-zinc-600">No failed members are currently recorded for this batch.</p>
-            <% else %>
-              <div id="batch-members" class="mt-4 overflow-hidden rounded-lg border">
-                <table class="min-w-full divide-y">
-                  <thead class="bg-slate-50 text-left text-sm">
-                    <tr>
-                      <th class="w-10 px-4 py-3 font-semibold">
-                        <button type="button" phx-click="toggle_all_failed_jobs" class="min-h-11 rounded border px-2 text-sm" aria-label="Select all eligible failed jobs">All</button>
-                      </th>
-                      <th class="px-4 py-3 font-semibold">Job</th>
-                      <th class="px-4 py-3 font-semibold">Worker</th>
-                      <th class="px-4 py-3 font-semibold">Queue</th>
-                      <th class="px-4 py-3 font-semibold">State</th>
-                      <th class="px-4 py-3 font-semibold">Attempt</th>
-                      <th class="px-4 py-3 font-semibold">Last Error</th>
-                      <th class="px-4 py-3 font-semibold">Bridge</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y text-sm">
-                    <tr :for={member <- @batch_detail.failed_members}>
-                      <td class="px-4 py-3">
-                        <input
-                          type="checkbox"
-                          checked={MapSet.member?(@selected_failed_jobs, member.job_id)}
-                          disabled={not member.retry_eligible?}
-                          phx-click="toggle_failed_job"
-                          phx-value-id={member.job_id}
-                          class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                          aria-label={"Select failed job #{member.job_id}"}
-                        />
-                      </td>
-                      <td class="px-4 py-3"><%= member.job_id %></td>
-                      <td class="px-4 py-3"><%= short_worker_name(member.worker) %></td>
-                      <td class="px-4 py-3"><%= member.queue || "Unknown" %></td>
-                      <td class="px-4 py-3">
-                        <span class={"rounded border px-2 py-1 text-xs font-semibold " <> status_badge_class(member.state)}>
-                          <%= member.state %>
-                        </span>
-                      </td>
-                      <td class="px-4 py-3"><%= member.attempt || 0 %> / <%= member.max_attempts || "?" %></td>
-                      <td class="px-4 py-3">
-                        <pre class="max-w-xs whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs"><%= member.error %></pre>
-                      </td>
-                      <td class="px-4 py-3">
-                        <a href={member.bridge_href} class="text-indigo-700 underline">
-                          Open Generic Job Inspection in Oban Web bridge
-                        </a>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <p :if={not @batch_detail.member_evidence.complete?} class="mt-3 text-sm text-zinc-600">
-                <%= @batch_detail.member_evidence.guidance %>
-              </p>
-            <% end %>
-          </section>
+            <DataDisplay.data_table
+              id="batch-members"
+              caption="Failed batch members"
+              rows={@batch_detail.failed_members}
+              row_id={& &1.job_id}
+              state={if(@batch_detail.failed_members == [], do: :empty, else: :ready)}
+              resource="failed batch members"
+              row_count={length(@batch_detail.failed_members)}
+              pagination_summary={if(!@batch_detail.member_evidence.complete?, do: @batch_detail.member_evidence.guidance)}
+            >
+              <:state_detail>
+                <strong>No failed members recorded</strong>
+                <span>Current evidence contains no failed members for this batch.</span>
+              </:state_detail>
+              <:toolbar>
+                <Primitives.button
+                  type="button"
+                  phx-click="toggle_all_failed_jobs"
+                  aria-label="Select all eligible failed jobs"
+                >
+                  Select all eligible
+                </Primitives.button>
+              </:toolbar>
+              <:selection :let={member}>
+                <input
+                  type="checkbox"
+                  checked={MapSet.member?(@selected_failed_jobs, member.job_id)}
+                  disabled={not member.retry_eligible?}
+                  phx-click="toggle_failed_job"
+                  phx-value-id={member.job_id}
+                  aria-label={"Select failed job #{member.job_id}"}
+                />
+              </:selection>
+              <:col :let={member} label="Job" value_kind={:id}>
+                <DataDisplay.machine_value id={"batch-member-#{member.job_id}"} value={to_string(member.job_id)} />
+              </:col>
+              <:col :let={member} label="Worker" value_kind={:module}>{short_worker_name(member.worker)}</:col>
+              <:col :let={member} label="Queue">{member.queue || "Unknown"}</:col>
+              <:col :let={member} label="Status">
+                <DataDisplay.status_pill domain={:batch_member} state={member.state} />
+              </:col>
+              <:col :let={member} label="Attempt">{member.attempt || 0} / {member.max_attempts || "?"}</:col>
+              <:col :let={member} label="Last error">
+                <DataDisplay.code_block
+                  id={"batch-member-#{member.job_id}-error"}
+                  label={"Last error for job #{member.job_id}"}
+                  content={member.error || "No recorded error"}
+                />
+              </:col>
+              <:action :let={member}>
+                <Primitives.link href={member.bridge_href}>
+                  Open Generic Job Inspection in Oban Web bridge
+                </Primitives.link>
+              </:action>
+            </DataDisplay.data_table>
+          </Primitives.surface>
 
-          <section class="rounded-lg border bg-white p-4">
-            <h2 class="text-base font-semibold">Callback Outbox</h2>
-            <%= if @batch_detail.callbacks == [] do %>
-              <p class="mt-3 text-sm text-zinc-600">No stuck or dead callbacks are blocking this batch.</p>
-            <% else %>
-              <div id="batch-callbacks" class="mt-4 overflow-hidden rounded-lg border">
-                <table class="min-w-full divide-y">
-                  <thead class="bg-slate-50 text-left text-sm">
-                    <tr>
-                      <th class="px-4 py-3 font-semibold">Event</th>
-                      <th class="px-4 py-3 font-semibold">Status</th>
-                      <th class="px-4 py-3 font-semibold">Attempts</th>
-                      <th class="px-4 py-3 font-semibold">Lease</th>
-                      <th class="px-4 py-3 font-semibold">Last Error</th>
-                      <th class="px-4 py-3 font-semibold">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y text-sm">
-                    <tr :for={callback <- @batch_detail.callbacks}>
-                      <td class="px-4 py-3">
-                        <div class="font-semibold"><%= callback.event %></div>
-                        <div class="text-xs text-zinc-500"><%= callback.dedupe_key %></div>
-                      </td>
-                      <td class="px-4 py-3">
-                        <span class={"rounded border px-2 py-1 text-xs font-semibold " <> status_badge_class(callback.status)}>
-                          <%= callback.status %>
-                        </span>
-                      </td>
-                      <td class="px-4 py-3"><%= callback.attempts %></td>
-                      <td class="px-4 py-3 text-xs text-zinc-600">
-                        <div>Available: <%= timestamp_copy(callback.available_at) %></div>
-                        <div>Claimed: <%= timestamp_copy(callback.claimed_at) %></div>
-                        <div>Lease: <%= timestamp_copy(callback.lease_expires_at) %></div>
-                        <div>Delivered: <%= timestamp_copy(callback.delivered_at) %></div>
-                      </td>
-                      <td class="px-4 py-3">
-                        <pre class="max-w-xs whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs"><%= callback.error %></pre>
-                      </td>
-                      <td class="px-4 py-3">
-                        <%= if callback.retry_eligible? do %>
-                          <button
-                            type="button"
-                            phx-click="preview_callback_retry"
-                            phx-value-id={callback.id}
-                            disabled={not callback_retry_allowed?(@callback_retry_permissions, callback.id)}
-                            class={primary_button_class(callback_retry_allowed?(@callback_retry_permissions, callback.id))}
-                          >
-                            Preview Callback Retry
-                          </button>
-                          <p :if={not callback_retry_allowed?(@callback_retry_permissions, callback.id)} class="mt-2 text-xs text-amber-700">
-                            Permission: read-only (:retry_callback). <%= LiveAuth.permission_message(:retry_callback) %>
-                          </p>
-                        <% else %>
-                          <span class="text-xs text-zinc-500">Not retryable</span>
-                        <% end %>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <p :if={not @batch_detail.callback_evidence.complete?} class="mt-3 text-sm text-zinc-600">
-                Additional callbacks exist; this view shows the first <%= @batch_detail.callback_evidence.rendered_count %> callbacks.
-              </p>
-            <% end %>
-          </section>
+          <Primitives.surface variant={:plain}>
+            <h2>Callback Outbox</h2>
+            <DataDisplay.data_table
+              id="batch-callbacks"
+              caption="Batch callbacks"
+              rows={@batch_detail.callbacks}
+              row_id={& &1.id}
+              state={if(@batch_detail.callbacks == [], do: :empty, else: :ready)}
+              resource="batch callbacks"
+              row_count={length(@batch_detail.callbacks)}
+              pagination_summary={
+                if(!@batch_detail.callback_evidence.complete?,
+                  do: "Additional callbacks exist; this view shows the first #{@batch_detail.callback_evidence.rendered_count} callbacks."
+                )
+              }
+            >
+              <:state_detail>
+                <strong>No blocked callbacks recorded</strong>
+                <span>Current evidence contains no stuck or dead callback for this batch.</span>
+              </:state_detail>
+              <:col :let={callback} label="Event">
+                <strong>{callback.event}</strong>
+                <DataDisplay.machine_value
+                  id={"batch-callback-#{callback.id}-dedupe"}
+                  value={callback.dedupe_key}
+                />
+              </:col>
+              <:col :let={callback} label="Status">
+                <DataDisplay.status_pill domain={:callback_outbox} state={callback.status} />
+              </:col>
+              <:col :let={callback} label="Attempts">{callback.attempts}</:col>
+              <:col :let={callback} label="Lease">
+                <span>Available: {timestamp_copy(callback.available_at)}</span>
+                <span>Claimed: {timestamp_copy(callback.claimed_at)}</span>
+                <span>Lease: {timestamp_copy(callback.lease_expires_at)}</span>
+                <span>Delivered: {timestamp_copy(callback.delivered_at)}</span>
+              </:col>
+              <:col :let={callback} label="Last error">
+                <DataDisplay.code_block
+                  id={"batch-callback-#{callback.id}-error"}
+                  label={"Last error for #{callback.event}"}
+                  content={callback.error || "No recorded error"}
+                />
+              </:col>
+              <:action :let={callback}>
+                <Primitives.button
+                  :if={callback.retry_eligible?}
+                  type="button"
+                  phx-click="preview_callback_retry"
+                  phx-value-id={callback.id}
+                  aria-label={"Preview callback retry for #{callback.event}"}
+                  disabled={not callback_retry_allowed?(@callback_retry_permissions, callback.id)}
+                  disabled_reason={
+                    if(!callback_retry_allowed?(@callback_retry_permissions, callback.id),
+                      do: LiveAuth.permission_message(:retry_callback)
+                    )
+                  }
+                  variant={:danger}
+                >
+                  Preview callback retry
+                </Primitives.button>
+                <span :if={not callback.retry_eligible?}>Not retryable</span>
+              </:action>
+            </DataDisplay.data_table>
+          </Primitives.surface>
 
-          <section class="rounded-lg border bg-white p-4">
-            <h2 class="text-base font-semibold">Chain Context</h2>
+          <Primitives.surface variant={:plain}>
+            <h2>Chain Context</h2>
             <%= if @batch_detail.chain_context.chain? do %>
-              <dl class="mt-3 grid gap-3 text-sm md:grid-cols-2">
-                <div>
-                  <dt class="text-xs font-semibold text-zinc-500">Chain ID</dt>
-                  <dd><%= @batch_detail.chain_context[:chain_id] %></dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-semibold text-zinc-500">Step</dt>
-                  <dd>
-                    <%= @batch_detail.chain_context[:chain_step_name] || "Unknown" %>
-                    <%= if @batch_detail.chain_context[:chain_step_index] do %>
-                      (<%= @batch_detail.chain_context[:chain_step_index] %>/<%= @batch_detail.chain_context[:chain_step_count] || "?" %>)
-                    <% end %>
-                  </dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-semibold text-zinc-500">Upstream Job</dt>
-                  <dd><%= @batch_detail.chain_context[:upstream_job_id] || "Unknown" %></dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-semibold text-zinc-500">Next Step</dt>
-                  <dd><%= @batch_detail.chain_context[:next_step] || "Unknown" %></dd>
-                </div>
-              </dl>
+              <DataDisplay.description_list id="batch-chain-context">
+                <:item label="Chain ID" value_kind={:id}>{@batch_detail.chain_context[:chain_id]}</:item>
+                <:item label="Step">{batch_chain_step(@batch_detail.chain_context)}</:item>
+                <:item label="Upstream job">{@batch_detail.chain_context[:upstream_job_id] || "Unknown"}</:item>
+                <:item label="Next step">{@batch_detail.chain_context[:next_step] || "Unknown"}</:item>
+              </DataDisplay.description_list>
             <% else %>
-              <p class="mt-3 text-sm text-zinc-600">No chain metadata is attached to this batch.</p>
+              <DataDisplay.state_message id="batch-chain-empty" state={:empty} resource="chain context">
+                <strong>No chain context recorded</strong>
+                <span>This batch has no retained chain metadata.</span>
+              </DataDisplay.state_message>
             <% end %>
-            <p :if={@batch_detail.blocked_state.name in [:output_unavailable, :output_expired]} class="mt-4 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-              <%= @output_unavailable_copy %>
+            <p :if={@batch_detail.blocked_state.name in [:output_unavailable, :output_expired]}>
+              {@output_unavailable_copy}
             </p>
-          </section>
+          </Primitives.surface>
 
-          <section class="rounded-lg border bg-white p-4">
-            <h2 class="text-base font-semibold">Manual Intervention History</h2>
-            <%= if @batch_detail.audit_events == [] do %>
-              <p class="mt-3 text-sm text-zinc-600">No manual intervention audit evidence is recorded for this batch.</p>
-            <% else %>
-              <div class="mt-3 divide-y rounded border text-sm">
-                <div :for={event <- @batch_detail.audit_events} class="p-3">
-                  <div class="font-semibold"><%= event.event_label %></div>
-                  <div class="text-xs text-zinc-500">
-                    <%= event.resource_label %> · <%= timestamp_copy(event.inserted_at) %>
-                  </div>
-                </div>
-              </div>
-            <% end %>
-          </section>
+          <Primitives.surface variant={:plain}>
+            <h2>Manual Intervention History</h2>
+            <DataDisplay.timeline
+              id="batch-audit-history"
+              state={if(@batch_detail.audit_events == [], do: :empty, else: :ready)}
+              resource="manual intervention history"
+            >
+              <:event
+                :for={event <- @batch_detail.audit_events}
+                timestamp={timestamp_copy(event.inserted_at)}
+                title={event.event_label}
+                source={event.resource_label}
+              >
+                <span>Recorded operator action.</span>
+              </:event>
+            </DataDisplay.timeline>
+          </Primitives.surface>
         <% end %>
 
-        <%= if @bulk_preview? do %>
-          <div class="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="batch-bulk-preview-title">
-            <div class="relative w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
-              <h2 id="batch-bulk-preview-title" class="text-base font-semibold">Retry Failed Jobs</h2>
-              <p class="mt-2 text-sm text-zinc-600">
-                Lifeline will preview each selected failed job before execution. Jobs that changed state before execution are skipped and reported.
-              </p>
-              <div class="mt-4 rounded bg-slate-50 p-4 text-sm">
-                <div><strong>Affected records:</strong> <%= MapSet.size(@selected_failed_jobs) %> jobs</div>
-                <div><strong>Audit consequence:</strong> <%= LiveAuth.audit_consequence_copy() %></div>
-              </div>
-              <form phx-change="reason" phx-submit="execute_bulk_retry" class="mt-4 space-y-4">
-                <label class="block text-sm font-semibold text-zinc-700">Reason (required)</label>
-                <input type="text" name="reason" value={@reason} placeholder="e.g., upstream outage resolved, safe to replay failed rows" class="w-full rounded-md border-gray-300 text-sm" />
-                <div :if={@error_message} class="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-                  <%= @error_message %>
-                </div>
-                <div class="flex justify-end gap-4">
-                  <button type="button" phx-click="close_preview" class="text-sm font-semibold text-slate-600">Cancel</button>
-                  <button type="submit" disabled={String.trim(@reason) == ""} class={primary_button_class(String.trim(@reason) != "")}>
-                    Confirm Retry
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        <% end %>
+        <OperatorPatterns.confirm_action_dialog
+          :if={@bulk_preview?}
+          id="batch-bulk-preview"
+          intent={:warning}
+          state={:preview}
+          title="Preview failed job retries"
+          object_label={"Batch #{batch_name(@batch_detail)}"}
+          scope={selected_jobs_copy(@selected_failed_jobs)}
+          consequence="Lifeline previews and processes each selected failed job independently. Jobs that changed are skipped and reported; a retry request does not mean the job completed."
+          reversibility="Accepted retries enqueue new work and may not be reversible."
+          support_boundary="Execution is per job and non-atomic; a preview is not proof that a retry completed."
+          form={@batch_retry_form}
+          bulk_count={MapSet.size(@selected_failed_jobs)}
+          bulk_scope="Current retry-eligible failed jobs in this batch"
+          confirm_label={"Retry #{MapSet.size(@selected_failed_jobs)} failed jobs"}
+          dismiss_label="Keep current state"
+          pending_copy="Retrying selected failed jobs"
+          logical_fallback_id="batch-members"
+          submit_event="execute_bulk_retry"
+          dismiss_event="close_preview"
+        >
+          <:support_details>
+            <p>{LiveAuth.audit_consequence_copy()}</p>
+            <p :if={@error_message} role="alert">{@error_message}</p>
+          </:support_details>
+        </OperatorPatterns.confirm_action_dialog>
 
-        <%= if @callback_preview do %>
-          <div class="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="batch-callback-preview-title">
-            <div class="relative w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
-              <h2 id="batch-callback-preview-title" class="text-base font-semibold">Preview Callback Retry</h2>
-              <div class="mt-4 rounded bg-slate-50 p-4 text-sm">
-                <div><strong>Action:</strong> <%= @callback_preview_presentation.action %></div>
-                <div><strong>Preview status:</strong> <%= @callback_preview_presentation.state %></div>
-                <div><strong>Scope:</strong> <%= @callback_preview_presentation.scope %></div>
-                <div><strong>Consequence:</strong> <%= @callback_preview_presentation.consequence %></div>
-                <div><strong>Audit consequence:</strong> <%= LiveAuth.audit_consequence_copy() %></div>
-              </div>
-              <form phx-change="reason" phx-submit="execute_callback_retry" class="mt-4 space-y-4">
-                <label class="block text-sm font-semibold text-zinc-700">Reason (required)</label>
-                <input type="text" name="reason" value={@reason} placeholder="e.g., upstream outage resolved, safe to retry callback" class="w-full rounded-md border-gray-300 text-sm" />
-                <div :if={@error_message} class="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-                  <%= @error_message %>
-                </div>
-                <div class="flex justify-end gap-4">
-                  <button type="button" phx-click="close_preview" class="text-sm font-semibold text-slate-600">Cancel</button>
-                  <button type="submit" disabled={String.trim(@reason) == ""} class={primary_button_class(String.trim(@reason) != "")}>
-                    Retry Callback
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        <% end %>
-      </div>
+        <OperatorPatterns.confirm_action_dialog
+          :if={@callback_preview && @callback_preview_presentation}
+          id="batch-callback-preview"
+          intent={:warning}
+          state={:preview}
+          title="Preview callback retry"
+          object_label={@callback_preview_presentation.object_label}
+          scope={@callback_preview_presentation.scope}
+          consequence="Lifeline retries this callback after reauthorization. Delivery may still fail, and this action does not replay completed work."
+          reversibility="An accepted retry can deliver the callback and may not be reversible."
+          support_boundary="Lifeline revalidates current callback state before one non-atomic retry attempt."
+          form={@batch_retry_form}
+          confirm_label="Retry callback"
+          dismiss_label="Keep current state"
+          pending_copy="Retrying callback"
+          logical_fallback_id="batch-callbacks"
+          submit_event="execute_callback_retry"
+          dismiss_event="close_preview"
+        >
+          <:support_details>
+            <p>Preview status: {@callback_preview_presentation.state}</p>
+            <p>{LiveAuth.audit_consequence_copy()}</p>
+            <p :if={@error_message} role="alert">{@error_message}</p>
+          </:support_details>
+        </OperatorPatterns.confirm_action_dialog>
+      </main>
       """
     end
 
     def page_content(assigns) do
+      filter_form =
+        to_form(
+          %{
+            "query" => assigns.filter.query || "",
+            "queue" => assigns.filter.queue || "",
+            "worker" => assigns.filter.worker || "",
+            "chain_only" => assigns.filter.chain_only
+          },
+          as: :filter
+        )
+
+      assigns = assign(assigns, :filter_form, filter_form)
+
       ~H"""
-      <div id="batches-page" class="obpt-batches-page space-y-6 p-6">
-        <div>
-          <h1 class="text-2xl font-semibold">Batches</h1>
-          <p class="mt-1 text-sm text-zinc-600">
-            Inspect batch and chain progress, failed members, blocked states, and Lifeline recovery paths. Native Powertools pages own audited mutations; generic job internals deep-link into the Oban Web bridge.
+      <main id="batches-page" class="obpt-batches-page">
+        <header class="obpt-page__header">
+          <h1>Batches</h1>
+          <p>
+            Review batch and chain progress, understand blocked work, and follow Lifeline-routed recovery with recorded evidence.
           </p>
-          <p class="mt-1 text-xs text-zinc-500"><%= ControlPlanePresenter.native_banner() %></p>
-        </div>
+        </header>
 
-        <p :if={@read_only?} class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <%= LiveAuth.page_read_only_banner(:batches) %>
+        <p :if={@read_only?} class="obpt-batches-page__notice" role="status">
+          {LiveAuth.page_read_only_banner(:batches)}
         </p>
 
-        <p :if={@success_message} class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          <%= @success_message %>
+        <p :if={@success_message} class="obpt-batches-page__notice" role="status">
+          {@success_message}
         </p>
 
-        <div :if={@load_error?} class="rounded-lg border border-red-200 bg-red-50 p-6">
-          <h2 class="text-base font-semibold text-red-800">Could not load batch data.</h2>
-          <p class="mt-2 text-sm text-red-700">
-            Refresh the page; if this continues, verify the Powertools batch and callback migrations are installed.
-          </p>
-        </div>
+        <DataDisplay.state_message :if={@load_error?} id="batches-load-error" state={:error} resource="batches">
+          <strong>Batches did not load.</strong>
+          <p>Retry the request. If the problem continues, check the host logs.</p>
+        </DataDisplay.state_message>
 
-        <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div class="rounded-lg border bg-white p-4">
-            <div class="text-xs font-semibold text-zinc-500">Total Batches</div>
-            <div class="mt-2 text-2xl font-semibold"><%= @metrics.total %></div>
-          </div>
-          <div class="rounded-lg border bg-white p-4">
-            <div class="text-xs font-semibold text-zinc-500">Needs Attention</div>
-            <div class="mt-2 text-2xl font-semibold"><%= @metrics.needs_attention %></div>
-          </div>
-          <div class="rounded-lg border bg-white p-4">
-            <div class="text-xs font-semibold text-zinc-500">Executing</div>
-            <div class="mt-2 text-2xl font-semibold"><%= @metrics.executing %></div>
-          </div>
-          <div class="rounded-lg border bg-white p-4">
-            <div class="text-xs font-semibold text-zinc-500">Completed</div>
-            <div class="mt-2 text-2xl font-semibold"><%= @metrics.completed %></div>
-          </div>
+        <section class="obpt-batches-page__metrics" aria-label="Batch summary">
+          <DataDisplay.metric_card id="batches-total" label="Total Batches" value={to_string(@metrics.total)} />
+          <DataDisplay.metric_card id="batches-attention" label="Needs Attention" value={to_string(@metrics.needs_attention)} tone={:warning} />
+          <DataDisplay.metric_card id="batches-executing" label="Executing" value={to_string(@metrics.executing)} tone={:info} />
+          <DataDisplay.metric_card id="batches-completed" label="Completed" value={to_string(@metrics.completed)} tone={:success} />
         </section>
 
-        <nav class="flex flex-wrap gap-2">
-          <button :for={status <- @valid_statuses} type="button" phx-click="select_status" phx-value-status={status} class={status_tab_class(to_string(@filter.status) == status)}>
-            <%= status %> (<%= Map.get(@counts, status, 0) %>)
-          </button>
+        <nav class="obpt-batches-page__statuses" aria-label="Batch status">
+          <Primitives.button
+            :for={status <- @valid_statuses}
+            type="button"
+            phx-click="select_status"
+            phx-value-status={status}
+            variant={if(to_string(@filter.status) == status, do: :primary, else: :neutral)}
+          >
+            {batch_status_label(status)} ({Map.get(@counts, status, 0)})
+          </Primitives.button>
         </nav>
 
-        <form phx-change="filter">
-          <div class="flex flex-wrap gap-4">
-            <div>
-              <label class="block text-sm font-semibold text-zinc-700">Batch name or ID</label>
-              <input type="text" name="filter[query]" value={@filter.query || ""} placeholder="All batches" class="mt-1 rounded border px-3 py-2 text-sm" />
-            </div>
-            <div>
-              <label class="block text-sm font-semibold text-zinc-700">Queue</label>
-              <input type="text" name="filter[queue]" value={@filter.queue || ""} placeholder="All queues" class="mt-1 rounded border px-3 py-2 text-sm" />
-            </div>
-            <div>
-              <label class="block text-sm font-semibold text-zinc-700">Worker</label>
-              <input type="text" name="filter[worker]" value={@filter.worker || ""} placeholder="All workers" class="mt-1 rounded border px-3 py-2 text-sm" />
-            </div>
-            <label class="flex min-h-10 items-end gap-2 text-sm font-semibold text-zinc-700">
-              <input type="hidden" name="filter[chain_only]" value="false" />
-              <input type="checkbox" name="filter[chain_only]" value="true" checked={@filter.chain_only} class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-              Chain only
-            </label>
-          </div>
-        </form>
+        <.form for={@filter_form} phx-change="filter" class="obpt-batches-page__filters">
+          <Forms.input field={@filter_form[:query]} label="Batch name or ID" placeholder="All batches" />
+          <Forms.input field={@filter_form[:queue]} label="Queue" placeholder="All queues" />
+          <Forms.input field={@filter_form[:worker]} label="Worker" placeholder="All workers" />
+          <Forms.checkbox field={@filter_form[:chain_only]} label="Chain only" />
+        </.form>
 
-        <%= if @batches == [] do %>
-          <div class="rounded-lg border bg-white p-6">
-            <h2 class="text-base font-semibold">No batches match this view</h2>
-            <p class="mt-2 text-sm text-zinc-600">
-              No batch rows match the selected status and filters. Try a different status, clear filters, or inspect Jobs for ungrouped work.
-            </p>
-          </div>
-        <% else %>
-          <div class="overflow-hidden rounded-lg border bg-white">
-            <table class="min-w-full divide-y">
-              <thead class="bg-slate-50 text-left text-sm">
-                <tr>
-                  <th class="px-4 py-3 font-semibold">Batch</th>
-                  <th class="px-4 py-3 font-semibold">Status</th>
-                  <th class="px-4 py-3 font-semibold">Progress</th>
-                  <th class="px-4 py-3 font-semibold">Failed</th>
-                  <th class="px-4 py-3 font-semibold">Callbacks</th>
-                  <th class="px-4 py-3 font-semibold">Updated</th>
-                  <th class="px-4 py-3 font-semibold">Actions</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y text-sm">
-                <tr :for={batch <- @batches}>
-                  <td class="px-4 py-3">
-                    <div class="font-semibold"><%= batch.name || batch.short_id %></div>
-                    <div class="text-xs text-zinc-500"><%= batch.id %></div>
-                    <span :if={batch.chain?} class="mt-2 inline-flex rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700">Chain</span>
-                  </td>
-                  <td class="px-4 py-3">
-                    <DataDisplay.status_pill domain={:batch} state={batch.status} />
-                    <div class="mt-2 text-xs text-zinc-600"><%= batch.blocked_state.title %></div>
-                  </td>
-                  <td class="px-4 py-3">
-                    <div class="flex justify-between text-xs">
-                      <span><%= batch.progress.completed_count %>/<%= batch.progress.total_count %></span>
-                      <span><%= batch.progress.percent %>%</span>
-                    </div>
-                    <DataDisplay.progress_bar
-                      id={"batch-progress-#{batch.id}"}
-                      label={"Progress for #{batch.name}"}
-                      value={batch.progress.completed_count}
-                      max={max(batch.progress.total_count, 1)}
-                    />
-                  </td>
-                  <td class="px-4 py-3">
-                    <div><%= batch.failed_count %> failed</div>
-                    <div class="text-xs text-zinc-500"><%= batch.retryable_failed_count %> retryable</div>
-                  </td>
-                  <td class="px-4 py-3 text-xs">
-                    <div>pending <%= batch.callback_summary.pending %></div>
-                    <div>failed <%= batch.callback_summary.failed %></div>
-                    <div>claimed <%= batch.callback_summary.claimed %></div>
-                    <div>delivered <%= batch.callback_summary.delivered %></div>
-                  </td>
-                  <td class="px-4 py-3"><%= timestamp_copy(batch.updated_at) %></td>
-                  <td class="px-4 py-3">
-                    <.link navigate={Selectors.batch_detail_path(batch.id)} class="text-indigo-700 underline">
-                      Open Batch
-                    </.link>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        <% end %>
+        <DataDisplay.data_table
+          id="batches-table"
+          caption="Current batches"
+          rows={@batches}
+          row_id={:id}
+          state={if(@batches == [], do: :empty, else: :ready)}
+          resource="batches"
+          row_count={length(@batches)}
+          pagination_summary={"Page #{@filter.page}; up to #{@filter.page_size} batches per page."}
+        >
+          <:state_detail>
+            <%= if batches_filtered?(@filter) do %>
+              <strong>No batches match this view</strong>
+              <span>Choose another status or clear the name filter to widen the review.</span>
+            <% else %>
+              <strong>No batches available</strong>
+              <span>Batch evidence will appear here when this host records batch work.</span>
+            <% end %>
+          </:state_detail>
+          <:col :let={batch} label="Batch" value_kind={:id}>
+            <strong>{batch.name || batch.short_id}</strong>
+            <DataDisplay.machine_value id={"batch-#{batch.id}-id"} value={batch.id} />
+            <Primitives.badge :if={batch.chain?} label="Chain" tone={:info} size={:sm} />
+          </:col>
+          <:col :let={batch} label="Operator status">
+            <DataDisplay.status_pill domain={:batch} state={batch.status} />
+            <span>{batch.blocked_state.title}</span>
+          </:col>
+          <:col :let={batch} label="Progress">
+            <DataDisplay.progress_bar
+              id={"batch-progress-#{batch.id}"}
+              label={"Progress for #{batch.name || batch.short_id}"}
+              value={batch.progress.completed_count}
+              max={max(batch.progress.total_count, 1)}
+            />
+          </:col>
+          <:col :let={batch} label="Failed">
+            <span>{batch.failed_count} failed</span>
+            <span>{batch.retryable_failed_count} retryable</span>
+          </:col>
+          <:col :let={batch} label="Callbacks">
+            <span>Pending {batch.callback_summary.pending}</span>
+            <span>Failed {batch.callback_summary.failed}</span>
+            <span>Claimed {batch.callback_summary.claimed}</span>
+            <span>Delivered {batch.callback_summary.delivered}</span>
+          </:col>
+          <:col :let={batch} label="Updated">{timestamp_copy(batch.updated_at)}</:col>
+          <:action :let={batch}>
+            <Primitives.link navigate={Selectors.batch_detail_path(batch.id)}>
+              Open batch
+            </Primitives.link>
+          </:action>
+        </DataDisplay.data_table>
 
-        <div class="flex gap-2">
-          <%= if @filter.page <= 1 do %>
-            <span class="cursor-not-allowed rounded border px-3 py-2 text-sm text-zinc-400">Previous</span>
-          <% else %>
-            <button type="button" phx-click="paginate" phx-value-page={@filter.page - 1} class="rounded border px-3 py-2 text-sm">Previous</button>
-          <% end %>
-          <%= if length(@batches) < @filter.page_size do %>
-            <span class="cursor-not-allowed rounded border px-3 py-2 text-sm text-zinc-400">Next</span>
-          <% else %>
-            <button type="button" phx-click="paginate" phx-value-page={@filter.page + 1} class="rounded border px-3 py-2 text-sm">Next</button>
-          <% end %>
-        </div>
-      </div>
+        <nav class="obpt-batches-page__pagination" aria-label="Batch pages">
+          <Primitives.button
+            type="button"
+            phx-click="paginate"
+            phx-value-page={max(@filter.page - 1, 1)}
+            disabled={@filter.page <= 1}
+          >
+            Previous
+          </Primitives.button>
+          <Primitives.button
+            type="button"
+            phx-click="paginate"
+            phx-value-page={@filter.page + 1}
+            disabled={length(@batches) < @filter.page_size}
+          >
+            Next
+          </Primitives.button>
+        </nav>
+      </main>
       """
     end
 
@@ -1097,6 +1033,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp submit_reason(params, socket) do
       params
+      |> Map.get("batch_retry", params)
       |> Map.get("reason", socket.assigns.reason || "")
       |> to_string()
       |> String.trim()
@@ -1130,37 +1067,40 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       end
     end
 
-    defp status_tab_class(true),
-      do:
-        "rounded border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700"
+    defp batch_status_label(status) do
+      status
+      |> to_string()
+      |> String.replace("_", " ")
+      |> String.capitalize()
+    end
 
-    defp status_tab_class(false),
-      do:
-        "rounded border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600"
+    defp batches_filtered?(filter) do
+      to_string(filter.status) != "all" or filter.query not in [nil, ""] or
+        filter.queue not in [nil, ""] or filter.worker not in [nil, ""] or
+        filter.chain_only
+    end
 
-    defp primary_button_class(true),
-      do:
-        "rounded border border-indigo-600 bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+    defp batch_blocked_tone(:success), do: :success
+    defp batch_blocked_tone(:warning), do: :warning
+    defp batch_blocked_tone(:danger), do: :danger
+    defp batch_blocked_tone(_severity), do: :neutral
 
-    defp primary_button_class(false),
-      do:
-        "cursor-not-allowed rounded border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-400"
+    defp selected_jobs_copy(selected) do
+      case MapSet.size(selected) do
+        1 -> "1 failed job selected"
+        count -> "#{count} failed jobs selected"
+      end
+    end
 
-    defp status_badge_class("completed"), do: "border-emerald-200 bg-emerald-50 text-emerald-700"
-    defp status_badge_class("delivered"), do: "border-emerald-200 bg-emerald-50 text-emerald-700"
-    defp status_badge_class("executing"), do: "border-indigo-200 bg-indigo-50 text-indigo-700"
-    defp status_badge_class("failed"), do: "border-red-200 bg-red-50 text-red-700"
-    defp status_badge_class("discarded"), do: "border-red-200 bg-red-50 text-red-700"
-    defp status_badge_class("callback_failed"), do: "border-amber-200 bg-amber-50 text-amber-700"
-    defp status_badge_class("insert_failed"), do: "border-amber-200 bg-amber-50 text-amber-700"
-    defp status_badge_class("exhausted"), do: "border-amber-200 bg-amber-50 text-amber-700"
-    defp status_badge_class("claimed"), do: "border-slate-200 bg-slate-50 text-slate-700"
-    defp status_badge_class("pending"), do: "border-slate-200 bg-slate-50 text-slate-700"
-    defp status_badge_class(_status), do: "border-slate-200 bg-slate-50 text-slate-700"
+    defp batch_chain_step(context) do
+      name = context[:chain_step_name] || "Unknown"
 
-    defp severity_badge_class(:success), do: "border-emerald-200 bg-emerald-50 text-emerald-700"
-    defp severity_badge_class(:warning), do: "border-amber-200 bg-amber-50 text-amber-700"
-    defp severity_badge_class(_severity), do: "border-slate-200 bg-slate-50 text-slate-700"
+      if context[:chain_step_index] do
+        "#{name} (#{context[:chain_step_index]}/#{context[:chain_step_count] || "?"})"
+      else
+        name
+      end
+    end
 
     defp batch_name(%{name: name}) when is_binary(name) and name != "", do: name
     defp batch_name(%{short_id: short_id}), do: short_id

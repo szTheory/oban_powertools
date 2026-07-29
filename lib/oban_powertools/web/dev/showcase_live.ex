@@ -983,7 +983,14 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
         <% :forensics -> %>
           <ForensicsLive.page_content {@page_assigns} />
         <% :batches -> %>
-          <BatchesLive.page_content {@page_assigns} />
+          <BatchesLive.detail_page_content
+            :if={@story.activation == :confirmation}
+            {@page_assigns}
+          />
+          <BatchesLive.page_content
+            :if={@story.activation != :confirmation}
+            {@page_assigns}
+          />
         <% :workflows -> %>
           <WorkflowsLive.page_content {@page_assigns} />
         <% :lifeline -> %>
@@ -1044,6 +1051,10 @@ if Application.compile_env(:oban_powertools, :dev_routes, Mix.env() == :dev) do
         :scope_form,
         &to_form(&1, as: :scope, id: "page-story-forensics-scope")
       )
+    end
+
+    defp materialize_page_assigns(%{page: :batches, activation: :confirmation} = story) do
+      Map.update!(story.fixtures, :selected_failed_jobs, &MapSet.new/1)
     end
 
     defp materialize_page_assigns(%{page: :batches} = story), do: story.fixtures

@@ -128,6 +128,13 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       end
     end
 
+    def handle_event("create_new_preview", _params, %{assigns: %{selected_row: row}} = socket)
+        when not is_nil(row) do
+      handle_event("preview", %{"row-id" => row.id}, socket)
+    end
+
+    def handle_event("create_new_preview", _params, socket), do: {:noreply, socket}
+
     def handle_event("reason", %{"reason" => reason}, socket) do
       {:noreply, assign(socket, :reason, reason)}
     end
@@ -262,7 +269,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           <div>
             <h1 id="lifeline-page-title">Lifeline</h1>
             <p>
-              {ControlPlanePresenter.native_banner()} Generic job internals still deep-link into the Oban Web bridge.
+              Review incidents, preview bounded repairs, and execute deliberate remediation with recorded evidence.
             </p>
           </div>
           <DataDisplay.status_pill
@@ -335,9 +342,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               id={"lifeline-incident-#{row.id}"}
               phx-click="select_incident"
               phx-value-row-id={row.id}
+              aria-label={"Review incident #{row.subject}"}
               variant={:neutral}
             >
-              {row.subject}
+              Review incident
             </Primitives.button>
           </:col>
           <:col :let={row} label="Status">
@@ -358,7 +366,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
               disabled={not row.preview_available?}
               variant={:danger}
             >
-              Preview Native Remediation
+              Preview remediation
             </Primitives.button>
             <p :if={@current_view == "active" and row.preview_disabled_reason}>
               {row.preview_disabled_reason}
@@ -466,12 +474,12 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           title={@repair_confirmation.title}
           object_label={@repair_confirmation.object_label}
           scope={Enum.join(@repair_confirmation.affected_records, ", ")}
-          consequence={@repair_confirmation.consequence}
+          consequence="Powertools applies only the reviewed bounded change. The repair is not atomic or exactly once, and execution does not prove downstream recovery."
           reversibility={@repair_confirmation.reversibility}
           support_boundary={@repair_confirmation.support_boundary}
           form={@repair_form}
-          confirm_label="Execute Remediation"
-          dismiss_label="Cancel remediation"
+          confirm_label="Execute remediation"
+          dismiss_label="Keep current state"
           pending_copy="Executing remediation"
           logical_fallback_id={"lifeline-incident-#{@selected_row.id}"}
           submit_event="execute"
@@ -483,6 +491,15 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
           </:support_details>
           <:recovery>
             <p :if={@error_message}>{@error_message}</p>
+            <Primitives.button
+              :if={recoverable_preview?(@repair_confirmation.state)}
+              id="lifeline-create-new-preview"
+              type="button"
+              variant={:primary}
+              phx-click="create_new_preview"
+            >
+              Create new preview
+            </Primitives.button>
           </:recovery>
           <:audit>
             <Primitives.link :if={@success_message} href={Selectors.audit_path([])}>
@@ -1334,6 +1351,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp preview_state(%RepairPreview{status: "expired"}), do: :expired
     defp preview_state(%RepairPreview{status: "consumed"}), do: :consumed
     defp preview_state(%RepairPreview{}), do: :ready
+
+    defp recoverable_preview?(state), do: state in [:drifted, :expired, :consumed]
 
     defp preview_badge_class(:ready),
       do:
