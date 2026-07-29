@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 const MAX_DIAGNOSTICS = 100;
 const MAX_DOM_NODES = 2_000;
 const INTERACTIVE_SELECTOR =
-  'a[href], button, input, select, textarea, summary, [role="button"], [role="link"], [tabindex]:not([tabindex="-1"])';
+  'a[href], button, input, select, textarea, summary, [role="button"], [role="link"]';
 
 type Diagnostic = {
   target: string;
@@ -587,6 +587,7 @@ export async function auditReducedMotion(
   page: Page,
   options: Diagnostic & {
     rootSelector: string;
+    auditSelector?: string;
     mechanism: "os" | "root";
     maximumDurationMs: number;
     requiredVisible: string[];
@@ -614,14 +615,24 @@ export async function auditReducedMotion(
     }, options.mechanism);
 
     const report = await page.evaluate(
-      ({ rootSelector, requiredVisible, maximumDurationMs, maxNodes }) => {
-        const root = document.querySelector<HTMLElement>(rootSelector);
-        if (!root) throw new Error(`${rootSelector} is missing`);
+      ({
+        rootSelector,
+        auditSelector,
+        requiredVisible,
+        maximumDurationMs,
+        maxNodes,
+      }) => {
+        const root = document.querySelector<HTMLElement>(
+          auditSelector ?? rootSelector,
+        );
+        if (!root)
+          throw new Error(`${auditSelector ?? rootSelector} is missing`);
         const hiddenRequired: string[] = [];
         for (const selector of requiredVisible.slice(0, maxNodes)) {
-          const element = root.querySelector<HTMLElement>(selector);
+          const element = document.querySelector<HTMLElement>(selector);
           if (
             !element ||
+            !(element === root || root.contains(element)) ||
             element.hidden ||
             getComputedStyle(element).display === "none" ||
             getComputedStyle(element).visibility === "hidden"
@@ -665,6 +676,7 @@ export async function auditReducedMotion(
       },
       {
         rootSelector: options.rootSelector,
+        auditSelector: options.auditSelector,
         requiredVisible: options.requiredVisible,
         maximumDurationMs: options.maximumDurationMs,
         maxNodes: MAX_DOM_NODES,

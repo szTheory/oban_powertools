@@ -411,6 +411,16 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
     end
   end
 
+  test "explicit root motion reduction does not depend on the OS media preference" do
+    css = read_contract_file!(@tokens_path)
+
+    assert css =~
+             ~r/@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.obpt-root\s*\{[^}]*--obpt-motion-duration-fast:\s*var\(--obpt-motion-duration-instant\)/s
+
+    assert css =~
+             ~r/\}\s*\.obpt-root\[data-obpt-motion="reduce"\]\s*\{[^}]*--obpt-motion-duration-fast:\s*var\(--obpt-motion-duration-instant\)/s
+  end
+
   test "app shell selectors are root-scoped, token-backed, responsive, and stateful" do
     css = read_contract_file!(@tokens_path)
     shell_blocks = shell_blocks(css)
@@ -991,10 +1001,12 @@ defmodule ObanPowertools.Web.ThemeTokensTest do
              ]
     end
 
-    button_body = css |> blocks_for(".obpt-root .obpt-primitive-button") |> List.first() |> elem(1)
+    button_body =
+      css |> blocks_for(".obpt-root .obpt-primitive-button") |> List.first() |> elem(1)
 
-    assert {"min-block-size", "calc(var(--obpt-space-7) - var(--obpt-space-1))"} in
-             declarations(button_body)
+    assert {"min-block-size", "calc(var(--obpt-space-7) - var(--obpt-space-1))"} in declarations(
+             button_body
+           )
 
     shell_body = css |> blocks_for(".obpt-root .obpt-app-shell") |> List.first() |> elem(1)
     refute {"overflow-x", "hidden"} in declarations(shell_body)

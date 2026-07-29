@@ -358,12 +358,17 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .obpt-root,
-  .obpt-root[data-obpt-motion="reduce"] {
+  .obpt-root {
     --obpt-motion-duration-fast: var(--obpt-motion-duration-instant);
     --obpt-motion-duration-base: var(--obpt-motion-duration-instant);
     --obpt-motion-duration-slow: var(--obpt-motion-duration-instant);
   }
+}
+
+.obpt-root[data-obpt-motion="reduce"] {
+  --obpt-motion-duration-fast: var(--obpt-motion-duration-instant);
+  --obpt-motion-duration-base: var(--obpt-motion-duration-instant);
+  --obpt-motion-duration-slow: var(--obpt-motion-duration-instant);
 }
 
 /* Stateless form components */
