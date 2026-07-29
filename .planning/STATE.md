@@ -5,16 +5,16 @@ milestone_name: Identity Milestone Audit & Idempotency Proof
 current_phase: 82
 current_phase_name: Cross-Cutting A11y, Motion & Responsive Hardening Sweep
 status: executing
-stopped_at: Completed 82-16-PLAN.md
-last_updated: "2026-07-29T21:44:02.659Z"
+stopped_at: Completed 82-08-PLAN.md
+last_updated: "2026-07-29T22:09:56.597Z"
 last_activity: 2026-07-29
-last_activity_desc: Completed Phase 82 Plan 16 exact ARIA baseline reconciliation
+last_activity_desc: Completed Phase 82 Plan 08 exhaustive mechanical and page policy coverage
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 110
-  completed_plans: 106
-  percent: 96
+  completed_plans: 107
+  percent: 97
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 82 — Cross-Cutting A11y, Motion & Responsive Hardening Sweep
-Plan: 13 of 17
+Plan: 14 of 17
 Status: Ready to execute
-Last activity: 2026-07-29 — Completed Phase 82 Plan 16 exact ARIA baseline reconciliation
+Last activity: 2026-07-29 — Completed Phase 82 Plan 08 exhaustive mechanical and page policy coverage
 
 ## Performance Metrics
 
@@ -113,6 +113,7 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 16 exact ARIA baseline rec
 | Phase 82 P14 | 6min | 1 tasks | 4 files |
 | Phase 82 P15 | 7min | 1 tasks | 4 files |
 | Phase 82 P16 | 12min | 2 tasks | 94 files |
+| Phase 82 P08 | 40min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -141,11 +142,11 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 16 exact ARIA baseline rec
 
 ## Session Continuity
 
-**Last session:** 2026-07-29T21:44:02.652Z
-**Stopped at:** Completed 82-16-PLAN.md
+**Last session:** 2026-07-29T22:09:56.590Z
+**Stopped at:** Completed 82-08-PLAN.md
 **Resume file:** None
 
-- **Last Action:** Completed Plan 82-16's exact 297-snapshot ARIA reconciliation and 93-path semantic review.
+- **Last Action:** Completed Plan 82-08's manifest-derived mechanical quality integration and generated page copy/order enforcement.
 - **Next Action:** Execute the next dependency-ready Phase 82 plan.
 
 ## Decisions
@@ -350,6 +351,8 @@ Last activity: 2026-07-29 — Completed Phase 82 Plan 16 exact ARIA baseline rec
 - [Phase 82]: Keep Workflows diagnosis-only and render the refusal label plus code as one complete machine value. — Closes the documented outcome-to-code ordering contract without changing workflow authority or exposing additional evidence.
 - [Phase 82]: Reject stale acceptance drift at its owning story contract instead of blessing snapshots around a failing generated case. — Keeps update mode generation-only and makes semantic acceptance fail closed.
 - [Phase 82]: Accept only the 93 explained ARIA paths after exact-set, cross-viewport parity, confidentiality, and semantic review. — Preserves the 99-story and 297-path contract without unexplained drift or story expansion.
+- [Phase 82]: Runtime showcase slices derive target IDs only from generated manifest order.
+- [Phase 82]: Explicit-root reduced motion is independent of OS media preference.
 
 ### Blockers
 
