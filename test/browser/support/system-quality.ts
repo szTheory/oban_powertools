@@ -609,6 +609,12 @@ export async function auditReducedMotion(
     await page.emulateMedia({
       reducedMotion: options.mechanism === "os" ? "reduce" : "no-preference",
     });
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
     await page.locator(options.rootSelector).evaluate((root, mechanism) => {
       if (mechanism === "root") root.setAttribute("data-obpt-motion", "reduce");
       else root.removeAttribute("data-obpt-motion");
@@ -690,13 +696,19 @@ export async function auditReducedMotion(
     }
     return { mechanism: options.mechanism, ...report };
   } finally {
+    await page.emulateMedia({
+      reducedMotion: original.reducedMotion ? "reduce" : "no-preference",
+    });
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
     await page.locator(options.rootSelector).evaluate((root, motion) => {
       if (motion === null) root.removeAttribute("data-obpt-motion");
       else root.setAttribute("data-obpt-motion", motion);
     }, original.motion);
-    await page.emulateMedia({
-      reducedMotion: original.reducedMotion ? "reduce" : "no-preference",
-    });
   }
 }
 

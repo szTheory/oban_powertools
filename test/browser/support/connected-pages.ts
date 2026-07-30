@@ -69,6 +69,14 @@ async function openConnected(
     path,
     root,
     safeTraversal: async () => {
+      const openDetail = page.locator("dialog[open][data-obpt-detail-surface]");
+      if (await openDetail.isVisible().catch(() => false)) {
+        const close = openDetail.locator("[data-obpt-detail-close]");
+        await expect(close).toBeVisible();
+        await close.click();
+        await expect(openDetail).not.toBeVisible();
+      }
+
       const skipLink = page.getByRole("link", { name: "Skip to main content" });
       await skipLink.focus();
       await expect(skipLink).toBeFocused();
