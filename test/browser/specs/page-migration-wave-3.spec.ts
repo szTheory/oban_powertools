@@ -147,6 +147,19 @@ function lifelinePreviewButton(page: Page): Locator {
     .getByRole("button", { name: "Preview remediation" });
 }
 
+async function openReadyLifelinePreview(page: Page): Promise<Locator> {
+  await lifelinePreviewButton(page).click();
+
+  const dialog = page.getByRole("dialog", {
+    name: "Confirm Lifeline repair",
+  });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveAttribute("data-obpt-confirm-state", "preview");
+  await expect(dialog.getByRole("textbox", { name: /reason/i })).toBeVisible();
+
+  return dialog;
+}
+
 async function expectMinimumTargets(root: Locator): Promise<void> {
   const selector = await exactIdSelector(root, "target root");
   const targets = await collectInteractiveTargetGeometry(root.page(), selector);
@@ -333,7 +346,7 @@ test.describe("Phase 81 connected production page contracts", () => {
   }) => {
     await openConnectedPage(page, lifelinePath());
     await closeResidualDialog(page);
-    await lifelinePreviewButton(page).click();
+    await openReadyLifelinePreview(page);
     await controlPhase81Race(request, {
       command: "revoke",
       secret: fixtureSecret,
@@ -357,8 +370,7 @@ test.describe("Phase 81 connected production page contracts", () => {
     await openConnectedPage(page, lifelinePath());
     await closeResidualDialog(page);
 
-    const driftInvoker = lifelinePreviewButton(page);
-    await driftInvoker.click();
+    await openReadyLifelinePreview(page);
     const drift = await controlPhase81Race(request, {
       command: "drift",
       secret: fixtureSecret,
@@ -403,8 +415,7 @@ test.describe("Phase 81 connected production page contracts", () => {
     });
     await openConnectedPage(page, lifelinePath());
 
-    const expiredInvoker = lifelinePreviewButton(page);
-    await expiredInvoker.click();
+    await openReadyLifelinePreview(page);
     const expire = await controlPhase81Race(request, {
       command: "expire",
       secret: fixtureSecret,
@@ -449,8 +460,7 @@ test.describe("Phase 81 connected production page contracts", () => {
     });
     await openConnectedPage(page, lifelinePath());
 
-    const consumedInvoker = lifelinePreviewButton(page);
-    await consumedInvoker.click();
+    await openReadyLifelinePreview(page);
     const duplicate = await controlPhase81Race(request, {
       command: "duplicate",
       secret: fixtureSecret,
