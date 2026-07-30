@@ -5,6 +5,7 @@ defmodule ObanPowertools.Web.ThemeShell do
 
   alias ObanPowertools.Web.Assets
   alias ObanPowertools.Web.Components.AppShell
+  alias Phoenix.LiveView.JS
 
   attr(:inner_content, :any, required: true)
 
@@ -23,6 +24,13 @@ defmodule ObanPowertools.Web.ThemeShell do
       data-obpt-theme="system"
       data-obpt-effective-theme="light"
       data-obpt-motion="safe"
+      phx-mounted={
+        JS.ignore_attributes([
+          "data-obpt-theme",
+          "data-obpt-effective-theme",
+          "data-obpt-motion"
+        ])
+      }
     >
       <AppShell.app_shell
         current_path={@current_path}
