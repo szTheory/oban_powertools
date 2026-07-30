@@ -1019,17 +1019,26 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       active_incident_window =
         repo
         |> Lifeline.list_incidents(status: "active", limit: @incident_limit + 1)
-        |> then(&expand_rows(repo, &1))
+
+      resolved_incident_window =
+        repo
+        |> Lifeline.list_incidents(status: "resolved", limit: @incident_limit + 1)
+
+      {active_incident_window, resolved_incident_window} =
+        prepend_selected_incident(
+          repo,
+          active_incident_window,
+          resolved_incident_window,
+          selection
+        )
+
+      active_incident_window = expand_rows(repo, active_incident_window)
+      resolved_incident_window = expand_rows(repo, resolved_incident_window)
 
       workflow_handoff_row = workflow_handoff_row(repo, selection)
 
       active_incident_window =
         prepend_handoff_row(active_incident_window, workflow_handoff_row)
-
-      resolved_incident_window =
-        repo
-        |> Lifeline.list_incidents(status: "resolved", limit: @incident_limit + 1)
-        |> then(&expand_rows(repo, &1))
 
       incident_has_more? =
         length(active_incident_window) > @incident_limit or
@@ -1231,6 +1240,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       Enum.find(rows, &(&1.incident.incident_fingerprint == incident_fingerprint))
     end
 
+    defp find_pending_preview(_repo, %{target_id: nil}), do: nil
+
     defp find_pending_preview(repo, row) do
       base_query =
         from(preview in RepairPreview,
@@ -1252,6 +1263,44 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         end
 
       repo.one(query)
+    end
+
+    defp prepend_selected_incident(
+           _repo,
+           active_incidents,
+           resolved_incidents,
+           nil
+         ),
+         do: {active_incidents, resolved_incidents}
+
+    defp prepend_selected_incident(
+           repo,
+           active_incidents,
+           resolved_incidents,
+           selection
+         ) do
+      case Map.get(selection, :incident_fingerprint) do
+        fingerprint when is_binary(fingerprint) ->
+          case repo.get_by(Incident, incident_fingerprint: fingerprint) do
+            %Incident{status: "active"} = incident ->
+              {prepend_unique_incident(active_incidents, incident), resolved_incidents}
+
+            %Incident{status: "resolved"} = incident ->
+              {active_incidents, prepend_unique_incident(resolved_incidents, incident)}
+
+            _ ->
+              {active_incidents, resolved_incidents}
+          end
+
+        _ ->
+          {active_incidents, resolved_incidents}
+      end
+    end
+
+    defp prepend_unique_incident(incidents, incident) do
+      if Enum.any?(incidents, &(&1.id == incident.id)),
+        do: incidents,
+        else: [incident | incidents]
     end
 
     defp load_target_detail(%{target_type: "job", target_id: target_id})

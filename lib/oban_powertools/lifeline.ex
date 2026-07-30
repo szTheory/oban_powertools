@@ -5,8 +5,6 @@ defmodule ObanPowertools.Lifeline do
 
   import Ecto.Query
 
-  require Logger
-
   alias Ecto.Multi
   alias ObanPowertools.{Audit, Auth, Callback, Explain, HostEscalation}
   alias ObanPowertools.Lifeline.{ArchiveRun, Heartbeat, Incident, RepairPreview, TargetType}
@@ -66,15 +64,13 @@ defmodule ObanPowertools.Lifeline do
       status = classify_heartbeat(heartbeat, now)
 
       if heartbeat.health_state != status do
-        case heartbeat |> Heartbeat.changeset(%{health_state: status}) |> repo.update() do
-          {:ok, _heartbeat} ->
-            :ok
-
-          {:error, changeset} ->
-            Logger.warning(
-              "Failed to update heartbeat health_state: #{inspect(changeset.errors)}"
-            )
-        end
+        # Health projection is a read-path side effect and may overlap retention
+        # or fixture cleanup. An atomic update keeps a concurrently deleted row
+        # from turning an otherwise safe page load into Ecto.StaleEntryError.
+        repo.update_all(
+          from(candidate in Heartbeat, where: candidate.id == ^heartbeat.id),
+          set: [health_state: status]
+        )
       end
 
       %{
@@ -485,23 +481,16 @@ defmodule ObanPowertools.Lifeline do
       |> Map.put(:status, "active")
       |> Map.put(:resolved_at, nil)
 
-    case repo.get_by(Incident, incident_fingerprint: attrs.incident_fingerprint) do
-      nil ->
-        {:ok, incident} =
-          %Incident{}
-          |> Incident.changeset(attrs)
-          |> repo.insert()
+    {:ok, incident} =
+      %Incident{}
+      |> Incident.changeset(attrs)
+      |> repo.insert(
+        conflict_target: :incident_fingerprint,
+        on_conflict: {:replace, incident_projection_fields()},
+        returning: true
+      )
 
-        incident
-
-      incident ->
-        {:ok, updated} =
-          incident
-          |> Incident.changeset(Map.put(attrs, :first_detected_at, incident.first_detected_at))
-          |> repo.update()
-
-        updated
-    end
+    incident
   end
 
   defp reconcile_inactive_incidents(repo, active_incidents, now) do
@@ -516,16 +505,30 @@ defmodule ObanPowertools.Lifeline do
   end
 
   defp resolve_incident_row(repo, incident, now) do
-    {:ok, resolved} =
-      incident
-      |> Incident.changeset(%{
-        status: "resolved",
-        resolved_at: now,
-        last_detected_at: now
-      })
-      |> repo.update()
+    repo.update_all(
+      from(candidate in Incident, where: candidate.id == ^incident.id),
+      set: [status: "resolved", resolved_at: now, last_detected_at: now]
+    )
 
-    resolved
+    %{incident | status: "resolved", resolved_at: now, last_detected_at: now}
+  end
+
+  defp incident_projection_fields do
+    [
+      :incident_class,
+      :status,
+      :executor_id,
+      :workflow_id,
+      :workflow_step_id,
+      :health_state,
+      :summary,
+      :affected_counts,
+      :evidence,
+      :last_detected_at,
+      :resolved_at,
+      :metadata,
+      :updated_at
+    ]
   end
 
   defp dead_executor_evidence(repo, executor_id) do
