@@ -881,13 +881,13 @@
   outline-offset: calc(var(--obpt-space-1) / 2);
 }
 
-@media (max-width: 48rem) {
+@media (max-width: 63.999rem) {
   .obpt-root .obpt-app-shell[data-obpt-nav-state="closed"] > .obpt-app-shell__header > .obpt-primary-nav {
     display: none;
   }
 }
 
-@media (min-width: 48rem) {
+@media (min-width: 64rem) {
   .obpt-root .obpt-app-shell {
     gap: var(--obpt-space-6);
   }
