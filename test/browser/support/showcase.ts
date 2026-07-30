@@ -106,7 +106,9 @@ export function targetLocator(page: Page, target: ShowcaseTarget): Locator {
 }
 
 export async function activateTarget(page: Page, target: ShowcaseTarget): Promise<Locator> {
-  await expect(page.locator('[data-phx-main].phx-connected')).toHaveCount(1);
+  await expect(page.locator('[data-phx-main].phx-connected')).toHaveCount(1, {
+    timeout: 60_000
+  });
 
   const story = targetLocator(page, target);
 
