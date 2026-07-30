@@ -23,6 +23,16 @@
   const DETAIL_BODY_SELECTOR = "[data-obpt-detail-body]";
   const DETAIL_CLOSE_SELECTOR = "[data-obpt-detail-close]";
   const FOCUS_OWNER_SELECTOR = "[data-obpt-focus-fallback]";
+  const CONFIRM_DIALOG_SELECTOR =
+    ".obpt-confirm-action[role='dialog'][aria-modal='true'][data-obpt-focus-fallback]";
+  const TABBABLE_SELECTOR = [
+    "a[href]",
+    "button:not([disabled])",
+    "input:not([disabled]):not([type='hidden'])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    "[tabindex]:not([tabindex='-1'])",
+  ].join(", ");
   const CONTROLLED_TRIGGER_SELECTOR = "[aria-controls], [data-obpt-controls]";
 
   const colorPreference = window.matchMedia("(prefers-color-scheme: dark)");
@@ -313,6 +323,83 @@
         !element.hasAttribute("disabled") &&
         !element.closest("[hidden], [inert]")
     );
+  }
+
+  function visibleTabbables(owner) {
+    if (!owner) {
+      return [];
+    }
+
+    return Array.from(owner.querySelectorAll(TABBABLE_SELECTOR)).filter((element) => {
+      if (
+        !element.isConnected ||
+        element.hasAttribute("disabled") ||
+        element.closest("[hidden], [inert]") ||
+        element.getClientRects().length === 0
+      ) {
+        return false;
+      }
+
+      const style = window.getComputedStyle(element);
+      return style.display !== "none" && style.visibility !== "hidden";
+    });
+  }
+
+  function wrapConfirmationFocus(event) {
+    if (event.key !== "Tab" || event.defaultPrevented) {
+      return false;
+    }
+
+    const target = event.target;
+    const owner =
+      target && target.closest ? target.closest(CONFIRM_DIALOG_SELECTOR) : null;
+
+    if (!owner) {
+      return false;
+    }
+
+    const tabbables = visibleTabbables(owner);
+
+    if (tabbables.length === 0) {
+      event.preventDefault();
+      owner.focus({ preventScroll: true });
+      return true;
+    }
+
+    const first = tabbables[0];
+    const last = tabbables[tabbables.length - 1];
+    const actions = owner.querySelector(".obpt-confirm-action__actions");
+    const submitAction = actions && actions.querySelector("button[type='submit']:not([disabled])");
+    const dismissAction = actions && actions.querySelector("button[type='button']:not([disabled])");
+    const targetIndex = tabbables.indexOf(target);
+
+    if (event.shiftKey && target === first) {
+      event.preventDefault();
+      last.focus({ preventScroll: true });
+      return true;
+    }
+
+    if (
+      !event.shiftKey &&
+      submitAction &&
+      dismissAction &&
+      targetIndex >= 0 &&
+      tabbables[targetIndex + 1] === submitAction
+    ) {
+      event.preventDefault();
+      dismissAction.focus({ preventScroll: true });
+      return true;
+    }
+
+    if (!event.shiftKey && target === last) {
+      const cycleAction = submitAction || first;
+
+      event.preventDefault();
+      cycleAction.focus({ preventScroll: true });
+      return true;
+    }
+
+    return false;
   }
 
   function rememberControlledInvoker(control) {
@@ -798,6 +885,10 @@
   });
 
   document.addEventListener("keydown", (event) => {
+    if (wrapConfirmationFocus(event)) {
+      return;
+    }
+
     if (event.key !== "Escape") {
       return;
     }
