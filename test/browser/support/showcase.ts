@@ -33,7 +33,7 @@ export async function prepareShowcase(
   opts: { theme: ShowcaseTheme; viewportName: ViewportName }
 ): Promise<void> {
   await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
-  await page.goto('/ops/jobs/_showcase');
+  await gotoShowcase(page);
 
   const root = page.locator('.obpt-root');
   await expect(root).toHaveCount(1);
@@ -75,6 +75,26 @@ export async function prepareShowcase(
 
   await page.waitForLoadState('networkidle');
   await page.evaluate(() => document.fonts.ready);
+}
+
+async function gotoShowcase(page: Page): Promise<void> {
+  const deadline = Date.now() + 15_000;
+
+  while (true) {
+    try {
+      await page.goto('/ops/jobs/_showcase');
+      return;
+    } catch (error) {
+      const connectionRefused =
+        error instanceof Error && error.message.includes('ERR_CONNECTION_REFUSED');
+
+      if (!connectionRefused || Date.now() >= deadline) {
+        throw error;
+      }
+
+      await page.waitForTimeout(250);
+    }
+  }
 }
 
 export function storyLocator(page: Page, scenario: ShowcaseScenario): Locator {

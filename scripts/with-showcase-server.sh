@@ -168,19 +168,48 @@ fi
 
 (
   cd "${HOST_DIR}"
-  exec env \
-    MIX_ENV=test \
-    MIX_BUILD_PATH="${PHASE79_BUILD_PATH}" \
-    MIX_TEST_PARTITION="${MIX_TEST_PARTITION}" \
-    PHASE79_BROWSER_FIXTURES=1 \
-    PHASE79_BROWSER_FIXTURE_SECRET="${PHASE79_BROWSER_FIXTURE_SECRET}" \
-    PHASE80_BROWSER_FIXTURES=1 \
-    PHASE80_BROWSER_FIXTURE_SECRET="${PHASE80_BROWSER_FIXTURE_SECRET}" \
-    PHASE81_BROWSER_FIXTURES=1 \
-    PHASE81_BROWSER_FIXTURE_SECRET="${PHASE81_BROWSER_FIXTURE_SECRET}" \
-    PORT="${PORT}" \
-    PHX_SERVER=true \
-    mix phx.server >"${SERVER_LOG}" 2>&1
+  server_child_pid=""
+
+  stop_server_child() {
+    if [ -n "${server_child_pid}" ] && kill -0 "${server_child_pid}" 2>/dev/null; then
+      kill "${server_child_pid}" 2>/dev/null || true
+      wait "${server_child_pid}" 2>/dev/null || true
+    fi
+
+    exit 0
+  }
+
+  trap stop_server_child TERM INT
+
+  while true; do
+    env \
+      MIX_ENV=test \
+      MIX_BUILD_PATH="${PHASE79_BUILD_PATH}" \
+      MIX_TEST_PARTITION="${MIX_TEST_PARTITION}" \
+      PHASE79_BROWSER_FIXTURES=1 \
+      PHASE79_BROWSER_FIXTURE_SECRET="${PHASE79_BROWSER_FIXTURE_SECRET}" \
+      PHASE80_BROWSER_FIXTURES=1 \
+      PHASE80_BROWSER_FIXTURE_SECRET="${PHASE80_BROWSER_FIXTURE_SECRET}" \
+      PHASE81_BROWSER_FIXTURES=1 \
+      PHASE81_BROWSER_FIXTURE_SECRET="${PHASE81_BROWSER_FIXTURE_SECRET}" \
+      PORT="${PORT}" \
+      PHX_SERVER=true \
+      mix phx.server >>"${SERVER_LOG}" 2>&1 &
+    server_child_pid="$!"
+
+    if wait "${server_child_pid}"; then
+      server_status=0
+    else
+      server_status=$?
+    fi
+    server_child_pid=""
+
+    if [ "${server_status}" -ne 0 ]; then
+      exit "${server_status}"
+    fi
+
+    echo "showcase server exited cleanly; restarting" >>"${SERVER_LOG}"
+  done
 ) &
 SERVER_PID="$!"
 
