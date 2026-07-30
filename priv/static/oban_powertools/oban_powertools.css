@@ -451,6 +451,12 @@
   resize: vertical;
 }
 
+.obpt-root .obpt-input::placeholder,
+.obpt-root .obpt-textarea::placeholder {
+  color: var(--obpt-color-muted);
+  opacity: 1;
+}
+
 .obpt-root .obpt-select {
   appearance: auto;
 }
