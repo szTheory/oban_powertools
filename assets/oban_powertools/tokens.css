@@ -2617,6 +2617,7 @@
 
 .obpt-root .obpt-why-blocked__evidence summary,
 .obpt-root .obpt-audit-entry__evidence summary {
+  min-block-size: var(--obpt-space-5);
   border-radius: var(--obpt-radius-sm);
   color: var(--obpt-color-accent-fg);
   font-size: var(--obpt-font-size-sm);
