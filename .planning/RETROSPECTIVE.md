@@ -198,6 +198,59 @@
 
 ---
 
+## Milestone: v2.0 — Powertools Identity
+
+**Shipped:** 2026-07-31
+**Phases:** 15 (70–84) | **Plans:** 113 | **Tasks:** 212
+
+### What Was Built
+
+- A versioned brand book and isolated, host-safe token/theming engine with immutable library-owned assets.
+- Accessible primitives, forms, navigation, data-display components, and operator meta-components that preserve parent LiveView authority.
+- All nine native operator surfaces migrated to the shared composition system without behavior, authorization, mutation, deep-link, or audit regression.
+- A deterministic 163-target showcase spanning 99 page stories, four themes, and three viewports.
+- Merge-blocking visual-regression, WCAG, responsive, motion, copy, confidentiality, package-boundary, and idempotency gates.
+- Final proof tracing all 58 requirements and all nine operator flows through shipped behavior and passed verification.
+
+### What Worked
+
+- **Foundation-first sequencing:** Brand → tokens → fixtures/showcase → quality harness → components → pages kept later phases anchored to stable contracts.
+- **Authority-preserving composition:** Shared UI components stayed finite and stateless while LiveViews retained URL, authorization, preview, mutation, and audit ownership.
+- **One generated evidence graph:** The Elixir-owned catalog drove showcase stories, browser targets, accessibility trees, and visual baselines, preventing parallel inventories from drifting.
+- **Exact, mutation-tested quality gates:** Fixed inventory counts, byte-stable assets, retries-zero browser runs, and CI graph mutation tests turned idempotency into executable proof.
+- **Adopter-first final audit:** Phase 84 verified the complete operator journeys and package boundary, not merely phase completion counts; the audit passed 58/58 requirements.
+
+### What Was Inefficient
+
+- **The milestone was broad:** 15 phases and 113 plans over 44 days created a large review and archive surface. The strict dependency chain was justified, but future UI milestones should seek smaller independently shippable slices.
+- **Evidence volume became operationally expensive:** Exact multi-theme/multi-viewport matrices provide strong regression protection, but thousands of generated artifacts amplify storage, review, and closeout costs.
+- **Summary metadata was inconsistent:** Some `one_liner` extraction returned deviation notes instead of accomplishments, requiring manual synthesis at close. Summary schemas need a reliably authored outcome field.
+- **The close began with a dirty worktree:** Although the final audit passed, pre-existing tracked and untracked changes complicated archive safety checks. Milestone verification should continue to distinguish committed proof from working-tree evidence.
+
+### Patterns Established
+
+- **Brand-decision traceability:** Every visual and verbal implementation choice cites a locked brand decision rather than introducing orphan styles or copy.
+- **Root-scoped library theming:** `.obpt-root`, namespaced tokens, and immutable assets form the reusable host-isolation boundary.
+- **Production composition as showcase input:** Stories call the same production composition functions as the nine pages; copied showcase markup is not acceptable evidence.
+- **Exact artifact contracts:** Generated inventories and reviewed artifacts are versioned contracts, with changes requiring explicit reconciliation rather than silent regeneration.
+- **Quality graph as release architecture:** Visual, accessibility, responsive, motion, copy, packaging, and idempotency proof are direct merge gates, not post-release audits.
+
+### Key Lessons
+
+1. Establish the regression harness before mass migration; it turns later page work into bounded contract-preserving changes.
+2. Keep presentation components stateless and server authority explicit, especially for operator actions and confidentiality-sensitive evidence.
+3. Generate every evidence consumer from one canonical inventory and mutation-test the graph that connects it to CI.
+4. Treat exact artifact counts as a powerful but costly contract; budget their review and storage footprint during planning.
+5. Require a clean, outcome-focused `one_liner` in every summary so milestone synthesis does not confuse resolved deviations with delivered value.
+
+### Cost Observations
+
+- Model mix: Opus-class planning/discussion and Sonnet-class execution/verification/completion under the balanced profile.
+- Timeline: 44 days across 15 phases, 113 plans, and 212 completed task records.
+- Notable: the milestone invested heavily in durable evidence infrastructure—2,756 changed files, dominated by exact accessibility and visual-regression artifacts—to make future UI work forward-only.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -212,6 +265,7 @@
 | v1.5      | 4      | 9     | Tight arc, no gap-closure tail; but lost phase commits exposed audit-vs-commit-state gap |
 | v1.6      | 7      | 16    | Release milestone: hex publication + operability CLIs; audit-before-archive gate; one surgical insert (52.1) |
 | v1.7      | 4      | 14    | Tightest arc yet (2 days, zero gap-closure phases); `tech_debt` audit as valid ship gate; cron-path and Doctor-manifest class of gaps identified |
+| v2.0      | 15     | 113   | Brand-to-page design-system rebuild; canonical generated evidence graph and forward-only quality gates |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -223,3 +277,5 @@
 6. **For release milestones, the published tarball is the only final verification artifact.** In-repo green ≠ published green. `verify-published` CI job is the right closing gate for any hex release milestone.
 7. **Cross-path enqueue coverage is a standard checklist item.** Any enqueue-time metadata addition must audit all insert paths (idempotency, cron, direct). v1.7's INT-02 (cron+deadline gap) repeats the same class of miss as v1.6's REL-04 — a shared code path that wasn't updated when a feature was added to the primary path.
 8. **`tech_debt` audit status is a valid ship gate.** All requirements satisfied + non-blocking gaps documented = ready to ship. Don't hold milestones for non-blocking items; defer them with explicit tracking.
+9. **One canonical evidence inventory prevents quality drift.** v2.0 derived showcase, VRT, accessibility, and browser targets from the same Elixir-owned catalog and mutation-tested their CI wiring.
+10. **Exact artifact contracts need explicit cost budgeting.** Reviewed counts make regressions fail closed, but large theme/viewport matrices increase storage and closeout overhead; plan that cost rather than discovering it late.
