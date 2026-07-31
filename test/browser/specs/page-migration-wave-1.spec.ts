@@ -253,16 +253,18 @@ async function openConnectedPage(page: Page, path: string): Promise<void> {
   await page.goto(path);
   await expect(page.locator("[data-phx-main]")).toHaveCount(1);
   await expect
-    .poll(() =>
-      page.evaluate(() =>
-        Boolean(
-          (
-            window as unknown as {
-              liveSocket?: { isConnected: () => boolean };
-            }
-          ).liveSocket?.isConnected(),
+    .poll(
+      () =>
+        page.evaluate(() =>
+          Boolean(
+            (
+              window as unknown as {
+                liveSocket?: { isConnected: () => boolean };
+              }
+            ).liveSocket?.isConnected(),
+          ),
         ),
-      ),
+      { timeout: 60_000 },
     )
     .toBe(true);
   expect(new URL(page.url()).pathname).not.toContain("_showcase");

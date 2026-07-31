@@ -781,6 +781,24 @@ export async function auditSystemTheme(
       });
     }, options.roles);
 
+  const waitForEffectiveTheme = async (
+    expected: "light" | "dark" | "high-contrast",
+  ) => {
+    await page.waitForFunction(
+      ({ rootSelector, expectedTheme }) =>
+        document
+          .querySelector(rootSelector)
+          ?.getAttribute("data-obpt-effective-theme") === expectedTheme,
+      { rootSelector: options.rootSelector, expectedTheme: expected },
+    );
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+  };
+
   const cases = [];
   try {
     for (const matrixCase of options.matrix) {
@@ -788,32 +806,58 @@ export async function auditSystemTheme(
         colorScheme: matrixCase.colorScheme,
         contrast: matrixCase.contrast,
       });
-      await page
-        .locator(options.rootSelector)
-        .evaluate(
-          (root, theme) => root.setAttribute("data-obpt-theme", theme),
-          matrixCase.expectedTheme,
-        );
+      await page.locator(options.rootSelector).evaluate((root, theme) => {
+        (
+          window as unknown as {
+            ObanPowertoolsTheme?: {
+              apply: (element: Element, requestedTheme: string) => void;
+            };
+          }
+        ).ObanPowertoolsTheme?.apply(root, theme);
+      }, matrixCase.expectedTheme);
+      await waitForEffectiveTheme(matrixCase.expectedTheme);
       const expectedRoles = await snapshot();
 
-      await page
-        .locator(options.rootSelector)
-        .evaluate((root) => root.setAttribute("data-obpt-theme", "system"));
+      await page.locator(options.rootSelector).evaluate((root) => {
+        (
+          window as unknown as {
+            ObanPowertoolsTheme?: {
+              apply: (element: Element, requestedTheme: string) => void;
+            };
+          }
+        ).ObanPowertoolsTheme?.apply(root, "system");
+      });
+      await waitForEffectiveTheme(matrixCase.expectedTheme);
       const actualRoles = await snapshot();
       cases.push({ ...matrixCase, actualRoles, expectedRoles });
     }
     return { cases };
   } finally {
-    await page.locator(options.rootSelector).evaluate((root, state) => {
-      if (state.theme === null) root.removeAttribute("data-obpt-theme");
-      else root.setAttribute("data-obpt-theme", state.theme);
-      if (state.motion === null) root.removeAttribute("data-obpt-motion");
-      else root.setAttribute("data-obpt-motion", state.motion);
-    }, original);
     await page.emulateMedia({
       colorScheme: original.colorScheme,
       contrast: original.contrast,
     });
+    await page.locator(options.rootSelector).evaluate((root, state) => {
+      (
+        window as unknown as {
+          ObanPowertoolsTheme?: {
+            apply: (element: Element, requestedTheme: string) => void;
+          };
+        }
+      ).ObanPowertoolsTheme?.apply(root, state.theme ?? "system");
+      if (state.theme === null) root.removeAttribute("data-obpt-theme");
+      if (state.motion === null) root.removeAttribute("data-obpt-motion");
+      else root.setAttribute("data-obpt-motion", state.motion);
+    }, original);
+    const restoredTheme =
+      original.theme === "light" ||
+      original.theme === "dark" ||
+      original.theme === "high-contrast"
+        ? original.theme
+        : original.contrast === "more"
+          ? "high-contrast"
+          : original.colorScheme;
+    await waitForEffectiveTheme(restoredTheme);
   }
 }
 
