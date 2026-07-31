@@ -556,6 +556,30 @@ test.describe("Phase 82 system quality contract", () => {
         <button id="role-control">Control</button>
       </main>
     `);
+    await page.locator("#subject").evaluate((root) => {
+      const apply = (element: Element, requestedTheme: string) => {
+        const effectiveTheme =
+          requestedTheme === "system"
+            ? matchMedia("(prefers-contrast: more)").matches
+              ? "high-contrast"
+              : matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light"
+            : requestedTheme;
+
+        element.setAttribute("data-obpt-theme", requestedTheme);
+        element.setAttribute("data-obpt-effective-theme", effectiveTheme);
+      };
+
+      (
+        window as unknown as {
+          ObanPowertoolsTheme: {
+            apply: (element: Element, requestedTheme: string) => void;
+          };
+        }
+      ).ObanPowertoolsTheme = { apply };
+      apply(root, "system");
+    });
     const original = await page.locator("#subject").evaluate((element) => ({
       theme: element.getAttribute("data-obpt-theme"),
       motion: element.getAttribute("data-obpt-motion"),
