@@ -103,11 +103,11 @@ async function expectOneTree(page: Page): Promise<void> {
 async function expectDialogFocusContained(page: Page): Promise<void> {
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
-  expect(
-    await dialog.evaluate((element) =>
-      element.contains(document.activeElement),
-    ),
-  ).toBe(true);
+  await expect
+    .poll(() =>
+      dialog.evaluate((element) => element.contains(document.activeElement)),
+    )
+    .toBe(true);
 }
 
 async function expectNoOverflow(root: Locator): Promise<void> {
