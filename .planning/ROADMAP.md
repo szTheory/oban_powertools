@@ -18,9 +18,9 @@
 - [x] **Phase 79: Page Migration Wave 1** — Overview, Cron, Limiters, Audit. (completed 2026-07-20)
 - [x] **Phase 80: Page Migration Wave 2** — Jobs + Forensics. *[split-risk]* — verification gap closure required (completed 2026-07-29)
 - [x] **Phase 81: Page Migration Wave 3** — Batches, Workflows, Lifeline. *[split-risk]* (completed 2026-07-29)
-- [ ] **Phase 82: Cross-Cutting A11y/Motion/Responsive Sweep** — System-wide AA + reduced-motion + 320→wide + microcopy closure.
-- [ ] **Phase 83: Showcase Completion & Documentation** — Full showcase coverage + design-system/idempotency docs.
-- [ ] **Phase 84: v2.0 Milestone Audit & Idempotency Proof** — Trace every REQ to shipped behavior + prove forward-only idempotency.
+- [x] **Phase 82: Cross-Cutting A11y/Motion/Responsive Sweep** — System-wide AA + reduced-motion + 320→wide + microcopy closure. (completed 2026-07-31)
+- [x] **Phase 83: Showcase Completion & Documentation** — Full showcase coverage + design-system/idempotency docs. (completed 2026-07-31)
+- [x] **Phase 84: v2.0 Milestone Audit & Idempotency Proof** — Trace every REQ to shipped behavior + prove forward-only idempotency. (completed 2026-07-31)
 
 ## Phase Details
 
@@ -431,7 +431,7 @@
   3. Full keyboard traversal of every page; no horizontal scroll at 320px anywhere.
   4. A microcopy consistency audit passes against the BRAND-04 voice.
 
-**Plans**: 16/17 plans executed
+**Plans**: 17/17 plans executed
 
 - [x] 82-01-PLAN.md
 - [x] 82-02-PLAN.md
@@ -443,7 +443,7 @@
 - [x] 82-08-PLAN.md
 - [x] 82-09-PLAN.md
 - [x] 82-10-PLAN.md
-- [ ] 82-11-PLAN.md
+- [x] 82-11-PLAN.md
 - [x] 82-12-PLAN.md
 - [x] 82-13-PLAN.md
 - [x] 82-14-PLAN.md
@@ -462,7 +462,10 @@
   2. A contributor guide documents the token contract, the "no raw values" lint, how to add/extend a component, and theming rules.
   3. The idempotency guardrails (VRT snapshots, a11y gate, token byte-stability, forward-only quality) are documented; the brand book is linked from the README.
 
-**Plans**: TBD
+**Plans**: 2/2 plans executed
+
+- [x] 83-01-PLAN.md
+- [x] 83-02-PLAN.md
 
 ### Phase 84: v2.0 Identity Milestone Audit & Idempotency Proof
 
@@ -475,7 +478,9 @@
   2. CI proves the idempotency contract: re-running the asset build is byte-stable, VRT baselines match with no `--update-snapshots`, the a11y gate is green, and the "no raw values" lint is clean.
   3. The milestone audit (adopter-first "done" lens) passes; overbuilding watch-out items are reviewed and explicitly accepted/deferred.
 
-**Plans**: TBD
+**Plans**: 1/1 plan executed
+
+- [x] 84-01-PLAN.md
 
 ## Progress
 
@@ -493,9 +498,9 @@
 | 79. Page Migration Wave 1 | 12/12 | Complete   | 2026-07-20 |
 | 80. Page Migration Wave 2 | 17/17 | Complete    | 2026-07-29 |
 | 81. Page Migration Wave 3 | 15/15 | Complete    | 2026-07-29 |
-| 82. Cross-Cutting A11y/Motion/Responsive Sweep | 16/17 | In Progress|  |
-| 83. Showcase Completion & Documentation | 0/TBD | Not started | — |
-| 84. v2.0 Milestone Audit & Idempotency Proof | 0/TBD | Not started | — |
+| 82. Cross-Cutting A11y/Motion/Responsive Sweep | 17/17 | Complete | 2026-07-31 |
+| 83. Showcase Completion & Documentation | 2/2 | Complete | 2026-07-31 |
+| 84. v2.0 Milestone Audit & Idempotency Proof | 1/1 | Complete | 2026-07-31 |
 
 ## Sequencing Rationale
 

@@ -90,9 +90,9 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 
 ### Component Showcase (SHOW)
 
-- [ ] **SHOW-01**: A dev-only route (`/ops/jobs/_showcase`, compiled out / guarded in prod via `compile_env` + dev/test `elixirc_paths`) renders every token, primitive, form, data, group, and page-pattern with all variants/states, including `*_open` overlay variants for a11y.
-- [ ] **SHOW-02**: The showcase has a theme switcher (light/dark/system/high-contrast) and a 320/tablet/wide viewport toggle; it is the canonical surface for the audit, visual-regression, and a11y scans, with stable per-cell `id`/`data-*`.
-- [ ] **SHOW-03**: The showcase is host-independent (runs from `examples/phoenix_host` in dev only) and never leaks into a host's production build (proven via tarball check).
+- [x] **SHOW-01**: A dev-only route (`/ops/jobs/_showcase`, compiled out / guarded in prod via `compile_env` + dev/test `elixirc_paths`) renders every token, primitive, form, data, group, and page-pattern with all variants/states, including `*_open` overlay variants for a11y.
+- [x] **SHOW-02**: The showcase has a theme switcher (light/dark/system/high-contrast) and a 320/tablet/wide viewport toggle; it is the canonical surface for the audit, visual-regression, and a11y scans, with stable per-cell `id`/`data-*`.
+- [x] **SHOW-03**: The showcase is host-independent (runs from `examples/phoenix_host` in dev only) and never leaks into a host's production build (proven via tarball check).
 
 ### Visual Regression (VRT)
 
@@ -102,14 +102,14 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 
 ### Stress Fixtures (FIX)
 
-- [ ] **FIX-01**: A deterministic named-scenario catalog (`test/support/showcase_catalog.ex`, dev/test-only) covers normal + adversarial states: empty/one/many, long IDs/module names/URLs, non-ASCII/emoji/RTL, high counts, mixed severity, permission-denied, stale/disconnected, boundary pagination.
-- [ ] **FIX-02**: Fixtures are plain structs by default (no DB insert), use constants (not Faker) for anything a screenshot touches, and are the single source of truth shared by showcase + ExUnit + VRT snapshot names + a11y targets.
-- [ ] **FIX-03**: Fixtures exercise per-persona JTBD scenarios (triage, incident, repair, audit review) and are excluded from the hex tarball (verified in CI).
+- [x] **FIX-01**: A deterministic named-scenario catalog (`test/support/showcase_catalog.ex`, dev/test-only) covers normal + adversarial states: empty/one/many, long IDs/module names/URLs, non-ASCII/emoji/RTL, high counts, mixed severity, permission-denied, stale/disconnected, boundary pagination.
+- [x] **FIX-02**: Fixtures are plain structs by default (no DB insert), use constants (not Faker) for anything a screenshot touches, and are the single source of truth shared by showcase + ExUnit + VRT snapshot names + a11y targets.
+- [x] **FIX-03**: Fixtures exercise per-persona JTBD scenarios (triage, incident, repair, audit review) and are excluded from the hex tarball (verified in CI).
 
 ### Documentation (DOC)
 
-- [ ] **DOC-01**: A contributor guide documents how to add/extend a component, the token contract, theming rules, and the "no raw values" lint.
-- [ ] **DOC-02**: The idempotency guardrails (VRT snapshots, a11y gate, token byte-stability, forward-only quality) are documented as the explicit quality contract.
+- [x] **DOC-01**: A contributor guide documents how to add/extend a component, the token contract, theming rules, and the "no raw values" lint.
+- [x] **DOC-02**: The idempotency guardrails (VRT snapshots, a11y gate, token byte-stability, forward-only quality) are documented as the explicit quality contract.
 - [x] **DOC-03**: The brand book is published to the dev-rendered route and linked from the README.
 
 ## Future Requirements (deferred)
@@ -135,33 +135,33 @@ Give Oban Powertools a coherent visual + verbal identity (a written brand book) 
 | BRAND-01..05 | Phase 70 | Complete |
 | TOKEN-01..05 | Phase 71 | Complete |
 | MOTION-01 | Phase 71 | Complete |
-| FIX-01..03 | Phase 72 | Pending |
-| SHOW-01..03 | Phase 72 (skeleton), Phase 83 (full) | Pending |
-| VRT-01..03 | Phase 73 | Pending |
+| FIX-01..03 | Phase 72 | Complete |
+| SHOW-01..03 | Phase 72 (skeleton), Phase 83 (full) | Complete |
+| VRT-01..03 | Phase 73 | Complete |
 | A11Y-01 | Phase 73 | Complete |
 | COMP-01..04 | Phase 74 | Complete |
 | FORM-01, FORM-02 | Phase 75 | Complete |
-| NAV-01..04 | Phase 76 | Pending |
+| NAV-01..04 | Phase 76 | Complete |
 | DATA-01..04 | Phase 77 | Complete |
-| GROUP-01..02 | Phase 78 | Pending |
+| GROUP-01..02 | Phase 78 | Complete |
 | FORM-04 | Phase 78 | Complete |
-| PAGE-01, PAGE-05, PAGE-06, PAGE-08 | Phase 79 | Pending |
+| PAGE-01, PAGE-05, PAGE-06, PAGE-08 | Phase 79 | Complete |
 | PAGE-02 | Phase 80 | Complete |
 | PAGE-09 | Phase 80 | Complete |
 | FORM-03 | Phase 80 | Complete |
-| PAGE-03, PAGE-04, PAGE-07 | Phase 81 | Pending |
+| PAGE-03, PAGE-04, PAGE-07 | Phase 81 | Complete |
 | PAGE-10 | Phases 79–81 | Complete |
-| A11Y-02, A11Y-03, A11Y-04 | Phase 82 | Pending |
+| A11Y-02, A11Y-03, A11Y-04 | Phase 82 | Complete |
 | MOTION-02 | Phase 82 | Complete |
-| COPY-01, COPY-02 | Phase 82 | Pending |
-| DOC-01..03 | Phase 83 | Pending |
+| COPY-01, COPY-02 | Phase 82 | Complete |
+| DOC-01..03 | Phase 83 | Complete |
 
 **Coverage:**
 
-- v2.0 requirements: 56 total across 15 categories
-- Mapped to phases: 56
+- v2.0 requirements: 58 total across 15 categories
+- Mapped to phases: 58
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-18*
-*Last updated: 2026-06-18 after milestone v2.0 initialization*
+*Last updated: 2026-07-31 after Phase 83 closure*
