@@ -35,6 +35,7 @@ defmodule ObanPowertools.Web.Components.Forms do
   attr(:id, :string, default: nil)
   attr(:name, :string, default: nil)
   attr(:value, :any, default: nil)
+  attr(:placeholder, :string, default: nil)
   attr(:type, :string, default: "text", values: @input_types)
   attr(:variant, :atom, default: :default, values: @input_variants)
   attr(:disabled, :boolean, default: false)
@@ -53,6 +54,7 @@ defmodule ObanPowertools.Web.Components.Forms do
         name={@name}
         value={@value}
         type={@type}
+        placeholder={@placeholder}
         class={"obpt-input obpt-input--#{@variant}"}
         disabled={@disabled}
         readonly={@readonly}
