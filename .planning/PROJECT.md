@@ -95,10 +95,15 @@ Ecto-native operational safety with explicit, inspectable behavior for developer
 - ✓ v2.0 navigation app shell — responsive Powertools shell with closed nine-surface native nav, active-route breadcrumbs, skip-to-content, actor/context display, root-scoped theme controls, shell showcase stories, browser behavior proof, VRT/a11y evidence, and clean code review (`NAV-01..04`, shell-scoped `A11Y-02`, `COPY-*`) — v2.0 Phase 76
 - ✓ v2.0 data-display and operator patterns — unified status taxonomy plus semantic responsive tables, data states, progress/metric/timeline surfaces, confidentiality-safe args/code/redaction rendering, deterministic showcase stories, package-boundary-safe optional catalog loading, and focused VRT/a11y evidence (`DATA-01..04`, data-display-scoped `A11Y-02`) — v2.0 Phase 77
 - ✓ v2.0 Jobs and Forensics page migration — production pages rebuilt on shared filter, table, detail, confirmation, and timeline patterns with canonical URL state, bounded/redaction-safe evidence, signed-int64-safe Jobs deep links, deterministic page fixtures, and exact browser/VRT/a11y validation (`PAGE-02`, `PAGE-09`, `FORM-03`, `DATA-01..04`, `PAGE-10`, `A11Y-01..04`) — v2.0 Phase 80
+- ✓ v2.0 brand and token foundation — versioned brand book, full semantic color/type/space/motion contract, root-scoped `--obpt-*` tokens, host-independent immutable assets, and light/dark/system/high-contrast theming (`BRAND-01..05`, `TOKEN-01..05`, `MOTION-01`) — v2.0 Phases 70–71
+- ✓ v2.0 deterministic showcase and quality harness — dev/test-only stress catalog, canonical component/page showcase, pinned Playwright visual regression, automated WCAG 2.2 AA checks, and reviewed exact artifact inventories (`FIX-01..03`, `SHOW-01..03`, `VRT-01..03`, `A11Y-01`) — v2.0 Phases 72–73
+- ✓ v2.0 operator composition system — shared confirmation, filtering, detail, attention, audit, blocked-state, status, data-display, form, navigation, and primitive patterns with server-owned authority and bounded responsive presentation (`COMP-01..04`, `FORM-01..04`, `NAV-01..04`, `DATA-01..04`, `GROUP-01..02`) — v2.0 Phases 74–78
+- ✓ v2.0 nine-surface migration — Overview, Jobs, Batches, Workflows, Cron, Limiters, Lifeline, Audit, and Forensics migrated without behavior or authority regression (`PAGE-01..10`) — v2.0 Phases 79–81
+- ✓ v2.0 cross-cutting quality and documentation closure — keyboard/focus/contrast/reflow/reduced-motion guarantees, consistent recovery-oriented copy, contributor guidance, brand-book publication, and merge-blocking forward-only proof (`A11Y-02..04`, `MOTION-02`, `COPY-01..02`, `DOC-01..03`) — v2.0 Phases 82–84
 
 ### Active
 
-- v2.0 Powertools Identity — brand book + design-system overhaul (categories `BRAND-`, `TOKEN-`, `COMP-`, `FORM-`, `NAV-`, `DATA-`, `GROUP-`, `PAGE-`, `A11Y-`, `MOTION-`, `COPY-`, `SHOW-`, `VRT-`, `FIX-`, `DOC-`). See `.planning/REQUIREMENTS.md`.
+No active milestone requirements. The next milestone will define a fresh requirement set.
 
 Carried backlog: QRY-05, QRY-06, QRY-07, QRY-08, API-03 remain deferred-until-signal (observability / job-surface polish).
 
@@ -118,7 +123,7 @@ Carried backlog: QRY-05, QRY-06, QRY-07, QRY-08, API-03 remain deferred-until-si
 
 ## Context
 
-Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes installer/runtime wiring, typed worker contracts, limiter and cron control planes, workflow persistence and signaling, a native Lifeline operator flow with durable repair auditability and resolved-incident continuity, and a unified native control plane story across the existing operator surfaces.
+Shipped v2.0 Powertools Identity on 2026-07-31 after 15 phases, 113 plans, and 239 planned tasks. The tracked Elixir, TypeScript, JavaScript, CSS, and HEEx footprint is approximately 117,893 lines. The codebase now includes a library-owned design system, all nine native operator surfaces, and deterministic merge-blocking visual, accessibility, responsive, motion, copy, packaging, and idempotency proof.
 
 ## Key Decisions
 
@@ -139,6 +144,11 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 - ✓ Redact after fingerprint — fingerprint computed from full unredacted args; `Map.drop` applied before `Oban.Job.new/2` in `new/2` override. — v1.7 Phase 56
 - ✓ Cron-path redaction via `function_exported?(:__powertools_limits__, 0)` sentinel — applies to all Powertools workers; `rescue ArgumentError` degrades to bare `Oban.Job.new` for unloaded modules. — v1.7 Phase 56
 - ✓ `encrypt:` deferred indefinitely — collides with args-hashing fingerprint, blinds v1.5 job filter (encrypted args not searchable), leaks via meta/errors/stacktraces. Ship `redact:` (at-persist drop) instead. — v1.7 research
+- ✓ Treat the versioned brand book and its decision IDs as the source of truth for every token, component, page, and copy choice. — v2.0 Phase 70
+- ✓ Own theming inside `.obpt-root` with namespaced two-tier tokens and library-built immutable assets; never require or mutate host Tailwind configuration. — v2.0 Phase 71
+- ✓ Keep LiveViews authoritative for state, authorization, URLs, previews, mutations, and audit evidence; shared components remain finite presentation and composition layers. — v2.0 Phases 74–81
+- ✓ Use the Elixir-owned deterministic catalog as the single inventory source for showcase stories, browser targets, VRT snapshots, accessibility trees, and stress fixtures. — v2.0 Phases 72–83
+- ✓ Make quality forward-only through exact, reviewed artifact sets, byte-stable assets, retries-zero browser gates, and mutation-tested CI graph enforcement. — v2.0 Phases 73–84
 
 ## Decision Posture
 
@@ -162,13 +172,13 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 
 ## Current State
 
-`1.0.0` shipped and published to hex.pm (v1.11 Stability & 1.0 Release Prep). The library is functionally complete for its intended *feature* scope: typed worker contracts, durable idempotency, limiter/cron control planes, durable workflow DAGs + signaling, batches/chains with callback outbox, a native `/ops/jobs` operator shell (browse/detail/retry/cancel/discard single+bulk through the Lifeline preview→reason→execute→audit pipeline, plus the typed `ObanPowertools.Operator` API), `mix oban_powertools.doctor` / `.limiter.explain` / `.simulate`, opt-in telemetry, worker lifecycle hooks, output recording, and at-rest redaction.
+`1.0.0` is published to hex.pm, and the v2.0 Powertools Identity milestone shipped on 2026-07-31. The library is functionally complete for its intended feature scope and now presents it through a coherent, library-owned operator design system: typed worker contracts, durable idempotency, limiter/cron control planes, durable workflow DAGs + signaling, batches/chains with callback outbox, and all nine native `/ops/jobs` surfaces composed from shared accessible components without moving authorization or mutation authority out of the server.
 
-**v2.0 Powertools Identity (active).** A coherence/quality milestone, not new operator capability. Phases 70–80 are complete: brand book, isolated token/theme foundation, stress fixtures/showcase skeleton, visual-regression/a11y harness, token-driven primitive and form component layers, the responsive app shell, shared data-display/operator patterns and meta-component groups, plus the Overview/Cron/Limiters/Audit/Jobs/Forensics page migrations. Phase 81 next migrates Batches, Workflows, and Lifeline; the remaining phases finish the global accessibility/motion/copy/docs sweep and milestone audit.
+The v2.0 quality contract is active: a versioned brand book, isolated root-scoped tokens and theme assets, a deterministic 163-target showcase with 99 page stories, reviewed multi-theme/multi-viewport evidence, merge-blocking WCAG/visual/responsive/motion/copy gates, byte-stable packaging, and exact idempotency proof. All 58 milestone requirements and all nine operator flows passed the final audit.
 
 (Earlier: `v1.9` shipped batches & composition; `v1.7` worker lifecycle & safety; `v1.4` operator forensics and SRE runbooks; `v1.3` unified the native control plane and explainability story.)
 
-## Current Milestone: v2.0 Powertools Identity
+## Shipped Milestone: v2.0 Powertools Identity
 
 **Goal:** Give Oban Powertools a coherent visual + verbal identity (a written brand book) and re-found the entire `/ops/jobs` operator UI on a library-owned, isolated, themeable design system — tokens → primitives → patterns → pages — with dark/light/system theming, WCAG 2.2 AA accessibility, mobile-first responsiveness, purposeful motion, and on-brand microcopy. Not new operator capability; a coherence/quality milestone built so improvement is idempotent (re-runnable, forward-only, regression-gated).
 
@@ -179,9 +189,9 @@ Shipped v1 on 2026-05-21 after 8 phases and 28 plans. The codebase now includes 
 - Dev-only component showcase + visual-regression + automated a11y harness + deterministic stress fixtures (the idempotency guardrails)
 - Systematic migration of all 9 operator pages onto the design system with zero behavior regression
 
-**Phases:** 70–84 (see ROADMAP.md). Deep per-decision subagent research + adversarial-judge review run at each phase.
+**Phases:** 70–84. Shipped 2026-07-31 with 113 plans and 239 planned tasks; all 58 requirements verified.
 
-## Next Milestone
+## Next Milestone Goals
 
 To be assessed after v2.0 closes. Prior candidates remain deferred-until-signal:
 
@@ -250,4 +260,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-07-29 — Phase 80 completed; Jobs/Forensics migration and signed-int64-safe Jobs deep links validated*
+*Last updated: 2026-07-31 after v2.0 Powertools Identity milestone*

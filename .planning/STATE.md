@@ -1,30 +1,36 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.0
-milestone_name: Identity Milestone Audit & Idempotency Proof
-current_phase: 84
-current_phase_name: v2.0 Identity Milestone Audit & Idempotency Proof
-status: milestone_complete
-stopped_at: Milestone v2.0 audit passed; awaiting explicit archive command
-last_updated: "2026-07-31T08:20:30Z"
+milestone_name: Powertools Identity
+status: Awaiting next milestone
+stopped_at: Milestone v2.0 completed and archived; awaiting next milestone
+last_updated: "2026-07-31T13:52:35.334Z"
 last_activity: 2026-07-31
-last_activity_desc: Milestone v2.0 audit passed with 58/58 requirements
+last_activity_desc: Milestone v2.0 completed and archived
 progress:
   total_phases: 15
   completed_phases: 15
   total_plans: 113
   completed_plans: 113
-  percent: 99
+current_phase: 84
+current_phase_name: v2.0 Identity Milestone Audit & Idempotency Proof
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 84 — v2.0 Identity Milestone Audit & Idempotency Proof
-Plan: 1 of 1
-Status: Complete — awaiting explicit milestone archive command
-Last activity: 2026-07-31 — v2.0 milestone audit passed
+Phase: Milestone v2.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-31 — Milestone v2.0 completed and archived
+
+## Project Reference
+
+See: `.planning/PROJECT.md` (updated 2026-07-31)
+
+**Core value:** Ecto-native operational safety with explicit, inspectable behavior through a native `/ops/jobs` shell and honest host-ownership boundaries.
+**Current focus:** Planning the next milestone from adopter signal.
 
 ## Performance Metrics
 
@@ -123,7 +129,7 @@ Last activity: 2026-07-31 — v2.0 milestone audit passed
 
 - Shipped v1.11 Stability & 1.0 Release Prep; published 1.0.0.
 - Executed Post-1.0.0 End-of-Roadmap Assessment. Library is functionally complete for its intended *feature* scope.
-- Started v2.0 Powertools Identity — a coherence/quality milestone (brand book + design-system overhaul), not new operator capability. Phases 70–84.
+- Shipped v2.0 Powertools Identity on 2026-07-31 — a coherence/quality milestone spanning phases 70–84, 113 plans, 212 completed task records, and 58/58 verified requirements.
 
 ### Architectural Decisions
 
@@ -135,8 +141,7 @@ Last activity: 2026-07-31 — v2.0 milestone audit passed
 
 ### Known Technical Debt / Todos
 
-- Migrate `state_badge_class/1`, `state_tab_class/1`, and duplicated modal markup in the 9 LiveViews onto the new tokens/components (proof seam in Phase 71, full migration Phases 79–81).
-- Resolve the 423 measured non-page VRT baseline mismatches plus inherited Credo (260 findings), Dialyzer (62 errors), and dependency-advisory debt recorded by Plan 79-08.
+- No milestone-blocking debt remains from v2.0. Optional observability/live counts and native job-surface polish remain deferred-until-signal candidates.
 
 ### Blockers / Open Questions
 
@@ -144,12 +149,12 @@ Last activity: 2026-07-31 — v2.0 milestone audit passed
 
 ## Session Continuity
 
-**Last session:** 2026-07-31T08:20:30Z
-**Stopped at:** Milestone v2.0 audit passed; awaiting explicit archive command
+**Last session:** 2026-07-31
+**Stopped at:** Milestone v2.0 completed and archived; awaiting next milestone
 **Resume file:** None
 
-- **Last Action:** Completed Phase 84 with a passed 58/58 milestone audit and idempotency proof.
-- **Next Action:** Run the explicit GSD milestone-completion command to archive v2.0.
+- **Last Action:** Archived v2.0 roadmap, requirements, audit, and phases after a passed 58/58 milestone audit.
+- **Next Action:** Run `$gsd-new-milestone` to define fresh requirements and a new roadmap.
 
 ## Decisions
 
@@ -363,4 +368,8 @@ Last activity: 2026-07-31 — v2.0 milestone audit passed
 
 ### Blockers
 
-- Phase 79 validation is approved by machine evidence; the advisory VoiceOver nightly may harden into a required lane after its quarantine period.
+- None.
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

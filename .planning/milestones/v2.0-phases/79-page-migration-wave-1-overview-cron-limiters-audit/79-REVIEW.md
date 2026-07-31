@@ -1,22 +1,31 @@
 ---
-status: issues_found
+status: resolved
 phase: 79-page-migration-wave-1-overview-cron-limiters-audit
 depth: standard
 files_reviewed: 43
 findings:
-  critical: 1
-  warning: 3
-  info: 1
-  total: 5
+  critical_open: 0
+  warning_open: 0
+  info_open: 0
+  closed: 5
 reviewed_at: 2026-07-20T03:56:51Z
+reconciled_at: 2026-07-27T20:20:00Z
 ---
 
 # Phase 79: Code Review Report
 
+## Resolution
+
+All findings below are retained as the historical review record and are closed.
+Confidentiality, overlay ownership, and truthful recovery evidence are reconciled
+in `79-SECURITY.md`; the route-cache warning is closed by the unconditional
+compile sentinel and `scripts/verify-phase79-fixture-toggle.sh`. The inherited
+Overview copy note remains milestone backlog and is not a Phase 79 blocker.
+
 **Reviewed:** 2026-07-20T03:56:51Z  
 **Depth:** standard  
 **Files reviewed:** 43  
-**Status:** issues_found
+**Status:** resolved
 
 ## Summary
 

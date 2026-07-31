@@ -1,5 +1,36 @@
 # Milestones
 
+## v2.0 Powertools Identity (Shipped: 2026-07-31)
+
+**Delivered:** A coherent library-owned operator design system across all nine native surfaces, protected by deterministic visual, accessibility, responsive, motion, copy, packaging, and idempotency gates.
+
+**Phases completed:** 70–84 (15 phases, 113 plans, 212 tasks)
+
+**Key accomplishments:**
+
+- Established a versioned brand book and isolated, host-safe token/theming engine.
+- Built accessible primitives, forms, navigation, data-display components, and operator meta-components.
+- Migrated all nine operator surfaces while preserving authorization, mutation, deep-link, and audit behavior.
+- Created a deterministic 163-target showcase spanning 99 page stories, four themes, and three viewports.
+- Added merge-blocking visual-regression, accessibility, responsive, motion, copy, and package-boundary checks.
+- Verified all 58 requirements and nine end-to-end operator flows, including byte-stable and retry-free idempotency proof.
+
+**Stats:**
+
+- 2,756 files changed
+- 166,861 insertions, 4,762 deletions
+- Approximately 117,893 tracked lines across Elixir, TypeScript, JavaScript, CSS, and HEEx
+- 15 phases, 113 plans, 212 tasks
+- 44 days (2026-06-18 → 2026-07-31)
+
+**Git range:** `f6b4fd9` → `4fd94be`
+
+**Audit:** `passed` — 58/58 requirements, all nine operator flows, and the full design-system/idempotency chain verified.
+
+**What's next:** Define a fresh milestone from adopter signal; observability and native job-surface polish remain deferred candidates.
+
+---
+
 ## v1.9 Batches & Composition
 
 - **Status:** Shipped 2026-06-16
