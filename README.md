@@ -148,6 +148,9 @@ IDs (D-01..D-22), so each shipped token, component, and string maps back to a na
   comparison, including Batches, Chains, Dynamic Cron, Limiters, Lifeline, and the Native UI.
 - [Visual Regression And A11y Guardrails](guides/visual-regression-and-a11y.md) explains the
   Playwright/axe gate, CI artifacts, and reviewed baseline update workflow.
+- [Contributing To The Design System](guides/design-system-contributing.md) documents the
+  token and theme contracts, component/story workflow, no-raw-values checks, and
+  forward-only quality gate.
 
 ## Canonical Example Host
 

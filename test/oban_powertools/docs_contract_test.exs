@@ -199,12 +199,30 @@ defmodule ObanPowertools.DocsContractTest do
     ci = File.read!(@ci_workflow_file)
 
     assert readme =~ "guides/visual-regression-and-a11y.md"
+    assert readme =~ "guides/design-system-contributing.md"
     assert mix_exs =~ "guides/visual-regression-and-a11y.md"
+    assert mix_exs =~ "guides/design-system-contributing.md"
     assert mix_exs =~ ~s("Design System")
 
     assert ci =~ "visual_a11y:"
     assert ci =~ "VISUAL_A11Y"
     assert ci =~ "npm run visual:a11y"
+    assert ci =~ "page_quality:"
+    assert ci =~ "PAGE_QUALITY"
+    assert ci =~ "npm run verify:pages"
+
+    assert ci =~
+             "needs: [format, compile, test, page_quality, visual_a11y, docs_package, actionlint]"
+
+    visual_a11y_job =
+      ci
+      |> String.split("\n  visual_a11y:\n", parts: 2)
+      |> List.last()
+      |> String.split("\n  docs_package:\n", parts: 2)
+      |> List.first()
+
+    assert visual_a11y_job =~ "npm run visual:a11y"
+    refute visual_a11y_job =~ "PAGE_QUALITY_ONLY"
     assert ci =~ "playwright-report/"
     assert ci =~ "test-results/"
     assert ci =~ "test/browser/.generated/showcase-manifest.json"
@@ -217,7 +235,9 @@ defmodule ObanPowertools.DocsContractTest do
     assert guide =~ "--project"
     assert guide =~ "scripts/playwright-docker.sh"
     assert guide =~ "mcr.microsoft.com/playwright:v1.61.0-noble"
-    assert guide =~ "108 PNGs"
+    assert guide =~ "1,956 PNGs"
+    assert guide =~ "163 catalog-backed targets"
+    assert guide =~ "nightly run is additional evidence"
     assert guide =~ "playwright-report/"
     assert guide =~ "test-results/"
     assert guide =~ "showcase-manifest.json"
@@ -230,6 +250,23 @@ defmodule ObanPowertools.DocsContractTest do
 
     refute guide =~ "proves the full WCAG"
     refute guide =~ "proves manual accessibility"
+
+    contributor = File.read!("guides/design-system-contributing.md")
+
+    for contract <- [
+          "--obpt-*",
+          ".obpt-root",
+          "data-obpt-theme",
+          "no-raw-values",
+          "mix oban_powertools.assets.build",
+          "manifest-smoke.mjs",
+          "npm run vrt:update",
+          "CI=1 npm run verify:pages",
+          "CI=1 npm run visual:a11y",
+          "Snapshot update mode creates review input; it is never passing evidence."
+        ] do
+      assert contributor =~ contract
+    end
   end
 
   test "workflow keeps Phase 40 shift-left coverage markers" do

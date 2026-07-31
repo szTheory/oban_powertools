@@ -17,25 +17,57 @@ That command regenerates `test/browser/.generated/showcase-manifest.json`, start
 example host, and runs the Playwright structure, axe, and visual-regression specs in
 compare mode. It does not update screenshots.
 
-CI runs the same command in the `visual_a11y` lane. The required `ci-gate` status fans in
-that lane, so visual and accessibility regressions block merges.
+CI runs the same unfiltered command in the `visual_a11y` lane. The required `ci-gate`
+status fans in both that full-showcase lane and the focused `page_quality` lane, so
+component, group, and page visual/accessibility regressions all block merges. The scheduled
+nightly run is additional evidence, not a substitute for the pull-request gate.
 
 ## Visual Baselines
 
 The committed baseline matrix is:
 
-- 9 catalog-backed story cells from `ObanPowertools.ShowcaseCatalog`
+- 163 catalog-backed targets from the seven generated showcase catalogs
 - 4 themes: `system`, `light`, `dark`, `high-contrast`
 - 3 Chromium viewport projects: `chromium-320`, `chromium-tablet`, `chromium-wide`
 
-That produces 108 PNGs under:
+That produces 1,956 PNGs under:
 
 ```text
 test/browser/__screenshots__/chromium-*/showcase/*/*.png
 ```
 
-Snapshots are story-level crops, not full-page screenshots. Reserved future showcase sections
-are not captured until they contain real story targets.
+Snapshots are target-level crops, not full-page screenshots. The manifest currently covers
+scenario, primitive, form, shell, data, group, and page targets.
+
+## Forward-Only Idempotency Contract
+
+The normal quality path is compare-only and unfiltered:
+
+```bash
+CI=1 npm run verify:pages
+CI=1 npm run visual:a11y
+```
+
+Completion requires the generated manifest and exact ARIA/PNG sets to validate,
+the repeated asset build to be byte-stable, the component no-raw-values
+contracts to pass, and both browser lanes to exit zero without snapshot update
+flags. Update mode creates proposed review artifacts only; it never proves the
+current baseline matches.
+
+Run the focused token/component/asset contract with:
+
+```bash
+mix test \
+  test/oban_powertools/web/theme_tokens_test.exs \
+  test/oban_powertools/web/assets_test.exs \
+  test/oban_powertools/web/components/primitives_test.exs \
+  test/oban_powertools/web/components/forms_test.exs \
+  test/oban_powertools/web/components/app_shell_test.exs \
+  --seed 0
+```
+
+See [Contributing To The Design System](design-system-contributing.md) for the
+component extension, theming, and no-raw-values workflow.
 
 ## Baseline Updates
 

@@ -75,6 +75,7 @@ defmodule ObanPowertools.MixProject do
       groups_for_extras: [
         "Design System": [
           "guides/brand-book.md",
+          "guides/design-system-contributing.md",
           "guides/visual-regression-and-a11y.md"
         ],
         "Day 0": [
