@@ -6,9 +6,10 @@ Oban Powertools should compound from a shipped v1 foundation into a host-friendl
 
 ## Default Decision Rule
 
-- Prefer the highest-priority candidate below by default.
-- Shift prerequisite, package-boundary, support-truth, and DX hardening left unless a later milestone unlock is materially more important.
-- Only treat a pivot away from the default ordering as a user-confirmation event when it would meaningfully change public contracts or delay a major unlock.
+- Treat candidates below as hypotheses and re-rank them at each milestone boundary using current adopter evidence, repo state, expected value, cost, and risk.
+- Prefer a bounded, coherent adopter outcome; do not convert a broad quality checklist into work without concrete success criteria.
+- Shift prerequisite, package-boundary, support-truth, and DX hardening left when evidence shows they block adoption or safe operation.
+- Resolve routine choices from repo evidence and established decisions. Escalate only material changes to public contracts, operator trust, or maintainer burden.
 
 ## Arc Principles
 
@@ -41,23 +42,31 @@ Oban Powertools should compound from a shipped v1 foundation into a host-friendl
 
 ## Candidate Milestones
 
-### v1.4 Operator Forensics & SRE Runbooks
+No milestone is active after v2.0. The following candidates remain provisional and must be re-evaluated from current evidence:
 
-- **Status:** active
-- **Priority:** medium-high
-- **Why now:** after semantics and control-plane contracts settle, deepen incident timelines, limiter history, missed-fire views, repair evidence, and runbook-guided remediation.
-- **Includes:** richer diagnostics, evidence bundles, alert/runbook hooks, operator-grade investigative UX.
-- **Pros:** boosts trust and day-2 operability.
-- **Tradeoffs:** less leverage if underlying states are still moving.
+Candidate IDs and boundaries are carried forward from the v2.0 project backlog; their presence here is not evidence of current adopter demand.
 
-### v1.5 Automation Surfaces & Ecosystem Hooks
+### Near-term candidate: Native Job Workflow Polish
 
-- **Status:** next candidate
-- **Priority:** medium
-- **Why now:** expose machine-facing and ecosystem-facing surfaces only after the core contracts stop moving.
-- **Includes:** CLI/API surfaces, deeper Parapet/Threadline/Scoria hooks, automation-oriented admin actions.
-- **Pros:** ecosystem leverage; stronger integration story.
-- **Tradeoffs:** freezes contracts; easy place for scope sprawl.
+- **Candidate requirements:** QRY-05 (args/meta filtering), QRY-07 (Lifeline-to-job deep link), QRY-08 (cross-page selection), API-03 (`Operator.list/2`).
+- **Entry condition:** adopter evidence identifies a coherent job investigation or automation workflow that these items materially improve.
+- **Guardrail:** keep the scope bounded to Powertools-specific value; do not recreate generic Oban Web functionality.
+
+### Near-term candidate: Optional Observability / Live Counts
+
+- **Candidate requirement:** QRY-06, using `oban_met` only as an optional read source if current ecosystem and adopter evidence still support it.
+- **Entry condition:** users need the missing counts in Powertools' diagnosis workflow, and the integration remains optional with honest unavailable/support states.
+- **Guardrail:** no hard `oban_met` dependency and no generic metrics dashboard.
+
+### Mid-term research lane: Reliability and Adoption Quality
+
+- Consider targeted performance, resilience, property/model-based testing, CI efficiency, install/upgrade proof, and documentation improvements when a concrete gap is found.
+- Require each proposal to name the risk it addresses and the evidence that makes it more valuable than feature work.
+
+### Long-term research lane: Capabilities and Ecosystem Integrations
+
+- Revisit new runtime capabilities and integrations only when adoption demonstrates unmet need and the proposal preserves host ownership, Postgres/Ecto fit, and support truth.
+- Keep speculative items deferred; do not assign dates or release versions before the evidence review.
 
 ## Research Notes That Shape The Arc
 
@@ -68,9 +77,13 @@ Oban Powertools should compound from a shipped v1 foundation into a host-friendl
 
 ## Pull-Forward Rules
 
-- Pull v1.3 forward only if cross-surface operator fragmentation is the immediate product bottleneck.
-- Pull v1.4 forward only if real operator debugging pain exceeds new runtime capability demand.
-- Pull v1.5 forward only after the public host contract and control-plane vocabulary feel stable.
+- Re-rank candidates when new adopter reports, issues, support requests, or verified code/doc gaps materially change their value.
+- Prefer reliability or adoption-quality work when it removes a demonstrated barrier or closes a high-risk correctness gap.
+- If no candidate has sufficient evidence, recommend further signal gathering instead of inventing a milestone.
+
+## Milestone Closeout Rule
+
+Verify from committed state, keep required CI green, triage relevant PRs and findings, align docs and package claims with shipped behavior, and leave worktrees clean or explicitly accounted for. Publish a Hex release when the milestone warrants a public release; otherwise record why not and leave the release path ready.
 
 ## Deferred / Not Planned Yet
 

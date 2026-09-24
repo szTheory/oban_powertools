@@ -163,6 +163,9 @@ Shipped v2.0 Powertools Identity on 2026-07-31 after 15 phases, 113 plans, and 2
 - Treat prior locked CONTEXT decisions as defaults unless a later phase must reopen them for one of the material reasons above.
 - At milestone boundaries, run an adopter-first "done" assessment (repo-grounded, not phase-counting) and research candidate milestones with parallel subagents before committing — surface overbuilding risk explicitly.
 - Apply an idiomatic-Elixir/Phoenix/Ecto + DX/UX-first lens; prefer reusing existing seams (Lifeline pipeline, callback outbox, `Workflow.Result`, `Redactor`/`DisplayPolicy` behaviours) over inventing new abstraction families.
+- Use Codex as the GSD runtime for this repository. Keep new planning guidance Codex-compatible; preserve historical agent/runtime provenance in archived artifacts.
+- Treat milestone candidates as evidence-gated hypotheses. Assess adopter roles and software-quality dimensions, then use Pareto judgment to select bounded work; property/model-based testing and adopter simulations must justify their added maintenance cost.
+- Make milestone closeout include committed-state verification, green required CI, triaged PRs/findings, accurate docs/package claims, and a clean or explicitly accounted-for worktree. Publish a Hex release when the milestone warrants one; otherwise record why it does not.
 
 ## Constraints
 
@@ -191,12 +194,16 @@ The v2.0 quality contract is active: a versioned brand book, isolated root-scope
 
 **Phases:** 70–84. Shipped 2026-07-31 with 113 plans and 239 planned tasks; all 58 requirements verified.
 
-## Next Milestone Goals
+## Provisional Roadmap Candidates
 
-To be assessed after v2.0 closes. Prior candidates remain deferred-until-signal:
+No next milestone is committed. Reassess these candidates against current adopter evidence and repository state at each milestone boundary:
 
-1. **Observability / live counts (QRY-06)** — `oban_met` as an optional read source, never a hard dep.
-2. **Native job-surface polish** — QRY-05 (args/meta filter), QRY-07 (Lifeline→job deep-link), QRY-08 (cross-page select), API-03 (`Operator.list/2`). Opportunistic.
+- **Near-term candidate — native job workflow polish:** QRY-05 (args/meta filtering), QRY-07 (Lifeline-to-job deep link), QRY-08 (cross-page selection), and API-03 (`Operator.list/2`). Keep them together only if adopter evidence supports a coherent outcome.
+- **Near-term candidate — optional observability/live counts:** QRY-06, with `oban_met` as an optional read source and never a hard dependency. Do not rebuild generic Oban Web screens.
+- **Mid-term research lane — reliability and adoption quality:** targeted performance, resilience, test, CI, install/upgrade, or documentation work when code evidence or adopter friction identifies a concrete gap.
+- **Long-term research lane — capabilities and ecosystem integrations:** pursue only when adoption demonstrates unmet need and the work fits the host-owned, Postgres/Ecto-native boundaries.
+
+These are hypotheses, not scheduled milestones. Do not assign versions or dates before research. Keep unsupported work deferred and record why.
 
 ## Recently Shipped
 

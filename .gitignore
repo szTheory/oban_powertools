@@ -18,6 +18,8 @@
 /playwright-report/
 /test-results/
 /test/browser/.generated/
+/test-results-wave3-diagnostic/
+/.planning/research/.cache/
 
 # Local agent and Finder scratch.
 .DS_Store

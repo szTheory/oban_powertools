@@ -10,6 +10,7 @@
     "research_before_questions": true,
     "use_worktrees": false
   },
+  "runtime": "codex",
   "model_profile": "balanced",
   "models": {
     "planning": "opus",

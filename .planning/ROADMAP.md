@@ -6,4 +6,6 @@
 
 ## Next Milestone
 
-No milestone is active. Run `$gsd-new-milestone` to define fresh requirements and the next roadmap.
+No milestone is active. The v2.0 milestone is recorded as shipped, but verify the live Git and worktree state before beginning another milestone. Run `$gsd-new-milestone` only after reconciling existing work and reviewing current adopter evidence.
+
+Provisional candidates and entry conditions are recorded in `.planning/MILESTONE-ARC.md` and `.planning/PROJECT.md`; none is currently scheduled. Use `prompts/oban-powertools-new-milestone-roadmap-prompt.txt` for the Codex-led assessment.

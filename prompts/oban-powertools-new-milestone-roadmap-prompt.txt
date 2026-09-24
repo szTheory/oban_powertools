@@ -1,0 +1,172 @@
+OBAN POWERTOOLS — CODEX MILESTONE ROADMAP PROMPT
+================================================
+
+Use this prompt when assessing the next milestone for Oban Powertools. Work as
+the Codex-driven GSD guide for this repository. The goal is to move the library
+forward with a small number of high-value, evidence-backed milestones while
+keeping its code, public contracts, documentation, CI, and release state
+trustworthy.
+
+PROJECT INTENT
+--------------
+
+Oban Powertools is an Ecto-native operations layer for Oban-backed Phoenix
+applications. Its value is durable, inspectable operational safety for
+developers and operators, including typed workers, idempotency, limiters,
+cron, workflows, batches/chains, repair flows, forensics, and a native
+`/ops/jobs` control plane. Preserve host ownership, Postgres/Ecto fit, explicit
+behavior, support-truthful claims, and audited operator authority.
+
+The aspiration is excellent Elixir software people can depend on: clear public
+APIs, restrained abstractions, strong failure handling, efficient queries,
+useful operational evidence, polished adoption and upgrade paths, accurate
+docs, and repeatable CI/release practices. Treat this as a quality bar, not a
+request to maximize features or lines of code.
+
+HOW TO ASSESS THE PROJECT
+-------------------------
+
+1. Establish the real starting state before proposing work.
+   - Read the current GSD state, roadmap, project intent, milestone arc,
+     retrospectives, relevant decision threads, and recent phase artifacts.
+   - Inspect the current branch, worktrees, staged/unstaged/untracked changes,
+     and relevant CI/PR/release status when available.
+   - Decide from the current evidence whether a milestone is active, complete,
+     paused, or merely recorded as complete while implementation work remains.
+     Resume existing work when appropriate; do not create a duplicate milestone.
+   - Inspect every existing change before proposing cleanup. Preserve user
+     work, identify its provenance where possible, and do not discard or
+     overwrite it just to make the tree look clean.
+   - Report discrepancies between planning state, committed code, working-tree
+     evidence, and remote status. Do not present old state as current fact.
+
+2. Ground recommendations in project evidence and adopter needs.
+   - Inspect implementation, tests, guides, package/release setup, CI, and
+     known deferred work relevant to each candidate.
+   - Use adopter reports, issues, PRs, support questions, and observed code or
+     documentation gaps when accessible. Mark absent signals as unknown; do
+     not invent users, incidents, demand, or benchmark results.
+   - Consider distinct roles: Phoenix application developers, worker authors,
+     operators/SREs, platform/infrastructure teams, security reviewers, and
+     library maintainers. Consider common application settings such as SaaS,
+     B2B/B2C, regulated workloads, and high-volume/background processing only
+     where their needs change the design or proof.
+   - Keep evidence provenance with durable findings: source, date or revision,
+     confidence, and whether it is observed fact, inference, or open question.
+
+3. Evaluate quality broadly, then focus on the highest-leverage gaps.
+   Consider correctness and data integrity; retries, races, recovery, and
+   failure modes; API compatibility and ergonomics; security, privacy, and
+   redaction; Postgres contention and performance; operability and telemetry;
+   Phoenix host integration, installation, and upgrades; accessibility and
+   operator UX; documentation and support truth; code clarity and maintenance;
+   test quality, CI signal, supply-chain risk, and release reliability.
+
+   Use Pareto judgment. Tie every proposed improvement to an observed or
+   plausible failure/adoption barrier and explain expected value, cost, and
+   uncertainty. Prefer a small coherent milestone over a broad quality sweep
+   when the latter has no clear exit criteria. Favor YAGNI/KISS, idiomatic
+   Elixir/Phoenix/Ecto/Postgres, compatibility, and reuse of proven project
+   seams. Avoid churn, duplicated abstractions, cosmetic refactors without
+   measured value, and rebuilding generic Oban Web functionality.
+
+4. Evaluate advanced testing by risk and payoff.
+   Property-based, model-based, fault-injection, scale, and adopter-simulation
+   (“digital twin”) tests are options, not goals. Recommend them only for
+   important invariants or realistic scenarios that existing tests do not
+   cover economically. Use representative, privacy-safe fixtures and bounded
+   deterministic runs. State what new failure class the method would catch
+   and how it will run in CI before adding harness complexity.
+
+ROADMAP CANDIDATES — HYPOTHESES, NOT COMMITMENTS
+------------------------------------------------
+
+Carry these candidates forward until new evidence confirms, reshapes, or
+retires them:
+
+- Near-term candidate: adopter-led native job workflow polish — QRY-05
+  (args/meta filtering), QRY-07 (Lifeline-to-job deep link), QRY-08
+  (cross-page selection), and API-03 (`Operator.list/2`). Keep these grouped
+  only if user evidence supports a coherent outcome.
+- Near-term candidate: optional observability/live counts — QRY-06, with
+  `oban_met` remaining an optional read source rather than a runtime
+  requirement. Do not rebuild generic Oban Web screens.
+- Mid-term research lane: targeted reliability, performance, test, CI,
+  install/upgrade, or documentation improvements when code evidence or adopter
+  friction identifies a concrete gap.
+- Long-term research lane: new capabilities or ecosystem integrations only
+  when adoption demonstrates unmet need and the change fits the host-owned,
+  Postgres/Ecto-native product boundaries.
+
+Do not assign version numbers, dates, or committed priority to these horizons
+before research. Re-rank them from current evidence at each milestone boundary.
+Keep speculative candidates explicitly deferred. In particular, do not revive
+non-Postgres backends, a generic dashboard replacement, an `oban_met` hard
+dependency, autoscaling, mobile surfaces, or broad orchestration capabilities
+without strong adopter evidence and a reviewed change to project intent.
+
+MILESTONE RECOMMENDATION
+------------------------
+
+Before recommending a milestone:
+- State the adopter problem and evidence, why it matters now, expected
+  outcome, principal risks, and why the work is bounded.
+- Compare the strongest candidates with a concise value/evidence/cost/risk
+  assessment. Recommend one coherent candidate or recommend no new product
+  work if evidence does not justify it.
+- Define what is in and out, success criteria, compatibility/support-truth
+  constraints, and the proof needed to show the outcome.
+- Include docs, tests, CI, upgrade/package proof, security/privacy review, and
+  operational evidence in the plan where the change requires them. Do not
+  defer essential proof and documentation to milestone cleanup.
+- Keep durable decisions and findings in the appropriate GSD planning
+  artifacts, with provenance and deferred alternatives. Keep the prompt and
+  planning artifacts free of maintainer PII, secrets, private customer data,
+  and unnecessary local machine paths.
+
+CODEX AND GSD WORKING CONVENTIONS
+---------------------------------
+
+- Treat Codex as this repository’s active GSD runtime. Use the installed
+  Codex-aware GSD workflow and its supported model mapping. Do not assume a
+  Claude runtime or introduce Claude-specific paths or instructions into new
+  artifacts. Historical archived records may retain their original provenance.
+- Read repository decisions before asking the maintainer to choose. Resolve
+  routine implementation choices from code, existing contracts, and
+  ecosystem conventions; ask only about material changes to product promise,
+  compatibility, operator trust, or maintainer burden.
+- Do not put planning or GSD bookkeeping comments into production code. Keep
+  implementation self-documenting and update user-facing docs when behavior or
+  support claims change.
+
+MILESTONE CLOSEOUT BAR
+---------------------
+
+Every milestone should leave the project tidy and releasable. At closeout:
+- Confirm required CI is green on the intended integration branch and verify
+  from committed state, not only from a dirty working tree.
+- Triage relevant PRs and unresolved findings; record blockers and owners.
+- Confirm docs, changelog/release notes, package contents, and upgrade/support
+  claims match shipped behavior.
+- Resolve or explicitly account for staged, unstaged, untracked, and worktree
+  state without deleting user work. Leave no unexplained worktree residue.
+- Publish a Hex release when the milestone includes changes that warrant a
+  public release. If it does not, record why publication is not warranted and
+  leave the release path ready.
+- Capture the milestone retrospective, durable decisions, deferred items, and
+  the next evidence-gathering step in GSD planning memory.
+
+Do not claim completion while required checks, release steps, documentation,
+or closeout evidence remain unresolved. Report any external dependency (such
+as maintainer credentials, an unavailable CI service, or a release approval)
+as a specific blocker rather than implying it passed.
+
+EXPECTED OUTPUT
+---------------
+
+Return a concise, evidence-linked assessment; the recommended near-, mid-, and
+longer-term candidate roadmap with confidence and dependencies; and a
+decision-complete next-milestone proposal only when the evidence supports one.
+List the GSD artifacts that should change and the verification/closeout gates.
+Keep durable findings in the repo’s `.planning` second brain so the next
+milestone starts with accumulated evidence rather than redoing discovery.
