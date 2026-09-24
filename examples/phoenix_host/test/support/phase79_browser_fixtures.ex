@@ -1,3 +1,13 @@
+defmodule PhoenixHostWeb.Phase79BrowserFixturesCompileGate do
+  @moduledoc false
+
+  # This module intentionally lives outside the fixture feature gate. Mix asks
+  # it on every test compile, so an off -> on transition recompiles this source
+  # and restores the gated controller/router dependencies without requiring a
+  # fresh build directory.
+  def __mix_recompile__?, do: Mix.env() == :test
+end
+
 if Mix.env() == :test and System.get_env("PHASE79_BROWSER_FIXTURES") == "1" do
   defmodule PhoenixHostWeb.Phase79BrowserFixtures do
     @moduledoc false

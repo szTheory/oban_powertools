@@ -16,6 +16,10 @@ import {
   with200PercentZoom,
 } from "../support/system-quality";
 
+const pageQualityTargets =
+  process.env.PAGE_QUALITY_ONLY === "1"
+    ? targets.filter((target) => target.kind === "page")
+    : targets;
 const runtimeSlice = process.env.PHASE82_RUNTIME_SLICE;
 const copyContract = manifest.copy_contract;
 
@@ -27,13 +31,13 @@ if (runtimeSlice !== undefined && runtimeSlice !== "manifest-first-per-kind") {
 
 const a11yTargets =
   runtimeSlice === "manifest-first-per-kind"
-    ? targets.filter(
+    ? pageQualityTargets.filter(
         (target, index, allTargets) =>
           allTargets.findIndex(
             (candidate) => candidate.kind === target.kind,
           ) === index,
       )
-    : targets;
+    : pageQualityTargets;
 
 if (
   a11yTargets.length === 0 ||

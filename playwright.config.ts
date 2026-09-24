@@ -17,7 +17,7 @@ export default defineConfig({
   outputDir: './test-results',
   fullyParallel: false,
   workers: process.env.CI ? 1 : undefined,
-  snapshotPathTemplate: 'test/browser/__screenshots__{/projectName}/{arg}{ext}',
+  snapshotPathTemplate: 'test/browser/__aria_snapshots__{/projectName}/{arg}{ext}',
   reporter: [
     ['list'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
@@ -28,6 +28,7 @@ export default defineConfig({
     toHaveScreenshot: {
       animations: 'disabled',
       caret: 'hide',
+      pathTemplate: 'test/browser/__screenshots__{/projectName}/{arg}{ext}',
       scale: 'css',
       stylePath: './test/browser/styles/screenshot.css'
     }

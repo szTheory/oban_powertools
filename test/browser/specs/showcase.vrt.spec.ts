@@ -9,9 +9,14 @@ import {
 
 test.setTimeout(90_000);
 
+const vrtTargets =
+  process.env.PAGE_QUALITY_ONLY === "1"
+    ? targets.filter((target) => target.kind === "page")
+    : targets;
+
 for (const theme of themes) {
   test.describe(`showcase vrt ${theme}`, () => {
-    for (const target of targets) {
+    for (const target of vrtTargets) {
       test(`${target.kind} ${target.id}`, async ({ page }, testInfo) => {
         const viewportName = viewportNameFromProject(testInfo.project.name);
 

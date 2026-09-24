@@ -7,6 +7,11 @@ import {
 } from "@playwright/test";
 import * as manifestSupport from "../support/manifest";
 import {
+  authenticatePhase79Actor,
+  resetPhase79BrowserFixture,
+  setPhase79CronRecovery,
+} from "../support/phase79-fixtures";
+import {
   auditFocusedElement,
   auditReflow,
   with200PercentZoom,
@@ -67,8 +72,7 @@ type Phase79FixtureState = {
 };
 
 type Phase79Actor = "operator" | "read_only";
-type Phase79Recovery =
-  "expired" | "drifted" | "consumed" | "skipped";
+type Phase79Recovery = "expired" | "drifted" | "consumed" | "skipped";
 
 type Phase79FixtureHelpers = {
   resetPhase79BrowserFixture: (
@@ -112,19 +116,13 @@ const fixtureContract = {
   secretEnvironmentVariable: "PHASE79_BROWSER_FIXTURE_SECRET",
 } as const;
 
-const fixtureHelperModule = fixtureContract.helperModule;
 const expectedPageFamilyCounts = {
   overview: 3,
   cron: 8,
   limiters: 4,
   audit: 4,
 } as const;
-const wave1PageFamilies = [
-  "overview",
-  "cron",
-  "limiters",
-  "audit",
-] as const;
+const wave1PageFamilies = ["overview", "cron", "limiters", "audit"] as const;
 const expectedWave1PageStoryIds = [
   "page-overview-all-quiet",
   "page-overview-fixed-order-nonzero",
@@ -178,37 +176,13 @@ if (
   );
 }
 
-let fixtureHelpers: Phase79FixtureHelpers;
+const fixtureHelpers: Phase79FixtureHelpers = {
+  authenticatePhase79Actor,
+  resetPhase79BrowserFixture,
+  setPhase79CronRecovery,
+};
 let fixtureState: Phase79FixtureState;
 let fixtureSecret: string;
-
-async function loadFixtureHelpers(): Promise<Phase79FixtureHelpers> {
-  let imported: Partial<Phase79FixtureHelpers>;
-
-  try {
-    imported = (await import(
-      fixtureHelperModule
-    )) as Partial<Phase79FixtureHelpers>;
-  } catch (error) {
-    throw new Error(
-      `${fixtureContract.owner} is missing ${fixtureContract.helperModule} from ${fixtureContract.helperTask}: ${String(error)}`,
-    );
-  }
-
-  for (const helper of [
-    "resetPhase79BrowserFixture",
-    "authenticatePhase79Actor",
-    "setPhase79CronRecovery",
-  ] as const) {
-    if (typeof imported[helper] !== "function") {
-      throw new Error(
-        `${fixtureContract.helperTask} must export ${helper}; connected page tests never fall back to ambient example-host seeds`,
-      );
-    }
-  }
-
-  return imported as Phase79FixtureHelpers;
-}
 
 test.beforeEach(async ({ page, request }, testInfo) => {
   fixtureSecret = process.env[fixtureContract.secretEnvironmentVariable] ?? "";
@@ -218,7 +192,6 @@ test.beforeEach(async ({ page, request }, testInfo) => {
     );
   }
 
-  fixtureHelpers = await loadFixtureHelpers();
   fixtureState = await fixtureHelpers.resetPhase79BrowserFixture(request, {
     secret: fixtureSecret,
     project: testInfo.project.name,
@@ -557,41 +530,99 @@ test.describe("Phase 79 connected page contracts", () => {
     await expect(page.locator("#audit-detail")).toContainText("Recorded at");
   });
 
-  test("cron one-dialog confirmation traps focus, handles Escape, and restores its action", async ({
+  test("every cron action traps focus, handles Escape, and restores its invoker", async ({
+    page,
+    request,
+  }, testInfo) => {
+    for (const action of [
+      {
+        entry: "firstEntry" as const,
+        button: "Pause cron entry",
+        consequence: "Consequence",
+      },
+      {
+        entry: "pausedEntry" as const,
+        button: "Resume cron entry",
+        consequence: "Consequence",
+      },
+      {
+        entry: "firstEntry" as const,
+        button: "Run cron entry now",
+        consequence: "Consequence",
+      },
+    ]) {
+      fixtureState = await fixtureHelpers.resetPhase79BrowserFixture(request, {
+        secret: fixtureSecret,
+        project: testInfo.project.name,
+      });
+      await fixtureHelpers.authenticatePhase79Actor(page, {
+        actor: "operator",
+        secret: fixtureSecret,
+      });
+      await openConnectedPage(
+        page,
+        `/ops/jobs/cron?entry=${encodeURIComponent(fixtureState.cron[action.entry])}`,
+      );
+      const invoker = page.getByRole("button", { name: action.button });
+      await invoker.focus();
+      await invoker.click();
+
+      const dialog = page.locator("#cron-confirmation-dialog");
+      await expect(dialog).toBeVisible();
+      await expect(page.locator("#cron-entry-detail")).toHaveCount(0);
+      await expect(page.getByRole("dialog")).toHaveCount(1);
+      await expect(dialog.getByRole("heading", { level: 2 })).toBeFocused();
+      await expect(
+        dialog.getByRole("heading", {
+          level: 3,
+          name: action.consequence,
+        }),
+      ).toBeVisible();
+
+      const controls = dialog.locator(
+        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex="0"]',
+      );
+      await controls.last().focus();
+      await page.keyboard.press("Tab");
+      expect(
+        await dialog.evaluate((element) =>
+          element.contains(document.activeElement),
+        ),
+      ).toBe(true);
+
+      await page.keyboard.press("Escape");
+      await expect(dialog).toHaveCount(0);
+      await expect(page.locator("#cron-entry-detail")).toBeVisible();
+      await expect(invoker).toBeFocused();
+    }
+  });
+
+  test("200% zoom reflows every migrated page without clipping or duplicate trees", async ({
     page,
   }) => {
-    await openConnectedPage(
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await openConnectedPage(page, "/ops/jobs");
+    await with200PercentZoom(
       page,
-      `/ops/jobs/cron?entry=${encodeURIComponent(fixtureState.cron.firstEntry)}`,
+      { target: "wave-1 all routes", selector: ".obpt-root" },
+      async () => {
+        for (const path of [
+          "/ops/jobs",
+          `/ops/jobs/cron?entry=${encodeURIComponent(fixtureState.cron.firstEntry)}`,
+          `/ops/jobs/limiters?resource=${encodeURIComponent(fixtureState.limiters.blockedResource)}`,
+          `/ops/jobs/audit?event=${encodeURIComponent(fixtureState.audit.firstEvent)}`,
+        ]) {
+          await openConnectedPage(page, path);
+          const root = page.locator(
+            "#overview-page, #cron-page, #limiters-page, #audit-page",
+          );
+          await expect(root).toHaveCount(1);
+          await expect(root.getByRole("heading", { level: 1 })).toHaveCount(1);
+          await expectOneResponsiveTree(page);
+          await expectNoHorizontalOverflow(root);
+        }
+      },
     );
-    const invoker = page.getByRole("button", { name: "Pause cron entry" });
-    await invoker.focus();
-    await invoker.click();
-
-    const dialog = page.locator("#cron-confirmation-dialog");
-    await expect(dialog).toBeVisible();
-    await expect(page.locator("#cron-entry-detail")).toHaveCount(0);
-    await expect(page.getByRole("dialog")).toHaveCount(1);
-    await expect(dialog.getByRole("heading", { level: 2 })).toBeFocused();
-    await expect(
-      dialog.getByRole("heading", { level: 3, name: "Consequence" }),
-    ).toBeVisible();
-
-    const controls = dialog.locator(
-      'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex="0"]',
-    );
-    await controls.last().focus();
-    await page.keyboard.press("Tab");
-    expect(
-      await dialog.evaluate((element) =>
-        element.contains(document.activeElement),
-      ),
-    ).toBe(true);
-
-    await page.keyboard.press("Escape");
-    await expect(dialog).toHaveCount(0);
-    await expect(page.locator("#cron-entry-detail")).toBeVisible();
-    await expect(invoker).toBeFocused();
   });
 
   test("cron recovery remains explicit and safe across expired, drifted, consumed, and skipped results", async ({
@@ -826,6 +857,60 @@ test.describe("Phase 79 connected page contracts", () => {
     await expect(
       dialog.getByRole("button", { name: "Keep running" }),
     ).toBeEnabled();
+  });
+
+  test("increased contrast and forced colors retain every page hierarchy and control tree", async ({
+    page,
+  }) => {
+    const paths = [
+      "/ops/jobs",
+      `/ops/jobs/cron?entry=${encodeURIComponent(fixtureState.cron.firstEntry)}`,
+      `/ops/jobs/limiters?resource=${encodeURIComponent(fixtureState.limiters.blockedResource)}`,
+      `/ops/jobs/audit?event=${encodeURIComponent(fixtureState.audit.firstEvent)}`,
+    ];
+
+    for (const media of [
+      {
+        settings: { contrast: "more" as const, forcedColors: "none" as const },
+        query: "(prefers-contrast: more)",
+      },
+      {
+        settings: {
+          contrast: "no-preference" as const,
+          forcedColors: "active" as const,
+        },
+        query: "(forced-colors: active)",
+      },
+    ]) {
+      await page.emulateMedia(media.settings);
+      expect(
+        await page.evaluate((query) => matchMedia(query).matches, media.query),
+      ).toBe(true);
+
+      for (const path of paths) {
+        await openConnectedPage(page, path);
+        const root = page.locator(
+          "#overview-page, #cron-page, #limiters-page, #audit-page",
+        );
+        await expect(root).toHaveCount(1);
+        await expect(root.getByRole("heading", { level: 1 })).toBeVisible();
+        await expectOneResponsiveTree(page);
+        await expectNoHorizontalOverflow(root);
+
+        const detailClose = root.locator("[data-obpt-detail-close]");
+        const focusTarget =
+          (await detailClose.count()) === 1
+            ? detailClose
+            : page.locator('[data-obpt-theme-choice="system"]');
+
+        await expect(focusTarget).toBeVisible();
+        await focusTarget.focus();
+        await expectVisibleFocus(
+          focusTarget,
+          `${media.query} stable page control`,
+        );
+      }
+    }
   });
 
   test("confidentiality scans text markup URLs forms hidden nodes and attributes on every page", async ({

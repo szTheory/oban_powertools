@@ -1,0 +1,122 @@
+name: Page Quality Nightly
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: page-quality-nightly
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  full_showcase:
+    name: Full Showcase Chromium
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CI: "true"
+      MIX_ENV: test
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: oban_powertools_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: erlef/setup-beam@fc68ffb90438ef2936bbb3251622353b3dcb2f93 # v1.24.0
+        with:
+          elixir-version: "1.19.5"
+          otp-version: "27.3"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: mix deps.get
+      - run: npm ci
+      - run: npm run visual:a11y
+      - name: Upload full-showcase diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: full-showcase-diagnostics
+          path: |
+            playwright-report/
+            test-results/
+            test/browser/.generated/showcase-manifest.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  voiceover:
+    name: VoiceOver WebKit (advisory)
+    runs-on: macos-15
+    timeout-minutes: 45
+    continue-on-error: true
+    env:
+      CI: "true"
+      MIX_ENV: test
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGPASSWORD: ""
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: erlef/setup-beam@fc68ffb90438ef2936bbb3251622353b3dcb2f93 # v1.24.0
+        with:
+          elixir-version: "1.19.5"
+          otp-version: "27.3"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Start PostgreSQL 16
+        run: |
+          brew list postgresql@16 >/dev/null 2>&1 || brew install postgresql@16
+          brew services start postgresql@16
+          echo "$(brew --prefix postgresql@16)/bin" >> "$GITHUB_PATH"
+          echo "PGUSER=$(whoami)" >> "$GITHUB_ENV"
+      - name: Wait for PostgreSQL
+        run: |
+          postgres_bin="$(brew --prefix postgresql@16)/bin"
+          attempts_remaining=30
+          while [[ "$attempts_remaining" -gt 0 ]]; do
+            if "$postgres_bin/pg_isready" --host="$PGHOST" --port="$PGPORT"; then
+              exit 0
+            fi
+            attempts_remaining=$((attempts_remaining - 1))
+            sleep 1
+          done
+          exit 1
+      - uses: guidepup/setup-action@5d19b1151e972898cae0f0cc44e239127953bd90 # 0.21.0
+      - run: mix deps.get
+      - run: npm ci
+      - run: npx playwright install webkit
+      - run: npm run showcase:manifest
+      - run: scripts/with-showcase-server.sh npm run verify:voiceover --
+      - name: Upload VoiceOver transcripts and diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: voiceover-webkit-diagnostics
+          path: |
+            playwright-report/voiceover/
+            test-results/voiceover/
+            test-results/voiceover-junit.xml
+            test-results/showcase-server.log
+            test/browser/.generated/showcase-manifest.json
+          if-no-files-found: ignore
+          retention-days: 14

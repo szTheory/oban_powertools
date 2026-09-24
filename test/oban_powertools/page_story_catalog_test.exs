@@ -68,7 +68,7 @@ defmodule ObanPowertools.PageStoryCatalogTest do
                 [Enum.at(@jobs_ids, 1)]
 
   @story_fields ~w[
-    id kind page name description components variant state fixtures activation test_targets
+    id kind page name description components variant state fixtures activation acceptance test_targets
   ]a
 
   @pages ~w[overview cron limiters audit jobs forensics]a
@@ -169,6 +169,32 @@ defmodule ObanPowertools.PageStoryCatalogTest do
       assert is_list(story.state) and story.state != []
       assert is_map(story.fixtures) and map_size(story.fixtures) > 0
       assert story.activation in [:none, :detail, :confirmation]
+
+      assert story.acceptance
+             |> Map.keys()
+             |> Enum.sort() == [:forbidden_text, :ordered_text, :required_text, :roles]
+
+      for field <- [:required_text, :forbidden_text, :ordered_text] do
+        values = Map.fetch!(story.acceptance, field)
+        assert is_list(values) and values != []
+        assert Enum.all?(values, &(is_binary(&1) and &1 != ""))
+      end
+
+      assert is_list(story.acceptance.roles) and story.acceptance.roles != []
+
+      for role <- story.acceptance.roles do
+        role_fields = role |> Map.keys() |> Enum.sort()
+
+        assert role_fields in [
+                 [:name, :role, :states],
+                 [:level, :name, :role, :states]
+               ]
+
+        assert is_binary(role.role) and role.role != ""
+        assert is_binary(role.name) and role.name != ""
+        assert is_map(role.states)
+        assert role[:level] in [nil, 1, 2, 3, 4, 5, 6]
+      end
     end
 
     assert prefix |> Enum.map(& &1.page) |> Enum.frequencies() == %{
