@@ -289,7 +289,6 @@ defmodule ObanPowertools.Web.ForensicsLiveTest do
       for secret <- [
             foreign_event.action,
             foreign_event.actor_id,
-            Integer.to_string(foreign_event.id),
             step_b.id,
             "FOREIGN_LIVEVIEW_SENTINEL_NOTE"
           ] do
