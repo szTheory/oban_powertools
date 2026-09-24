@@ -4,6 +4,7 @@ import fs from "node:fs";
 const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
 const hostLauncher = fs.readFileSync("scripts/with-showcase-server.sh", "utf8");
 const dockerLauncher = fs.readFileSync("scripts/playwright-docker.sh", "utf8");
+const ciSuiteRunner = fs.readFileSync("scripts/playwright-ci-suite.sh", "utf8");
 const ciWorkflow = fs.readFileSync(".github/workflows/ci.yml", "utf8");
 const voiceOverConfig = fs.readFileSync("voiceover.config.ts", "utf8");
 
@@ -69,21 +70,23 @@ function validatePackageScripts(scripts, voiceOverSource) {
       `${scriptName} must never detach evidence`,
     );
 
-    const actualSpecs = command
-      .split(/\s+/)
-      .filter((token) => token.startsWith("test/browser/specs/"));
-    assert.deepEqual(
-      actualSpecs,
-      orderedSpecs,
-      `${scriptName} spec order changed`,
-    );
-
-    for (const spec of orderedSpecs) {
-      assert.equal(
-        command.split(spec).length - 1,
-        1,
-        `${scriptName} must include ${spec} exactly once`,
+    if (scriptName === "verify:pages:host") {
+      const actualSpecs = command
+        .split(/\s+/)
+        .filter((token) => token.startsWith("test/browser/specs/"));
+      assert.deepEqual(
+        actualSpecs,
+        orderedSpecs,
+        `${scriptName} spec order changed`,
       );
+
+      for (const spec of orderedSpecs) {
+        assert.equal(
+          command.split(spec).length - 1,
+          1,
+          `${scriptName} must include ${spec} exactly once`,
+        );
+      }
     }
   }
 
@@ -94,8 +97,28 @@ function validatePackageScripts(scripts, voiceOverSource) {
   );
   assert.match(
     scripts["verify:pages:docker"],
-    /^PAGE_QUALITY_ONLY=1 scripts\/playwright-docker\.sh npx playwright test /,
-    "Docker quality must use the authoritative Docker launcher",
+    /^PAGE_QUALITY_ONLY=1 scripts\/playwright-docker\.sh bash scripts\/playwright-ci-suite\.sh pages$/,
+    "Docker quality must use the isolated CI suite runner",
+  );
+  assert.equal(
+    scripts["visual:a11y:docker"],
+    "scripts/playwright-docker.sh bash scripts/playwright-ci-suite.sh full",
+    "Full visual and accessibility CI must use the isolated CI suite runner",
+  );
+  assertOrdered(
+    ciSuiteRunner,
+    orderedSpecs,
+    "CI suite runner must retain the complete page quality spec graph",
+  );
+  assert.match(
+    ciSuiteRunner,
+    /--fully-parallel[\s\S]*--workers=3/,
+    "Only the showcase suite may opt into bounded parallel workers",
+  );
+  assert.match(
+    ciSuiteRunner,
+    /run_playwright "\$\{specs\[@\]\}"[\s\S]*showcase\.a11y\.spec\.ts/,
+    "Connected fixture specs must finish before showcase parallelism starts",
   );
 
   const voiceOverCommand = scripts["verify:voiceover"];
@@ -205,21 +228,22 @@ for (const scriptName of ["verify:pages:host", "verify:pages:docker"]) {
   const command = packageJson.scripts?.[scriptName];
   assert.equal(typeof command, "string", `${scriptName} must exist`);
 
-  const actualSpecs = command
-    .split(/\s+/)
-    .filter((token) => token.startsWith("test/browser/specs/"));
-  assert.deepEqual(
-    actualSpecs,
-    orderedSpecs,
-    `${scriptName} spec order changed`,
-  );
-
-  for (const spec of orderedSpecs) {
-    assert.equal(
-      command.split(spec).length - 1,
-      1,
-      `${scriptName} must include ${spec} exactly once`,
+  if (scriptName === "verify:pages:host") {
+    const actualSpecs = command
+      .split(/\s+/)
+      .filter((token) => token.startsWith("test/browser/specs/"));
+    assert.deepEqual(
+      actualSpecs,
+      orderedSpecs,
+      `${scriptName} spec order changed`,
     );
+    for (const spec of orderedSpecs) {
+      assert.equal(
+        command.split(spec).length - 1,
+        1,
+        `${scriptName} must include ${spec} exactly once`,
+      );
+    }
   }
 }
 

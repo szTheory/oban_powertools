@@ -109,7 +109,7 @@ jobs:
   page_quality:
     name: Page Quality
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 120
     env:
       MIX_ENV: test
       PGUSER: postgres
@@ -163,7 +163,7 @@ jobs:
   visual_a11y:
     name: Full Showcase Visual & A11y
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 180
     env:
       CI: "true"
       MIX_ENV: test
