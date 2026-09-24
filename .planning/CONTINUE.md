@@ -5,17 +5,17 @@
 - v2.0, Powertools Identity, is recorded as shipped in the local repository. Its milestone audit passed on 2026-07-31.
 - No next milestone is active. Candidate work is provisional and documented in `PROJECT.md`, `MILESTONE-ARC.md`, and `ROADMAP.md`.
 - GSD is configured to use the Codex runtime in `.planning/config.json`. The installed OpenGSD version is 1.14.0.
-- Local `main` and remote `main` now both point to `a854a00`. The v2.0 tag resolves to the same commit. The sync bypassed GitHub's pull-request-only branch rule, and GitHub reported that two required status checks were still expected; confirm those checks and repair the token/branch workflow before the next publish.
+- The v2.0 tag remains on release commit `a854a00`. Local and remote `main` are synchronized at the post-release follow-up commits.
+- The pushes bypassed GitHub's pull-request-only branch rule. Do not use that path as the normal workflow; restore authenticated GitHub CLI access and publish future changes through a pull request.
 
-## In-Progress Local Work
+## Recent Phase 79 Work
 
-There are uncommitted Phase 79/page-quality changes in the working tree. They add fixture-toggle compilation proof, acceptance metadata for page stories, expanded accessibility/reflow checks, VoiceOver tooling, and a nightly page-quality workflow. The existing CI workflow references `scripts/verify-phase79-fixture-toggle.sh`, so that script must be included with the related changes.
+The committed Phase 79/page-quality follow-up adds fixture-toggle compilation proof, page-story acceptance metadata, expanded accessibility/reflow checks, VoiceOver tooling, and a nightly page-quality workflow.
 
-Do not treat these changes as shipped until they have been reviewed and the relevant checks have run. The previous diagnostic log records a failed fresh-host contract test (`mix ecto.reset`); investigate that failure before claiming the local quality work is green. No tests were run during the latest session.
+Phase 79/page-quality changes are committed and pushed. GitHub CI is not green yet: Format, Docs & Package, and workflow lint passed; Compile, Test, and Page Quality failed. The failing Test annotation names `ForensicsLiveTest` at line 227. The local full suite passed (966 tests, 0 failures), the specific annotated test passed, and the fixture-toggle script passed when Mix was allowed to open its local TCP socket. A clean local warnings-as-errors compile emitted warnings from the Oban dependency, then passed on a second compile. Diagnose these CI/local differences from authenticated job logs before calling the work verified. The earlier `test_failures.txt` diagnostic also recorded a failed fresh-host contract test (`mix ecto.reset`); its raw output was removed after preserving the issue here.
 
 ## Next Steps
 
-1. Review and validate the Phase 79/page-quality diff, including the recorded fresh-host failure.
-2. Reconcile stale local artifacts and confirm all intended work is committed or explicitly carried forward.
-3. Check required CI for `a854a00` and triage relevant pull requests once GitHub CLI authentication is restored.
-4. At the next milestone boundary, reassess adopter evidence before selecting a candidate. Do not assign a release version or date before that review.
+1. Restore GitHub CLI authentication, inspect the failed Compile, Test, and Page Quality logs, and correct the CI/local differences.
+2. Confirm the full CI gate succeeds on the current main head; triage relevant pull requests and verify the branch protection workflow.
+3. At the next milestone boundary, reassess adopter evidence before selecting a candidate. Do not assign a release version or date before that review.
