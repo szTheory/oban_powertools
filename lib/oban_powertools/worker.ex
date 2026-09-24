@@ -135,7 +135,7 @@ defmodule ObanPowertools.Worker do
       # new/2 override: apply redaction (drop fields, inject meta) then delegate to Oban.Job.new
       # Explicit delegation pattern (OQ1-resolved) — no super, mirrors Oban's generated new/2 body
       @impl Oban.Worker
-      def new(args, opts \\ []) when is_map(args) and is_list(opts) do
+      def new(args, opts) when is_map(args) and is_list(opts) do
         ObanPowertools.Worker.Redaction.apply(__MODULE__, args, opts, @powertools_redact)
       end
 

@@ -18,6 +18,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 cd "${HOST_DIR}"
+mix deps.get
 
 env \
   MIX_ENV=test \

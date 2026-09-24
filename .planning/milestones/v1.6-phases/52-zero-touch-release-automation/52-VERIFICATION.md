@@ -8,9 +8,6 @@ human_verification:
   - test: "Trigger a release cycle (push a conventional commit to main, wait for release-please to open a PR, confirm release-pr-automerge.yml runs and merges without human action)"
     expected: "release-please opens a release PR; once CI passes on that PR branch, release-pr-automerge.yml squash-merges the PR and dispatches both ci.yml and release.yml; the release pipeline completes without any human merge step"
     why_human: "SC1/SC2/SC3 from ROADMAP are end-to-end pipeline behaviors that require an active release cycle. D-02 in CONTEXT.md explicitly accepts this deferral — no open release PR exists to dry-run against. Cannot verify programmatically."
-  - test: "Review the unfixed CR-01 finding from 52-REVIEW.md: `actions/github-script@v8` on line 67 of release-pr-automerge.yml is a mutable tag in a job holding contents:write + pull-requests:write + actions:write"
-    expected: "Either (a) the tag is pinned to `actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8` matching the SHA used in release.yml, or (b) the risk is explicitly accepted with an override entry in VERIFICATION.md"
-    why_human: "CR-01 was flagged as CRITICAL in the code review but was not fixed before phase closure. The phase goal is met functionally, but this is a security deviation from the all-actions-SHA-pinned convention. Needs a human accept/fix decision."
 ---
 
 # Phase 52: Zero-Touch Release Automation Verification Report
@@ -28,7 +25,7 @@ human_verification:
 |---|-------|--------|---------|
 | 1 | actionlint runs as a CI lane and statically validates all .github/workflows/*.yml on every PR | VERIFIED | Job `actionlint:` at ci.yml line 131; `name: Lint workflows`; SHA-pinned `raven-actions/actionlint@205b530c5d9fa8f44ae9ed59f341a0db994aa6f8 # v2.1.2` at line 136 |
 | 2 | ci-gate fails when the actionlint lane fails (gate enforces the new lane, not just lists it) | VERIFIED | `needs: [format, compile, test, docs_package, actionlint]` at line 141; `ACTIONLINT: ${{ needs.actionlint.result }}` at line 150; `for lane in FORMAT COMPILE TEST DOCS_PACKAGE ACTIONLINT` at line 154 — all three sync points present |
-| 3 | The committed release-pr-automerge.yml passes the six-item inspection checklist | VERIFIED (5.5/6 items cleanly; one warning — see anti-patterns) | See checklist breakdown below |
+| 3 | The committed release-pr-automerge.yml passes the six-item inspection checklist | VERIFIED (6/6; CR-01 was resolved after phase close) | See checklist and post-phase resolution below |
 
 **Score:** 3/3 truths verified
 
@@ -92,9 +89,12 @@ Step 7c: No probe scripts declared in PLAN.md and no `scripts/*/tests/probe-*.sh
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| `.github/workflows/release-pr-automerge.yml` | 67 | `actions/github-script@v8` — mutable tag, not SHA-pinned | WARNING (from REVIEW CR-01) | Supply-chain risk in a job holding `contents:write + pull-requests:write + actions:write`; every other action in both files is SHA-pinned; companion `release.yml` already uses the pinned SHA `ed597411d8f924073f98dfc5c65a23a2325f34cd` |
 | `.github/workflows/ci.yml` | 131-136 | `actionlint` job missing `timeout-minutes` | INFO (from REVIEW IN-02) | All other ci.yml jobs have explicit `timeout-minutes`; missing here relies on GitHub's 6-hour default |
 | `.github/workflows/release-pr-automerge.yml` | 25 | `automerge` job missing `timeout-minutes` | INFO (from REVIEW WR-02) | No timeout guard on the job; the inner retry loop is bounded (12×30s) but hung `gh` calls have no ceiling |
+
+### Post-Phase Review Follow-up
+
+CR-01, the mutable `actions/github-script` tag, was resolved after Phase 52 closed. Commit `fb9cd62` pins it to `ed597411d8f924073f98dfc5c65a23a2325f34cd`; the current workflow uses that SHA at line 67. The matching Phase 52 human-UAT item records the resolution.
 
 No TBD/FIXME/XXX/TODO/PLACEHOLDER markers found in either modified file.
 
@@ -108,18 +108,11 @@ No TBD/FIXME/XXX/TODO/PLACEHOLDER markers found in either modified file.
 **Expected:** Zero human merge steps; the release pipeline completes and a new version appears on hex.pm.
 **Why human:** SC1/SC2/SC3 are end-to-end pipeline behaviors requiring a live GitHub release cycle. D-02 in CONTEXT.md explicitly accepts this deferral. No programmatic simulation is possible.
 
-#### 2. CR-01 Resolution: Unpinned `actions/github-script@v8`
-
-**Test:** Review line 67 of `.github/workflows/release-pr-automerge.yml`. Determine whether to (a) pin it to `actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8` (matching `release.yml`), or (b) explicitly accept the risk via an override entry in this file.
-**Expected:** The action is either SHA-pinned (matching the all-actions-SHA-pinned convention already established in this repo), or an explicit override with justification is recorded.
-**Why human:** This is a security posture decision. The code reviewer flagged it as CRITICAL. Fixing it requires modifying `release-pr-automerge.yml`, which D-03 locked as correct — a human must decide whether CR-01 overrides D-03 for this one line.
-
 ### Gaps Summary
 
-No functional gaps block the phase goal. The `release-pr-automerge.yml` mechanism is present and correctly wired. The two human verification items are:
+No functional gaps block the phase goal. The `release-pr-automerge.yml` mechanism is present and correctly wired. One human verification item remains:
 
 1. **Live pipeline confirmation** — explicitly deferred by design (D-02). Not actionable until the next release cycle.
-2. **CR-01 unpinned action** — a security finding from the code review that was not addressed before phase closure. The automerge mechanism works without fixing it, but it deviates from the repo's SHA-pinned convention and carries supply-chain risk in a highly privileged job. Requires a human fix-or-accept decision.
 
 ---
 
