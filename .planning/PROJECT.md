@@ -169,6 +169,7 @@ Shipped v2.0 Powertools Identity on 2026-07-31 after 15 phases, 113 plans, and 2
 - Apply 12-factor principles where relevant. Keep secrets and maintainer/customer PII out of public code and planning artifacts; use privacy-safe fixtures and local hashes when comparison is needed.
 - Keep `.planning` current and high-signal: preserve provenance for durable decisions, supersede stale status instead of duplicating it, record lessons learned, and leave a continuation handoff before recommending context-clearing GSD steps.
 - Make milestone closeout include committed-state verification, green required CI, triaged PRs/findings, accurate docs/package claims, and a clean or explicitly accounted-for worktree. Publish a Hex release when the milestone warrants one; otherwise record why it does not.
+- Treat v2.0's automated UI quality evidence as regression/accessibility proof, not maintainer product acceptance. The maintainer has not yet personally tried the operator UI; defer new UI feature work until the non-UI readiness gate in `research/MILESTONE-ARC.md` is met, then prepare one focused owner-review packet.
 
 ## Constraints
 
@@ -178,7 +179,7 @@ Shipped v2.0 Powertools Identity on 2026-07-31 after 15 phases, 113 plans, and 2
 
 ## Current State
 
-`1.0.0` is published to hex.pm, and the v2.0 Powertools Identity milestone shipped on 2026-07-31. The library is functionally complete for its intended feature scope and now presents it through a coherent, library-owned operator design system: typed worker contracts, durable idempotency, limiter/cron control planes, durable workflow DAGs + signaling, batches/chains with callback outbox, and all nine native `/ops/jobs` surfaces composed from shared accessible components without moving authorization or mutation authority out of the server.
+`1.1.0` is published to hex.pm, and the v2.0 Powertools Identity milestone shipped on 2026-07-31. The library is functionally complete for its intended feature scope and now presents it through a coherent, library-owned operator design system: typed worker contracts, durable idempotency, limiter/cron control planes, durable workflow DAGs + signaling, batches/chains with callback outbox, and all nine native `/ops/jobs` surfaces composed from shared accessible components without moving authorization or mutation authority out of the server.
 
 The v2.0 quality contract is active: a versioned brand book, isolated root-scoped tokens and theme assets, a deterministic 163-target showcase with 99 page stories, reviewed multi-theme/multi-viewport evidence, merge-blocking WCAG/visual/responsive/motion/copy gates, byte-stable packaging, and exact idempotency proof. All 58 milestone requirements and all nine operator flows passed the final audit.
 
@@ -200,6 +201,8 @@ The v2.0 quality contract is active: a versioned brand book, isolated root-scope
 ## Provisional Roadmap Candidates
 
 No next milestone is committed. Reassess these candidates against current adopter evidence and repository state at each milestone boundary:
+
+The nine operator surfaces and their automated design-quality harness shipped in v2.0. They are not yet personally product-reviewed by the maintainer. Before requesting that attention, finish release/security closeout and resolve critical or high-risk non-UI gaps; lower-risk polish may remain deferred. The owner review should be a focused product-feedback handoff, not a request to repeat automated tests.
 
 - **Near-term candidate — native job workflow polish:** QRY-05 (args/meta filtering), QRY-07 (Lifeline-to-job deep link), QRY-08 (cross-page selection), and API-03 (`Operator.list/2`). Keep them together only if adopter evidence supports a coherent outcome.
 - **Near-term candidate — optional observability/live counts:** QRY-06, with `oban_met` as an optional read source and never a hard dependency. Do not rebuild generic Oban Web screens.
@@ -270,4 +273,4 @@ This document evolves at milestone boundaries and whenever the active milestone 
 - Update the milestone arc when a candidate becomes active or when a deliberate pivot changes ordering.
 
 ---
-*Last updated: 2026-07-31 after v2.0 Powertools Identity milestone*
+*Last updated: 2026-09-25 after post-release readiness review*

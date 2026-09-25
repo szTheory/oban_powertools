@@ -68,6 +68,19 @@ Candidate IDs and boundaries are carried forward from the v2.0 project backlog; 
 - Revisit new runtime capabilities and integrations only when adoption demonstrates unmet need and the proposal preserves host ownership, Postgres/Ecto fit, and support truth.
 - Keep speculative items deferred; do not assign dates or release versions before the evidence review.
 
+## Maintainer UI Review Readiness Gate
+
+v2.0 implemented and automated quality coverage for all nine `/ops/jobs` surfaces. The maintainer has not personally tried the operator UI, so the current VRT, accessibility, responsive, copy, and route evidence does not establish owner-level product fit or workflow clarity. Treat those as separate kinds of evidence.
+
+Before asking for focused maintainer UI feedback:
+
+- Finish active release and published-package closeout, and triage the dependency/security review.
+- Resolve or explicitly disposition all critical/high-risk correctness, security, installation, upgrade, and release gaps outside subjective UI product feedback.
+- Keep required CI and documented support/install paths green from committed state; review long-running CI cost against the distinct risk it covers.
+- Prepare one concise packet with the operator workflows, existing automated evidence and limits, known gaps, and a short set of product questions. Do not ask the maintainer to repeat checks the repository can run automatically.
+
+This gate does not require every low-risk improvement or deferred candidate to be exhausted. After the focused review, use the maintainer's product feedback and any adopter signal to rank UI follow-up work. Do not schedule a UI feature milestone before that evidence exists.
+
 ## Research Notes That Shape The Arc
 
 - Sidekiq and BullMQ reinforce that hidden limiter/backpressure behavior creates operator surprise.
@@ -84,6 +97,8 @@ Candidate IDs and boundaries are carried forward from the v2.0 project backlog; 
 ## Milestone Closeout Rule
 
 Verify from committed state, keep required CI green, triage relevant PRs and findings, align docs and package claims with shipped behavior, and leave worktrees clean or explicitly accounted for. Publish a Hex release when the milestone warrants a public release; otherwise record why not and leave the release path ready.
+
+The first owner-led product review of the operator UI is a deliberate handoff after the readiness gate above, not a substitute for automated UAT or CI evidence.
 
 ## Deferred / Not Planned Yet
 

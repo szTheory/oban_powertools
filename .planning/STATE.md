@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Powertools Identity
 status: Awaiting next milestone
-stopped_at: v1.1.0 published; REL-04 exposed a duplicate installer mount; PR #31 checks are rerunning
-last_updated: "2026-09-25T13:15:00Z"
+stopped_at: v1.1.0 closeout verified; four published-package records updated; dependency/advisory PR remains
+last_updated: "2026-09-25T19:31:31Z"
 last_activity: 2026-09-25
-last_activity_desc: REL-04 found a duplicate named LiveView session in the consumer fixture; PR #31 fixes its setup and the release gate timeout
+last_activity_desc: PR #31 merged after green exact-head CI; manual exact Hex 1.1.0 REL-04 workflow passed and four release verification records were closed
 progress:
   total_phases: 15
   completed_phases: 15
@@ -150,11 +150,11 @@ See: `.planning/PROJECT.md` (updated 2026-07-31)
 ## Session Continuity
 
 **Last session:** 2026-09-25
-**Stopped at:** PR #19 merged at `75b2106`; v1.1.0 is published and exact-SHA `ci-gate` passed. Recovery run `36103854234` completed publication but REL-04 failed on duplicate `:oban_powertools_native`; PR #31 removes the mount from the pre-install consumer fixture and raises the CI wait to 4.5 hours. PR #31 head `a858216` checks are running.
+**Stopped at:** PR #31 merged as `970a18b` after all exact-head CI and Host Contract Proof gates passed. Manual Release run [36179072813](https://github.com/szTheory/oban_powertools/actions/runs/36179072813), dispatched with `published_version=1.1.0`, passed the published Hex installer, consumer compile, database create/migrate, seed, and first-session test. No release was created. Phase 51 and 52.1's four REL-04 records now contain that evidence; Phase 52's two zero-touch full-release-cycle records remain open because the release PR was manually merged. The isolated security/planning branch `fix/security-advisory-closeout` is committed locally as `ab66e2d` and awaits review/merge.
 **Resume file:** `.planning/threads/CONTINUE.md`
 
-- **Last Action:** Confirmed PR #19's Page Quality, Full Showcase Visual & A11y, and exact-SHA `ci-gate` passed; recovered Hex publication after the 20-minute poll expired. REL-04 then exposed a duplicate named session because the consumer fixture was already installed before the published installer ran. GSD health repaired two default keys and backfilled v1.10.
-- **Next Action:** Finish PR #31 checks. Keep release UAT records open until REL-04 passes against a published version; retain the Phase 81 security-advisory item.
+- **Last Action:** Merged PR #31 as `970a18b` after exact-head CI/Host Contract Proof passed; Release workflow run 36179072813 passed published-package verification against Hex `1.1.0` without creating a release. Four REL-04 reports now hold exact run evidence.
+- **Next Action:** Reconcile local `main` with `origin/main` while preserving the planning-health commit, rebase `fix/security-advisory-closeout` onto it, and open a `chore(deps)` PR. Merge after required CI passes; only then clear the Phase 81 advisory record. Keep Phase 52's two zero-touch release-cycle checks open until that behavior is independently exercised.
 
 ## Decisions
 
@@ -375,6 +375,6 @@ See: `.planning/PROJECT.md` (updated 2026-07-31)
 - PR #29 is merged as `345b8a2`; its browser lanes and `ci-gate` passed on run `36016887347`.
 - PR #30 merged as `c3a82f2`; its `240`-minute showcase timeout passed with the 3912-case suite completing in 190 minutes.
 - Release PR #19 merged at `75b2106`; `v1.1.0` is published and its main CI, Page Quality, Full Showcase Visual & A11y, and exact-SHA `ci-gate` passed. Release run `36103854234` recovered from its 20-minute polling timeout and published to Hex, but REL-04 failed compiling the duplicated `:oban_powertools_native` session.
-- PR #31 extends release `ci-gate` polling to 4.5 hours and resets the Hex consumer's pre-install router fixture so the published installer adds its mount once; require exact-head CI and Host Contract Proof before merge.
+- PR #31 (`d60f0e3`) merged as `970a18b`; exact-head CI/Host Contract Proof passed, and manual exact-version Release run 36179072813 passed against published Hex `1.1.0` without creating another release.
 - GSD health added the two missing default workflow keys and backfilled v1.10 in `MILESTONES.md`; custom `CONTINUE.md` and `MILESTONE-ARC.md` now live under `threads/` and `research/` to satisfy health checks. Unsupported `preferences` config was removed; Decision Posture is retained in `PROJECT.md`.
 - After publication and audit triage, reassess adopter evidence with `prompts/oban-powertools-new-milestone-roadmap-prompt.txt`; start a milestone only if the review supports it.

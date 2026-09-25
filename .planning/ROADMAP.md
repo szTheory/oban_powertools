@@ -8,4 +8,4 @@
 
 No milestone is active. The v2.0 milestone is recorded as shipped, but verify the live Git and worktree state before beginning another milestone. Run `$gsd-new-milestone` only after reconciling existing work and reviewing current adopter evidence.
 
-Provisional candidates and entry conditions are recorded in `.planning/research/MILESTONE-ARC.md` and `.planning/PROJECT.md`; none is currently scheduled. Use `prompts/oban-powertools-new-milestone-roadmap-prompt.txt` for the Codex-led assessment.
+Provisional candidates and entry conditions are recorded in `.planning/research/MILESTONE-ARC.md` and `.planning/PROJECT.md`; none is currently scheduled. First finish release/security closeout and clear critical/high-risk non-UI gaps, then prepare the focused owner UI-review packet described in the milestone arc. Use `prompts/oban-powertools-new-milestone-roadmap-prompt.txt` for the Codex-led assessment.

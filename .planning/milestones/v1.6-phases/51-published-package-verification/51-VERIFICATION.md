@@ -1,22 +1,18 @@
 ---
 phase: 51-published-package-verification
-verified: 2026-05-30T14:00:00Z
-status: human_needed
+verified: 2026-09-25T19:22:37Z
+status: verified
 score: 12/12 must-haves verified
 overrides_applied: 0
-re_verification: false
-human_verification:
-  - test: "Trigger a release and observe the verify-published CI job run to completion"
-    expected: "The verify-published job runs after publish-hex completes, pins the consumer to the exact published version via sed, runs mix oban_powertools.install, migrates, seeds, and the first-session test passes green"
-    why_human: "The CI job only runs when release_created == 'true' — it cannot be exercised programmatically from the repo. The local path-dep proof (Plan 02) demonstrates the test assertions are correct, but the full published-tarball path (hex.pm resolution, :files whitelist exercise) requires an actual release run."
+re_verification: true
 ---
 
 # Phase 51: Published-Package Verification — Verification Report
 
 **Phase Goal:** Prove the published Hex package installs and works end-to-end for a new adopter
-**Verified:** 2026-05-30T14:00:00Z
-**Status:** human_needed
-**Re-verification:** No — initial verification
+**Verified:** 2026-09-25T19:22:37Z
+**Status:** verified
+**Re-verification:** Yes — exact published-version Release workflow run 36179072813 passed.
 
 ## Goal Achievement
 
@@ -86,13 +82,13 @@ Note: The local test proof (Plan 02 Task 2 — path-dep swap, test run, revert) 
 
 ### Probe Execution
 
-No probe scripts are defined for this phase. The verification proof relies on the CI job (`verify-published`) which requires an actual release trigger — this is the human verification item below.
+No probe scripts are defined for this phase. The published-package proof is automated in the Release workflow and can be replayed against an existing exact version using `workflow_dispatch` with `published_version`.
 
 ### Requirements Coverage
 
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|------------|-------------|--------|---------|
-| REL-04 | 51-01, 51-02, 51-03 | The getting-started quickstart is verified working from the published package — a fresh host installs from hex and reaches a first successful operator session | SATISFIED (pending CI run) | examples/hex_consumer/ app with hex dep; first-session test with full D-04 operator flow; verify-published CI job wired into release.yml; local proof via path-dep swap documented in SUMMARY |
+| REL-04 | 51-01, 51-02, 51-03 | The getting-started quickstart is verified working from the published package — a fresh host installs from hex and reaches a first successful operator session | SATISFIED | Release run 36179072813 pinned to Hex `1.1.0`; published installer, warnings-as-errors compile, database create/migrate, seed, and first-session operator proof all passed. |
 
 Only REL-04 is mapped to Phase 51 in REQUIREMENTS.md. No orphaned requirements found.
 
@@ -104,28 +100,15 @@ Only REL-04 is mapped to Phase 51 in REQUIREMENTS.md. No orphaned requirements f
 
 No TBD, FIXME, or XXX markers found in any committed file modified by this phase.
 
-### Human Verification Required
+### Automated End-to-End Verification
 
-### 1. CI verify-published job execution against real release
-
-**Test:** Create a new release of oban_powertools (or manually trigger the release pipeline) and observe the `verify-published` job in `.github/workflows/release.yml` run to completion.
-
-**Expected:** The job:
-1. Checks out the release tag
-2. Pins mix.exs to `{:oban_powertools, "== <version>"}` via sed
-3. Runs `mix deps.get` resolving the published tarball from hex.pm (exercises the `:files` whitelist)
-4. Runs `mix oban_powertools.install` from the published tarball
-5. Creates and migrates the `hex_consumer_test` Postgres database
-6. Seeds the `nightly_sync` cron entry
-7. Runs `oban_powertools_first_session_test.exs` — the test passes green, asserting `cron.paused` DB state + audit evidence
-
-**Why human:** The `verify-published` job is gated on `release_created == 'true'` and requires hex.pm to have the published tarball indexed. This cannot be exercised programmatically from the local repo. The local proof (Plan 02) used a path dep swap to confirm the test assertions are correct, but the actual `:files` whitelist exercise — which is the core REL-04 failure class — requires the real published tarball to be fetched by `mix deps.get`.
+The Release workflow was manually dispatched with `published_version=1.1.0`. [Run 36179072813](https://github.com/szTheory/oban_powertools/actions/runs/36179072813) fetched the real Hex package and passed installer execution, consumer compilation, database creation/migration, fixture seeding, and `oban_powertools_first_session_test.exs`.
 
 ### Gaps Summary
 
-No gaps found. All 12 must-have truths are verified in the codebase. The sole remaining item is human verification of the CI job against a real release — an inherent constraint of a post-publish CI gate, not a flaw in the implementation.
+No gaps found. All 12 must-have truths, including the published-tarball first-session path, are verified.
 
 ---
 
-_Verified: 2026-05-30T14:00:00Z_
-_Verifier: Claude (gsd-verifier)_
+_Verified: 2026-09-25T19:22:37Z_
+_Verifier: Codex — automated published-package workflow run 36179072813_
