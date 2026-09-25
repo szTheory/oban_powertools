@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Powertools Identity
 status: Awaiting next milestone
-stopped_at: v2.0 archived; completing the v1.1.0 release closeout
-last_updated: "2026-09-25T00:10:00Z"
-last_activity: 2026-09-24
-last_activity_desc: PR #19 browser suite timed out twice; PR #30 raises the validated showcase timeout and is running CI
+stopped_at: v1.1.0 published; REL-04 exposed a duplicate installer mount; PR #31 checks are rerunning
+last_updated: "2026-09-25T13:15:00Z"
+last_activity: 2026-09-25
+last_activity_desc: REL-04 found a duplicate named LiveView session in the consumer fixture; PR #31 fixes its setup and the release gate timeout
 progress:
   total_phases: 15
   completed_phases: 15
@@ -149,12 +149,12 @@ See: `.planning/PROJECT.md` (updated 2026-07-31)
 
 ## Session Continuity
 
-**Last session:** 2026-09-24
-**Stopped at:** PR #29 merged with CI green; release PR #19 refreshed to current main and fresh required CI is running.
-**Resume file:** `.planning/CONTINUE.md`
+**Last session:** 2026-09-25
+**Stopped at:** PR #19 merged at `75b2106`; v1.1.0 is published and exact-SHA `ci-gate` passed. Recovery run `36103854234` completed publication but REL-04 failed on duplicate `:oban_powertools_native`; PR #31 removes the mount from the pre-install consumer fixture and raises the CI wait to 4.5 hours. PR #31 head `a858216` checks are running.
+**Resume file:** `.planning/threads/CONTINUE.md`
 
-- **Last Action:** Confirmed PR #29's Page Quality, Full Showcase Visual & A11y, and `ci-gate` passed; refreshed release PR #19 to main SHA `345b8a2` and generated head `138b829` after retrying Release Please's transient historical-backfill connection failures.
-- **Next Action:** Resolve fresh required CI on PR #19 head `138b829` and complete the automated 1.1.0 release before reconciling remaining audit findings or reassessing another milestone.
+- **Last Action:** Confirmed PR #19's Page Quality, Full Showcase Visual & A11y, and exact-SHA `ci-gate` passed; recovered Hex publication after the 20-minute poll expired. REL-04 then exposed a duplicate named session because the consumer fixture was already installed before the published installer ran. GSD health repaired two default keys and backfilled v1.10.
+- **Next Action:** Finish PR #31 checks. Keep release UAT records open until REL-04 passes against a published version; retain the Phase 81 security-advisory item.
 
 ## Decisions
 
@@ -373,5 +373,8 @@ See: `.planning/PROJECT.md` (updated 2026-07-31)
 ## Operator Next Steps
 
 - PR #29 is merged as `345b8a2`; its browser lanes and `ci-gate` passed on run `36016887347`.
-- Release PR #19 is refreshed to `main` at `345b8a2` with generated head `138b829`; require fresh green checks and exact-head `ci-gate` before the automated release merge.
+- PR #30 merged as `c3a82f2`; its `240`-minute showcase timeout passed with the 3912-case suite completing in 190 minutes.
+- Release PR #19 merged at `75b2106`; `v1.1.0` is published and its main CI, Page Quality, Full Showcase Visual & A11y, and exact-SHA `ci-gate` passed. Release run `36103854234` recovered from its 20-minute polling timeout and published to Hex, but REL-04 failed compiling the duplicated `:oban_powertools_native` session.
+- PR #31 extends release `ci-gate` polling to 4.5 hours and resets the Hex consumer's pre-install router fixture so the published installer adds its mount once; require exact-head CI and Host Contract Proof before merge.
+- GSD health added the two missing default workflow keys and backfilled v1.10 in `MILESTONES.md`; custom `CONTINUE.md` and `MILESTONE-ARC.md` now live under `threads/` and `research/` to satisfy health checks. Unsupported `preferences` config was removed; Decision Posture is retained in `PROJECT.md`.
 - After publication and audit triage, reassess adopter evidence with `prompts/oban-powertools-new-milestone-roadmap-prompt.txt`; start a milestone only if the review supports it.
