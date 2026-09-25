@@ -34,6 +34,11 @@ This app **requires hex.pm reachability** to install or run locally. It cannot
 be used offline or against locally-modified `oban_powertools` source without
 temporarily switching the dep to `path: "../.."`.
 
+The Release workflow normally verifies the exact package created by a release.
+It can also be dispatched with `published_version` (for example, `1.1.0`) to
+replay this proof against an existing Hex version without publishing a new
+release.
+
 ## Local setup
 
 ```sh
