@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Powertools Identity
 status: Awaiting next milestone
-stopped_at: Milestone v2.0 completed and archived; awaiting next milestone
-last_updated: "2026-07-31T13:52:35.334Z"
-last_activity: 2026-07-31
-last_activity_desc: Milestone v2.0 completed and archived
+stopped_at: v2.0 archived; completing the v1.1.0 release closeout
+last_updated: "2026-09-25T00:10:00Z"
+last_activity: 2026-09-24
+last_activity_desc: PR #19 browser suite timed out twice; PR #30 raises the validated showcase timeout and is running CI
 progress:
   total_phases: 15
   completed_phases: 15
@@ -149,12 +149,12 @@ See: `.planning/PROJECT.md` (updated 2026-07-31)
 
 ## Session Continuity
 
-**Last session:** 2026-07-31
-**Stopped at:** Milestone v2.0 completed and archived; awaiting next milestone
-**Resume file:** None
+**Last session:** 2026-09-24
+**Stopped at:** PR #29 merged with CI green; release PR #19 refreshed to current main and fresh required CI is running.
+**Resume file:** `.planning/CONTINUE.md`
 
-- **Last Action:** Archived v2.0 roadmap, requirements, audit, and phases after a passed 58/58 milestone audit.
-- **Next Action:** Run `$gsd-new-milestone` to define fresh requirements and a new roadmap.
+- **Last Action:** Confirmed PR #29's Page Quality, Full Showcase Visual & A11y, and `ci-gate` passed; refreshed release PR #19 to main SHA `345b8a2` and generated head `138b829` after retrying Release Please's transient historical-backfill connection failures.
+- **Next Action:** Resolve fresh required CI on PR #19 head `138b829` and complete the automated 1.1.0 release before reconciling remaining audit findings or reassessing another milestone.
 
 ## Decisions
 
@@ -372,4 +372,6 @@ See: `.planning/PROJECT.md` (updated 2026-07-31)
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- PR #29 is merged as `345b8a2`; its browser lanes and `ci-gate` passed on run `36016887347`.
+- Release PR #19 is refreshed to `main` at `345b8a2` with generated head `138b829`; require fresh green checks and exact-head `ci-gate` before the automated release merge.
+- After publication and audit triage, reassess adopter evidence with `prompts/oban-powertools-new-milestone-roadmap-prompt.txt`; start a milestone only if the review supports it.
