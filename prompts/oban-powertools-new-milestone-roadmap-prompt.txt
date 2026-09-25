@@ -76,7 +76,19 @@ HOW TO ASSESS THE PROJECT
    important invariants or realistic scenarios that existing tests do not
    cover economically. Use representative, privacy-safe fixtures and bounded
    deterministic runs. State what new failure class the method would catch
-   and how it will run in CI before adding harness complexity.
+   and how it will run in CI before adding harness complexity. Keep the test
+   suite Pareto-efficient: remove, split, or streamline checks that add runtime
+   without meaningful new failure detection.
+
+5. Default to automated verification.
+   - For recurring UAT, integration, E2E, smoke, and seam checks, automate
+     deterministic evidence into local workflows or CI when the ongoing risk
+     reduction is worth the maintenance and runner minutes. Aim to remove
+     routine human verification; keep human checks only for subjective or
+     externally credentialed evidence that cannot be made reliable in code.
+   - Treat CI minutes as a budget. Prefer focused fast gates for frequent
+     feedback and broader suites where their coverage justifies the cost.
+     Avoid duplicating expensive coverage across jobs without a clear reason.
 
 ROADMAP CANDIDATES — HYPOTHESES, NOT COMMITMENTS
 ------------------------------------------------
@@ -138,6 +150,14 @@ CODEX AND GSD WORKING CONVENTIONS
 - Do not put planning or GSD bookkeeping comments into production code. Keep
   implementation self-documenting and update user-facing docs when behavior or
   support claims change.
+- Apply 12-factor principles where they fit this library and its host-owned
+  deployment model. Keep secrets and maintainer/customer PII out of source,
+  logs, examples, and planning artifacts; use privacy-safe fixtures and local
+  hashes when identity comparison is needed.
+- Keep `.planning` as a high-signal second brain: record durable decisions,
+  evidence provenance, and lessons learned; replace superseded operational
+  facts instead of accumulating stale status; and leave a clear continuation
+  handoff before recommending a context-clearing GSD step.
 
 MILESTONE CLOSEOUT BAR
 ---------------------

@@ -165,6 +165,9 @@ Shipped v2.0 Powertools Identity on 2026-07-31 after 15 phases, 113 plans, and 2
 - Apply an idiomatic-Elixir/Phoenix/Ecto + DX/UX-first lens; prefer reusing existing seams (Lifeline pipeline, callback outbox, `Workflow.Result`, `Redactor`/`DisplayPolicy` behaviours) over inventing new abstraction families.
 - Use Codex as the GSD runtime for this repository. Keep new planning guidance Codex-compatible; preserve historical agent/runtime provenance in archived artifacts.
 - Treat milestone candidates as evidence-gated hypotheses. Assess adopter roles and software-quality dimensions, then use Pareto judgment to select bounded work; property/model-based testing and adopter simulations must justify their added maintenance cost.
+- Default to machine-verifiable UAT, integration, E2E, smoke, and seam coverage for recurring risk; retain human verification only where evidence is inherently subjective or requires external credentials. Add recurring CI coverage only when its risk reduction justifies runner minutes and maintenance, and keep the test portfolio focused on distinct failure classes.
+- Apply 12-factor principles where relevant. Keep secrets and maintainer/customer PII out of public code and planning artifacts; use privacy-safe fixtures and local hashes when comparison is needed.
+- Keep `.planning` current and high-signal: preserve provenance for durable decisions, supersede stale status instead of duplicating it, record lessons learned, and leave a continuation handoff before recommending context-clearing GSD steps.
 - Make milestone closeout include committed-state verification, green required CI, triaged PRs/findings, accurate docs/package claims, and a clean or explicitly accounted-for worktree. Publish a Hex release when the milestone warrants one; otherwise record why it does not.
 
 ## Constraints

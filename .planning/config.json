@@ -8,21 +8,23 @@
   "workflow": {
     "_auto_chain_active": false,
     "research_before_questions": true,
-    "use_worktrees": false
+    "use_worktrees": true
   },
   "runtime": "codex",
   "model_profile": "balanced",
   "models": {
     "planning": "opus",
-    "discuss": "opus",
-    "research": "sonnet",
-    "execution": "sonnet",
-    "verification": "sonnet",
-    "completion": "sonnet"
+    "discuss": "haiku",
+    "research": "haiku",
+    "execution": "haiku",
+    "verification": "haiku",
+    "completion": "haiku"
   },
-  "model_overrides": {
-    "gsd-roadmapper": "sonnet",
-    "gsd-pattern-mapper": "sonnet",
-    "gsd-codebase-mapper": "haiku"
+  "model_profile_overrides": {
+    "codex": {
+      "opus": "gpt-6-sol",
+      "sonnet": "gpt-6-luna",
+      "haiku": "gpt-6-luna"
+    }
   }
 }

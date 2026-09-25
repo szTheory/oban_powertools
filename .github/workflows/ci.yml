@@ -163,7 +163,9 @@ jobs:
   visual_a11y:
     name: Full Showcase Visual & A11y
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    # The exhaustive showcase suite contains nearly 4,000 browser cases. Recent
+    # runs vary from 170 minutes to timing out at 180 while still passing tests.
+    timeout-minutes: 240
     env:
       CI: "true"
       MIX_ENV: test
