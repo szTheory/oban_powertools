@@ -117,6 +117,24 @@ non-Postgres backends, a generic dashboard replacement, an `oban_met` hard
 dependency, autoscaling, mobile surfaces, or broad orchestration capabilities
 without strong adopter evidence and a reviewed change to project intent.
 
+MAINTAINER UI REVIEW READINESS
+-----------------------------
+
+v2.0 implemented and automated design-quality coverage for all nine `/ops/jobs`
+surfaces, but the maintainer has not personally tried the operator UI. Treat
+VRT, accessibility, responsive, copy, and route proof as regression-quality
+evidence; do not present it as owner-level product acceptance. Before asking
+for the maintainer's focused product feedback, finish release/security
+closeout and resolve or explicitly disposition critical/high-risk non-UI gaps
+in correctness, security, installation, upgrades, and release reliability.
+Keep required CI and support/install paths green from committed state, and
+review expensive CI lanes for distinct risk coverage. Then prepare one concise
+walkthrough packet with current capabilities, automated evidence and its
+limits, known gaps, and focused product questions. Lower-risk polish may remain
+deferred; do not ask the maintainer to repeat automated checks. Do not schedule
+new UI feature work until that product feedback or adopter evidence identifies
+a bounded need.
+
 MILESTONE RECOMMENDATION
 ------------------------
 

@@ -1,5 +1,11 @@
 # Milestones
 
+## v1.10 Roadmap (Backfilled: 2026-09-25)
+
+**Note:** Synthesized from archive snapshot by `$gsd-health --backfill`. Original completion date unknown.
+
+---
+
 ## v2.0 Powertools Identity (Shipped: 2026-07-31)
 
 **Delivered:** A coherent library-owned operator design system across all nine native surfaces, protected by deterministic visual, accessibility, responsive, motion, copy, packaging, and idempotency gates.
