@@ -320,7 +320,7 @@ jobs:
           exit "${CLAIM_STATUS_CODE}"
       - name: Upload VER04-C1 claim artifact
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: continuity-ver04-c1-evidence
           if-no-files-found: error
@@ -394,7 +394,7 @@ jobs:
           exit "${CLAIM_STATUS_CODE}"
       - name: Upload VER04-C2 claim artifact
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: continuity-ver04-c2-evidence
           if-no-files-found: error
@@ -468,7 +468,7 @@ jobs:
           exit "${CLAIM_STATUS_CODE}"
       - name: Upload VER04-C3 claim artifact
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: continuity-ver04-c3-evidence
           if-no-files-found: error
@@ -542,7 +542,7 @@ jobs:
           exit "${CLAIM_STATUS_CODE}"
       - name: Upload VER04-C4 claim artifact
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: continuity-ver04-c4-evidence
           if-no-files-found: error
@@ -701,7 +701,7 @@ jobs:
       - name: Upload continuity proof packet
         id: upload_proof_packet
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: continuity-proof-packet
           if-no-files-found: error
@@ -715,7 +715,7 @@ jobs:
       - name: Upload Phase 40 gate report
         id: upload_phase40_gate_report
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: phase40-gate-report
           if-no-files-found: error
