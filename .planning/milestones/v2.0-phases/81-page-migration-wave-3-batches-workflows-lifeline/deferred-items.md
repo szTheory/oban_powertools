@@ -4,9 +4,10 @@
 
 ### Merge the audited lockfile update
 
-- **Status:** pending
-- **Item:** Merge the tested dependency update from `fix/security-advisory-closeout` into `main` through a green PR.
-- **Reason:** The current remote `main` lockfile still contains the affected versions; the isolated branch evidence does not close the repository's live advisory status until merged.
+- **Status:** resolved
+- **Resolved:** 2026-09-26
+- **Item:** PR #32, [chore(deps): update audited lockfile](https://github.com/szTheory/oban_powertools/pull/32), squash-merged to `main` as `dbcdf06fc593b88a07da724406aa5dd7efaa6fd6`.
+- **Evidence:** Exact-head CI and Host Contract Proof passed. Page Quality passed in 1h48m38s and Full Showcase Visual & A11y passed in 3h11m25s. The merged lockfile contains the audited versions below; compatibility ranges are unchanged. No package release was required or created.
 - **Release:** No package release is required; these are development, test, and optional dependency lock updates, and compatibility ranges are unchanged.
 
 ## Resolved Package Versions
