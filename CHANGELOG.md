@@ -17,6 +17,13 @@ milestone numbers to Hex versions.
 This library remains **0.x** on Hex until a real **1.0.0** after real adopter feedback.
 See [Path to 1.0](#path-to-10) below for the explicit gate.
 
+## [1.1.1](https://github.com/szTheory/oban_powertools/compare/v1.1.0...v1.1.1) (2026-09-26)
+
+
+### Documentation
+
+* **planning:** close security follow-up handoff ([#33](https://github.com/szTheory/oban_powertools/issues/33)) ([26642e3](https://github.com/szTheory/oban_powertools/commit/26642e3f51a6817741906694d25d9a5d75627e05))
+
 ## [1.1.0](https://github.com/szTheory/oban_powertools/compare/v1.0.0...v1.1.0) (2026-09-25)
 
 
